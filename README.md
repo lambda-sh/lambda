@@ -1,27 +1,20 @@
-# Project title
+# game-engine
 
 ## Description
-This project is currently under construction.
+This repo is for learning how to structure and make a game engine!
 
 ## Goals
-### Short term goals
-- [ ] Goal 1
-- [ ] Goal 2
-- [ ] Goal 3
+- [ ] Create a game engine.
+- [ ] Learn more about C++
+- [ ] Make a game of my own(?)
 
-### Long term goals
-- [ ] Goal 1
-- [ ] Goal 2
-- [ ] Goal 3
 
 ## How to run/setup
-Instructions on the setup process needed for running locally.
-
-## How to deploy
-How to deploy your own instance live.
+This will be built with cmake/make and have a script to auto compile everything for us.
 
 ## Live deployments
-Where you can find this project in production
+This project may or may not be used in games, but will definitely be used to create 
+my own unique game engine in the future.
 
 ## How to contribute
 Fork the current repository and then make the changes that you'd like to said fork. Upon adding features, fixing bugs,
@@ -30,4 +23,4 @@ and I will evaluate them before taking further action. This process may take any
 my schedule, and any other variable factors.
 
 ## Resources
-External resources used and needed for this project to be completed. Always cite your peer developers!
+[The tutorial I'm following](https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT)
