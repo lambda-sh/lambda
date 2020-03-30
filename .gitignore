@@ -119,5 +119,6 @@ Temporary Items
 .apdisk
 
 #!! ERROR: opengl is undefined. Use list command to see defined gitignore types !!#
+bin
 
 # End of https://www.gitignore.io/api/linux,cpp,c,cmake,macos,opengl
