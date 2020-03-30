@@ -4,9 +4,13 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# For vim setup.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # ----------------------------------- ENGINE ----------------------------------
 
 set(OpenGL_GL_PREFERENCE "GLVND")
+project(engine)
 
 file(
     GLOB_RECURSE 
@@ -37,6 +41,9 @@ find_package(glfw3 3.3 REQUIRED)
 target_link_libraries(engine glfw)
 
 # ----------------------------------- SANDBOX ----------------------------------
+
+project(sandbox)
+include_directories(AFTER ${CMAKE_SOURCE_DIR}/engine/src)
 
 file(
     GLOB_RECURSE
