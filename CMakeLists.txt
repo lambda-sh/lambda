@@ -16,13 +16,22 @@ file(
 )
 add_library(engine SHARED ${ENGINE_SRC})
 
+if (WIN32)
+    target_compile_definitions(engine PRIVATE ENGINE_PLATFORM_WINDOWS)
+    target_compile_definitions(engine PRIVATE ENGINE_BUILD_DLL)
+elseif (UNIX)
+    target_compile_definitions(engine PRIVATE ENGINE_PLATFORM_LINUX)
+    target_compile_definitions(engine PRIVATE ENGINE_BUILD_DLL)
+endif()
+
+target_compile_definitions(engine PUBLIC GLEW_STATIC)
+
 # Add Dependencies
 find_package(OpenGL REQUIRED)
 target_link_libraries(engine OpenGL::GL)
 
 find_package(GLEW REQUIRED)
 target_link_libraries(engine GLEW::GLEW)
-target_compile_definitions(engine PUBLIC GLEW_STATIC)
 
 find_package(glfw3 3.3 REQUIRED)
 target_link_libraries(engine glfw)
@@ -36,6 +45,13 @@ file(
     ${CMAKE_BINARY_DIR}/sandbox/src/*.cpp
 )
 add_executable(app ${APP_SRC})
+
+if (WIN32)
+    target_compile_definitions(app PRIVATE ENGINE_PLATFORM_WINDOWS)
+elseif (UNIX)
+    target_compile_definitions(app PRIVATE ENGINE_PLATFORM_LINUX)
+endif()
+
 target_link_libraries(app engine)
 
 # Load resources necessary for the executable to launch (Shaders, images, etc)
