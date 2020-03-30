@@ -1,8 +1,16 @@
-namespace engine {
-  __attribute__((visibility ("default"))) void Print();
-}
+#include "Engine.h"
 
-int main() {
-  engine::Print();    
-  return 0;
+class Sandbox : public engine::Application {
+  public:
+    Sandbox() {
+
+    }
+
+    ~Sandbox() {
+
+    }
+};
+
+engine::Application* engine::CreateApplication() {
+  return new Sandbox();
 }
