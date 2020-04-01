@@ -10,4 +10,4 @@ repos:
     hooks:
       - id: cpplint
         name: Lint-engine
-        args: [--filter=-legal/copyright, --root=engine/src]
+        args: ["--filter=-legal/copyright,-build/include"]
