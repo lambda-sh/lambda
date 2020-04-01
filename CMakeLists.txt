@@ -74,7 +74,7 @@ add_executable(app ${APP_SRC})
 if (WIN32)
     target_compile_definitions(app PRIVATE ENGINE_PLATFORM_WINDOWS)
 elseif (UNIX)
-    target_compile_definitions(app PRIVATE ENGINE_PLATFORM_LINUX=1)
+    target_compile_definitions(app PRIVATE ENGINE_PLATFORM_LINUX)
 endif()
 
 target_link_libraries(app PUBLIC engine)
