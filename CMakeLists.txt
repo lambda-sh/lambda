@@ -19,17 +19,12 @@ file(
     ${CMAKE_SOURCE_DIR}/engine/src/*.cpp
 )
 
-message(STATUS ${ENGINE_SRC})
 add_library(engine SHARED ${ENGINE_SRC})
 
 set_target_properties(
     engine 
-    PROPERTIES 
-    PUBLIC_HEADER 
-    ${CMAKE_SOURCE_DIR}/engine/src/Engine.h
+    PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/engine/src/Engine.h
 )
-
-target_include_direc
 
 target_include_directories(
     engine
@@ -38,11 +33,15 @@ target_include_directories(
 )
 
 if (WIN32)
-    message (STATUS ">>> Setting windows compile definitions")
-    target_compile_definitions(engine PRIVATE ENGINE_PLATFORM_WINDOWS)
-    target_compile_definitions(engine PRIVATE ENGINE_BUILD_DLL)
+    message (STATUS ">>> Setting windows compile definitions for the engine.")
+    target_compile_definitions(
+        engine 
+        PRIVATE ENGINE_PLATFORM_WINDOWS
+        PRIVATE ENGINE_BUILD_DLL
+        INTERFACE GLEW_STATIC
+    )
 elseif (UNIX)
-    message (STATUS ">>> Setting linux compile definitions")
+    message (STATUS ">>> Setting linux compile definitions for the engine.")
     target_compile_definitions(
         engine 
         PRIVATE ENGINE_PLATFORM_LINUX
@@ -74,11 +73,13 @@ file(
 add_executable(app ${APP_SRC})
 
 if (WIN32)
+    message (STATUS ">>> Setting windows compile definitions for sandbox.")
     target_compile_definitions(app PRIVATE ENGINE_PLATFORM_WINDOWS)
 elseif (UNIX)
+    message (STATUS ">>> Setting linux compile definitions for sandbox.")
     target_compile_definitions(app PRIVATE ENGINE_PLATFORM_LINUX)
 endif()
 
-target_link_libraries(app PUBLIC engine)
+target_link_libraries(app PRIVATE engine)
 # Load resources necessary for the executable to launch (Shaders, images, etc)
 # file(COPY ${CMAKE_BINARY_DIR}/res DESTINATION ${CMAKE_BINARY_DIR}/bin/res)
