@@ -1,5 +1,5 @@
-#ifndef SRC_CORE_APPLICATION
-#define SRC_CORE_APPLICATION
+#ifndef ENGINE_CORE_APPLICATION_H_
+#define ENGINE_CORE_APPLICATION_H_
 
 #include "Core.h"
 

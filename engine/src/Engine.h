@@ -1,5 +1,5 @@
-#ifndef SRC_ENGINE
-#define SRC_ENGINE
+#ifndef ENGINE_ENGINE_H_
+#define ENGINE_ENGINE_H_
 
 #include "core/Application.h"
 

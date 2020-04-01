@@ -29,10 +29,12 @@ set_target_properties(
     ${CMAKE_SOURCE_DIR}/engine/src/Engine.h
 )
 
+target_include_direc
+
 target_include_directories(
     engine
-    PUBLIC
-    ${CMAKE_SOURCE_DIR}/engine/src
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/src
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/spdlog/include
 )
 
 if (WIN32)

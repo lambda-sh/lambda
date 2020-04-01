@@ -1,5 +1,5 @@
-#ifndef SRC_CORE_CORE
-#define SRC_CORE_CORE
+#ifndef ENGINE_CORE_CORE_H_
+#define ENGINE_CORE_CORE_H_
 
   #ifdef ENGINE_PLATFORM_WINDOWS
     #ifdef ENGINE_BUILD_DLL
