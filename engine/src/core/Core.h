@@ -7,12 +7,14 @@
     #else
       #define ENGINE_API __declspec(dllimport)
     #endif
-  #elif ENGINE_PLATFORM_LINUX
+  #elif defined ENGINE_PLATFORM_LINUX
     #ifdef ENGINE_BUILD_DLL
-      #define ENGINE_API  __attribute__((visibility("default"))) 
+      #define ENGINE_API __attribute__((visibility("default"))) 
     #else
       #define ENGINE_API
     #endif
+  #else 
+    #define ENGINE_API
   #endif
 
 #endif

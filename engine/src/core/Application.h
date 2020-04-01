@@ -1,8 +1,11 @@
 #ifndef SRC_CORE_APPLICATION
 #define SRC_CORE_APPLICATION
 
+#include "Core.h"
+
 namespace engine {
-  class Application {
+
+  class ENGINE_API Application {
     public:
       Application();
       virtual ~Application();
