@@ -1,5 +1,5 @@
-#ifndef ENGINE_CORE_CORE_H_
-#define ENGINE_CORE_CORE_H_
+#ifndef ENGINE_SRC_CORE_CORE_H_
+#define ENGINE_SRC_CORE_CORE_H_
 
   #ifdef ENGINE_PLATFORM_WINDOWS
     #ifdef ENGINE_BUILD_DLL
@@ -9,12 +9,12 @@
     #endif
   #elif defined ENGINE_PLATFORM_LINUX
     #ifdef ENGINE_BUILD_DLL
-      #define ENGINE_API __attribute__((visibility("default"))) 
+      #define ENGINE_API __attribute__((visibility("default")))
     #else
       #define ENGINE_API
     #endif
-  #else 
+  #else
     #define ENGINE_API
   #endif
 
-#endif
+#endif  // ENGINE_SRC_CORE_CORE_H_

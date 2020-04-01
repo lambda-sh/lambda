@@ -1,5 +1,4 @@
-#ifndef ENGINE_CORE_LOG_H_
-#define ENGINE_CORE_LOG_H_
+#ifndef ENGINE_SRC_CORE_LOG_H_
+#define ENGINE_SRC_CORE_LOG_H_
 
-
-#endif
+#endif  // ENGINE_SRC_CORE_LOG_H_
