@@ -1,8 +1,16 @@
 cmake_minimum_required(VERSION 3.0.0)
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+message(STATUS ${CMAKE_BUILD_TYPE})
+if (${DISTRIBUTION_BUILD})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/bin)
+elseif (${CMAKE_BUILD_TYPE} STREQUAL "Release" OR ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    message(STATUS ${CMAKE_BUILD_TYPE})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
+endif()
 
 # For vim setup.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -13,16 +21,16 @@ set(OpenGL_GL_PREFERENCE "GLVND")
 project(engine)
 
 file(
-    GLOB_RECURSE 
-    ENGINE_SRC 
-    ${CMAKE_SOURCE_DIR}/engine/src/*.h 
+    GLOB_RECURSE
+    ENGINE_SRC
+    ${CMAKE_SOURCE_DIR}/engine/src/*.h
     ${CMAKE_SOURCE_DIR}/engine/src/*.cpp
 )
 
 add_library(engine SHARED ${ENGINE_SRC})
 
 set_target_properties(
-    engine 
+    engine
     PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/engine/src/Engine.h
 )
 
@@ -35,7 +43,7 @@ target_include_directories(
 if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for the engine.")
     target_compile_definitions(
-        engine 
+        engine
         PRIVATE ENGINE_PLATFORM_WINDOWS
         PRIVATE ENGINE_BUILD_DLL
         INTERFACE GLEW_STATIC
@@ -43,7 +51,7 @@ if (WIN32)
 elseif (UNIX)
     message (STATUS ">>> Setting linux compile definitions for the engine.")
     target_compile_definitions(
-        engine 
+        engine
         PRIVATE ENGINE_PLATFORM_LINUX
         PRIVATE ENGINE_BUILD_DLL
         INTERFACE GLEW_STATIC
