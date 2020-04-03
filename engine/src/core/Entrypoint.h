@@ -16,6 +16,7 @@ int main() {
   auto app = engine::CreateApplication();
   app->Run();
   delete app;
+
   return 0;
 }
 
