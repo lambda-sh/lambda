@@ -54,7 +54,6 @@ class ENGINE_API KeyReleasedEvent : public KeyEvent {
   EVENT_CLASS_TYPE(kKeyReleased)
 };
 
-
 }  // namespace events
 }  // namespace engine
 
