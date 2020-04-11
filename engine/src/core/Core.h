@@ -17,4 +17,6 @@
     #define ENGINE_API
   #endif
 
+#define BIT(x) (1 << x)
+
 #endif  // ENGINE_SRC_CORE_CORE_H_

@@ -9,6 +9,8 @@
 
 namespace engine {
 
+// The Log class allows us to obtain our log instances, both of which are
+// exposed to the engine while only the client logger is exposed to the client.
 class ENGINE_API Log {
  public:
   static void Init();
