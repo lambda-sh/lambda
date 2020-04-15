@@ -5,6 +5,7 @@
 #include <functional>
 
 #include "core/Core.h"
+
 #include "spdlog/fmt/ostr.h"
 
 namespace engine {
