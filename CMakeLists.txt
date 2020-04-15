@@ -34,10 +34,13 @@ set_target_properties(
     PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/engine/src/Engine.h
 )
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glfw)
+
 target_include_directories(
     engine
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/src
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/spdlog/include
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glfw/include
 )
 
 if (WIN32)
@@ -65,9 +68,7 @@ target_link_libraries(engine OpenGL::GL)
 find_package(GLEW REQUIRED)
 target_link_libraries(engine GLEW::GLEW)
 
-find_package(glfw3 3.3 REQUIRED)
-target_link_libraries(engine glfw)
-
+target_link_libraries(engine glfw ${GLFW_LIBRARIES})
 # ----------------------------------- SANDBOX ----------------------------------
 
 project(sandbox)
