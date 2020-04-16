@@ -1,3 +1,5 @@
+export CC=gcc CXX=g++
+
 if [ "$1" = "Release" ] || [ "$1" = "Debug" ]; then
     echo "Compiling a $1 build."
     cmake -DCMAKE_BUILD_TYPE="$1" -DDISTRIBUTION_BUILD=False .
