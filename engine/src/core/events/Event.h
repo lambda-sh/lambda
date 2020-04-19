@@ -4,9 +4,10 @@
 #include <string>
 #include <functional>
 
+#include "spdlog/fmt/ostr.h"
+
 #include "core/Core.h"
 
-#include "spdlog/fmt/ostr.h"
 
 namespace engine {
 namespace events {
