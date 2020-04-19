@@ -17,8 +17,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ----------------------------------- ENGINE ----------------------------------
 
-set(OpenGL_GL_PREFERENCE "GLVND")
 project(engine)
+
+set(OpenGL_GL_PREFERENCE "GLVND")
 
 file(
     GLOB_RECURSE
@@ -49,6 +50,7 @@ if (WIN32)
         engine
         PRIVATE ENGINE_PLATFORM_WINDOWS
         PRIVATE ENGINE_BUILD_DLL
+        PRIVATE ENGINE_ENABLE_ASSERTS
         INTERFACE GLEW_STATIC
     )
 elseif (UNIX)
@@ -57,6 +59,7 @@ elseif (UNIX)
         engine
         PRIVATE ENGINE_PLATFORM_LINUX
         PRIVATE ENGINE_BUILD_DLL
+        PRIVATE ENGINE_ENABLE_ASSERTS
         INTERFACE GLEW_STATIC
     )
 endif()
@@ -83,10 +86,14 @@ add_executable(app ${APP_SRC})
 
 if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for sandbox.")
-    target_compile_definitions(app PRIVATE ENGINE_PLATFORM_WINDOWS)
+    target_compile_definitions(
+        app
+        PRIVATE ENGINE_PLATFORM_WINDOWS)
 elseif (UNIX)
     message (STATUS ">>> Setting linux compile definitions for sandbox.")
-    target_compile_definitions(app PRIVATE ENGINE_PLATFORM_LINUX)
+    target_compile_definitions(
+        app
+        PRIVATE ENGINE_PLATFORM_LINUX)
 endif()
 
 target_link_libraries(app PRIVATE engine)
