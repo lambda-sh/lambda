@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include "Core.h"
-
 #include "spdlog/spdlog.h"
+
+#include "Core.h"
 
 namespace engine {
 namespace logging {
