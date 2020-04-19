@@ -2,7 +2,7 @@
 #define ENGINE_SRC_ENGINE_H_
 
 #include "core/Application.h"
-#include "core/Log.h"
+#include "core/Window.h"
 
 // Entry point
 #include "core/Entrypoint.h"

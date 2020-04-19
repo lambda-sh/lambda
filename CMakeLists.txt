@@ -1,12 +1,10 @@
 cmake_minimum_required(VERSION 3.0.0)
 
-message(STATUS ${CMAKE_BUILD_TYPE})
 if (${DISTRIBUTION_BUILD})
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/bin)
 elseif (${CMAKE_BUILD_TYPE} STREQUAL "Release" OR ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    message(STATUS ${CMAKE_BUILD_TYPE})
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
@@ -36,6 +34,7 @@ set_target_properties(
 )
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glfw)
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/spdlog)
 
 target_include_directories(
     engine
@@ -64,7 +63,8 @@ elseif (UNIX)
     )
 endif()
 
-# Add Dependencies
+target_link_libraries(engine spdlog::spdlog)
+
 find_package(OpenGL REQUIRED)
 target_link_libraries(engine OpenGL::GL)
 
