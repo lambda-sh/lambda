@@ -1,16 +1,20 @@
 #include "Application.h"
 
 #include "core/Log.h"
-#include "core/events/ApplicationEvent.h"
+#include "core/Window.h"
 
 namespace engine {
-  Application::Application() {}
 
-  Application::~Application() {}
+Application::Application() {
+  window_ = std::unique_ptr<Window>(Window::Create());
+}
 
-  void Application::Run() {
-    events::WindowResizeEvent e(1280, 720);
-    ENGINE_CORE_TRACE(e);
-    while (true) {}
+Application::~Application() {}
+
+void Application::Run() {
+  while (running_) {
+    window_->OnUpdate();
   }
+}
+
 }  // namespace engine
