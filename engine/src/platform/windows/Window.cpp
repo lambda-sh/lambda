@@ -1,3 +1,5 @@
+#ifdef ENGINE_PLATFORM_WINDOWS
+
 #include "Window.h"
 
 #include <GLFW/glfw3.h>
@@ -88,3 +90,5 @@ bool WindowImplementation::IsVSync() const {
 }  // namespace windows
 }  // namespace platform
 }  // namespace engine
+
+#endif  // ENGINE_PLATFORM_WINDOWS

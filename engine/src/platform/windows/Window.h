@@ -1,5 +1,8 @@
+
 #ifndef ENGINE_SRC_PLATFORM_WINDOWS_WINDOW_H_
 #define ENGINE_SRC_PLATFORM_WINDOWS_WINDOW_H_
+
+#ifdef ENGINE_PLATFORM_WINDOWS
 
 #include <string>
 
@@ -48,4 +51,5 @@ class WindowImplementation : public engine::Window {
 }  // namespace platform
 }  // namespace engine
 
+#endif  // ENGINE_PLATFORM_WINDOWS
 #endif  // ENGINE_SRC_PLATFORM_WINDOWS_WINDOW_H_
