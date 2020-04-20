@@ -23,7 +23,7 @@ struct WindowProperties {
 
 class ENGINE_API Window {
  public:
-  using EventCallbackFn = std::function<void(events::Event&)>;
+  using EventCallbackFn = std::function<void(events::Event*)>;
 
   virtual ~Window() {}
 

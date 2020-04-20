@@ -56,20 +56,21 @@ class ENGINE_API Event {
   }
  protected:
   bool has_been_handled_ = false;
+  inline void SetHandled(bool success) { has_been_handled_ = success; }
 };
 
 // The Event Dispatcher handles all events by using a callback that takes in the
 // event.
 class EventDispatcher {
   template<typename T>
-  using EventFn = std::function<bool(T&)>;
+  using EventFn = std::function<bool(const T&)>;
  public:
-  explicit EventDispatcher(const Event& event) : event_(event) {}
+  explicit EventDispatcher(Event* event) : event_(event) {}
 
   template<typename T>
   bool Dispatch(EventFn<T> func) {
-    if (event_.GetEventType() == T::GetStaticType()) {
-      event_.has_been_handled_ = func(*dynamic_cast<T*>(&event_));
+    if (event_->GetEventType() == T::GetStaticType()) {
+      event_->has_been_handled_ = (func(*dynamic_cast<const T*>(event_)));
       return true;
     }
 
@@ -77,7 +78,7 @@ class EventDispatcher {
   }
 
  private:
-  Event& event_;
+  Event* event_;
 };
 
 // Overrides the output stream operator so that calls to the logging library

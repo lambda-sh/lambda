@@ -82,7 +82,7 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
           properties.Width = width;
           properties.Height = height;
 
-          properties.EventCallback(event);
+          properties.EventCallback(&event);
       });
 
   glfwSetWindowCloseCallback(
@@ -92,7 +92,7 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
             *static_cast<Properties*>(glfwGetWindowUserPointer(window));
 
             events::WindowCloseEvent event;
-            properties.EventCallback(event);
+            properties.EventCallback(&event);
       });
 
   glfwSetKeyCallback(
@@ -105,19 +105,19 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
           case GLFW_PRESS:
           {
             events::KeyPressedEvent event(key, 0);
-            properties.EventCallback(event);
+            properties.EventCallback(&event);
             break;
           }
           case GLFW_RELEASE:
           {
             events::KeyReleasedEvent event(key);
-            properties.EventCallback(event);
+            properties.EventCallback(&event);
             break;
           }
           case GLFW_REPEAT:
           {
             events::KeyPressedEvent event(key, 1);
-            properties.EventCallback(event);
+            properties.EventCallback(&event);
             break;
           }
         }
@@ -133,13 +133,13 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
           case GLFW_PRESS:
           {
             events::MouseButtonPressedEvent event(button);
-            properties.EventCallback(event);
+            properties.EventCallback(&event);
             break;
           }
           case GLFW_RELEASE:
           {
             events::MouseButtonReleasedEvent event(button);
-            properties.EventCallback(event);
+            properties.EventCallback(&event);
             break;
           }
         }
@@ -153,7 +153,7 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
 
         events::MouseScrolledEvent event(
             static_cast<float>(xOffset), static_cast<float>(yOffset));
-        properties.EventCallback(event);
+        properties.EventCallback(&event);
       });
 
   glfwSetCursorPosCallback(
@@ -164,7 +164,7 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
 
         events::MouseMovedEvent event(
             static_cast<float>(xPosition), static_cast<float>(yPosition));
-        properties.EventCallback(event);
+        properties.EventCallback(&event);
       });
 }
 

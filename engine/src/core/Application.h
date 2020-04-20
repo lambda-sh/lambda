@@ -14,7 +14,7 @@ class ENGINE_API Application {
   virtual ~Application();
 
   void Run();
-  void OnEvent(const events::Event& event);
+  void OnEvent(events::Event* event);
  private:
   bool running_ = true;
   std::unique_ptr<Window> window_;
