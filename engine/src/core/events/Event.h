@@ -67,10 +67,11 @@ class EventDispatcher {
  public:
   explicit EventDispatcher(Event* event) : event_(event) {}
 
+  // Dispatch an event to the given event handler given the type of event.
   template<typename T>
   bool Dispatch(EventFn<T> func) {
     if (event_->GetEventType() == T::GetStaticType()) {
-      event_->has_been_handled_ = (func(*dynamic_cast<const T*>(event_)));
+      event_->has_been_handled_ = (func(dynamic_cast<const T&>(*event_)));
       return true;
     }
 
