@@ -1,4 +1,4 @@
-#ifdef ENGINE_PLATFORM_LINUX
+#if defined ENGINE_PLATFORM_LINUX || defined ENGINE_DEVELOPMENT_MODE
 
 #include "Window.h"
 
@@ -7,16 +7,27 @@
 #include "core/Core.h"
 #include "core/Log.h"
 #include "core/Window.h"
+#include "core/events/ApplicationEvent.h"
+#include "core/events/KeyEvent.h"
+#include "core/events/MouseEvent.h"
 
 namespace engine {
+
+#ifdef ENGINE_PLATFORM_LINUX
 
 // Will create a windows based implementation of the window handler.
 Window* Window::Create(const engine::WindowProperties& properties) {
   return new engine::platform::linux::WindowImplementation(properties);
 }
 
+#endif  // ENGINE_PLATFORM_LINUX
+
 namespace platform {
 namespace linux {
+
+static void GLFWErrorCallback(int error, const char* description) {
+  ENGINE_CORE_ERROR("GFLW Error ({0}): {1}", error, description);
+}
 
 static bool GLFWInitialized = false;
 
@@ -45,6 +56,7 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   if (!GLFWInitialized) {
     int success = glfwInit();
     ENGINE_CORE_ASSERT(success, "Could not initialize GLFW!");
+    glfwSetErrorCallback(GLFWErrorCallback);
     GLFWInitialized = true;
   }
 
@@ -56,8 +68,104 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
       nullptr);
 
   glfwMakeContextCurrent(window_);
+
   glfwSetWindowUserPointer(window_, &properties_);
   SetVSync(true);
+
+  glfwSetWindowSizeCallback(
+      window_,
+      [](GLFWwindow* window, int width, int height) {
+          Properties& properties =
+              *static_cast<Properties*>(glfwGetWindowUserPointer(window));
+
+          events::WindowResizeEvent event(width, height);
+          properties.Width = width;
+          properties.Height = height;
+
+          properties.EventCallback(event);
+      });
+
+  glfwSetWindowCloseCallback(
+      window_,
+      [](GLFWwindow* window) {
+        Properties& properties =
+            *static_cast<Properties*>(glfwGetWindowUserPointer(window));
+
+            events::WindowCloseEvent event;
+            properties.EventCallback(event);
+      });
+
+  glfwSetKeyCallback(
+      window_,
+      [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+        Properties& properties =
+            *static_cast<Properties*>(glfwGetWindowUserPointer(window));
+
+        switch (action) {
+          case GLFW_PRESS:
+          {
+            events::KeyPressedEvent event(key, 0);
+            properties.EventCallback(event);
+            break;
+          }
+          case GLFW_RELEASE:
+          {
+            events::KeyReleasedEvent event(key);
+            properties.EventCallback(event);
+            break;
+          }
+          case GLFW_REPEAT:
+          {
+            events::KeyPressedEvent event(key, 1);
+            properties.EventCallback(event);
+            break;
+          }
+        }
+      });
+
+  glfwSetMouseButtonCallback(
+      window_,
+      [](GLFWwindow* window, int button, int action, int mods) {
+        Properties& properties =
+            *static_cast<Properties*>(glfwGetWindowUserPointer(window));
+
+        switch (action) {
+          case GLFW_PRESS:
+          {
+            events::MouseButtonPressedEvent event(button);
+            properties.EventCallback(event);
+            break;
+          }
+          case GLFW_RELEASE:
+          {
+            events::MouseButtonReleasedEvent event(button);
+            properties.EventCallback(event);
+            break;
+          }
+        }
+      });
+
+  glfwSetScrollCallback(
+      window_,
+      [](GLFWwindow* window, double xOffset, double yOffset) {
+        Properties& properties =
+            *static_cast<Properties*>(glfwGetWindowUserPointer(window));
+
+        events::MouseScrolledEvent event(
+            static_cast<float>(xOffset), static_cast<float>(yOffset));
+        properties.EventCallback(event);
+      });
+
+  glfwSetCursorPosCallback(
+      window_,
+      [](GLFWwindow* window, double xPosition, double yPosition) {
+        Properties& properties =
+            *static_cast<Properties*>(glfwGetWindowUserPointer(window));
+
+        events::MouseMovedEvent event(
+            static_cast<float>(xPosition), static_cast<float>(yPosition));
+        properties.EventCallback(event);
+      });
 }
 
 // Shutdown the window.
