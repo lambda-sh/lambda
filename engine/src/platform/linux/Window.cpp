@@ -25,6 +25,7 @@ Window* Window::Create(const engine::WindowProperties& properties) {
 namespace platform {
 namespace linux {
 
+// Error callback for handling GLFW specific errors
 static void GLFWErrorCallback(int error, const char* description) {
   ENGINE_CORE_ERROR("GFLW Error ({0}): {1}", error, description);
 }
@@ -67,8 +68,8 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
       nullptr,
       nullptr);
 
+  // Initialize GLFW
   glfwMakeContextCurrent(window_);
-
   glfwSetWindowUserPointer(window_, &properties_);
   SetVSync(true);
 
