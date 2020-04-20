@@ -1,6 +1,8 @@
 #ifndef ENGINE_SRC_CORE_CORE_H_
 #define ENGINE_SRC_CORE_CORE_H_
 
+#undef linux
+
 #ifdef ENGINE_PLATFORM_WINDOWS
   #ifdef ENGINE_BUILD_DLL
     #define ENGINE_API __declspec(dllexport)
