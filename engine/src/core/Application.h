@@ -3,6 +3,8 @@
 
 #include "Core.h"
 #include "Window.h"
+#include "events/ApplicationEvent.h"
+#include "events/Event.h"
 
 namespace engine {
 
@@ -12,9 +14,12 @@ class ENGINE_API Application {
   virtual ~Application();
 
   void Run();
+  void OnEvent(const events::Event& event);
  private:
   bool running_ = true;
   std::unique_ptr<Window> window_;
+
+  bool OnWindowClosed(const events::WindowCloseEvent& event);
 };
 
 // To be defined in client.
