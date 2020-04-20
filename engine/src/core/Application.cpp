@@ -34,7 +34,7 @@ bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
 }
 
 // Event dispatcher for handling events.
-void Application::OnEvent(events::Event& event) {
+void Application::OnEvent(const events::Event& event) {
   events::EventDispatcher dispatcher(event);
   dispatcher.Dispatch<events::WindowCloseEvent>(BIND_EVENT_FN(OnWindowClosed));
   ENGINE_CORE_INFO(event);

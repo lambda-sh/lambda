@@ -64,7 +64,7 @@ class EventDispatcher {
   template<typename T>
   using EventFn = std::function<bool(T&)>;
  public:
-  explicit EventDispatcher(Event& event) : event_(event) {}
+  explicit EventDispatcher(const Event& event) : event_(event) {}
 
   template<typename T>
   bool Dispatch(EventFn<T> func) {
