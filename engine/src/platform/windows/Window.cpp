@@ -1,4 +1,4 @@
-#ifdef ENGINE_PLATFORM_WINDOWS
+#if defined ENGINE_PLATFORM_WINDOWS || defined ENGINE_DEVELOPMENT_MODE
 
 #include "Window.h"
 
@@ -7,13 +7,20 @@
 #include "core/Core.h"
 #include "core/Log.h"
 #include "core/Window.h"
+#include "core/events/ApplicationEvent.h"
+#include "core/events/KeyEvent.h"
+#include "core/events/MouseEvent.h"
 
 namespace engine {
+
+#ifdef ENGINE_PLATFORM_WINDOWS
 
 // Will create a windows based implementation of the window handler.
 Window* Window::Create(const engine::WindowProperties& properties) {
   return new engine::platform::windows::WindowImplementation(properties);
 }
+
+#endif  // ENGINE_PLATFORM_WINDOWS
 
 namespace platform {
 namespace windows {
