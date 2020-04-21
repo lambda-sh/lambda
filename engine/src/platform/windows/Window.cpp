@@ -15,7 +15,6 @@ namespace engine {
 
 #ifdef ENGINE_PLATFORM_WINDOWS
 
-// Will create a windows based implementation of the window handler.
 Window* Window::Create(const engine::WindowProperties& properties) {
   return new engine::platform::windows::WindowImplementation(properties);
 }
@@ -148,8 +147,8 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetScrollCallback(
       window_,
       [](GLFWwindow* window, double xOffset, double yOffset) {
-        Properties& properties =
-            *static_cast<Properties*>(glfwGetWindowUserPointer(window));
+        Properties* properties =
+            static_cast<Properties*>(glfwGetWindowUserPointer(window));
 
         events::MouseScrolledEvent event(
             static_cast<float>(xOffset), static_cast<float>(yOffset));
@@ -159,8 +158,8 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetCursorPosCallback(
       window_,
       [](GLFWwindow* window, double xPosition, double yPosition) {
-        Properties& properties =
-            *static_cast<Properties*>(glfwGetWindowUserPointer(window));
+        Properties* properties =
+            static_cast<Properties*>(glfwGetWindowUserPointer(window));
 
         events::MouseMovedEvent event(
             static_cast<float>(xPosition), static_cast<float>(yPosition));
