@@ -1,6 +1,6 @@
 #if defined ENGINE_PLATFORM_WINDOWS || defined ENGINE_DEVELOPMENT_MODE
 
-#include "Window.h"
+#include "platform/windows/Window.h"
 
 #include <GLFW/glfw3.h>
 
@@ -180,19 +180,19 @@ void WindowImplementation::OnUpdate() {
 }
 
 // Setup the current window to use or not use Vsync.
-void WindowImplementation::SetVSync(bool enabled) {
+void WindowImplementation::SetVerticalSync(bool enabled) {
   if (enabled) {
     glfwSwapInterval(1);
   } else {
     glfwSwapInterval(0);
   }
 
-  properties_.Vsync = enabled;
+  properties_.VerticalSync = enabled;
 }
 
 // Check if the current window has VSync enabled.
-bool WindowImplementation::IsVSync() const {
-  return properties_.Vsync;
+bool WindowImplementation::HasVerticalSync() const {
+  return properties_.VerticalSync;
 }
 
 }  // namespace windows
