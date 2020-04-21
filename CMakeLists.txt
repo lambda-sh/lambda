@@ -10,6 +10,7 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Release" OR ${CMAKE_BUILD_TYPE} STREQUAL "
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
 endif()
 
+
 # For vim setup.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -52,6 +53,10 @@ if (WIN32)
         PRIVATE ENGINE_ENABLE_ASSERTS
         INTERFACE GLEW_STATIC
     )
+
+    # Use a Multi threaded specific and DLL specific runtime for windows.
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
 elseif (UNIX)
     message (STATUS ">>> Setting linux compile definitions for the engine.")
     target_compile_definitions(
