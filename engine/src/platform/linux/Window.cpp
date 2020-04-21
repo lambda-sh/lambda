@@ -1,7 +1,8 @@
 #if defined ENGINE_PLATFORM_LINUX || defined ENGINE_DEVELOPMENT_MODE
 
-#include "Window.h"
+#include "platform/linux/Window.h"
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include "core/Core.h"
@@ -71,6 +72,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   // Initialize GLFW
   glfwMakeContextCurrent(window_);
   glfwSetWindowUserPointer(window_, &properties_);
+  int status = gladLoadGLLoader(
+      reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
+  ENGINE_CORE_ASSERT(status, "Failed to initialize glad.");
   SetVerticalSync(true);
 
   glfwSetWindowSizeCallback(
