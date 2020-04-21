@@ -10,6 +10,3 @@
 [submodule "engine/vendor/imgui"]
 	path = engine/vendor/imgui
 	url = github:C3NZ/imgui
-[submodule "engine/vendor/--force"]
-	path = engine/vendor/--force
-	url = github:C3NZ/imgui
