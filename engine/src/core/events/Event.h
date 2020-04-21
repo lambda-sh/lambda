@@ -71,7 +71,7 @@ class EventDispatcher {
   template<typename T>
   bool Dispatch(EventFn<T> func) {
     if (event_->GetEventType() == T::GetStaticType()) {
-      event_->has_been_handled_ = (func(dynamic_cast<const T&>(*event_)));
+      event_->SetHandled(func(dynamic_cast<const T&>(*event_)));
       return true;
     }
 
