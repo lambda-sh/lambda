@@ -34,14 +34,12 @@ set_target_properties(
     PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/engine/src/Engine.h
 )
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glfw)
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/spdlog)
-
 target_include_directories(
     engine
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/src
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/spdlog/include
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glfw/include
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glad/include
 )
 
 if (WIN32)
@@ -51,7 +49,7 @@ if (WIN32)
         PRIVATE ENGINE_PLATFORM_WINDOWS
         PRIVATE ENGINE_BUILD_DLL
         PRIVATE ENGINE_ENABLE_ASSERTS
-        INTERFACE GLEW_STATIC
+        PUBLIC GLFW_INCLUDE_NONE
     )
 
     # Use a Multi threaded specific and DLL specific runtime for windows.
@@ -64,19 +62,22 @@ elseif (UNIX)
         PRIVATE ENGINE_PLATFORM_LINUX
         PRIVATE ENGINE_BUILD_DLL
         PRIVATE ENGINE_ENABLE_ASSERTS
-        INTERFACE GLEW_STATIC
+        PUBLIC GLFW_INCLUDE_NONE
     )
 endif()
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/spdlog)
 target_link_libraries(engine spdlog::spdlog)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glfw)
+target_link_libraries(engine glfw ${GLFW_LIBRARIES})
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glad)
+target_link_libraries(engine glad)
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(engine OpenGL::GL)
 
-find_package(GLEW REQUIRED)
-target_link_libraries(engine GLEW::GLEW)
-
-target_link_libraries(engine glfw ${GLFW_LIBRARIES})
 # ----------------------------------- SANDBOX ----------------------------------
 
 project(sandbox)
