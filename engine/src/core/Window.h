@@ -33,8 +33,8 @@ class ENGINE_API Window {
   virtual unsigned int GetHeight() const = 0;
 
   virtual void SetEventCallback(const EventCallbackFn& callback) = 0;
-  virtual void SetVSync(bool enabled) = 0;
-  virtual bool IsVSync() const = 0;
+  virtual void SetVerticalSync(bool enabled) = 0;
+  virtual bool HasVerticalSync() const = 0;
 
   static Window* Create(
       const WindowProperties& properties = WindowProperties());
