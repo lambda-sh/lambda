@@ -1,11 +1,12 @@
-#include "Application.h"
+#include "core/Application.h"
 
 #include <functional>
 
-#include "Log.h"
-#include "Window.h"
-#include "events/Event.h"
-#include "events/ApplicationEvent.h"
+#include "core/Log.h"
+#include "core/Window.h"
+#include "core/Layer.h"
+#include "core/events/ApplicationEvent.h"
+#include "core/events/Event.h"
 
 namespace engine {
 
@@ -23,10 +24,22 @@ Application::~Application() {}
 
 void Application::Run() {
   while (running_) {
+    // Update every layer
+    for (Layer* layer : layer_stack_) {
+      layer->OnUpdate();
+    }
+
     window_->OnUpdate();
   }
 }
 
+void Application::PushLayer(Layer* layer) {
+  layer_stack_.PushLayer(layer);
+}
+
+void Application::PushOverlay(Layer* layer) {
+  layer_stack_.PushOverlay(layer);
+}
 
 bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
   running_ = false;
@@ -37,7 +50,14 @@ bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
 void Application::OnEvent(events::Event* event) {
   events::EventDispatcher dispatcher(event);
   dispatcher.Dispatch<events::WindowCloseEvent>(BIND_EVENT_FN(OnWindowClosed));
-  ENGINE_CORE_INFO(*event);
+  ENGINE_CORE_TRACE(*event);
+
+  for (auto it = layer_stack_.end(); it != layer_stack_.begin();) {
+    (*--it)->OnEvent(event);
+    if (event->HasBeenHandled()) {
+      break;
+    }
+  }
 }
 
 }  // namespace engine
