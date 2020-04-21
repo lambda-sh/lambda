@@ -12,5 +12,5 @@ repos:
         name: Lint-engine
         args: [
           "--filter=-legal/copyright,-build/include",
-          "--excludes=engine/src/vendor"
+          "--exclude=engine/src/vendor"
           ]
