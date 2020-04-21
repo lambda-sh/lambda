@@ -26,8 +26,8 @@ class WindowImplementation : public engine::Window {
   inline void SetEventCallback(const EventCallbackFn& callback) override
       { properties_.EventCallback = callback; }
 
-  void SetVSync(bool enabled) override;
-  bool IsVSync() const override;
+  void SetVerticalSync(bool enabled) override;
+  bool HasVerticalSync() const override;
 
  private:
   virtual void Init(const engine::WindowProperties& properties);
@@ -38,7 +38,7 @@ class WindowImplementation : public engine::Window {
   struct Properties {
     std::string Title;
     unsigned int Width, Height;
-    bool Vsync;
+    bool VerticalSync;
 
     EventCallbackFn EventCallback;
   };

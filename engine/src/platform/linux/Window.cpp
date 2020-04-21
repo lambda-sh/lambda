@@ -71,7 +71,7 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   // Initialize GLFW
   glfwMakeContextCurrent(window_);
   glfwSetWindowUserPointer(window_, &properties_);
-  SetVSync(true);
+  SetVerticalSync(true);
 
   glfwSetWindowSizeCallback(
       window_,
@@ -180,20 +180,20 @@ void WindowImplementation::OnUpdate() {
   glfwSwapBuffers(window_);
 }
 
-// Setup the current window to use or not use Vsync.
-void WindowImplementation::SetVSync(bool enabled) {
+// Setup the current window to use or not use Vertical sync.
+void WindowImplementation::SetVerticalSync(bool enabled) {
   if (enabled) {
     glfwSwapInterval(1);
   } else {
     glfwSwapInterval(0);
   }
 
-  properties_.Vsync = enabled;
+  properties_.VerticalSync = enabled;
 }
 
 // Check if the current window has VSync enabled.
-bool WindowImplementation::IsVSync() const {
-  return properties_.Vsync;
+bool WindowImplementation::HasVerticalSync() const {
+  return properties_.VerticalSync;
 }
 
 }  // namespace linux
