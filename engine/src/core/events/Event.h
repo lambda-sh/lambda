@@ -1,13 +1,12 @@
 #ifndef ENGINE_SRC_CORE_EVENTS_EVENT_H_
 #define ENGINE_SRC_CORE_EVENTS_EVENT_H_
 
-#include <string>
 #include <functional>
+#include <string>
 
 #include "spdlog/fmt/ostr.h"
 
 #include "core/Core.h"
-
 
 namespace engine {
 namespace events {
@@ -54,6 +53,8 @@ class ENGINE_API Event {
   inline bool IsInCategory(EventCategory category) {
     return GetCategoryFlags() & category;
   }
+
+  inline bool HasBeenHandled() { return has_been_handled_; }
  protected:
   bool has_been_handled_ = false;
   inline void SetHandled(bool success) { has_been_handled_ = success; }
