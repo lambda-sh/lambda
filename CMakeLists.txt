@@ -40,6 +40,7 @@ target_include_directories(
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/spdlog/include
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glfw/include
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glad/include
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/imgui
 )
 
 if (WIN32)
@@ -74,6 +75,9 @@ target_link_libraries(engine glfw ${GLFW_LIBRARIES})
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glad)
 target_link_libraries(engine glad)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/imgui)
+target_link_libraries(engine imgui)
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(engine OpenGL::GL)
