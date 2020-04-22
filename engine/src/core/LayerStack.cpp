@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include "core/Layer.h"
+
 namespace engine {
 
 LayerStack::LayerStack() {
@@ -21,11 +23,12 @@ void LayerStack::PushLayer(Layer* layer) {
 
 // Layers will always be pushed into the back of the list as the last thing to
 // be rendered/handled. This ensures that overlays are always on top of layers
-//
 void LayerStack::PushOverlay(Layer* overlay) {
   layers_.emplace_back(overlay);
 }
 
+// Once a layer has been popped off of the LayerStack, it is no longer managed
+// by the layer stack.
 void LayerStack::PopLayer(Layer* layer) {
   auto it = std::find(layers_.begin(), layers_.end(), layer);
   if (it != layers_.end()) {
@@ -34,6 +37,8 @@ void LayerStack::PopLayer(Layer* layer) {
   }
 }
 
+// Once an overlay has been popped off of the LayerStack, it is no longer
+// managed by the layer stack.
 void LayerStack::PopOverlay(Layer* overlay) {
   auto it = std::find(layers_.begin(), layers_.end(), overlay);
   if (it != layers_.end()) {
