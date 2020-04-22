@@ -128,6 +128,16 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
         }
       });
 
+  glfwSetCharCallback(
+      window_,
+      [](GLFWwindow* window, unsigned int character) {
+        Properties* properties =
+            static_cast<Properties*>(glfwGetWindowUserPointer(window));
+
+        events::KeyTypedEvent event(character);
+        properties->EventCallback(&event);
+      });
+
   glfwSetMouseButtonCallback(
       window_,
       [](GLFWwindow* window, int button, int action, int mods) {
@@ -182,6 +192,8 @@ void WindowImplementation::Shutdown() {
 void WindowImplementation::OnUpdate() {
   glfwPollEvents();
   glfwSwapBuffers(window_);
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
 }
 
 // Setup the current window to use or not use Vertical sync.
