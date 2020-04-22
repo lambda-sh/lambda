@@ -47,11 +47,12 @@ if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for the engine.")
     target_compile_definitions(
         engine
+        PUBLIC GLFW_INCLUDE_NONE
+        PUBLIC  IMGUI_IMPL_OPENGL_LOADER_GLAD
         PRIVATE ENGINE_PLATFORM_WINDOWS
         PRIVATE ENGINE_BUILD_DLL
         PRIVATE ENGINE_ENABLE_ASSERTS
         PRIVATE ENGINE_DEVELOPMENT_MODE
-        PUBLIC GLFW_INCLUDE_NONE
     )
 
     # Use a Multi threaded specific and DLL specific runtime for windows.
@@ -61,11 +62,12 @@ elseif (UNIX)
     message (STATUS ">>> Setting linux compile definitions for the engine.")
     target_compile_definitions(
         engine
+        PUBLIC GLFW_INCLUDE_NONE
+        PUBLIC  IMGUI_IMPL_OPENGL_LOADER_GLAD
         PRIVATE ENGINE_PLATFORM_LINUX
         PRIVATE ENGINE_BUILD_DLL
         PRIVATE ENGINE_ENABLE_ASSERTS
         PRIVATE ENGINE_DEVELOPMENT_MODE
-        PUBLIC GLFW_INCLUDE_NONE
     )
 endif()
 
