@@ -22,7 +22,13 @@ class ENGINE_API Application {
   void OnEvent(events::Event* event);
   void PushLayer(Layer* layer);
   void PushOverlay(Layer* layer);
+
+  inline Window& GetWindow() const { return *window_; }
+
+  inline static Application& GetApplication() {return *kApplication_; }
  private:
+  static Application* kApplication_;
+
   bool running_ = true;
   std::unique_ptr<Window> window_;
   LayerStack layer_stack_;

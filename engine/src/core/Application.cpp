@@ -15,12 +15,18 @@ namespace engine {
 #define BIND_EVENT_FN(handler) \
   std::bind(&Application::handler, this, std::placeholders::_1)
 
+Application* Application::kApplication_ = nullptr;
+
 Application::Application() {
+  ENGINE_CORE_ASSERT(!kApplication_, "Application already exists.");
+  kApplication_ = this;
+
   window_ = std::unique_ptr<Window>(Window::Create());
   window_->SetEventCallback(BIND_EVENT_FN(OnEvent));
 }
 
 Application::~Application() {}
+
 
 void Application::Run() {
   while (running_) {
@@ -35,10 +41,12 @@ void Application::Run() {
 
 void Application::PushLayer(Layer* layer) {
   layer_stack_.PushLayer(layer);
+  layer->OnAttach();
 }
 
 void Application::PushOverlay(Layer* layer) {
   layer_stack_.PushOverlay(layer);
+  layer->OnAttach();
 }
 
 bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
