@@ -5,6 +5,7 @@
 #include "core/Layer.h"
 #include "core/Log.h"
 #include "core/events/Event.h"
+#include "core/imgui/ImGuiLayer.h"
 
 #include "core/Entrypoint.h"
 
