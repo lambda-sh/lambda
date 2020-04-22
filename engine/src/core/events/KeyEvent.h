@@ -54,6 +54,19 @@ class ENGINE_API KeyReleasedEvent : public KeyEvent {
   EVENT_CLASS_TYPE(kKeyReleased)
 };
 
+class ENGINE_API KeyTypedEvent : public KeyEvent {
+ public:
+  explicit KeyTypedEvent(int key_code) : KeyEvent(key_code) {}
+
+  std::string ToString() const override {
+    std::stringstream event_string;
+    event_string << "KeyTypedEvent: " << key_code_;
+    return event_string.str();
+  }
+
+  EVENT_CLASS_TYPE(kKeyTyped);
+};
+
 }  // namespace events
 }  // namespace engine
 

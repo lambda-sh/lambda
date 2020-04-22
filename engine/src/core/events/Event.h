@@ -4,7 +4,7 @@
 #include <functional>
 #include <string>
 
-#include "spdlog/fmt/ostr.h"
+#include <spdlog/fmt/ostr.h>
 
 #include "core/Core.h"
 
@@ -15,7 +15,7 @@ enum class EventType {
   None = 0,
   kWindowClose, kWindowResize, kWindowFocus, kWindowLostFocus, kWindowMoved,
   kAppTick, kAppUpdate, kAppRender,
-  kKeyPressed, kKeyReleased,
+  kKeyPressed, kKeyReleased, kKeyTyped,
   kMouseButtonPressed, kMouseButtonReleased, kMouseMoved, kMouseScrolled
 };
 
@@ -89,7 +89,13 @@ inline std::ostream& operator<<(std::ostream& os, const Event& event) {
   return os << event.ToString();
 }
 
+
+// Bind a callback to an event dispatcher.
+#define BIND_EVENT_FN(fn) std::bind(&fn, this, std::placeholders::_1)
+
 }  // namespace events
 }  // namespace engine
+
+
 
 #endif  // ENGINE_SRC_CORE_EVENTS_EVENT_H_
