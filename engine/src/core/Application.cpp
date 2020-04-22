@@ -10,11 +10,6 @@
 
 namespace engine {
 
-// Bind an application event handler to an application instance to be passed
-// into functions that use callbacks for returns.
-#define BIND_EVENT_FN(handler) \
-  std::bind(&Application::handler, this, std::placeholders::_1)
-
 Application* Application::kApplication_ = nullptr;
 
 Application::Application() {
@@ -22,7 +17,7 @@ Application::Application() {
   kApplication_ = this;
 
   window_ = std::unique_ptr<Window>(Window::Create());
-  window_->SetEventCallback(BIND_EVENT_FN(OnEvent));
+  window_->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 }
 
 Application::~Application() {}
@@ -57,9 +52,11 @@ bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
 // Event dispatcher for handling events.
 void Application::OnEvent(events::Event* event) {
   events::EventDispatcher dispatcher(event);
-  dispatcher.Dispatch<events::WindowCloseEvent>(BIND_EVENT_FN(OnWindowClosed));
+  dispatcher.Dispatch<events::WindowCloseEvent>
+      (BIND_EVENT_FN(Application::OnWindowClosed));
   ENGINE_CORE_TRACE(*event);
 
+  // Pass the event to all needed layers on the stack.
   for (auto it = layer_stack_.end(); it != layer_stack_.begin();) {
     (*--it)->OnEvent(event);
     if (event->HasBeenHandled()) {
