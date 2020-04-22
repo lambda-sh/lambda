@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(glad)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+
 set(
     GLAD_SRC
     include/glad/glad.h
@@ -9,7 +10,7 @@ set(
     src/glad.c
 )
 
-add_library(glad SHARED ${GLAD_SRC})
+add_library(glad STATIC ${GLAD_SRC})
 
 target_include_directories(
     glad
