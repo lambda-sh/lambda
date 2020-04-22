@@ -1,13 +1,14 @@
 #ifndef ENGINE_SRC_CORE_IMGUI_IMGUILAYER_H_
 #define ENGINE_SRC_CORE_IMGUI_IMGUILAYER_H_
 
+#include "core/Core.h"
 #include "core/Layer.h"
 #include "core/events/Event.h"
 
 namespace engine {
 namespace imgui {
 
-class ImGuiLayer : public Layer {
+class ENGINE_API ImGuiLayer : public Layer {
  public:
   ImGuiLayer();
   ~ImGuiLayer();
@@ -16,6 +17,8 @@ class ImGuiLayer : public Layer {
   void OnDetach() override;
   void OnUpdate() override;
   void OnEvent(events::Event* event) override;
+ private:
+  float time_;
 };
 
 
