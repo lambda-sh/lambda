@@ -14,6 +14,9 @@ ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
 
 ImGuiLayer::~ImGuiLayer() {}
 
+// The default ImGui will create a context, style itself dark, and also
+// register all inputs with GLFW keys. This is currently a hack and should be
+// modified in the future to use engine specificied keycodes.
 void ImGuiLayer::OnAttach() {
   ImGui::CreateContext();
   ImGui::StyleColorsDark();
@@ -51,7 +54,10 @@ void ImGuiLayer::OnAttach() {
 
 void ImGuiLayer::OnDetach() {}
 
-// OnUpdate handles
+
+// Whenever a default ImGui Layer is updated, it will fetch input and update
+// some display properties before rendering to the screen. We also currently
+// always display the imgui demo window to the screen.
 void ImGuiLayer::OnUpdate() {
   ImGuiIO& io = ImGui::GetIO();
   Application& app = Application::GetApplication();
@@ -65,6 +71,7 @@ void ImGuiLayer::OnUpdate() {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui::NewFrame();
 
+  // TODO(C3NZ): Set this to be optional or removed in the future.
   static bool show = true;
   ImGui::ShowDemoWindow(&show);
 
@@ -72,6 +79,10 @@ void ImGuiLayer::OnUpdate() {
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
+// BBind the default events to the event dispatcher and then attempt to process
+// the event through the dispatcher.
+// TODO(C3NZ): Investigate into if we have to call every function if an event
+// has already been handled by this layer (Signifed by the dispatcher itself).
 void ImGuiLayer::OnEvent(events::Event* event) {
   events::EventDispatcher dispatcher(event);
 
