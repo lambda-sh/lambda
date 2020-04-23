@@ -11,6 +11,7 @@
 namespace engine {
 namespace imgui {
 
+// ImguiLayer base implementation.
 class ENGINE_API ImGuiLayer : public Layer {
  public:
   ImGuiLayer();
