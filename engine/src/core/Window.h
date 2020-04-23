@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "Core.h"
-#include "events/Event.h"
+#include "core/Core.h"
+#include "core/events/Event.h"
 
 namespace engine {
 
