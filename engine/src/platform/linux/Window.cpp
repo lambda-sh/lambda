@@ -1,4 +1,4 @@
-#if defined ENGINE_PLATFORM_LINUX || defined ENGINE_DEVELOPMENT_MODE
+#if defined ENGINE_PLATFORM_LINUX || defined ENGINE_DEBUG
 
 #include "platform/linux/Window.h"
 

@@ -1,4 +1,4 @@
-#if defined ENGINE_PLATFORM_WINDOWS || defined ENGINE_DEVELOPMENT_MODE
+#if defined ENGINE_PLATFORM_WINDOWS || defined ENGINE_DEBUG
 
 #include "platform/windows/Window.h"
 
