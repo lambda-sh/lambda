@@ -100,12 +100,14 @@ if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for sandbox.")
     target_compile_definitions(
         app
-        PRIVATE ENGINE_PLATFORM_WINDOWS)
+        PRIVATE ENGINE_PLATFORM_WINDOWS
+    )
 elseif (UNIX)
     message (STATUS ">>> Setting linux compile definitions for sandbox.")
     target_compile_definitions(
         app
-        PRIVATE ENGINE_PLATFORM_LINUX)
+        PRIVATE ENGINE_PLATFORM_LINUX
+    )
 endif()
 
 target_link_libraries(app PRIVATE engine)
