@@ -12,7 +12,14 @@ please check out the link to his channel & series down below.
 - [ ] Make a game of my own(?)
 
 ## How to run/setup
-This will be built with cmake/make and have a script to auto compile everything for us.
+In order to get external dependencies that are needed in order to run the project,
+please run:
+```
+./setup.sh
+```
+This will initialize pre commit checks for development and also initialize all
+git submodules.
+
 
 In order to build and run a release build of the project, utilize:
 ```bash
