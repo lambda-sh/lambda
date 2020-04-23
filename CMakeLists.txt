@@ -81,8 +81,8 @@ target_link_libraries(engine glad)
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/imgui)
 target_link_libraries(engine imgui)
 
-find_package(OpenGL REQUIRED)
-target_link_libraries(engine OpenGL::GL)
+#find_package(OpenGL REQUIRED)
+#target_link_libraries(engine OpenGL::GL)
 
 # ----------------------------------- SANDBOX ----------------------------------
 
