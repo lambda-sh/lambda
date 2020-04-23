@@ -2,9 +2,9 @@
 
 #include <functional>
 
+#include "core/Layer.h"
 #include "core/Log.h"
 #include "core/Window.h"
-#include "core/Layer.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
 
@@ -12,6 +12,7 @@ namespace engine {
 
 Application* Application::kApplication_ = nullptr;
 
+// Will only allow one application to be created per engine process.
 Application::Application() {
   ENGINE_CORE_ASSERT(!kApplication_, "Application already exists.");
   kApplication_ = this;
@@ -22,15 +23,16 @@ Application::Application() {
 
 Application::~Application() {}
 
-
+// Specifically retrieve updates from the window first to dispatch input
+// events to every layer before making updates to them.
+// TODO(C3NZ): Check to see which kind of updates need to come first and what
+// the performance impact of each are.
 void Application::Run() {
   while (running_) {
-    // Update every layer
+    window_->OnUpdate();
     for (Layer* layer : layer_stack_) {
       layer->OnUpdate();
     }
-
-    window_->OnUpdate();
   }
 }
 
@@ -49,7 +51,8 @@ bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
   return true;
 }
 
-// Event dispatcher for handling events.
+// This is the primary handler for passing events generated from the window back
+// into the our application and game. Eventuaa
 void Application::OnEvent(events::Event* event) {
   events::EventDispatcher dispatcher(event);
   dispatcher.Dispatch<events::WindowCloseEvent>

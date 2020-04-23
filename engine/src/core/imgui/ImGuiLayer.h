@@ -3,10 +3,10 @@
 
 #include "core/Core.h"
 #include "core/Layer.h"
-#include "core/events/Event.h"
-#include "core/events/MouseEvent.h"
-#include "core/events/KeyEvent.h"
 #include "core/events/ApplicationEvent.h"
+#include "core/events/Event.h"
+#include "core/events/KeyEvent.h"
+#include "core/events/MouseEvent.h"
 
 namespace engine {
 namespace imgui {
