@@ -3,11 +3,12 @@
 
 #include <sstream>
 
-#include "Event.h"
+#include "core/events/Event.h"
 
 namespace engine {
 namespace events {
 
+// Base key event class. Used for handling most keyboard based handles.
 class ENGINE_API KeyEvent : public Event {
  public:
   inline int GetKeyCode() const { return key_code_; }

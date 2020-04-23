@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "core/Core.h"
-#include "Event.h"
+#include "core/events/Event.h"
 
 namespace engine {
 namespace events {
