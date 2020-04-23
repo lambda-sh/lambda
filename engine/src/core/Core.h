@@ -13,6 +13,8 @@
   #ifdef ENGINE_DEBUG
     #define ENGINE_ENABLE_ASSERTS
     #define ENGINE_DEBUG_BREAK() __debugbreak()
+  #else
+    #define ENGINE_DEBUG_BREAK()
   #endif
 
 #elif defined ENGINE_PLATFORM_LINUX
@@ -25,6 +27,8 @@
   #ifdef ENGINE_DEBUG
     #define ENGINE_ENABLE_ASSERTS
     #define ENGINE_DEBUG_BREAK() __builtin_trap()
+  #else
+    #define ENGINE_DEBUG_BREAK()
   #endif
 
 #else
