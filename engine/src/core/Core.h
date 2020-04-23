@@ -10,7 +10,11 @@
     #define ENGINE_API __declspec(dllimport)
   #endif
 
-  #define ENGINE_DEBUG_BREAK() __debugbreak()
+  #ifdef ENGINE_DEBUG
+    #define ENGINE_ENABLE_ASSERTS
+    #define ENGINE_DEBUG_BREAK() __debugbreak()
+  #endif
+
 #elif defined ENGINE_PLATFORM_LINUX
   #ifdef ENGINE_BUILD_DLL
     #define ENGINE_API __attribute__((visibility("default")))
@@ -18,7 +22,11 @@
     #define ENGINE_API
   #endif
 
-  #define ENGINE_DEBUG_BREAK() __builtin_trap()
+  #ifdef ENGINE_DEBUG
+    #define ENGINE_ENABLE_ASSERTS
+    #define ENGINE_DEBUG_BREAK() __builtin_trap()
+  #endif
+
 #else
   #define ENGINE_API
   #define ENGINE_DEBUG_BREAK()
