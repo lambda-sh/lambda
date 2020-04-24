@@ -1,7 +1,5 @@
 #if defined ENGINE_PLATFORM_LINUX || defined ENGINE_DEBUG
 
-// TODO(C3NZ): Implement this for the windows platform
-
 #include "platform/linux/Input.h"
 
 #include <utility>

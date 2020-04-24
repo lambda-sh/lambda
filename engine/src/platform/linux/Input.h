@@ -28,7 +28,5 @@ class InputImplementation : public Input {
 }  // namespace platform
 }  // namespace engine
 
-
-
 #endif  // ENGINE_PLATFORM_LINUX
 #endif  // ENGINE_SRC_PLATFORM_LINUX_INPUT_H_

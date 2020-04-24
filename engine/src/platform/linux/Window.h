@@ -40,9 +40,8 @@ class WindowImplementation : public engine::Window {
 
   inline void SetEventCallback(const EventCallbackFn& callback) override
       { properties_.EventCallback = callback; }
-
-  // TODO(C3NZ): Implement in the Window implementation for windows.
   inline void* GetNativeWindow() const override { return window_; }
+
  private:
   GLFWwindow* window_;
   internal::Properties properties_;
