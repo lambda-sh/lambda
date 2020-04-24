@@ -7,6 +7,9 @@
 
 namespace engine {
 
+// The generalized Input class for all input systems. All Input instances will
+// be child classes of Input, but never called directly in order to abstract
+// platform specific implementations.
 class ENGINE_API Input {
  public:
   // -------------------------------- Key input --------------------------------
