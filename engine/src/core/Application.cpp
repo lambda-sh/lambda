@@ -1,7 +1,9 @@
 #include "core/Application.h"
 
 #include <functional>
+#include <memory>
 
+#include "core/Input.h"
 #include "core/Layer.h"
 #include "core/Log.h"
 #include "core/Window.h"
@@ -29,6 +31,9 @@ Application::~Application() {}
 // the performance impact of each are.
 void Application::Run() {
   while (running_) {
+    std::pair<float, float> position = Input::GetMousePosition();
+    ENGINE_CORE_TRACE("{0}, {1}", position.first, position.second);
+
     window_->OnUpdate();
     for (Layer* layer : layer_stack_) {
       layer->OnUpdate();

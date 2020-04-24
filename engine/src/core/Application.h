@@ -1,6 +1,8 @@
 #ifndef ENGINE_SRC_CORE_APPLICATION_H_
 #define ENGINE_SRC_CORE_APPLICATION_H_
 
+#include <memory>
+
 #include "core/Core.h"
 #include "core/Layer.h"
 #include "core/LayerStack.h"
@@ -23,7 +25,7 @@ class ENGINE_API Application {
   void PushLayer(Layer* layer);
   void PushOverlay(Layer* layer);
 
-  inline Window& GetWindow() const { return *window_; }
+  inline const Window& GetWindow() const { return *window_; }
 
   inline static Application& GetApplication() {return *kApplication_; }
  private:
