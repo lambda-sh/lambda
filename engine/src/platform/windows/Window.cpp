@@ -17,7 +17,7 @@ namespace engine {
 #ifdef ENGINE_PLATFORM_WINDOWS
 
 Window* Window::Create(const engine::WindowProperties& properties) {
-  return new engine::platform::windows::WindowImplementation(properties);
+  return new platform::windows::WindowImplementation(properties);
 }
 
 #endif  // ENGINE_PLATFORM_WINDOWS
@@ -75,8 +75,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetWindowSizeCallback(
       window_,
       [](GLFWwindow* window, int width, int height) {
-          Properties* properties =
-              static_cast<Properties*>(glfwGetWindowUserPointer(window));
+        internal::Properties* properties =
+              static_cast<internal::Properties*>(
+                  glfwGetWindowUserPointer(window));
 
           events::WindowResizeEvent event(width, height);
           properties->Width = width;
@@ -88,8 +89,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetWindowCloseCallback(
       window_,
       [](GLFWwindow* window) {
-        Properties& properties =
-            *static_cast<Properties*>(glfwGetWindowUserPointer(window));
+      internal::Properties& properties =
+            *static_cast<internal::Properties*>(
+                glfwGetWindowUserPointer(window));
 
             events::WindowCloseEvent event;
             properties.EventCallback(&event);
@@ -98,8 +100,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetKeyCallback(
       window_,
       [](GLFWwindow* window, int key, int scancode, int action, int mods) {
-        Properties* properties =
-            static_cast<Properties*>(glfwGetWindowUserPointer(window));
+      internal::Properties* properties =
+            static_cast<internal::Properties*>(
+                glfwGetWindowUserPointer(window));
 
         switch (action) {
           case GLFW_PRESS:
@@ -126,8 +129,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetCharCallback(
       window_,
       [](GLFWwindow* window, unsigned int character) {
-        Properties* properties =
-            static_cast<Properties*>(glfwGetWindowUserPointer(window));
+      internal::Properties* properties =
+            static_cast<internal::Properties*>(
+                glfwGetWindowUserPointer(window));
 
         events::KeyTypedEvent event(character);
         properties->EventCallback(&event);
@@ -136,8 +140,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetMouseButtonCallback(
       window_,
       [](GLFWwindow* window, int button, int action, int mods) {
-        Properties* properties =
-            static_cast<Properties*>(glfwGetWindowUserPointer(window));
+      internal::Properties* properties =
+            static_cast<internal::Properties*>(
+                glfwGetWindowUserPointer(window));
 
         switch (action) {
           case GLFW_PRESS:
@@ -158,8 +163,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetScrollCallback(
       window_,
       [](GLFWwindow* window, double xOffset, double yOffset) {
-        Properties* properties =
-            static_cast<Properties*>(glfwGetWindowUserPointer(window));
+      internal::Properties* properties =
+            static_cast<internal::Properties*>(
+                glfwGetWindowUserPointer(window));
 
         events::MouseScrolledEvent event(
             static_cast<float>(xOffset), static_cast<float>(yOffset));
@@ -169,8 +175,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetCursorPosCallback(
       window_,
       [](GLFWwindow* window, double xPosition, double yPosition) {
-        Properties* properties =
-            static_cast<Properties*>(glfwGetWindowUserPointer(window));
+      internal::Properties* properties =
+            static_cast<internal::Properties*>(
+                glfwGetWindowUserPointer(window));
 
         events::MouseMovedEvent event(
             static_cast<float>(xPosition), static_cast<float>(yPosition));

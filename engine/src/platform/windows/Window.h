@@ -13,6 +13,18 @@ namespace engine {
 namespace platform {
 namespace windows {
 
+namespace internal {
+
+struct Properties {
+  std::string Title;
+  unsigned int Width, Height;
+  bool VerticalSync;
+
+  Window::EventCallbackFn EventCallback;
+};
+
+}  // namespace internal
+
 class WindowImplementation : public engine::Window {
  public:
   explicit WindowImplementation(const engine::WindowProperties& properties);
@@ -22,28 +34,18 @@ class WindowImplementation : public engine::Window {
 
   inline unsigned int GetWidth() const override { return properties_.Width; }
   inline unsigned int GetHeight() const override { return properties_.Height; }
-
-  inline void SetEventCallback(const EventCallbackFn& callback) override
-      { properties_.EventCallback = callback; }
-
   void SetVerticalSync(bool enabled) override;
   bool HasVerticalSync() const override;
 
+  inline void SetEventCallback(const EventCallbackFn& callback) override
+      { properties_.EventCallback = callback; }
+  inline void* GetNativeWindow() const override { return window_; }
  private:
+  GLFWwindow* window_;
+  internal::Properties properties_;
+
   virtual void Init(const engine::WindowProperties& properties);
   virtual void Shutdown();
-
-  GLFWwindow* window_;
-
-  struct Properties {
-    std::string Title;
-    unsigned int Width, Height;
-    bool VerticalSync;
-
-    EventCallbackFn EventCallback;
-  };
-
-  Properties properties_;
 };
 
 }  // namespace windows
