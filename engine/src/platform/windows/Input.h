@@ -9,7 +9,6 @@
 
 #include "core/Input.h"
 
-// TODO(C3NZ): Implement this for the windows platform
 namespace engine {
 namespace platform {
 namespace windows {
