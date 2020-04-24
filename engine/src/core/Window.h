@@ -36,6 +36,10 @@ class ENGINE_API Window {
   virtual void SetVerticalSync(bool enabled) = 0;
   virtual bool HasVerticalSync() const = 0;
 
+  // This should return the native window type being used to create windows for
+  // our application.
+  virtual void* GetNativeWindow() const = 0;
+
   static Window* Create(
       const WindowProperties& properties = WindowProperties());
 };
