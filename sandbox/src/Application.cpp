@@ -5,11 +5,14 @@ class ExampleLayer : public engine::Layer {
   ExampleLayer() : Layer("Example") {}
 
   void OnUpdate() override {
-    ENGINE_CLIENT_INFO("ExampleLayer::Update");
+    // ENGINE_CLIENT_INFO("ExampleLayer::Update");
+    if (engine::Input::IsKeyPressed(ENGINE_KEY_TAB)) {
+        ENGINE_CLIENT_INFO("Tab key is pressed!");
+      }
   }
 
   void OnEvent(engine::events::Event* event) override {
-    ENGINE_CLIENT_TRACE("{0}", *event);
+    // ENGINE_CLIENT_TRACE("{0}", *event);
   }
 };
 
