@@ -2,8 +2,8 @@
 
 #include "platform/windows/Window.h"
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glad/glad.h>
 
 #include "core/Core.h"
 #include "core/Log.h"
