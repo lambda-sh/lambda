@@ -10,3 +10,6 @@
 [submodule "engine/vendor/imgui"]
 	path = engine/vendor/imgui
 	url = github:C3NZ/imgui
+[submodule "engine/vendor/glm"]
+	path = engine/vendor/glm
+	url = github:g-truc/glm

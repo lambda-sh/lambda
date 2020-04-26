@@ -69,14 +69,19 @@ elseif (UNIX)
     )
 endif()
 
+# ----------------------------- ENGINE DEPENDENCIES ----------------------------
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/spdlog)
 target_link_libraries(engine spdlog::spdlog)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glfw)
-target_link_libraries(engine glfw ${GLFW_LIBRARIES})
-
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glad)
 target_link_libraries(engine glad)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glm)
+target_link_libraries(engine glm)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glfw)
+target_link_libraries(engine glfw ${GLFW_LIBRARIES})
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/imgui)
 target_link_libraries(engine imgui)
