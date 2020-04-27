@@ -20,7 +20,6 @@ class Sandbox : public engine::Application {
  public:
   Sandbox() {
     PushLayer(new ExampleLayer());
-    PushLayer(new engine::imgui::ImGuiLayer());
   }
 
   ~Sandbox() {}

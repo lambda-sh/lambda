@@ -15,6 +15,7 @@ class ENGINE_API Layer {
   virtual void OnDetach() {}
   virtual void OnUpdate() {}
   virtual void OnEvent(events::Event* event) {}
+  virtual void OnImGuiRender() {}
 
   inline const std::string& GetName() const { return debug_name_; }
  protected:
