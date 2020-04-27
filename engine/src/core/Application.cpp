@@ -21,6 +21,9 @@ Application::Application() {
 
   window_ = std::unique_ptr<Window>(Window::Create());
   window_->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
+
+  imgui_layer_ = new imgui::ImGuiLayer();
+  PushLayer(imgui_layer_);
 }
 
 Application::~Application() {}
@@ -38,6 +41,12 @@ void Application::Run() {
     for (Layer* layer : layer_stack_) {
       layer->OnUpdate();
     }
+
+    imgui_layer_->Begin();
+    for (Layer* layer : layer_stack_) {
+      layer->OnImGuiRender();
+    }
+    imgui_layer_->End();
   }
 }
 
