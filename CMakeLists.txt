@@ -38,8 +38,9 @@ target_include_directories(
     engine
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/src
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/spdlog/include
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glfw/include
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glad/include
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glm/glm
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glfw/include
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/imgui
 )
 
