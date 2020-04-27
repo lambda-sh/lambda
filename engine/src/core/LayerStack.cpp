@@ -6,9 +6,7 @@
 
 namespace engine {
 
-LayerStack::LayerStack() {
-  layer_insert_location_ = layers_.begin();
-}
+LayerStack::LayerStack() {}
 
 // Layers are destroyed as soon as the layer stack also is.
 LayerStack::~LayerStack() {
@@ -18,7 +16,8 @@ LayerStack::~LayerStack() {
 }
 
 void LayerStack::PushLayer(Layer* layer) {
-  layer_insert_location_ = layers_.emplace(layer_insert_location_, layer);
+  layers_.emplace(layers_.begin() + layer_insert_location_, layer);
+  ++layer_insert_location_;
 }
 
 // Layers will always be pushed into the back of the list as the last thing to
@@ -33,7 +32,7 @@ void LayerStack::PopLayer(Layer* layer) {
   auto it = std::find(layers_.begin(), layers_.end(), layer);
   if (it != layers_.end()) {
     layers_.erase(it);
-    layer_insert_location_--;
+    --layer_insert_location_;
   }
 }
 

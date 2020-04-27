@@ -28,7 +28,7 @@ class ENGINE_API LayerStack {
   std::vector<Layer*>::iterator end() { return layers_.end(); }
  private:
   std::vector<Layer*> layers_;
-  std::vector<Layer*>::iterator layer_insert_location_;
+  unsigned int layer_insert_location_ = 0;
 };
 
 }  // namespace engine
