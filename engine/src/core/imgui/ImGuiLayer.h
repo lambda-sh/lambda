@@ -19,20 +19,12 @@ class ENGINE_API ImGuiLayer : public Layer {
 
   void OnAttach() override;
   void OnDetach() override;
-  void OnUpdate() override;
-  void OnEvent(events::Event* event) override;
+
+  void OnImGuiRender();
+  void Begin();
+  void End();
  private:
   float time_ = 0.0f;
-
-  bool OnMouseButtonPressedEvent(const events::MouseButtonPressedEvent& event);
-  bool OnMouseButtonReleasedEvent(
-      const events::MouseButtonReleasedEvent& event);
-  bool OnMouseMovedEvent(const events::MouseMovedEvent& event);
-  bool OnMouseScrolledEvent(const events::MouseScrolledEvent& event);
-  bool OnKeyPressedEvent(const events::KeyPressedEvent& event);
-  bool OnKeyReleasedEvent(const events::KeyReleasedEvent& event);
-  bool OnKeyTypedEvent(const events::KeyTypedEvent& event);
-  bool OnWindowResizeEvent(const events::WindowResizeEvent& event);
 };
 
 }  // namespace imgui
