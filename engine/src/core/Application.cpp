@@ -34,10 +34,6 @@ Application::~Application() {}
 // the performance impact of each are.
 void Application::Run() {
   while (running_) {
-    std::pair<float, float> position = Input::GetMousePosition();
-    ENGINE_CORE_TRACE("{0}, {1}", position.first, position.second);
-
-    window_->OnUpdate();
     for (Layer* layer : layer_stack_) {
       layer->OnUpdate();
     }
@@ -47,6 +43,8 @@ void Application::Run() {
       layer->OnImGuiRender();
     }
     imgui_layer_->End();
+
+    window_->OnUpdate();
   }
 }
 
@@ -66,7 +64,7 @@ bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
 }
 
 // This is the primary handler for passing events generated from the window back
-// into the our application and game. Eventuaa
+// into the our application and game.
 void Application::OnEvent(events::Event* event) {
   events::EventDispatcher dispatcher(event);
   dispatcher.Dispatch<events::WindowCloseEvent>
