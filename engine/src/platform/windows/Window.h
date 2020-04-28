@@ -20,7 +20,7 @@ struct Properties {
   unsigned int Width, Height;
   bool VerticalSync;
 
-  Window::EventCallbackFn EventCallback;
+  Window::EventCallbackFunction EventCallback;
 };
 
 }  // namespace internal
@@ -37,7 +37,7 @@ class WindowImplementation : public engine::Window {
   void SetVerticalSync(bool enabled) override;
   bool HasVerticalSync() const override;
 
-  inline void SetEventCallback(const EventCallbackFn& callback) override
+  inline void SetEventCallback(const EventCallbackFunction& callback) override
       { properties_.EventCallback = callback; }
   inline void* GetNativeWindow() const override { return window_; }
  private:

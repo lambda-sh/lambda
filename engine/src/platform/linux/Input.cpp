@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include "core/Application.h"

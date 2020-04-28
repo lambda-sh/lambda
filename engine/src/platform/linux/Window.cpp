@@ -72,6 +72,8 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   // Initialize GLFW
   glfwMakeContextCurrent(window_);
   glfwSetWindowUserPointer(window_, &properties_);
+
+  // Initialize glad with glfw proc address.
   int status = gladLoadGLLoader(
       reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
   ENGINE_CORE_ASSERT(status, "Failed to initialize glad.");

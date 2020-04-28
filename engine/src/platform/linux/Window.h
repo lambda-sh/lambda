@@ -5,6 +5,7 @@
 
 #include <string>
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include "core/Window.h"
@@ -20,7 +21,7 @@ struct Properties {
   unsigned int Width, Height;
   bool VerticalSync;
 
-  Window::EventCallbackFn EventCallback;
+  Window::EventCallbackFunction EventCallback;
 };
 
 }  // namespace internal
@@ -38,10 +39,10 @@ class WindowImplementation : public engine::Window {
   inline unsigned int GetWidth() const override { return properties_.Width; }
   inline unsigned int GetHeight() const override { return properties_.Height; }
 
-  inline void SetEventCallback(const EventCallbackFn& callback) override
+  inline void SetEventCallback(const EventCallbackFunction& callback) override
       { properties_.EventCallback = callback; }
-  inline void* GetNativeWindow() const override { return window_; }
 
+  inline void* GetNativeWindow() const override { return window_; }
  private:
   GLFWwindow* window_;
   internal::Properties properties_;

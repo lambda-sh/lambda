@@ -5,8 +5,6 @@
 
 #include <utility>
 
-#include <GLFW/glfw3.h>
-
 #include "core/Input.h"
 
 namespace engine {
