@@ -21,10 +21,10 @@ struct WindowProperties {
           : Title(title), Width(width), Height(height) {}
 };
 
+
 class ENGINE_API Window {
  public:
-  using EventCallbackFn = std::function<void(events::Event*)>;
-
+  typedef std::function<void(events::Event*)> EventCallbackFunction;
   virtual ~Window() {}
 
   virtual void OnUpdate() = 0;
@@ -32,12 +32,10 @@ class ENGINE_API Window {
   virtual unsigned int GetWidth() const = 0;
   virtual unsigned int GetHeight() const = 0;
 
-  virtual void SetEventCallback(const EventCallbackFn& callback) = 0;
+  virtual void SetEventCallback(const EventCallbackFunction& callback) = 0;
   virtual void SetVerticalSync(bool enabled) = 0;
   virtual bool HasVerticalSync() const = 0;
 
-  // This should return the native window type being used to create windows for
-  // our application.
   virtual void* GetNativeWindow() const = 0;
 
   static Window* Create(
