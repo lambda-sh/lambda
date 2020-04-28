@@ -19,8 +19,8 @@ class ENGINE_API ImGuiLayer : public Layer {
 
   void OnAttach() override;
   void OnDetach() override;
+  void OnImGuiRender() override;
 
-  void OnImGuiRender();
   void Begin();
   void End();
  private:

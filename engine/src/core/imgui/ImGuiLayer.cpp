@@ -1,12 +1,11 @@
 #include "core/imgui/ImGuiLayer.h"
 
-#include <GLFW/glfw3.h>
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 #include "core/Application.h"
 #include "core/events/Event.h"
-#include "examples/imgui_impl_opengl3.h"
-#include "examples/imgui_impl_glfw.h"
+#include "core/imgui/ImGuiBuild.h"
 
 namespace engine {
 namespace imgui {
@@ -43,7 +42,11 @@ void ImGuiLayer::OnAttach() {
   ImGui_ImplOpenGL3_Init("#version 410");
 }
 
-void ImGuiLayer::OnDetach() {}
+void ImGuiLayer::OnDetach() {
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+}
 
 void ImGuiLayer::Begin() {
   ImGui_ImplOpenGL3_NewFrame();
