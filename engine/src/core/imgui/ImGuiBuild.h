@@ -8,9 +8,9 @@
 // to be completely stripped from the engine when compiled.
 
 #include "examples/imgui_impl_glfw.h"
-#include "examples/imgui_impl_opengl3.h"
-
 #include "examples/imgui_impl_glfw.cpp"
+
+#include "examples/imgui_impl_opengl3.h"
 #include "examples/imgui_impl_opengl3.cpp"
 
 #endif  // ENGINE_SRC_CORE_IMGUI_IMGUIBUILD_H_
