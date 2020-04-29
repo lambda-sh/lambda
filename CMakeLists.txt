@@ -82,13 +82,10 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glm)
 target_link_libraries(engine glm)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glfw)
-target_link_libraries(engine glfw ${GLFW_LIBRARIES})
+target_link_libraries(engine glfw)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/imgui)
 target_link_libraries(engine imgui)
-
-#find_package(OpenGL REQUIRED)
-#target_link_libraries(engine OpenGL::GL)
 
 # ----------------------------------- SANDBOX ----------------------------------
 
