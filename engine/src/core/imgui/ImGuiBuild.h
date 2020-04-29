@@ -7,7 +7,6 @@
 // different types of windows and rendering backends while also allowing imgui
 // to be completely stripped from the engine when compiled.
 
-
 #include "examples/imgui_impl_glfw.h"
 #include "examples/imgui_impl_opengl3.h"
 

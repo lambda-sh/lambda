@@ -26,7 +26,6 @@ struct Properties {
 
 }  // namespace internal
 
-
 class WindowImplementation : public engine::Window {
  public:
   explicit WindowImplementation(const engine::WindowProperties& properties);
