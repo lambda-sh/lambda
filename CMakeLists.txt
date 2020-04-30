@@ -27,7 +27,7 @@ file(
     ${CMAKE_SOURCE_DIR}/engine/src/*.cpp
 )
 
-add_library(engine SHARED ${ENGINE_SRC})
+add_library(engine STATIC ${ENGINE_SRC})
 
 set_target_properties(
     engine
