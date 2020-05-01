@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 
+#include "core/Assert.h"
 #include "core/Input.h"
 #include "core/Layer.h"
 #include "core/Log.h"
