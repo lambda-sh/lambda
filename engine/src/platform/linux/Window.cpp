@@ -2,15 +2,16 @@
 
 #include "platform/linux/Window.h"
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "core/Assert.h"
 #include "core/Core.h"
 #include "core/Log.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/KeyEvent.h"
 #include "core/events/MouseEvent.h"
+#include "platform/opengl/OpenGLContext.h"
 
 namespace engine {
 
@@ -69,14 +70,11 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
       nullptr,
       nullptr);
 
-  // Initialize GLFW
-  glfwMakeContextCurrent(window_);
-  glfwSetWindowUserPointer(window_, &properties_);
+  // TODO(C3NZ): Integrate the open gl context for the windows platform.
+  context_ = new opengl::OpenGLContext(window_);
+  context_->Init();
 
-  // Initialize glad with glfw proc address.
-  int status = gladLoadGLLoader(
-      reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
-  ENGINE_CORE_ASSERT(status, "Failed to initialize glad.");
+  glfwSetWindowUserPointer(window_, &properties_);
   SetVerticalSync(true);
 
   glfwSetWindowSizeCallback(
@@ -200,9 +198,7 @@ void WindowImplementation::Shutdown() {
 // Handling updates to the screen.
 void WindowImplementation::OnUpdate() {
   glfwPollEvents();
-  glfwSwapBuffers(window_);
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
+  context_->SwapBuffers();
 }
 
 // Setup the current window to use or not use Vertical sync.

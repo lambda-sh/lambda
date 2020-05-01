@@ -5,6 +5,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "core/Assert.h"
 #include "core/Core.h"
 #include "core/Log.h"
 #include "core/Window.h"

@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 
 #include "core/Window.h"
+#include "core/renderer/GraphicsContext.h"
 
 namespace engine {
 namespace platform {
@@ -44,6 +45,7 @@ class WindowImplementation : public engine::Window {
   inline void* GetNativeWindow() const override { return window_; }
  private:
   GLFWwindow* window_;
+  renderer::GraphicsContext* context_;
   internal::Properties properties_;
 
   virtual void Init(const engine::WindowProperties& properties);
