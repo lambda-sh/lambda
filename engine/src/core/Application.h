@@ -30,12 +30,13 @@ class ENGINE_API Application {
 
   inline static Application& GetApplication() {return *kApplication_; }
  private:
-  static Application* kApplication_;
-
+  unsigned int vertex_array_, vertex_buffer_, index_buffer_;
   bool running_ = true;
   std::unique_ptr<Window> window_;
   imgui::ImGuiLayer* imgui_layer_;
   LayerStack layer_stack_;
+
+  static Application* kApplication_;
 
   bool OnWindowClosed(const events::WindowCloseEvent& event);
 };
