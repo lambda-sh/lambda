@@ -10,6 +10,7 @@
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiLayer.h"
+#include "core/renderer/Shader.h"
 
 namespace engine {
 
@@ -33,6 +34,7 @@ class ENGINE_API Application {
   unsigned int vertex_array_, vertex_buffer_, index_buffer_;
   bool running_ = true;
   std::unique_ptr<Window> window_;
+  std::unique_ptr<renderer::Shader> shader_;
   imgui::ImGuiLayer* imgui_layer_;
   LayerStack layer_stack_;
 

@@ -13,6 +13,8 @@
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
 
+#include "core/renderer/Shader.h"
+
 namespace engine {
 
 Application* Application::kApplication_ = nullptr;
@@ -57,6 +59,29 @@ Application::Application() {
   unsigned int indices[3] = { 0, 1, 2 };
   glBufferData(
       GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+  std::string vertex_source = R"(
+      #version 330 core
+
+      layout(location = 0) in vec3 position_attribute;
+
+      void main() {
+        gl_Position = vec4(position_attribute, 1.0);
+      }
+  )";
+
+  std::string fragment_source = R"(
+      #version 330 core
+
+      layout(location = 0) out vec4 color;
+
+      void main() {
+        color = vec4(1.0, 0.2, 0.3, 1.0);
+      }
+  )";
+
+
+  shader_.reset(new renderer::Shader(vertex_source, fragment_source));
 }
 
 Application::~Application() {}
@@ -69,6 +94,8 @@ void Application::Run() {
   while (running_) {
     glClearColor(0.2f, 0.2f, 0.2f, 1);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    shader_->Bind();
 
     // Bind the vertex array and then draw all of it's elements.
     glBindVertexArray(vertex_array_);
