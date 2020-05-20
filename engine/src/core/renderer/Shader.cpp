@@ -11,7 +11,6 @@ namespace renderer {
 
 Shader::Shader(
     const std::string& vertex_source, const std::string& fragment_source) {
-
   // Create and compile the vertex shader
   unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
   const char* vertex_program = vertex_source.c_str();
