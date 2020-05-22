@@ -33,10 +33,6 @@ Application::Application() {
   glGenVertexArrays(1, &vertex_array_);
   glBindVertexArray(vertex_array_);
 
-  // Generate and bind the vertex buffer.
-  glGenBuffers(1, &vertex_buffer_);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-
   // Setup our vertices.
   float vertices[3 * 3] = {
     -0.5f, -0.5f, 0.0f,
@@ -44,21 +40,19 @@ Application::Application() {
      0.0f,  0.5f, 0.0f,
   };
 
-  // Assign the current GL_ARRAY_BUFFER to our vertices.
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+  // Setup the vertex buffer and bind it.
+  vertex_buffer_.reset(
+      renderer::VertexBuffer::Create(vertices, sizeof(vertices)));
+  vertex_buffer_->Bind();
 
   // Enable the vertex attribute array and then define our vertex attributes.
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
 
-  // Generate and bind the index buffer.
-  glGenBuffers(1, &index_buffer_);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_);
-
   // Setup our indices and draw them to the screen.
   unsigned int indices[3] = { 0, 1, 2 };
-  glBufferData(
-      GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+  index_buffer_.reset(renderer::IndexBuffer::Create(indices, 3));
+  index_buffer_->Bind();
 
   std::string vertex_source = R"(
       #version 330 core
@@ -99,7 +93,8 @@ void Application::Run() {
 
     // Bind the vertex array and then draw all of it's elements.
     glBindVertexArray(vertex_array_);
-    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
+    glDrawElements(
+        GL_TRIANGLES, index_buffer_->GetCount(), GL_UNSIGNED_INT, nullptr);
 
     for (Layer* layer : layer_stack_) {
       layer->OnUpdate();

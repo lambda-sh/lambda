@@ -10,6 +10,7 @@
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiLayer.h"
+#include "core/renderer/Buffer.h"
 #include "core/renderer/Shader.h"
 
 namespace engine {
@@ -30,13 +31,16 @@ class ENGINE_API Application {
   inline const Window& GetWindow() const { return *window_; }
 
   inline static Application& GetApplication() {return *kApplication_; }
+
  private:
-  unsigned int vertex_array_, vertex_buffer_, index_buffer_;
+  LayerStack layer_stack_;
   bool running_ = true;
+  imgui::ImGuiLayer* imgui_layer_;
   std::unique_ptr<Window> window_;
   std::unique_ptr<renderer::Shader> shader_;
-  imgui::ImGuiLayer* imgui_layer_;
-  LayerStack layer_stack_;
+  std::unique_ptr<renderer::VertexBuffer> vertex_buffer_;
+  std::unique_ptr<renderer::IndexBuffer> index_buffer_;
+  unsigned int vertex_array_;
 
   static Application* kApplication_;
 

@@ -68,8 +68,6 @@ class ENGINE_API Event {
     return GetCategoryFlags() & category;
   }
 
-  // Allow the checking of if an event has been marked as completely handled.
-  // Can only be done through the callback passed into the event dispatcher.
   inline bool HasBeenHandled() { return has_been_handled_; }
 
  protected:
@@ -77,8 +75,7 @@ class ENGINE_API Event {
   inline void SetHandled(const bool success) { has_been_handled_ = success; }
 };
 
-// The Event Dispatcher handles all events by using a callback that takes in the
-// event.
+// Handles all events by using a callback that takes in the event.
 class EventDispatcher {
   template<typename T>
   using EventFn = const std::function<bool(const T&)>;
