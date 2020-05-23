@@ -15,9 +15,10 @@
 
 namespace engine {
 
-// An individual platform independent application instance that manages the
-// lifecycle of core components of an application being created through our
-// engine.
+/**
+ * An individual platform independent application instance that manages the
+ * lifecycle of core components of an application being created through our
+ */
 class ENGINE_API Application {
  public:
   Application();
