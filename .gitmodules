@@ -3,13 +3,13 @@
 	url = https://github.com/gabime/spdlog
 [submodule "engine/src/vendor"]
 	path = engine/src/vendor
-	url = github:glfw/glfw
+	url = https://github.com/glfw/glfw
 [submodule "engine/vendor/glfw"]
 	path = engine/vendor/glfw
 	url = https://github.com/glfw/glfw
 [submodule "engine/vendor/imgui"]
 	path = engine/vendor/imgui
-	url = github:C3NZ/imgui
+	url = https://github.com/C3NZ/imgui
 [submodule "engine/vendor/glm"]
 	path = engine/vendor/glm
-	url = github:g-truc/glm
+	url = https://github.com/g-truc/glm
