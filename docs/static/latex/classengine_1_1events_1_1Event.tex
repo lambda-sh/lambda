@@ -1,0 +1,56 @@
+\hypertarget{classengine_1_1events_1_1Event}{}\section{engine\+:\+:events\+:\+:Event Class Reference}
+\label{classengine_1_1events_1_1Event}\index{engine\+::events\+::\+Event@{engine\+::events\+::\+Event}}
+
+
+Inheritance diagram for engine\+:\+:events\+:\+:Event\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{classengine_1_1events_1_1Event__inherit__graph}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item
+\mbox{\Hypertarget{classengine_1_1events_1_1Event_a99604df0759386f2cea0071efa52d6e9}\label{classengine_1_1events_1_1Event_a99604df0759386f2cea0071efa52d6e9}}
+virtual Event\+Type {\bfseries Get\+Event\+Type} () const =0
+\item
+\mbox{\Hypertarget{classengine_1_1events_1_1Event_a11bf339abb972f3c06f1cf20a0ff894b}\label{classengine_1_1events_1_1Event_a11bf339abb972f3c06f1cf20a0ff894b}}
+virtual const char $\ast$ {\bfseries Get\+Name} () const =0
+\item
+\mbox{\Hypertarget{classengine_1_1events_1_1Event_a24e56efda02b259ac08ecc5ade26963d}\label{classengine_1_1events_1_1Event_a24e56efda02b259ac08ecc5ade26963d}}
+virtual int {\bfseries Get\+Category\+Flags} () const =0
+\item
+\mbox{\Hypertarget{classengine_1_1events_1_1Event_afad3baa55387283c7cfe692292edc269}\label{classengine_1_1events_1_1Event_afad3baa55387283c7cfe692292edc269}}
+virtual std\+::string {\bfseries To\+String} () const
+\item
+\mbox{\Hypertarget{classengine_1_1events_1_1Event_a1f55831a2eb7d5a22125e347fb6673a3}\label{classengine_1_1events_1_1Event_a1f55831a2eb7d5a22125e347fb6673a3}}
+bool {\bfseries Is\+In\+Category} (Event\+Category category)
+\item
+\mbox{\Hypertarget{classengine_1_1events_1_1Event_a39202ff693f2701f2f736dfd0b4f3878}\label{classengine_1_1events_1_1Event_a39202ff693f2701f2f736dfd0b4f3878}}
+bool {\bfseries Has\+Been\+Handled} ()
+\end{DoxyCompactItemize}
+\subsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item
+\mbox{\Hypertarget{classengine_1_1events_1_1Event_aa85c36143880a3312b1c63166463ef5d}\label{classengine_1_1events_1_1Event_aa85c36143880a3312b1c63166463ef5d}}
+void {\bfseries Set\+Handled} (const bool success)
+\end{DoxyCompactItemize}
+\subsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
+\item
+\mbox{\Hypertarget{classengine_1_1events_1_1Event_ad8e1eb6634225e11963228d6a69c166b}\label{classengine_1_1events_1_1Event_ad8e1eb6634225e11963228d6a69c166b}}
+bool {\bfseries has\+\_\+been\+\_\+handled\+\_\+} = false
+\end{DoxyCompactItemize}
+\subsection*{Friends}
+\begin{DoxyCompactItemize}
+\item
+\mbox{\Hypertarget{classengine_1_1events_1_1Event_aad5f38ccd490ea17008460423f52325a}\label{classengine_1_1events_1_1Event_aad5f38ccd490ea17008460423f52325a}}
+class {\bfseries Event\+Dispatcher}
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item
+engine/src/core/events/Event.\+h\end{DoxyCompactItemize}

@@ -1,0 +1,43 @@
+\hypertarget{classengine_1_1Window}{}\section{engine\+:\+:Window Class Reference}
+\label{classengine_1_1Window}\index{engine\+::\+Window@{engine\+::\+Window}}
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item
+\mbox{\Hypertarget{classengine_1_1Window_accae77cf11b87e90027b03c4fb9afe80}\label{classengine_1_1Window_accae77cf11b87e90027b03c4fb9afe80}}
+typedef std\+::function$<$ void(\hyperlink{classengine_1_1events_1_1Event}{events\+::\+Event} $\ast$)$>$ {\bfseries Event\+Callback\+Function}
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item
+\mbox{\Hypertarget{classengine_1_1Window_acbe42756a4062951c06a3d52970ffc70}\label{classengine_1_1Window_acbe42756a4062951c06a3d52970ffc70}}
+virtual void {\bfseries On\+Update} ()=0
+\item
+\mbox{\Hypertarget{classengine_1_1Window_ab98eea2d4d31b19af72c452d932f51e7}\label{classengine_1_1Window_ab98eea2d4d31b19af72c452d932f51e7}}
+virtual unsigned int {\bfseries Get\+Width} () const =0
+\item
+\mbox{\Hypertarget{classengine_1_1Window_aaa222cfbb6047cf6bf0337a94f5bdab0}\label{classengine_1_1Window_aaa222cfbb6047cf6bf0337a94f5bdab0}}
+virtual unsigned int {\bfseries Get\+Height} () const =0
+\item
+\mbox{\Hypertarget{classengine_1_1Window_a7c66a5afd9dbfcc99782847c71826eac}\label{classengine_1_1Window_a7c66a5afd9dbfcc99782847c71826eac}}
+virtual void {\bfseries Set\+Event\+Callback} (const Event\+Callback\+Function \&callback)=0
+\item
+\mbox{\Hypertarget{classengine_1_1Window_a671eb924c7114d991ed24f0e24325517}\label{classengine_1_1Window_a671eb924c7114d991ed24f0e24325517}}
+virtual void {\bfseries Set\+Vertical\+Sync} (bool enabled)=0
+\item
+\mbox{\Hypertarget{classengine_1_1Window_a62914a8d91d0c1891a3168a61e5a59ba}\label{classengine_1_1Window_a62914a8d91d0c1891a3168a61e5a59ba}}
+virtual bool {\bfseries Has\+Vertical\+Sync} () const =0
+\item
+\mbox{\Hypertarget{classengine_1_1Window_aa13831c03659b38bd405371b409c13d0}\label{classengine_1_1Window_aa13831c03659b38bd405371b409c13d0}}
+virtual void $\ast$ {\bfseries Get\+Native\+Window} () const =0
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item
+\mbox{\Hypertarget{classengine_1_1Window_a325de6424cfdd7fb58c05679e595008a}\label{classengine_1_1Window_a325de6424cfdd7fb58c05679e595008a}}
+static \hyperlink{classengine_1_1Window}{Window} $\ast$ {\bfseries Create} (const \hyperlink{structengine_1_1WindowProperties}{Window\+Properties} \&properties=\hyperlink{structengine_1_1WindowProperties}{Window\+Properties}())
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item
+engine/src/core/Window.\+h\end{DoxyCompactItemize}

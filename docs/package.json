@@ -1,0 +1,22 @@
+{
+  "name": "game-engine-docs",
+  "version": "1.0.0",
+  "description": "A simple http server to host and serve the game engine documentation with git lfs assets.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/C3NZ/game-engine.git"
+  },
+  "author": "C3NZ",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/C3NZ/game-engine/issues"
+  },
+  "homepage": "https://github.com/C3NZ/game-engine#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
