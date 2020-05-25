@@ -1,6 +1,7 @@
 #include "core/Application.h"
 
 #include <functional>
+#include <initializer_list>
 #include <memory>
 
 #include <glad/glad.h>
@@ -34,10 +35,10 @@ Application::Application() {
   glBindVertexArray(vertex_array_);
 
   // Setup our vertices.
-  float vertices[3 * 3] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f,
+  float vertices[3 * 7] = {
+    -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.9f, 1.0f,
+     0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+     0.0f, 0.5f, 0.0f, 1.0f, 1.0f, 0.9f, 1.0f,
   };
 
   // Setup the vertex buffer and bind it.
@@ -45,9 +46,28 @@ Application::Application() {
       renderer::VertexBuffer::Create(vertices, sizeof(vertices)));
   vertex_buffer_->Bind();
 
+  renderer::BufferLayout layout_init_list = {
+      { renderer::ShaderDataType::Float3, "a_Position"},
+      { renderer::ShaderDataType::Float4, "a_Color", true}};
+
+  renderer::BufferLayout layout(layout_init_list);
+
+  vertex_buffer_->SetLayout(layout);
+
   // Enable the vertex attribute array and then define our vertex attributes.
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+
+  uint32_t index = 0;
+  for (const renderer::BufferElement& element : layout) {
+    glEnableVertexAttribArray(index);
+    glVertexAttribPointer(
+        index,
+        element.Components,
+        GL_FLOAT,
+        element.Normalized ? GL_TRUE : GL_FALSE,
+        layout.GetStride(),
+        reinterpret_cast<const void*>(element.Offset));
+    ++index;
+  }
 
   // Setup our indices and draw them to the screen.
   unsigned int indices[3] = { 0, 1, 2 };
@@ -57,10 +77,16 @@ Application::Application() {
   std::string vertex_source = R"(
       #version 330 core
 
-      layout(location = 0) in vec3 position_attribute;
+      layout(location = 0) in vec3 a_Position;
+      layout(location = 1) in vec4 a_Color;
+
+      out vec3 v_Position;
+      out vec4 v_Color;
 
       void main() {
-        gl_Position = vec4(position_attribute, 1.0);
+        v_Position = a_Position;
+        v_Color = a_Color;
+        gl_Position = vec4(a_Position, 1.0);
       }
   )";
 
@@ -69,8 +95,10 @@ Application::Application() {
 
       layout(location = 0) out vec4 color;
 
+      in vec4 v_Color;
+
       void main() {
-        color = vec4(0.3, 0.5, 0.3, 1.0);
+        color = v_Color;
       }
   )";
 
@@ -80,8 +108,6 @@ Application::Application() {
 
 Application::~Application() {}
 
-// Specifically retrieve updates from the window first to dispatch input
-// events to every layer before making updates to them.
 // TODO(C3NZ): Check to see which kind of updates need to come first and what
 // the performance impact of each are.
 void Application::Run() {
