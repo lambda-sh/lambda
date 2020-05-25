@@ -12,16 +12,41 @@ namespace opengl {
 
 // ----------------------------- VERTEX BUFFER IMPL ----------------------------
 
+/**
+ * The OpenGL VertexBuffer  implementation based off the generic
+ * VertexBuffer base class provided by the engines renderer.
+ */
 class OpenGLVertexBuffer : public renderer::VertexBuffer {
  public:
   OpenGLVertexBuffer(float* vertices, uint32_t size);
   ~OpenGLVertexBuffer();
 
+  /**
+   * Create and bind the vertex buffer on the GPU. Will set the renderer_ID_.
+   */
   void Bind() const override;
+
+  /**
+   * Unbind and delete the vertex buffer on GPU using the renderer_ID_
+   * associated with it.
+   */
   void Unbind() const override;
+
+  /**
+   * Get the BufferLayout associated with the current VertexBuffer.
+   */
+  const renderer::BufferLayout& GetLayout() const override { return layout_; };
+
+  /**
+   * Set the BufferLayout associated with the current VertexBuffer.
+   */
+  void SetLayout(const renderer::BufferLayout& layout) override
+    { layout_ = layout; };
 
  private:
   uint32_t renderer_ID_;
+  renderer::BufferLayout layout_;
+
 };
 
 // ----------------------------- INDEX BUFFER IMPL -----------------------------
