@@ -1,3 +1,6 @@
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+pushd $ROOT_DIR
+
 export CC=gcc CXX=g++
 
 if [ "$1" = "Release" ] || [ "$1" = "Debug" ]; then
@@ -11,8 +14,11 @@ elif [ "$1" = "Dist" ]; then
     cmake -DCMAKE_BUILD_TYPE="Release" -DDISTRIBUTION_BUILD=True .
 else
     echo "Incorrect build type passed."
+    popd
     exit
 fi
 
 make -j 8
 ./"$1"/bin/app
+
+popd  # ROOT_DIR
