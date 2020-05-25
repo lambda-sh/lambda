@@ -26,10 +26,19 @@ void OpenGLVertexBuffer::Unbind() const {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-
 // ----------------------------- INDEX BUFFER IMPL ----------------------------
 
-OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t* indices, uint32_t count) : count_(count) {
+/**
+ * Constructs an Index buffer given an array of indices and total count. The
+ * instantiation of the index buffer will cause the engine to to assert an error
+ * if the count is > 0.
+ */
+OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t* indices, uint32_t count)
+    : count_(count) {
+  ENGINE_CORE_ASSERT(
+      count > 0,
+      "There must be more than 0 indices in order to create an index buffer");
+
   glCreateBuffers(1, &renderer_ID_);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer_ID_);
   glBufferData(
