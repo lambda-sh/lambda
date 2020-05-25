@@ -2,6 +2,7 @@
 #define ENGINE_SRC_CORE_EVENTS_EVENT_H_
 
 #include <functional>
+#include <ostream>
 #include <string>
 
 #include <spdlog/fmt/ostr.h>
@@ -97,8 +98,6 @@ class EventDispatcher {
   Event* event_;
 };
 
-// Overrides the output stream operator so that calls to the logging library
-// with an event are easily handled.
 inline std::ostream& operator<<(std::ostream& os, const Event& event) {
   return os << event.ToString();
 }

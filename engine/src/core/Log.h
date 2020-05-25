@@ -33,7 +33,6 @@ class ENGINE_API Log {
 // Ideally, I would like to attach these macros as functions of the Log class,
 // but am not sure how to handle the variadic parameters as of now.
 
-// Engine log macros
 #define ENGINE_CORE_TRACE(...) \
     ::engine::logging::Log::GetCoreLogger()->trace(__VA_ARGS__)
 #define ENGINE_CORE_INFO(...)  \
