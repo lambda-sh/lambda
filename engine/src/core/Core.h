@@ -1,4 +1,8 @@
 /**
+ * @file Core.h
+ * @brief Core macros to be used all throughout the engine for development and
+ * production purposes.
+ *
  * This header includes core macros that are used all throughout the engine for
  * many different internal usage. You most likely won't need to use anything
  * from this file specifically and instead might find `core/Log.h` and
@@ -7,26 +11,26 @@
  */
 
 /**
- * \def ENGINE_API
- * \brief Handles exporting the engine if it's being built as a dll.
+ * @def ENGINE_API
+ * @brief Handles exporting the engine if it's being built as a dll.
  * Potentially deprecated.
  */
 
 /**
- * \def ENGINE_ENABLE_ASSERTS
- * \brief Allows the usage of `core/Assert.h` Assertions to execute in the
+ * @def ENGINE_ENABLE_ASSERTS
+ * @brief Allows the usage of `core/Assert.h` Assertions to execute in the
  * engine.
  */
 
 /**
- * \def ENGINE_DEBUG_BREAK()
- * \brief Allows the execution of breakpoints throughout the engine when
- * debugging.
+ * @def ENGINE_DEBUG_BREAK()
+ * @brief Allows the execution of breakpoints throughout the engine when
+ * debuggin.
  */
 
 /**
- * \def BIT(x)
- * \brief Creates the bit representation of an integer.
+ * @Jef BIT(x)
+ * @brief Creates the bit representation of an integer.
  */
 
 #ifndef ENGINE_SRC_CORE_CORE_H_
