@@ -20,6 +20,10 @@ namespace engine {
 
 Application* Application::kApplication_ = nullptr;
 
+/**
+ * TODO(C3NZ): This should not carry as much of a load as it currently does
+ * and should instead be delegated to applications attempting to use the engine.
+ */
 Application::Application() {
   ENGINE_CORE_ASSERT(!kApplication_, "Application already exists.");
   kApplication_ = this;
@@ -41,7 +45,6 @@ Application::Application() {
      0.0f, 0.5f, 0.0f, 1.0f, 1.0f, 0.9f, 1.0f,
   };
 
-  // Setup the vertex buffer and bind it.
   vertex_buffer_.reset(
       renderer::VertexBuffer::Create(vertices, sizeof(vertices)));
   vertex_buffer_->Bind();
@@ -53,8 +56,6 @@ Application::Application() {
   renderer::BufferLayout layout(layout_init_list);
 
   vertex_buffer_->SetLayout(layout);
-
-  // Enable the vertex attribute array and then define our vertex attributes.
 
   uint32_t index = 0;
   for (const renderer::BufferElement& element : layout) {
@@ -69,7 +70,6 @@ Application::Application() {
     ++index;
   }
 
-  // Setup our indices and draw them to the screen.
   unsigned int indices[3] = { 0, 1, 2 };
   index_buffer_.reset(renderer::IndexBuffer::Create(indices, 3));
   index_buffer_->Bind();
@@ -108,8 +108,12 @@ Application::Application() {
 
 Application::~Application() {}
 
-// TODO(C3NZ): Check to see which kind of updates need to come first and what
-// the performance impact of each are.
+/**
+ * This currently does a lot of custom rendering when in reality it should
+ * be implemented by a child project that is running the game. This will change
+ * in the future, but at the moment implements a lot of specific rendering
+ * tests that are for ensuring that the renderer currently works.
+ */
 void Application::Run() {
   while (running_) {
     glClearColor(0.2f, 0.2f, 0.2f, 1);
@@ -136,6 +140,24 @@ void Application::Run() {
   }
 }
 
+/**
+ * This function only specifically listens for when the window is requested to
+ * close before passing the event to layers on the LayerStack.
+ */
+void Application::OnEvent(events::Event* event) {
+  events::EventDispatcher dispatcher(event);
+  dispatcher.Dispatch<events::WindowCloseEvent>
+      (BIND_EVENT_FN(Application::OnWindowClosed));
+
+  // Pass the event to all needed layers on the stack.
+  for (auto it = layer_stack_.end(); it != layer_stack_.begin();) {
+    (*--it)->OnEvent(event);
+    if (event->HasBeenHandled()) {
+      break;
+    }
+  }
+}
+
 void Application::PushLayer(Layer* layer) {
   layer_stack_.PushLayer(layer);
   layer->OnAttach();
@@ -151,21 +173,5 @@ bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
   return true;
 }
 
-// This is the primary handler for passing events generated from the window back
-// into the our application and game.
-void Application::OnEvent(events::Event* event) {
-  events::EventDispatcher dispatcher(event);
-  dispatcher.Dispatch<events::WindowCloseEvent>
-      (BIND_EVENT_FN(Application::OnWindowClosed));
-  ENGINE_CORE_TRACE(*event);
-
-  // Pass the event to all needed layers on the stack.
-  for (auto it = layer_stack_.end(); it != layer_stack_.begin();) {
-    (*--it)->OnEvent(event);
-    if (event->HasBeenHandled()) {
-      break;
-    }
-  }
-}
 
 }  // namespace engine
