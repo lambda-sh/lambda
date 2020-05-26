@@ -12,7 +12,13 @@
 namespace engine {
 namespace events {
 
-// Event types to be used when registering an event with the engine.
+// ----------------------- EVENT TYPES & CATEGORIES ---------------------------
+
+/**
+ * This defines all the EventTypes that are available within the engine. Events
+ * that are not registered here cannot be used for instantiating classes that
+ * want to extend the base class Event and use the event dispatcher.
+ */
 enum class EventType {
   None = 0,
   kWindowClose, kWindowResize, kWindowFocus, kWindowLostFocus, kWindowMoved,
@@ -21,7 +27,11 @@ enum class EventType {
   kMouseButtonPressed, kMouseButtonReleased, kMouseMoved, kMouseScrolled
 };
 
-// BIT representations of categories
+/**
+ * This is primarily used for determining what categories an event belongs to.
+ * EventCategory is set in any children class of Event using the macro
+ * `EVENT_CLASS_CATEGORY(EventCategory::...)` like so.
+ */
 enum EventCategory {
   None = 0,
   kEventCategoryApplication = BIT(0),
@@ -31,40 +41,48 @@ enum EventCategory {
   kEventCategoryMouseButton = BIT(4)
 };
 
-// Attach these functions to any given event by calling this macro with one of
-// the EventType enums.
+// ------------------------------------- MACROS --------------------------------
+
+/**
+ * All children of the base Class Event are to implement this in their class
+ * definition in order to be compatible with the EventDispatcher.
+ */
 #define EVENT_CLASS_TYPE(type) \
     static EventType GetStaticType() { return EventType::type; } \
     EventType GetEventType() const override { return GetStaticType(); } \
     const char* GetName() const override { return #type; }
 
-// Attach category flags to an event by calling this macro with an
-// EventCategory.
+/**
+ * All children of the base Class Event are to implement this in their class
+ * definition in order to be compatible with the EventDispatcher
+ */
 #define EVENT_CLASS_CATEGORY(category) \
     int GetCategoryFlags() const override { return category; }
 
-// Binds the address of a callback function to an object instance. It is needed
-// for layers to pass callback functions into the
+/**
+ * This is used to bind event handlers inside of classes to the callbacks
+ * that they'd like to pass to the EventDispatcher.
+ */
 #define BIND_EVENT_FN(fn) std::bind(&fn, this, std::placeholders::_1)
 
-// Base class for events.
+// ----------------------------------- CLASSES ---------------------------------
+
+/**
+ * The base Event implementation that is the parent class for any Event that
+ * would like to be passed into and handled by the EventDispatcher system. All
+ * Children class must override the functions provided by this class in order
+ * to be able to be propagated through the EventDispatcher. There are macros
+ * provided in `core/events/Event.h` that are documented and make the
+ * process of creating child classes of Event magnitudes easier.
+ */
 class ENGINE_API Event {
   friend class EventDispatcher;
  public:
-  // Created with EVENT_CLASS_TYPE(kAppEventType) in the header of any
-  // child Event class.
   virtual EventType GetEventType() const = 0;
-
-  // Created with EVENT_CLASS_TYPE(kAppEventType) in the header of any
-  // child Event class.
   virtual const char* GetName() const = 0;
-
-  // Created with EVENT_CLASS_CATEGORY(kEventCategoryType) in the header of any
-  // child Event class.
   virtual int GetCategoryFlags() const = 0;
   virtual std::string ToString() const { return GetName(); }
 
-  // This checks the bits of the event against any given category.
   inline bool IsInCategory(EventCategory category) {
     return GetCategoryFlags() & category;
   }
@@ -76,15 +94,24 @@ class ENGINE_API Event {
   inline void SetHandled(const bool success) { has_been_handled_ = success; }
 };
 
-// Handles all events by using a callback that takes in the event.
+/**
+ * The EventDispatcher is the key to handling all events. It is created per
+ * event and streamlines the process of dispatching events with callbacks that
+ * are invoked when the EventType of the event used to create the
+ * EventDispatcher matches the EventType that the callback is looking for.
+ */
 class EventDispatcher {
   template<typename T>
   using EventFn = const std::function<bool(const T&)>;
  public:
   explicit EventDispatcher(Event* event) : event_(event) {}
 
-  // Dispatch an event given an EventFn that takes in a const reference to
-  // an Event and returns a bool determining if the event has been handled.
+  /**
+   * Functions passed into the dispatcher most likely need to be bound using
+   * ```BIND_EVENT_FN(fn)``` when being passed to the Event Dispatcher. This is
+   * to ensure that `this` for any class method is bound to the class that is
+   * using the EventDispatcher.
+   */
   template<typename T>
   bool Dispatch(EventFn<T> func) {
     if (event_->GetEventType() == T::GetStaticType()) {
@@ -98,13 +125,15 @@ class EventDispatcher {
   Event* event_;
 };
 
+/**
+ * All events have a default ToString(), but should most likely
+ * implement their own to more specifically display the data associated with them.
+ */
 inline std::ostream& operator<<(std::ostream& os, const Event& event) {
   return os << event.ToString();
 }
 
 }  // namespace events
 }  // namespace engine
-
-
 
 #endif  // ENGINE_SRC_CORE_EVENTS_EVENT_H_
