@@ -4,12 +4,15 @@
 #include "core/Application.h"
 #include "core/Input.h"
 #include "core/KeyCodes.h"
+#include "core/KeyCodes.h"
 #include "core/Layer.h"
 #include "core/Log.h"
 #include "core/MouseButtonCodes.h"
-#include "core/KeyCodes.h"
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiLayer.h"
+#include "core/renderer/Buffer.h"
+#include "core/renderer/Renderer.h"
+#include "core/renderer/Shader.h"
 
 #include "core/Entrypoint.h"
 

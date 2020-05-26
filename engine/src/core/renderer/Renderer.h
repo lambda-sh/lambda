@@ -4,13 +4,20 @@
 namespace engine {
 namespace renderer {
 
-// Available rendering APIs.
+/**
+ * Available rendering APIs to be set in games for the rendering engine to set
+ * which graphics context to use at runtime.
+ */
 enum class RendererAPI {
   None = 0,
   OpenGL = 1,
 };
 
-// The Renderer.
+/**
+ * A lightweight and not fully finished rendering API that lets you set the a
+ * specific graphics context to use for rendering. This must be set externally
+ * in any rendering application.
+ */
 class Renderer {
  public:
   inline static RendererAPI GetAPI() { return kRenderAPI_; }
