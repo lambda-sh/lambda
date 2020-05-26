@@ -2,7 +2,9 @@
  * @file engine/src/core/Assert.h
  * @brief This is a utility file that is primarily used for debugging the
  * internals of the engine when incorrect behavior or invalid use of the API is
- * occurring. This should most likely not be deployed into any game extending
+ * occurring.
+ *
+ * This should most likely not be deployed into any game extending
  * this engine. ENGINE_ENABLE_ASSERTS enables and disables assertions for both
  * the client and the engine at compile time.
  */
