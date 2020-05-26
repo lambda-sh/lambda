@@ -13,7 +13,7 @@
 /**
  * @def ENGINE_API
  * @brief Handles exporting the engine if it's being built as a dll.
- * Potentially deprecated.
+ * Potentially deprecated and shouldn't be used outside of the engine.
  */
 
 /**
@@ -46,7 +46,7 @@
   #endif
 
   #ifdef ENGINE_DEBUG
-    #define ENGINE_ENABLE_ASSERTS
+    #define ENGINE_ENABLE_ASSERTS true
     #define ENGINE_DEBUG_BREAK() __debugbreak()
   #else
     #define ENGINE_DEBUG_BREAK()
@@ -59,13 +59,14 @@
   #endif
 
   #ifdef ENGINE_DEBUG
-    #define ENGINE_ENABLE_ASSERTS
+    #define ENGINE_ENABLE_ASSERTS true
     #define ENGINE_DEBUG_BREAK() __builtin_trap()
   #else
     #define ENGINE_DEBUG_BREAK()
   #endif
 #else
   #define ENGINE_API
+  #define ENGINE_ENABLE_ASSERTS false
   #define ENGINE_DEBUG_BREAK()
 #endif
 
