@@ -10,12 +10,14 @@ please check out the link to his channel & series down below.
 - [ ] Create a game engine.
 - [ ] Learn more about C++
 - [ ] Make a game of my own(?)
+- [ ] Integrate Simplistic, a physics engine that I'm developing into the engine
+as an optional physics engine to be run by the engine.
 
 ## How to run/setup
 In order to get external dependencies that are needed in order to run the project,
 please run:
 ```
-./setup.sh
+./scripts/setup.sh
 ```
 This will initialize pre commit checks for development and also initialize all
 git submodules.
@@ -23,12 +25,15 @@ git submodules.
 
 In order to build and run a release build of the project, utilize:
 ```bash
-./compile_and_run.sh Release
+./scripts/compile_and_run.sh Release
 ```
 In order to build and run a debug build of the project, utilize:
 ```bash
-./compile_and_run.sh Debug
+./scripts/compile_and_run.sh Debug
 ```
+
+It is to note that all scripts can be run from anywhere so long as the place
+you're executing the command is within the repo.
 
 ## Documentation
 All documentation can be found at [engine-docs](https://engine-docs.cenz.io).
