@@ -1,3 +1,9 @@
+/**
+ * This is a utility file that is primarily used for debugging the internals of
+ * the engine when incorrect behavior or invalid use of the API is occurring.
+ * This should most likely not be deployed into any game extending this engine.
+ */
+
 #ifndef ENGINE_SRC_CORE_ASSERT_H_
 #define ENGINE_SRC_CORE_ASSERT_H_
 
@@ -17,6 +23,6 @@
 #else
   #define ENGINE_CLIENT_ASSERT(x, ...)
   #define ENGINE_CORE_ASSERT(x, ...)
-#endif
+#endif  // ENGINE_ENABLE_ASSERTS
 
 #endif  // ENGINE_SRC_CORE_ASSERT_H_
