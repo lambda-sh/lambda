@@ -29,7 +29,7 @@
  */
 
 /**
- * @Jef BIT(x)
+ * @def BIT(x)
  * @brief Creates the bit representation of an integer.
  */
 
