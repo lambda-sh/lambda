@@ -1,5 +1,5 @@
 /**
- * @file Core.h
+ * @file engine/src/core/Core.h
  * @brief Core macros to be used all throughout the engine for development and
  * production purposes.
  *
