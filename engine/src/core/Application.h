@@ -1,3 +1,13 @@
+/**
+ * @file engine/src/core/Application.h
+ * @brief Contains the Application class definitions.
+ *
+ * The Application class is the primary driver of all applications being run by
+ * the engine. It is designed to handle everything from events to rendering
+ * without having to expose itself to applications that are being created with
+ * it.
+ */
+
 #ifndef ENGINE_SRC_CORE_APPLICATION_H_
 #define ENGINE_SRC_CORE_APPLICATION_H_
 
@@ -16,8 +26,12 @@
 namespace engine {
 
 /**
- * An individual platform independent application instance that manages the
- * lifecycle of the core and lower level components of the engine.
+ * @class Application
+ * @brief The primary driver of all applications extending this engine.
+ *
+ * The engine implements the application runner as an individual platform
+ * independent application instance that manages the lifecycle of the core and
+ * lower level components of the engine.
  */
 class ENGINE_API Application {
  public:
@@ -25,20 +39,23 @@ class ENGINE_API Application {
   virtual ~Application();
 
   /**
-   * Controls the applications lifecycle and all lower level functionality like
-   * input, events, rendering, networking, etc.
+   * @brief Controls the applications lifecycle and all lower level
+   * functionality like input, events, rendering, networking, etc.
    */
   void Run();
 
   /**
-   * The primary event handler for all applications.
+   * @param event An event pointer generated to be handled by the application.
+   * @brief Passes events to all the layers.
    */
   void OnEvent(events::Event* event);
 
   /**
-   * Attaches a layer to the application instance. This allows the application
-   * instance to propage events, rendering, and any desired pieces of data into
-   * the layer.
+   * @param layer
+   * @brief Attaches a layer to the application instance.
+   *
+   * This allows the application instance to propage events, rendering, and any
+   * desired pieces of data into the layer.
    */
   void PushLayer(Layer* layer);
 
