@@ -34,7 +34,7 @@ class ENGINE_API WindowResizeEvent : public Event {
   inline unsigned int GetWidth() const { return width_; }
 
   /**
-   * @fn GetWidth
+   * @fn GetHeight
    * @brief The new height that was registered with the event.
    */
   inline unsigned int GetHeight() const { return height_; }
