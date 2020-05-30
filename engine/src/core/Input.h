@@ -42,7 +42,6 @@ class ENGINE_API Input {
 
   /**
    * @brief Get the current mouse x & y positions.
-   *
    */
   inline static std::pair<float, float> GetMousePosition() {
       return kInput_->GetMousePositionImpl(); }

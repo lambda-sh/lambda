@@ -1,3 +1,12 @@
+/**
+ * @file engine/src/core/events/Event.h
+ * @brief The Generic Event implementation and supported types.
+ *
+ * The event system is a core component of the game engine that enables the
+ * engine to act upon user input by propagating the user input as event
+ * across layers that are attached to the engines layer stack. This enables
+ * events to be passed to prioritized layers. (More specifically, overlays)
+ */
 #ifndef ENGINE_SRC_CORE_EVENTS_EVENT_H_
 #define ENGINE_SRC_CORE_EVENTS_EVENT_H_
 
@@ -15,6 +24,9 @@ namespace events {
 // ----------------------- EVENT TYPES & CATEGORIES ---------------------------
 
 /**
+ * @enum EventType
+ * @brief An Events specific type.
+ *
  * This defines all the EventTypes that are available within the engine. Events
  * that are not registered here cannot be used for instantiating classes that
  * want to extend the base class Event and use the event dispatcher.
@@ -28,6 +40,9 @@ enum class EventType {
 };
 
 /**
+ * @enum EventCategory
+ * @brief An events specific category.
+ *
  * This is primarily used for determining what categories an event belongs to.
  * EventCategory is set in any children class of Event using the macro
  * `EVENT_CLASS_CATEGORY(EventCategory::...)` like so.
@@ -44,6 +59,10 @@ enum EventCategory {
 // ------------------------------------- MACROS --------------------------------
 
 /**
+ * @def EVENT_CLASS_TYPE(type)
+ * @param type the child classes engine::events::EventType.
+ * @brief Helper macro to fill out child event classes.
+ *
  * All children of the base Class Event are to implement this in their class
  * definition in order to be compatible with the EventDispatcher.
  */
@@ -53,6 +72,10 @@ enum EventCategory {
     const char* GetName() const override { return #type; }
 
 /**
+ * @def EVENT_CLASS_CATEGORY(category)
+ * @param category The child classes engine::events::EventCategory.
+ * @brief Helper macro to fill out child event classes.
+ *
  * All children of the base Class Event are to implement this in their class
  * definition in order to be compatible with the EventDispatcher
  */
@@ -68,6 +91,9 @@ enum EventCategory {
 // ----------------------------------- CLASSES ---------------------------------
 
 /**
+ * @class Event
+ * @brief The abstract Event class.
+ *
  * The base Event implementation that is the parent class for any Event that
  * would like to be passed into and handled by the EventDispatcher system. All
  * Children class must override the functions provided by this class in order
@@ -83,6 +109,11 @@ class ENGINE_API Event {
   virtual int GetCategoryFlags() const = 0;
   virtual std::string ToString() const { return GetName(); }
 
+  /**
+   * @fn IsInCategory
+   * @param category The category to be checked against.
+   * @brief Check if an event belongs to an EventCategory
+   */
   inline bool IsInCategory(EventCategory category) {
     return GetCategoryFlags() & category;
   }

@@ -30,7 +30,10 @@
 
 /**
  * @def BIT(x)
+ * @param x The number to represent in bits.
  * @brief Creates the bit representation of an integer.
+ *
+ * Mostly for internal usage (Check `engine/src/core/events/Event.h`)
  */
 
 #ifndef ENGINE_SRC_CORE_CORE_H_
