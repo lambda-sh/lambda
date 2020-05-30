@@ -122,7 +122,20 @@ class ENGINE_API Event {
     return GetCategoryFlags() & category;
   }
 
+  /**
+   * @fn HasBeenHandled
+   * @brief Check if an event has already been handled.
+   *
+   * Only the EventDispatcher is capable of setting an event as being handled.
+   */
   inline bool HasBeenHandled() { return has_been_handled_; }
+
+  /**
+   * @brief Allows events to be overloaded into
+   */
+  inline std::ostream& operator<<(std::ostream& os) {
+    return os << ToString();
+  }
 
  protected:
   bool has_been_handled_ = false;
@@ -130,18 +143,33 @@ class ENGINE_API Event {
 };
 
 /**
+ * @class EventDispatcher
+ * @brief The event handling system.
+ *
  * The EventDispatcher is the key to handling all events. It is created per
  * event and streamlines the process of dispatching events with callbacks that
  * are invoked when the EventType of the event used to create the
  * EventDispatcher matches the EventType that the callback is looking for.
  */
 class EventDispatcher {
+  /**
+   * @typedef EventFn
+   * @brief The expected function header to be used for dispatching events.
+   */
   template<typename T>
   using EventFn = const std::function<bool(const T&)>;
+
  public:
   explicit EventDispatcher(Event* event) : event_(event) {}
 
   /**
+   * @fn Dispatch
+   * @param func A function of type EventFn<T> that will be used to dispatch an
+   * event if they have they have the same corresponding type.
+   *
+   * @brief Ensures that functions are disptached by event handlers that match
+   * the type of event that is associated with the dispatcher.
+   *
    * Functions passed into the dispatcher most likely need to be bound using
    * ```BIND_EVENT_FN(fn)``` when being passed to the Event Dispatcher. This is
    * to ensure that `this` for any class method is bound to the class that is
@@ -159,14 +187,6 @@ class EventDispatcher {
  private:
   Event* event_;
 };
-
-/**
- * All events have a default ToString(), but should most likely
- * implement their own to more specifically display the data associated with them.
- */
-inline std::ostream& operator<<(std::ostream& os, const Event& event) {
-  return os << event.ToString();
-}
 
 }  // namespace events
 }  // namespace engine
