@@ -2,8 +2,8 @@
  * @file engine/src/core/events/KeyEvent.h
  * @brief Events that specifically deal with key input.
  *
- * These events are all platform specific and allow for the capturing of
- * user input via the keyboard.
+ * These events are all platform independent and allow for the capturing of user
+ * input via the keyboard.
  */
 #ifndef ENGINE_SRC_CORE_EVENTS_KEYEVENT_H_
 #define ENGINE_SRC_CORE_EVENTS_KEYEVENT_H_
