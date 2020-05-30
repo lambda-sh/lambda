@@ -1,6 +1,6 @@
 /**
  * @file engine/src/core/events/Event.h
- * @brief The Generic Event implementation and supported types.
+ * @brief The Event class and dispatcher core implementations.
  *
  * The event system is a core component of the game engine that enables the
  * engine to act upon user input by propagating the user input as event
@@ -60,7 +60,7 @@ enum EventCategory {
 
 /**
  * @def EVENT_CLASS_TYPE(type)
- * @param type the child classes engine::events::EventType.
+ * @param type the child classes EventType.
  * @brief Helper macro to fill out child event classes.
  *
  * All children of the base Class Event are to implement this in their class
@@ -73,7 +73,7 @@ enum EventCategory {
 
 /**
  * @def EVENT_CLASS_CATEGORY(category)
- * @param category The child classes engine::events::EventCategory.
+ * @param category The child classes EventCategory.
  * @brief Helper macro to fill out child event classes.
  *
  * All children of the base Class Event are to implement this in their class
@@ -83,6 +83,10 @@ enum EventCategory {
     int GetCategoryFlags() const override { return category; }
 
 /**
+ * @def BIND_EVENT_FN(fn)
+ * @param fn The function being used to handle an event.
+ * @brief Helper macro to bind event handlers to their parent classes.
+ *
  * This is used to bind event handlers inside of classes to the callbacks
  * that they'd like to pass to the EventDispatcher.
  */
