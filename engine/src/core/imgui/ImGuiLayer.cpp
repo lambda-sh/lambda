@@ -10,13 +10,16 @@
 namespace engine {
 namespace imgui {
 
-ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
+bool ImGuiLayer::show_demo_window_ = true;
 
+ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
 ImGuiLayer::~ImGuiLayer() {}
 
-// The default ImGui will create a context, style itself dark, and also
-// register all inputs with GLFW keys. This is currently a hack and should be
-// modified in the future to use engine specificied keycodes.
+/**
+ * The default OnAttach creates a context, activates dark mode, and register
+ * inputs with GLFW keys. This implementation currently only supports OpenGL and
+ * will be modified in the future to use engine specified key codes.
+ */
 void ImGuiLayer::OnAttach() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
@@ -42,6 +45,9 @@ void ImGuiLayer::OnAttach() {
   ImGui_ImplOpenGL3_Init("#version 410");
 }
 
+/**
+ * Currently also only supports OpenGL.
+ */
 void ImGuiLayer::OnDetach() {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
@@ -72,8 +78,7 @@ void ImGuiLayer::End() {
 }
 
 void ImGuiLayer::OnImGuiRender() {
-  static bool show = true;
-  ImGui::ShowDemoWindow(&show);
+  ImGui::ShowDemoWindow(&show_demo_window_);
 }
 
 }  // namespace imgui
