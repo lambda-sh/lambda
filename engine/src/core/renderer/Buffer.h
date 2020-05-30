@@ -139,15 +139,14 @@ class BufferLayout {
    * @brief Instantiate a BufferLayout with an initializer list of
    * BufferElements.
    *
-   * Stride is calculated once a non empty elements
-   * e.g.
-   * ```c++
-   *   renderer::BufferLayout layout_init_list = {
-   *       { renderer::ShaderDataType::Float3, "a_Position"},
-   *       { renderer::ShaderDataType::Float4, "a_Color"},
-   *       { renderer::ShaderDataType::Float3, "a_Normal"}};
+   * Stride is calculated once a non empty elements e.g.
+   * ```
+   * renderer::BufferLayout layout_init_list = {
+   *     { renderer::ShaderDataType::Float3, "a_Position"},
+   *     { renderer::ShaderDataType::Float4, "a_Color"},
+   *     { renderer::ShaderDataType::Float3, "a_Normal"}};
    *
-   *   renderer::BufferLayout layout(layout_init_list);
+   * renderer::BufferLayout layout(layout_init_list);
    * ```
    */
   BufferLayout(const std::initializer_list<BufferElement>& elements)
