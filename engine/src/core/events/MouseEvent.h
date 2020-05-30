@@ -1,3 +1,7 @@
+/**
+ * @file engine/src/core/events/MouseEvent.h
+ * @brief All events related mouse input.
+ */
 #ifndef ENGINE_SRC_CORE_EVENTS_MOUSEEVENT_H_
 #define ENGINE_SRC_CORE_EVENTS_MOUSEEVENT_H_
 
@@ -8,6 +12,10 @@
 namespace engine {
 namespace events {
 
+/**
+ * @class MouseMovedEvent
+ * @brief Generated whenever the user moves their mouse within the application.
+ */
 class ENGINE_API MouseMovedEvent : public Event {
  public:
   MouseMovedEvent(float x, float y) : mouse_x_(x), mouse_y_(y) {}
@@ -27,6 +35,11 @@ class ENGINE_API MouseMovedEvent : public Event {
   float mouse_x_, mouse_y_;
 };
 
+/**
+ * @class MouseScrolledEvent
+ * @brief Generated whenever the user scrolls their mouse wheel within the
+ * application.
+ */
 class ENGINE_API MouseScrolledEvent : public Event {
  public:
   MouseScrolledEvent(float x_offset, float y_offset)
@@ -51,8 +64,10 @@ class ENGINE_API MouseScrolledEvent : public Event {
   float x_offset_, y_offset_;
 };
 
-// Generic mouse button event to be used for registering any kind of mouse
-// button events.
+/**
+ * @class MouseButtonEvent
+ * @brief The generic Mouse button event.
+ */
 class ENGINE_API MouseButtonEvent : public Event {
  public:
   inline int GetMouseButton() const { return button_; }
@@ -64,8 +79,11 @@ class ENGINE_API MouseButtonEvent : public Event {
   int button_;
 };
 
-// MouseButtonPressedEvent generates Mouse button events and records which
-// mouse the event was being recorded in.
+/**
+ * @class MouseButtonPressedEvent
+ * @brief Generated whenever the user presses a mouse button within the
+ * application.
+ */
 class ENGINE_API MouseButtonPressedEvent : public MouseButtonEvent {
  public:
   explicit MouseButtonPressedEvent(int button) : MouseButtonEvent(button) {}
@@ -79,8 +97,11 @@ class ENGINE_API MouseButtonPressedEvent : public MouseButtonEvent {
   EVENT_CLASS_TYPE(kMouseButtonPressed)
 };
 
-// Generates mouse button releese evens and records which mouse the event was
-// being recorded in.
+/**
+ * @class MouseButtonReleasedEvent
+ * @brief Generated whenever the user releases a mouse button within an
+ * application.
+ */
 class ENGINE_API MouseButtonReleasedEvent : public MouseButtonEvent {
  public:
   explicit MouseButtonReleasedEvent(int button) : MouseButtonEvent(button) {}
