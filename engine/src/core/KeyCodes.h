@@ -1,3 +1,11 @@
+/**
+ * @file engine/src/core/KeyCodes.h
+ * @brief Keycodes provided by the engine for capturing input.
+ *
+ * This file has many defines that are pretty self explanatory. Looking through
+ * the source of this file should be pretty straight forward in the event you're
+ * trying to integrate user input into your application.
+ */
 #ifndef ENGINE_SRC_CORE_KEYCODES_H_
 #define ENGINE_SRC_CORE_KEYCODES_H_
 

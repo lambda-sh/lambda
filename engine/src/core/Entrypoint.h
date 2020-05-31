@@ -1,3 +1,10 @@
+/**
+ * @file engine/src/core/Entrypoint.h
+ * @brief The entrypoint into the engine.
+ *
+ * It defines the CreateApplication function as an external function that is to
+ * be implemented in the application.
+ */
 #ifndef ENGINE_SRC_CORE_ENTRYPOINT_H_
 #define ENGINE_SRC_CORE_ENTRYPOINT_H_
 
