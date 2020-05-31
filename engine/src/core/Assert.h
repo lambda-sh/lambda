@@ -22,7 +22,6 @@
  * its core to halt the application whenever the condition being asserted is
  * false.
  */
-
 #ifndef ENGINE_SRC_CORE_ASSERT_H_
 #define ENGINE_SRC_CORE_ASSERT_H_
 

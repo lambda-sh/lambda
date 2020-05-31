@@ -1,3 +1,9 @@
+/**
+ * @file engine/src/core/MouseButtonCodes.h
+ * @brief Mouse button codes supported by the engine.
+ *
+ * Check engine/src/core/MouseButtonCodes.h for supported mouse buttons.
+ */
 #ifndef ENGINE_SRC_CORE_MOUSEBUTTONCODES_H_
 #define ENGINE_SRC_CORE_MOUSEBUTTONCODES_H_
 
