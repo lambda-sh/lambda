@@ -22,6 +22,7 @@
 #include "core/imgui/ImGuiLayer.h"
 #include "core/renderer/Buffer.h"
 #include "core/renderer/Shader.h"
+#include "core/renderer/VertexArray.h"
 
 namespace engine {
 
@@ -85,10 +86,10 @@ class ENGINE_API Application {
   bool running_ = true;
   imgui::ImGuiLayer* imgui_layer_;
   std::unique_ptr<Window> window_;
-  std::unique_ptr<renderer::Shader> shader_;
-  std::unique_ptr<renderer::VertexBuffer> vertex_buffer_;
-  std::unique_ptr<renderer::IndexBuffer> index_buffer_;
-  unsigned int vertex_array_;
+  std::shared_ptr<renderer::Shader> shader_;
+  std::shared_ptr<renderer::VertexBuffer> vertex_buffer_;
+  std::shared_ptr<renderer::IndexBuffer> index_buffer_;
+  std::unique_ptr<renderer::VertexArray> vertex_array_;
 
   static Application* kApplication_;
 
