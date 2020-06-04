@@ -131,7 +131,7 @@ class ENGINE_API Event {
   inline bool HasBeenHandled() { return has_been_handled_; }
 
   /**
-   * @brief Allows events to be overloaded into
+   * @brief Make events compatible with ostream.
    */
   inline std::ostream& operator<<(std::ostream& os) {
     return os << ToString();
@@ -166,7 +166,6 @@ class EventDispatcher {
    * @fn Dispatch
    * @param func A function of type EventFn<T> that will be used to dispatch an
    * event if they have they have the same corresponding type.
-   *
    * @brief Ensures that functions are disptached by event handlers that match
    * the type of event that is associated with the dispatcher.
    *

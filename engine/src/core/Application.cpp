@@ -13,8 +13,9 @@
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
-
+#include "core/renderer/Buffer.h"
 #include "core/renderer/Shader.h"
+#include "core/renderer/VertexArray.h"
 
 namespace engine {
 
@@ -34,10 +35,6 @@ Application::Application() {
   imgui_layer_ = new imgui::ImGuiLayer();
   PushLayer(imgui_layer_);
 
-  // Generate and bind the vertex array.
-  glGenVertexArrays(1, &vertex_array_);
-  glBindVertexArray(vertex_array_);
-
   // Setup our vertices.
   float vertices[3 * 7] = {
     -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.9f, 1.0f,
@@ -45,34 +42,25 @@ Application::Application() {
      0.0f, 0.5f, 0.0f, 1.0f, 1.0f, 0.9f, 1.0f,
   };
 
+
+  vertex_array_.reset(renderer::VertexArray::Create());
+
   vertex_buffer_.reset(
       renderer::VertexBuffer::Create(vertices, sizeof(vertices)));
-  vertex_buffer_->Bind();
 
   renderer::BufferLayout layout_init_list = {
       { renderer::ShaderDataType::Float3, "a_Position"},
       { renderer::ShaderDataType::Float4, "a_Color", true}};
 
   renderer::BufferLayout layout(layout_init_list);
-
   vertex_buffer_->SetLayout(layout);
 
-  uint32_t index = 0;
-  for (const renderer::BufferElement& element : layout) {
-    glEnableVertexAttribArray(index);
-    glVertexAttribPointer(
-        index,
-        element.Components,
-        GL_FLOAT,
-        element.Normalized ? GL_TRUE : GL_FALSE,
-        layout.GetStride(),
-        reinterpret_cast<const void*>(element.Offset));
-    ++index;
-  }
+  vertex_array_->AddVertexBuffer(vertex_buffer_);
 
   unsigned int indices[3] = { 0, 1, 2 };
   index_buffer_.reset(renderer::IndexBuffer::Create(indices, 3));
-  index_buffer_->Bind();
+
+  vertex_array_->SetIndexBuffer(index_buffer_);
 
   std::string vertex_source = R"(
       #version 330 core
@@ -120,9 +108,9 @@ void Application::Run() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     shader_->Bind();
+    vertex_array_->Bind();
 
     // Bind the vertex array and then draw all of it's elements.
-    glBindVertexArray(vertex_array_);
     glDrawElements(
         GL_TRIANGLES, index_buffer_->GetCount(), GL_UNSIGNED_INT, nullptr);
 
