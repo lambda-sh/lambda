@@ -173,8 +173,19 @@ class BufferLayout {
   inline const std::vector<BufferElement>& GetElements() const
     { return elements_; }
 
+  /**
+   * @fn HasElements
+   * @brief Checks to see if the current buffer layout has elements.
+   */
+  inline const bool HasElements() const { return elements_.size() > 0; }
+
   std::vector<BufferElement>::iterator begin() { return elements_.begin(); }
   std::vector<BufferElement>::iterator end() { return elements_.end(); }
+
+  std::vector<BufferElement>::const_iterator begin() const
+  { return elements_.begin(); }
+  std::vector<BufferElement>::const_iterator end() const
+  { return elements_.end(); }
 
  private:
   std::vector<BufferElement> elements_;
