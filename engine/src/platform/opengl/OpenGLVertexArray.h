@@ -19,7 +19,7 @@ namespace opengl {
 class OpenGLVertexArray : public renderer::VertexArray {
  public:
   OpenGLVertexArray();
-  ~OpenGLVertexArray() {}
+  ~OpenGLVertexArray();
 
   /**
    * @fn Bind
