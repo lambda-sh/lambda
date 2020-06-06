@@ -1,11 +1,16 @@
 #include "core/renderer/Renderer.h"
+#include "core/renderer/RenderCommand.h"
 
 namespace engine {
 namespace renderer {
 
-// TODO(C3NZ): Update this to not be a hardcoded value and instead one that is
-// determined at runtime.
-RendererAPI Renderer::kRenderAPI_ = RendererAPI::OpenGL;
+void Renderer::BeginScene() {}
+void Renderer::EndScene() {}
+
+void Renderer::Submit(const std::shared_ptr<VertexArray> &vertex_array) {
+  vertex_array->Bind();
+  RenderCommand::DrawIndexed(vertex_array);
+}
 
 }  // namespace renderer
 }  // namespace engine
