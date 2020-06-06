@@ -38,12 +38,35 @@ class VertexArray {
    */
   virtual void Unbind() const = 0;
 
+  /**
+   * @fn AddVertexBuffer
+   * @brief Add a vertex buffer to the vertex array.
+   */
   virtual void AddVertexBuffer(
       const std::shared_ptr<VertexBuffer>& vertex_buffer) = 0;
 
+  /**
+   * @fn SetIndexBuffer
+   * @brief Set the index buffer of the vertex array.
+   */
   virtual void SetIndexBuffer(
       const std::shared_ptr<IndexBuffer>& index_buffer) = 0;
 
+
+  /**
+   * @fn GetIndexBuffers
+   */
+  virtual const std::shared_ptr<IndexBuffer>&
+      GetIndexBuffer() const = 0;
+
+  virtual const std::vector<std::shared_ptr<VertexBuffer>>&
+      GetVertexBuffers() const = 0;
+
+  /**
+   * @fn Create
+   * @brief Creates a vertex array through the platform specific API that is
+   * being used at runtime.
+   */
   static VertexArray* Create();
 };
 
