@@ -4,8 +4,6 @@
 #include <initializer_list>
 #include <memory>
 
-#include <glad/glad.h>
-
 #include "core/Assert.h"
 #include "core/Input.h"
 #include "core/Layer.h"
@@ -16,6 +14,8 @@
 #include "core/renderer/Buffer.h"
 #include "core/renderer/Shader.h"
 #include "core/renderer/VertexArray.h"
+#include "core/renderer/Renderer.h"
+#include "core/renderer/RenderCommand.h"
 
 namespace engine {
 
@@ -104,15 +104,14 @@ Application::~Application() {}
  */
 void Application::Run() {
   while (running_) {
-    glClearColor(0.2f, 0.2f, 0.2f, 1);
-    glClear(GL_COLOR_BUFFER_BIT);
+    renderer::RenderCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
+    renderer::RenderCommand::Clear();
 
-    shader_->Bind();
-    vertex_array_->Bind();
+    renderer::Renderer::BeginScene();
 
-    // Bind the vertex array and then draw all of it's elements.
-    glDrawElements(
-        GL_TRIANGLES, index_buffer_->GetCount(), GL_UNSIGNED_INT, nullptr);
+    renderer::Renderer::Submit(vertex_array_);
+
+    renderer::Renderer::EndScene();
 
     for (Layer* layer : layer_stack_) {
       layer->OnUpdate();
