@@ -89,7 +89,7 @@ class ENGINE_API Application {
   std::shared_ptr<renderer::Shader> shader_;
   std::shared_ptr<renderer::VertexBuffer> vertex_buffer_;
   std::shared_ptr<renderer::IndexBuffer> index_buffer_;
-  std::unique_ptr<renderer::VertexArray> vertex_array_;
+  std::shared_ptr<renderer::VertexArray> vertex_array_;
 
   static Application* kApplication_;
 
