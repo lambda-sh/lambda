@@ -5,20 +5,10 @@
 #ifndef ENGINE_SRC_CORE_RENDERER_RENDERER_H_
 #define ENGINE_SRC_CORE_RENDERER_RENDERER_H_
 
+#include "core/renderer/RendererAPI.h"
+
 namespace engine {
 namespace renderer {
-
-/**
- * @enum RendererAPI
- * @brief The graphics APIs that are available through the engine.
- *
- * Available rendering APIs to be set in games for the rendering engine to set
- * which graphics context to use at runtime. Currently only supports OpenGL.
- */
-enum class RendererAPI {
-  None = 0,
-  OpenGL = 1,
-};
 
 /**
  * @class Renderer
@@ -31,9 +21,21 @@ enum class RendererAPI {
  */
 class Renderer {
  public:
-  inline static RendererAPI GetAPI() { return kRenderAPI_; }
+  /**
+   * @fn BeginScene
+   * @brief Begin rendering a scene
+   */
+  static void BeginScene();
+
+  /**
+   * Stop rendering a scene.
+   */
+  static void EndScene();
+
+  static void Submit(const std::shared_ptr<VertexArray>& vertex_array);
+
+  inline static RendererAPI::API GetAPI() { return RendererAPI::GetAPI(); }
  private:
-  static RendererAPI kRenderAPI_;
 };
 
 }  // namespace renderer
