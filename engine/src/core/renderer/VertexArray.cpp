@@ -13,11 +13,11 @@ namespace renderer {
  */
 VertexArray* VertexArray::Create() {
   switch (Renderer::GetAPI()) {
-    case RendererAPI::None:
+    case RendererAPI::API::None:
       ENGINE_CORE_ASSERT(
           false, "There is no rendering API being used/available.");
       return nullptr;
-    case RendererAPI::OpenGL:
+    case RendererAPI::API::OpenGL:
       return new engine::platform::opengl::OpenGLVertexArray();
     default:
       ENGINE_CORE_ASSERT(
