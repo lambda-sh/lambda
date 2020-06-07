@@ -44,7 +44,6 @@ class RenderCommand {
   static RendererAPI* renderer_API_;
 };
 
-
 }  // namespace renderer
 }  // namespace engine
 

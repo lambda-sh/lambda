@@ -42,7 +42,6 @@ Application::Application() {
      0.0f, 0.5f, 0.0f, 1.0f, 1.0f, 0.9f, 1.0f,
   };
 
-
   vertex_array_.reset(renderer::VertexArray::Create());
 
   vertex_buffer_.reset(
@@ -110,6 +109,7 @@ void Application::Run() {
     renderer::Renderer::BeginScene();
 
     renderer::Renderer::Submit(vertex_array_);
+    shader_->Bind();
 
     renderer::Renderer::EndScene();
 
