@@ -19,7 +19,6 @@ class OrthographicCamera {
  public:
   OrthographicCamera(float left, float right, float bottom, float top);
 
-
   inline const float GetRotation() const { return rotation_; }
   void SetRotation(float rotation);
 
@@ -30,15 +29,20 @@ class OrthographicCamera {
   inline const glm::vec3& GetPosition() const { return position_; }
   void SetPosition(const glm::vec3& position);
 
+  inline const glm::mat4& GetProjectionMatrix() { return projection_matrix_; }
+  inline const glm::mat4& GetViewMatrix() { return view_matrix_; }
+  inline const glm::mat4& GetViewProjectionMatrix() {
+      return view_projection_matrix_; }
+
  private:
   glm::mat4 projection_matrix_;
   glm::mat4 view_matrix_;
   glm::mat4 view_projection_matrix_;
 
-  glm::vec3 position_;
+  glm::vec3 position_ = {0.0f, 0.0f, 0.0f};
   float rotation_ = 0.0f;
 
-  void RecalculateView();
+  void RecalculateViewMatrix();
 };
 
 }  // namespace renderer
