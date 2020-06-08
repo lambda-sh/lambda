@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <glm/glm.hpp>
+
 namespace engine {
 namespace renderer {
 
@@ -40,6 +42,8 @@ class Shader {
    * @brief Unbinds the shader from the current graphics context.
    */
   void Unbind() const;
+
+  void UploadUniformMat4(const std::string& name, const glm::mat4& matrix);
 
  private:
   std::uint32_t renderer_ID_;
