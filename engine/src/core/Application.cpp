@@ -16,6 +16,7 @@
 #include "core/renderer/VertexArray.h"
 #include "core/renderer/Renderer.h"
 #include "core/renderer/RenderCommand.h"
+#include "core/renderer/OrthographicCamera.h"
 
 namespace engine {
 
@@ -25,7 +26,7 @@ Application* Application::kApplication_ = nullptr;
  * TODO(C3NZ): This should not carry as much of a load as it currently does
  * and should instead be delegated to applications attempting to use the engine.
  */
-Application::Application() {
+Application::Application() : camera_(-1.6f, 1.6f, -0.9f, 0.9f) {
   ENGINE_CORE_ASSERT(!kApplication_, "Application already exists.");
   kApplication_ = this;
 
@@ -67,13 +68,15 @@ Application::Application() {
       layout(location = 0) in vec3 a_Position;
       layout(location = 1) in vec4 a_Color;
 
+      uniform mat4 u_ViewProjection;
+
       out vec3 v_Position;
       out vec4 v_Color;
 
       void main() {
         v_Position = a_Position;
         v_Color = a_Color;
-        gl_Position = vec4(a_Position, 1.0);
+        gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
       }
   )";
 
@@ -81,6 +84,8 @@ Application::Application() {
       #version 330 core
 
       layout(location = 0) out vec4 color;
+
+      uniform mat4 u_ViewProjection;
 
       in vec4 v_Color;
 
@@ -106,11 +111,11 @@ void Application::Run() {
     renderer::RenderCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
     renderer::RenderCommand::Clear();
 
-    renderer::Renderer::BeginScene();
+    camera_.SetPosition({0.5f, 0.5f, 0.0f});
+    camera_.SetRotation(45.0f);
 
-    renderer::Renderer::Submit(vertex_array_);
-    shader_->Bind();
-
+    renderer::Renderer::BeginScene(camera_);
+    renderer::Renderer::Submit(vertex_array_, shader_);
     renderer::Renderer::EndScene();
 
     for (Layer* layer : layer_stack_) {

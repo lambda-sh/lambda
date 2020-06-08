@@ -23,6 +23,7 @@
 #include "core/renderer/Buffer.h"
 #include "core/renderer/Shader.h"
 #include "core/renderer/VertexArray.h"
+#include "core/renderer/OrthographicCamera.h"
 
 namespace engine {
 
@@ -61,9 +62,10 @@ class ENGINE_API Application {
   void PushLayer(Layer* layer);
 
   /**
-   * Attaches an overlay to the application instance. This allows the
-   * application instance to propage events, renderine, and any desired
-   * pieces of data into the layer.
+   * @fn PushOverlay
+   * @brief Attaches an overlay to the application instance.
+   * This allows the application instance to propage events, renderine,
+   * and any desired pieces of data into the layer.
    */
   void PushOverlay(Layer* layer);
 
@@ -91,6 +93,7 @@ class ENGINE_API Application {
   std::shared_ptr<renderer::IndexBuffer> index_buffer_;
   std::shared_ptr<renderer::VertexArray> vertex_array_;
 
+  renderer::OrthographicCamera camera_;
   static Application* kApplication_;
 
   /**
