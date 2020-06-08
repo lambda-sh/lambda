@@ -29,9 +29,10 @@ class OrthographicCamera {
   inline const glm::vec3& GetPosition() const { return position_; }
   void SetPosition(const glm::vec3& position);
 
-  inline const glm::mat4& GetProjectionMatrix() { return projection_matrix_; }
-  inline const glm::mat4& GetViewMatrix() { return view_matrix_; }
-  inline const glm::mat4& GetViewProjectionMatrix() {
+  inline const glm::mat4& GetProjectionMatrix() const {
+      return projection_matrix_; }
+  inline const glm::mat4& GetViewMatrix() const { return view_matrix_; }
+  inline const glm::mat4& GetViewProjectionMatrix() const {
       return view_projection_matrix_; }
 
  private:
