@@ -7,6 +7,10 @@
 
 #include "core/renderer/RendererAPI.h"
 
+#include "core/renderer/OrthographicCamera.h"
+#include "core/renderer/Shader.h"
+
+
 namespace engine {
 namespace renderer {
 
@@ -25,17 +29,25 @@ class Renderer {
    * @fn BeginScene
    * @brief Begin rendering a scene
    */
-  static void BeginScene();
+  static void BeginScene(const OrthographicCamera& camera);
 
   /**
    * Stop rendering a scene.
    */
   static void EndScene();
 
-  static void Submit(const std::shared_ptr<VertexArray>& vertex_array);
+  static void Submit(
+      const std::shared_ptr<VertexArray>& vertex_array,
+      const std::shared_ptr<Shader>& shader);
 
   inline static RendererAPI::API GetAPI() { return RendererAPI::GetAPI(); }
+
  private:
+  struct SceneData {
+    glm::mat4 ViewProjectionMatrix;
+  };
+
+  static SceneData* scene_data_;
 };
 
 }  // namespace renderer
