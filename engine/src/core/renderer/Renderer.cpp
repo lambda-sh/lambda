@@ -13,6 +13,9 @@ void Renderer::BeginScene(const OrthographicCamera& camera) {
 }
 void Renderer::EndScene() {}
 
+/**
+ * Binds both the shader and vertex array before issuing a draw call.
+ */
 void Renderer::Submit(
     const std::shared_ptr<VertexArray>& vertex_array,
     const std::shared_ptr<Shader>& shader) {
