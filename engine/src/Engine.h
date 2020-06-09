@@ -8,6 +8,8 @@
 #ifndef ENGINE_SRC_ENGINE_H_
 #define ENGINE_SRC_ENGINE_H_
 
+// ------------------------------------ CORE -----------------------------------
+
 #include "core/Application.h"
 #include "core/Input.h"
 #include "core/KeyCodes.h"
@@ -17,9 +19,17 @@
 #include "core/MouseButtonCodes.h"
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiLayer.h"
+
+// --------------------------------- RENDERING ---------------------------------
+
 #include "core/renderer/Buffer.h"
+#include "core/renderer/OrthographicCamera.h"
+#include "core/renderer/RenderCommand.h"
 #include "core/renderer/Renderer.h"
 #include "core/renderer/Shader.h"
+#include "core/renderer/VertexArray.h"
+
+// --------------------------------- Entrypoint --------------------------------
 
 #include "core/Entrypoint.h"
 
