@@ -43,6 +43,10 @@ class Shader {
    */
   void Unbind() const;
 
+  /**
+   * @fn UploadUniformMat4
+   * @brief Allows the uploading of uniform4s into the shader.
+   */
   void UploadUniformMat4(const std::string& name, const glm::mat4& matrix);
 
  private:
