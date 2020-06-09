@@ -26,7 +26,7 @@ Application* Application::kApplication_ = nullptr;
  * TODO(C3NZ): This should not carry as much of a load as it currently does
  * and should instead be delegated to applications attempting to use the engine.
  */
-Application::Application() : camera_(-1.6f, 1.6f, -0.9f, 0.9f) {
+Application::Application() {
   ENGINE_CORE_ASSERT(!kApplication_, "Application already exists.");
   kApplication_ = this;
 
@@ -35,67 +35,6 @@ Application::Application() : camera_(-1.6f, 1.6f, -0.9f, 0.9f) {
 
   imgui_layer_ = new imgui::ImGuiLayer();
   PushLayer(imgui_layer_);
-
-  // Setup our vertices.
-  float vertices[3 * 7] = {
-    -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.9f, 1.0f,
-     0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
-     0.0f, 0.5f, 0.0f, 1.0f, 1.0f, 0.9f, 1.0f,
-  };
-
-  vertex_array_.reset(renderer::VertexArray::Create());
-
-  vertex_buffer_.reset(
-      renderer::VertexBuffer::Create(vertices, sizeof(vertices)));
-
-  renderer::BufferLayout layout_init_list = {
-      { renderer::ShaderDataType::Float3, "a_Position"},
-      { renderer::ShaderDataType::Float4, "a_Color", true}};
-
-  renderer::BufferLayout layout(layout_init_list);
-  vertex_buffer_->SetLayout(layout);
-
-  vertex_array_->AddVertexBuffer(vertex_buffer_);
-
-  unsigned int indices[3] = { 0, 1, 2 };
-  index_buffer_.reset(renderer::IndexBuffer::Create(indices, 3));
-
-  vertex_array_->SetIndexBuffer(index_buffer_);
-
-  std::string vertex_source = R"(
-      #version 330 core
-
-      layout(location = 0) in vec3 a_Position;
-      layout(location = 1) in vec4 a_Color;
-
-      uniform mat4 u_ViewProjection;
-
-      out vec3 v_Position;
-      out vec4 v_Color;
-
-      void main() {
-        v_Position = a_Position;
-        v_Color = a_Color;
-        gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
-      }
-  )";
-
-  std::string fragment_source = R"(
-      #version 330 core
-
-      layout(location = 0) out vec4 color;
-
-      uniform mat4 u_ViewProjection;
-
-      in vec4 v_Color;
-
-      void main() {
-        color = v_Color;
-      }
-  )";
-
-
-  shader_.reset(new renderer::Shader(vertex_source, fragment_source));
 }
 
 Application::~Application() {}
@@ -108,16 +47,6 @@ Application::~Application() {}
  */
 void Application::Run() {
   while (running_) {
-    renderer::RenderCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
-    renderer::RenderCommand::Clear();
-
-    camera_.SetPosition({0.5f, 0.5f, 0.0f});
-    camera_.SetRotation(45.0f);
-
-    renderer::Renderer::BeginScene(camera_);
-    renderer::Renderer::Submit(vertex_array_, shader_);
-    renderer::Renderer::EndScene();
-
     for (Layer* layer : layer_stack_) {
       layer->OnUpdate();
     }

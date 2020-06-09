@@ -88,12 +88,6 @@ class ENGINE_API Application {
   bool running_ = true;
   imgui::ImGuiLayer* imgui_layer_;
   std::unique_ptr<Window> window_;
-  std::shared_ptr<renderer::Shader> shader_;
-  std::shared_ptr<renderer::VertexBuffer> vertex_buffer_;
-  std::shared_ptr<renderer::IndexBuffer> index_buffer_;
-  std::shared_ptr<renderer::VertexArray> vertex_array_;
-
-  renderer::OrthographicCamera camera_;
   static Application* kApplication_;
 
   /**
