@@ -1,8 +1,13 @@
+#include <glm/glm.hpp>
+
 #include "Engine.h"
 
 class ExampleLayer : public engine::Layer {
  public:
-  ExampleLayer() : Layer("Example"), camera_(-1.6f, 1.6f, -0.9f, 0.9f) {
+  ExampleLayer() :
+      Layer("Example"),
+      camera_(-1.6f, 1.6f, -0.9f, 0.9f),
+      camera_position_({0.0f, 0.0f, 0.0f}) {
     // Setup our vertices.
     float vertices[3 * 7] = {
       -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.9f, 1.0f,
@@ -65,10 +70,22 @@ class ExampleLayer : public engine::Layer {
   }
 
   void OnUpdate() override {
+    if (engine::Input::IsKeyPressed(ENGINE_KEY_W)) {
+      camera_position_.y += camera_speed_;
+    } else if (engine::Input::IsKeyPressed(ENGINE_KEY_S)) {
+      camera_position_.y -= camera_speed_;
+    }
+
+    if (engine::Input::IsKeyPressed(ENGINE_KEY_A)) {
+      camera_position_.x -= camera_speed_;
+    } else if (engine::Input::IsKeyPressed(ENGINE_KEY_D)) {
+      camera_position_.x += camera_speed_;
+    }
+
     engine::renderer::RenderCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
     engine::renderer::RenderCommand::Clear();
 
-    camera_.SetPosition({0.5f, 0.5f, 0.0f});
+    camera_.SetPosition(camera_position_);
     camera_.SetRotation(45.0f);
 
     engine::renderer::Renderer::BeginScene(camera_);
@@ -87,6 +104,8 @@ class ExampleLayer : public engine::Layer {
   std::shared_ptr<engine::renderer::VertexArray> vertex_array_;
 
   engine::renderer::OrthographicCamera camera_;
+  glm::vec3 camera_position_;
+  float camera_speed_ = 0.01f;
 };
 
 class Sandbox : public engine::Application {
