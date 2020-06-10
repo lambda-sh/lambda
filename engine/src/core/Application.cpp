@@ -22,10 +22,6 @@ namespace engine {
 
 Application* Application::kApplication_ = nullptr;
 
-/**
- * TODO(C3NZ): This should not carry as much of a load as it currently does
- * and should instead be delegated to applications attempting to use the engine.
- */
 Application::Application() {
   ENGINE_CORE_ASSERT(!kApplication_, "Application already exists.");
   kApplication_ = this;
