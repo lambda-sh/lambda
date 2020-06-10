@@ -32,6 +32,11 @@ void OpenGLContext::Init() {
 }
 
 void OpenGLContext::SwapBuffers() {
+  int width, height;
+
+  glfwGetFramebufferSize(window_handle_, &width, &height);
+  glViewport(0, 0, width, height);
+
   glfwSwapBuffers(window_handle_);
 }
 
