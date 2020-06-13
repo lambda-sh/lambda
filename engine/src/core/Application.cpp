@@ -61,7 +61,7 @@ void Application::OnEvent(events::Event* event) {
   dispatcher.Dispatch<events::WindowCloseEvent>
       (BIND_EVENT_FN(Application::OnWindowClosed));
 
-  for (auto layer : util::Reverse<LayerStack>(layer_stack_)) {
+  for (Layer* layer : util::Reverse<LayerStack>(layer_stack_)) {
     layer->OnEvent(event);
     if (event->HasBeenHandled()) {
       break;
