@@ -11,6 +11,7 @@
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
+#include "core/util/Reverse.h"
 
 namespace engine {
 
@@ -60,9 +61,8 @@ void Application::OnEvent(events::Event* event) {
   dispatcher.Dispatch<events::WindowCloseEvent>
       (BIND_EVENT_FN(Application::OnWindowClosed));
 
-  // Pass the event to all needed layers on the stack.
-  for (auto it = layer_stack_.end(); it != layer_stack_.begin();) {
-    (*--it)->OnEvent(event);
+  for (auto layer : util::Reverse<LayerStack>(layer_stack_)) {
+    layer->OnEvent(event);
     if (event->HasBeenHandled()) {
       break;
     }
