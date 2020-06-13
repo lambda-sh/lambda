@@ -11,12 +11,6 @@
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
-#include "core/renderer/Buffer.h"
-#include "core/renderer/Shader.h"
-#include "core/renderer/VertexArray.h"
-#include "core/renderer/Renderer.h"
-#include "core/renderer/RenderCommand.h"
-#include "core/renderer/OrthographicCamera.h"
 
 namespace engine {
 
@@ -26,7 +20,7 @@ Application::Application() {
   ENGINE_CORE_ASSERT(!kApplication_, "Application already exists.");
   kApplication_ = this;
 
-  window_ = std::unique_ptr<Window>(Window::Create());
+  window_.reset(Window::Create());
   window_->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 
   imgui_layer_ = new imgui::ImGuiLayer();
