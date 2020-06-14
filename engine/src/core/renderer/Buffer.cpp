@@ -1,6 +1,6 @@
 #include "core/renderer/Buffer.h"
 
-#include "core/Assert.h"
+#include "core/util/Assert.h"
 #include "core/renderer/Renderer.h"
 #include "core/renderer/RendererAPI.h"
 #include "platform/opengl/OpenGLBuffer.h"

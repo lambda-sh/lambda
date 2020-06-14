@@ -16,7 +16,7 @@
 #include <ostream>
 #include <vector>
 
-#include "core/Assert.h"
+#include "core/util/Assert.h"
 #include "core/util/Log.h"
 
 namespace engine {

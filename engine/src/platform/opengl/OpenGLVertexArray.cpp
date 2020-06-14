@@ -2,7 +2,7 @@
 
 #include <glad/glad.h>
 
-#include "core/Assert.h"
+#include "core/util/Assert.h"
 #include "core/renderer/Buffer.h"
 
 namespace engine {

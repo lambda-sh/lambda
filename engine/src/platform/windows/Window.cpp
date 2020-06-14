@@ -5,13 +5,13 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "core/Assert.h"
 #include "core/Core.h"
-#include "core/util/Log.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/KeyEvent.h"
 #include "core/events/MouseEvent.h"
+#include "core/util/Assert.h"
+#include "core/util/Log.h"
 
 namespace engine {
 

@@ -1,6 +1,6 @@
 #include "core/renderer/VertexArray.h"
 
-#include "core/Assert.h"
+#include "core/util/Assert.h"
 #include "core/renderer/Renderer.h"
 
 #include "platform/opengl/OpenGLVertexArray.h"
