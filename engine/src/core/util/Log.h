@@ -4,14 +4,14 @@
  *
  * Can be used both in the engine and client application.
  */
-#ifndef ENGINE_SRC_CORE_LOG_H_
-#define ENGINE_SRC_CORE_LOG_H_
+#ifndef ENGINE_SRC_CORE_UTIL_LOG_H_
+#define ENGINE_SRC_CORE_UTIL_LOG_H_
 
 #include <memory>
 
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 
-#include "Core.h"
+#include "core/Core.h"
 
 namespace engine {
 namespace logging {
@@ -21,7 +21,7 @@ namespace logging {
  * @brief The container class for managing static instances of the engine and
  * client loggers.
  */
-class ENGINE_API Log {
+class Log {
  public:
   static void Init();
 
@@ -37,10 +37,6 @@ class ENGINE_API Log {
 
 }  // namespace logging
 }  // namespace engine
-
-// TODO(C3NZ): Evaluate if there's a better way to implement our logger.
-// Ideally, I would like to attach these macros as functions of the Log class,
-// but am not sure how to handle the variadic parameters as of now.
 
 /**
  * @def ENGINE_CORE_TRACE(...)
@@ -112,4 +108,4 @@ class ENGINE_API Log {
 #define ENGINE_CLIENT_FATAL(...) \
     ::engine::logging::Log::GetClientLogger()->fatal(__VA_ARGS__)
 
-#endif  // ENGINE_SRC_CORE_LOG_H_
+#endif  // ENGINE_SRC_CORE_UTIL_LOG_H_
