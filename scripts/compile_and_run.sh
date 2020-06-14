@@ -1,7 +1,7 @@
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 pushd $ROOT_DIR
 
-export CC=gcc CXX=g++
+export CC=gcc-10.1 CXX=g++-10.1
 
 if [ "$1" = "Release" ] || [ "$1" = "Debug" ]; then
     echo "Compiling a $1 build."
