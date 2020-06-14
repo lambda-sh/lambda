@@ -4,13 +4,13 @@
 #include <initializer_list>
 #include <memory>
 
-#include "core/Assert.h"
 #include "core/Input.h"
 #include "core/Layer.h"
-#include "core/util/Log.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
+#include "core/util/Assert.h"
+#include "core/util/Log.h"
 #include "core/util/Reverse.h"
 
 namespace engine {

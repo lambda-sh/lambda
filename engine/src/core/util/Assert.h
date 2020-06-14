@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/Assert.h
+ * @file engine/src/core/util/Assert.h
  * @brief This is a utility file that is primarily used for debugging the
  * internals of the engine when incorrect behavior or invalid use of the API is
  * occurring.
