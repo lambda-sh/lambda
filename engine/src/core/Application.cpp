@@ -7,7 +7,7 @@
 #include "core/Assert.h"
 #include "core/Input.h"
 #include "core/Layer.h"
-#include "core/Log.h"
+#include "core/util/Log.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
@@ -61,7 +61,7 @@ void Application::OnEvent(events::Event* event) {
   dispatcher.Dispatch<events::WindowCloseEvent>
       (BIND_EVENT_FN(Application::OnWindowClosed));
 
-  for (Layer* layer : util::Reverse<LayerStack>(layer_stack_)) {
+  for (Layer* layer : util::Reverse(layer_stack_)) {
     layer->OnEvent(event);
     if (event->HasBeenHandled()) {
       break;

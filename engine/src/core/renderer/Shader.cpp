@@ -6,7 +6,7 @@
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "core/Log.h"
+#include "core/util/Log.h"
 
 namespace engine {
 namespace renderer {
