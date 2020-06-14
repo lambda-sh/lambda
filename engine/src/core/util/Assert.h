@@ -22,8 +22,8 @@
  * its core to halt the application whenever the condition being asserted is
  * false.
  */
-#ifndef ENGINE_SRC_CORE_ASSERT_H_
-#define ENGINE_SRC_CORE_ASSERT_H_
+#ifndef ENGINE_SRC_CORE_UTIL_ASSERT_H_
+#define ENGINE_SRC_CORE_UTIL_ASSERT_H_
 
 #include "core/Core.h"
 #include "core/util/Log.h"
@@ -43,4 +43,4 @@
   #define ENGINE_CORE_ASSERT(x, ...)
 #endif  // ENGINE_ENABLE_ASSERTS
 
-#endif  // ENGINE_SRC_CORE_ASSERT_H_
+#endif  // ENGINE_SRC_CORE_UTIL_ASSERT_H_
