@@ -9,7 +9,7 @@
 #define ENGINE_SRC_CORE_ENTRYPOINT_H_
 
 #include "core/Application.h"
-#include "core/Log.h"
+#include "core/util/Log.h"
 
 #ifdef ENGINE_PLATFORM_LINUX
 

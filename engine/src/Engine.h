@@ -15,10 +15,10 @@
 #include "core/KeyCodes.h"
 #include "core/KeyCodes.h"
 #include "core/Layer.h"
-#include "core/Log.h"
 #include "core/MouseButtonCodes.h"
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiLayer.h"
+#include "core/util/Log.h"
 
 // --------------------------------- RENDERING ---------------------------------
 

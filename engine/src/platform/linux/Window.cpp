@@ -6,11 +6,11 @@
 
 #include "core/Assert.h"
 #include "core/Core.h"
-#include "core/Log.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/KeyEvent.h"
 #include "core/events/MouseEvent.h"
+#include "core/util/Log.h"
 #include "platform/opengl/OpenGLContext.h"
 
 namespace engine {

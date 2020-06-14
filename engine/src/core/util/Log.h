@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/Log.h
+ * @file engine/src/core/util/Log.h
  * @brief The engines logging utility.
  *
  * Can be used both in the engine and client application.

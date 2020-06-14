@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "core/Assert.h"
-#include "core/Log.h"
+#include "core/util/Log.h"
 
 namespace engine {
 namespace renderer {

@@ -26,7 +26,7 @@
 #define ENGINE_SRC_CORE_ASSERT_H_
 
 #include "core/Core.h"
-#include "core/Log.h"
+#include "core/util/Log.h"
 
 #if ENGINE_ENABLE_ASSERTS
   #define ENGINE_CLIENT_ASSERT(x, ...) { \
