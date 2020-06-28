@@ -18,7 +18,13 @@
 #include "core/MouseButtonCodes.h"
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiLayer.h"
+
+// ------------------------------------ UTIL -----------------------------------
+
+#include "core/util/Assert.h"
 #include "core/util/Log.h"
+#include "core/util/Reverse.h"
+#include "core/util/Time.h"
 
 // --------------------------------- RENDERING ---------------------------------
 
