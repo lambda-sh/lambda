@@ -1,6 +1,8 @@
-
 # Created by https://www.gitignore.io/api/linux,cpp,c,cmake,macos,opengl
 # Edit at https://www.gitignore.io/?templates=linux,cpp,c,cmake,macos,opengl
+
+# Ignore this satanic file.
+CMakeDoxygenDefaults.cmake
 
 ### C ###
 # Prerequisites
