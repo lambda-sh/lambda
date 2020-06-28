@@ -28,5 +28,4 @@ int main() {
 }
 
 #endif  // ENGINE_PLATFORM_LINUX
-
 #endif  // ENGINE_SRC_CORE_ENTRYPOINT_H_
