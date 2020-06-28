@@ -11,5 +11,5 @@ repos:
       - id: cpplint
         name: Lint-engine
         args: [
-          "--filter=-legal/copyright,-build/include",
+          "--filter=-legal/copyright,-build/include,-build/c++11",
           ]
