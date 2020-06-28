@@ -20,10 +20,7 @@
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiLayer.h"
-#include "core/renderer/Buffer.h"
-#include "core/renderer/Shader.h"
-#include "core/renderer/VertexArray.h"
-#include "core/renderer/OrthographicCamera.h"
+#include "core/util/Time.h"
 
 namespace engine {
 
@@ -70,9 +67,9 @@ class ENGINE_API Application {
   void PushOverlay(Layer* layer);
 
   /**
-   * This gets the window implementiation for the current window system.
-   * Currently, only opengl is known to be supported for both linux and windows
-   * platforms.
+   * @fn GetWindow
+   * @brief Gets a read only reference to the window pointer that is currently
+   * being used.
    */
   inline const Window& GetWindow() const { return *window_; }
 
@@ -84,8 +81,9 @@ class ENGINE_API Application {
   inline static Application& GetApplication() {return *kApplication_; }
 
  private:
-  LayerStack layer_stack_;
   bool running_ = true;
+  LayerStack layer_stack_;
+  util::Time last_frame_time_;
   imgui::ImGuiLayer* imgui_layer_;
   std::unique_ptr<Window> window_;
   static Application* kApplication_;

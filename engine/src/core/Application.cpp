@@ -1,5 +1,6 @@
 #include "core/Application.h"
 
+#include <chrono>
 #include <functional>
 #include <initializer_list>
 #include <memory>
@@ -12,6 +13,7 @@
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
 #include "core/util/Reverse.h"
+#include "core/util/Timestep.h"
 
 namespace engine {
 
@@ -38,8 +40,12 @@ Application::~Application() {}
  */
 void Application::Run() {
   while (running_) {
+    util::Time current_frame_time;
+    util::TimeStep time_step(last_frame_time_, current_frame_time);
+
+    last_frame_time_ = current_frame_time;
     for (Layer* layer : layer_stack_) {
-      layer->OnUpdate();
+      layer->OnUpdate(time_step);
     }
 
     imgui_layer_->Begin();
