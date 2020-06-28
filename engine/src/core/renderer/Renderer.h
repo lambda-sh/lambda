@@ -32,13 +32,19 @@ class Renderer {
   static void BeginScene(const OrthographicCamera& camera);
 
   /**
-   * Stop rendering a scene.
+   * @fn EndScene
+   * @brief Stop rendering a scene.
    */
   static void EndScene();
 
+  /**
+   * @fn Submit
+   * @brief Submit a scene data to the engine.
+   */
   static void Submit(
       const std::shared_ptr<VertexArray>& vertex_array,
-      const std::shared_ptr<Shader>& shader);
+      const std::shared_ptr<Shader>& shader,
+      const glm::mat4& transform = glm::mat4(1.0f));
 
   inline static RendererAPI::API GetAPI() { return RendererAPI::GetAPI(); }
 
