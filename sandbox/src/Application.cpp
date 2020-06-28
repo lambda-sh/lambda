@@ -69,17 +69,20 @@ class ExampleLayer : public engine::Layer {
     shader_.reset(new engine::renderer::Shader(vertex_source, fragment_source));
   }
 
-  void OnUpdate() override {
+  void OnUpdate(engine::util::TimeStep time_step) override {
+    float ts = time_step.InSeconds<float>();
+    float ts2 = time_step.InMicroSeconds<double>();
+
     if (engine::Input::IsKeyPressed(ENGINE_KEY_W)) {
-      camera_position_.y += camera_speed_;
+      camera_position_.y += camera_speed_ * ts;
     } else if (engine::Input::IsKeyPressed(ENGINE_KEY_S)) {
-      camera_position_.y -= camera_speed_;
+      camera_position_.y -= camera_speed_ * ts;
     }
 
     if (engine::Input::IsKeyPressed(ENGINE_KEY_A)) {
-      camera_position_.x -= camera_speed_;
+      camera_position_.x -= camera_speed_ * ts;
     } else if (engine::Input::IsKeyPressed(ENGINE_KEY_D)) {
-      camera_position_.x += camera_speed_;
+      camera_position_.x += camera_speed_ * ts;
     }
 
     engine::renderer::RenderCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
