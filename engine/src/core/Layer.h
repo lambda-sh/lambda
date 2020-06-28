@@ -11,6 +11,7 @@
 
 #include "core/Core.h"
 #include "core/events/Event.h"
+#include "core/util/Time.h"
 
 namespace engine {
 
@@ -44,7 +45,7 @@ class ENGINE_API Layer {
    *
    * This can only be accessed if the layer is attached to the engine.
    */
-  virtual void OnUpdate() {}
+  virtual void OnUpdate(util::TimeStep time_step) {}
 
   /**
    * @fn OnEvent
