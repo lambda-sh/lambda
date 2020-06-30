@@ -61,11 +61,12 @@ class ExampleLayer : public engine::Layer {
         layout(location = 0) out vec4 color;
 
         uniform mat4 u_ViewProjection;
+        uniform vec4 u_Color;
 
         in vec4 v_Color;
 
         void main() {
-          color = v_Color;
+          color = u_Color;
         }
     )";
 
@@ -95,9 +96,9 @@ class ExampleLayer : public engine::Layer {
     }
 
     if (engine::Input::IsKeyPressed(ENGINE_KEY_J)) {
-      square_position_.x -= camera_speed_ * ts;
+      square_position_.x -= square_move_speed_ * ts;
     } else if (engine::Input::IsKeyPressed(ENGINE_KEY_L)) {
-      square_position_.x += camera_speed_ * ts;
+      square_position_.x += square_move_speed_ * ts;
     }
 
     engine::renderer::RenderCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
@@ -106,9 +107,29 @@ class ExampleLayer : public engine::Layer {
     camera_.SetPosition(camera_position_);
     camera_.SetRotation(45.0f);
 
-    glm::mat4 transform = glm::translate(glm::mat4(1.0f), square_position_);
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 
     engine::renderer::Renderer::BeginScene(camera_);
+
+    glm::vec4 red_color(0.8f, 0.3f, 0.2f, 1.0f);
+    glm::vec4 blue_color(0.2f, 0.3f, 0.8f, 1.0f);
+
+    for (int y = 0; y < 20; ++y) {
+      for (int x = 0; x < 20; ++x) {
+        glm::vec3 pos(x * 0.11f, y * 0.11f, 0.0f);
+        glm::mat4 transform = glm::translate(glm::mat4(1.0f), pos) * scale;
+
+        if (x % 2 == 0) {
+          shader_->UploadUniformFloat4("u_Color", red_color);
+        } else {
+          shader_->UploadUniformFloat4("u_Color", blue_color);
+        }
+
+        engine::renderer::Renderer::Submit(vertex_array_, shader_, transform);
+      }
+    }
+
+    glm::mat4 transform = glm::translate(glm::mat4(1.0f), square_position_);
     engine::renderer::Renderer::Submit(vertex_array_, shader_, transform);
     engine::renderer::Renderer::EndScene();
   }
