@@ -49,6 +49,12 @@ class Shader {
    */
   void UploadUniformMat4(const std::string& name, const glm::mat4& matrix);
 
+  /**
+   * @fn UploadUniformFloat4
+   * @brief Allows the uploading of uniform float 4s into the shader.
+   */
+  void UploadUniformFloat4(const std::string& name, const glm::vec4& matrix);
+
  private:
   std::uint32_t renderer_ID_;
 };
