@@ -90,5 +90,4 @@ bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
   return true;
 }
 
-
 }  // namespace engine
