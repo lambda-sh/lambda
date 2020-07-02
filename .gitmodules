@@ -10,3 +10,6 @@
 [submodule "docs"]
 	path = docs
 	url = https://github.com/C3NZ/game-engine-docs.git
+[submodule "engine/vendor/spdlog"]
+	path = engine/vendor/spdlog
+	url = https://github.com/gabime/spdlog.git
