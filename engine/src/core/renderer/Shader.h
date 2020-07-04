@@ -14,47 +14,26 @@ namespace renderer {
 
 /**
  * @class Shader
- * @brief The Shader API.
- *
- * Expects sources to be strings that are designed for the shading language
- * that is being used in the API.
+ * @brief The abstract Shader API.
  */
 class Shader {
  public:
-  /**
-   * @fn Shader
-   * @brief Instantiates a Shader with vertex and fragment source strings.
-   *
-   * Source strings are expected to be written for the shading language that
-   * the current graphics API is using to compile shaders.
-   */
-  Shader(const std::string& vertexSource, const std::string& fragmentSource);
-  ~Shader();
+  virtual ~Shader() = default;
 
   /**
    * @fn Bind
    * @brief Binds the shader to the current graphics context.
    */
-  void Bind() const;
+  virtual void Bind() const = 0;
 
   /**
    * @fn Unbind
    * @brief Unbinds the shader from the current graphics context.
    */
-  void Unbind() const;
+  virtual void Unbind() const = 0;
 
-  /**
-   * @fn UploadUniformMat4
-   * @brief Allows the uploading of uniform4s into the shader.
-   */
-  void UploadUniformMat4(const std::string& name, const glm::mat4& matrix);
-
-  /**
-   * @fn UploadUniformFloat4
-   * @brief Allows the uploading of uniform float 4s into the shader.
-   */
-  void UploadUniformFloat4(const std::string& name, const glm::vec4& matrix);
-
+  static Shader* Create(
+      const std::string& vertex_source, const std::string& fragment_source);
  private:
   std::uint32_t renderer_ID_;
 };
