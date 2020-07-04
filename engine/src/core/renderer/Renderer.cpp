@@ -4,6 +4,7 @@
 
 #include "core/renderer/RenderCommand.h"
 #include "core/renderer/OrthographicCamera.h"
+#include "platform/opengl/OpenGLShader.h"
 
 namespace engine {
 namespace renderer {
@@ -23,9 +24,15 @@ void Renderer::Submit(
     const std::shared_ptr<Shader>& shader,
     const glm::mat4& transform) {
   shader->Bind();
-  shader->UploadUniformMat4(
+
+  // TODO(C3NZ): This is a temporary cast to an opengl specific shader and
+  // should be replaced when the rendering api becomes more mature.
+  const auto& cast = std::dynamic_pointer_cast<platform::opengl::OpenGLShader>
+      (shader);
+
+  cast->UploadUniformMat4(
       "u_ViewProjection", scene_data_->ViewProjectionMatrix);
-  shader->UploadUniformMat4("u_Transform", transform);
+  cast->UploadUniformMat4("u_Transform", transform);
 
   vertex_array->Bind();
   RenderCommand::DrawIndexed(vertex_array);
