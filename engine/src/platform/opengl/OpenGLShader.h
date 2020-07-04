@@ -9,10 +9,11 @@
 
 #include <glm/glm.hpp>
 
+#include "core/renderer/Shader.h"
+
 namespace engine {
 namespace platform {
 namespace opengl {
-
 
 /**
  * @class Shader
@@ -21,17 +22,15 @@ namespace opengl {
  * Expects sources to be strings that are designed for the shading language
  * that is being used in the API.
  */
-class OpenGLShader {
+class OpenGLShader final : public renderer::Shader {
  public:
   /**
-   * @fn Shader
-   * @brief Instantiates a Shader with vertex and fragment source strings.
-   *
-   * Source strings are expected to be written for the shading language that
-   * the current graphics API is using to compile shaders.
+   * @fn OpenGLShader
+   * @brief Instantiates an OpenGL Shader with vertex and fragment source
+   * strings.
    */
   OpenGLShader(
-      const std::string& vertexSource, const std::string& fragmentSource);
+      const std::string& vertex_source, const std::string& fragment_source);
   ~OpenGLShader();
 
   /**
@@ -47,16 +46,46 @@ class OpenGLShader {
   void Unbind() const;
 
   /**
-   * @fn UploadUniformMat4
-   * @brief Allows the uploading of uniform4s into the shader.
+   * @fn UploadUniformInt
+   * @brief Upload an integer into the shader.
    */
-  void UploadUniformMat4(const std::string& name, const glm::mat4& matrix);
+  void UploadUniformInt(const std::string& name, const int& value);
+
+  /**
+   * @fn UploadUniformFloat
+   * @brief Upload a float into the shader.
+   */
+  void UploadUniformFloat(const std::string& name, const float& value);
+
+  /**
+   * @fn UploadUniformFloat2
+   * @brief Upload a uniform of 2 floats into the shader.
+   */
+  void UploadUniformFloat2(const std::string& name, const glm::vec2& values);
+
+  /**
+   * @fn UploadUniformFloat3
+   * @brief Upload a uniform of 3 floats into the shader.
+   */
+  void UploadUniformFloat3(const std::string& name, const glm::vec3& values);
 
   /**
    * @fn UploadUniformFloat4
    * @brief Allows the uploading of uniform float 4s into the shader.
    */
   void UploadUniformFloat4(const std::string& name, const glm::vec4& matrix);
+
+  /**
+   * @fn UploadUniformMat3
+   * @brief Upload a uniform of Matrix 3s into the shader.
+   */
+  void UploadUniformMat3(const std::string& name, const glm::mat3& matrix);
+
+  /**
+   * @fn UploadUniformMat4
+   * @brief Upload a uniform of Matrix 4s into the shader.
+   */
+  void UploadUniformMat4(const std::string& name, const glm::mat4& matrix);
 
  private:
   std::uint32_t renderer_ID_;
