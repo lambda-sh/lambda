@@ -1,7 +1,10 @@
 #include <glm/glm.hpp>
 
 #include "Engine.h"
+#include "platform/opengl/OpenGLShader.h"
 #include "ext/matrix_transform.hpp"
+#include <imgui.h>
+#include <glm/gtc/type_ptr.hpp>
 
 class ExampleLayer : public engine::Layer {
  public:
@@ -70,7 +73,8 @@ class ExampleLayer : public engine::Layer {
         }
     )";
 
-    shader_.reset(new engine::renderer::Shader(vertex_source, fragment_source));
+    shader_.reset(
+        engine::renderer::Shader::Create(vertex_source, fragment_source));
   }
 
   void OnUpdate(engine::util::TimeStep time_step) override {
@@ -111,8 +115,9 @@ class ExampleLayer : public engine::Layer {
 
     engine::renderer::Renderer::BeginScene(camera_);
 
-    glm::vec4 red_color(0.8f, 0.3f, 0.2f, 1.0f);
-    glm::vec4 blue_color(0.2f, 0.3f, 0.8f, 1.0f);
+
+    const auto& cast = std::dynamic_pointer_cast<
+      engine::platform::opengl::OpenGLShader>(shader_);
 
     for (int y = 0; y < 20; ++y) {
       for (int x = 0; x < 20; ++x) {
@@ -120,9 +125,9 @@ class ExampleLayer : public engine::Layer {
         glm::mat4 transform = glm::translate(glm::mat4(1.0f), pos) * scale;
 
         if (x % 2 == 0) {
-          shader_->UploadUniformFloat4("u_Color", red_color);
+          cast->UploadUniformFloat4("u_Color", red_color_);
         } else {
-          shader_->UploadUniformFloat4("u_Color", blue_color);
+          cast->UploadUniformFloat4("u_Color", blue_color_);
         }
 
         engine::renderer::Renderer::Submit(vertex_array_, shader_, transform);
@@ -134,7 +139,11 @@ class ExampleLayer : public engine::Layer {
     engine::renderer::Renderer::EndScene();
   }
 
-  void OnImGuiRender() override {}
+  void OnImGuiRender() override {
+    ImGui::Begin("Settings");
+    ImGui::ColorEdit4("Colors", glm::value_ptr(red_color_));
+    ImGui::End();
+  }
 
   void OnEvent(engine::events::Event* event) override {}
 
@@ -149,6 +158,8 @@ class ExampleLayer : public engine::Layer {
   glm::vec3 square_position_;
   float camera_speed_ = 0.01f;
   float square_move_speed_ = 0.03f;
+  glm::vec4 red_color_ = {0.8f, 0.3f, 0.2f, 1.0f};
+  glm::vec4 blue_color_ = {0.2f, 0.3f, 0.8f, 1.0f};
 };
 
 class Sandbox : public engine::Application {
