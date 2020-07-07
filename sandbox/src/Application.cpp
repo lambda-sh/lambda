@@ -22,8 +22,8 @@ class ExampleLayer : public engine::Layer {
 
     vertex_array_.reset(engine::renderer::VertexArray::Create());
 
-    vertex_buffer_.reset(
-        engine::renderer::VertexBuffer::Create(vertices, sizeof(vertices)));
+    vertex_buffer_ = engine::renderer::VertexBuffer::Create(
+        vertices, sizeof(vertices));
 
     engine::renderer::BufferLayout layout_init_list = {
         { engine::renderer::ShaderDataType::Float3, "a_Position"},
@@ -35,7 +35,7 @@ class ExampleLayer : public engine::Layer {
     vertex_array_->AddVertexBuffer(vertex_buffer_);
 
     unsigned int indices[3] = { 0, 1, 2 };
-    index_buffer_.reset(engine::renderer::IndexBuffer::Create(indices, 3));
+    index_buffer_ = engine::renderer::IndexBuffer::Create(indices, 3);
 
     vertex_array_->SetIndexBuffer(index_buffer_);
 
