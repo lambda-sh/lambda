@@ -148,10 +148,10 @@ class ExampleLayer : public engine::Layer {
   void OnEvent(engine::events::Event* event) override {}
 
  private:
-  std::shared_ptr<engine::renderer::Shader> shader_;
-  std::shared_ptr<engine::renderer::VertexBuffer> vertex_buffer_;
-  std::shared_ptr<engine::renderer::IndexBuffer> index_buffer_;
-  std::shared_ptr<engine::renderer::VertexArray> vertex_array_;
+  engine::memory::Shared<engine::renderer::Shader> shader_;
+  engine::memory::Shared<engine::renderer::VertexBuffer> vertex_buffer_;
+  engine::memory::Shared<engine::renderer::IndexBuffer> index_buffer_;
+  engine::memory::Shared<engine::renderer::VertexArray> vertex_array_;
 
   engine::renderer::OrthographicCamera camera_;
   glm::vec3 camera_position_;
