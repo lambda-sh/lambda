@@ -16,6 +16,7 @@
 #include <ostream>
 #include <vector>
 
+#include "core/memory/Pointers.h"
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
 
@@ -264,7 +265,7 @@ class VertexBuffer {
    * and what should be used by users to create Vertex Buffers that are
    * compatible with the rendering API.
    */
-  static VertexBuffer* Create(float* vertices, uint32_t size);
+  static memory::Shared<VertexBuffer> Create(float* vertices, uint32_t size);
 };
 
 /**
@@ -310,7 +311,7 @@ class IndexBuffer {
    * and what should be used by users to create Vertex Buffers that are
    * compatible with the rendering API.
    */
-  static IndexBuffer* Create(uint32_t* indices, uint32_t count);
+  static memory::Shared<IndexBuffer> Create(uint32_t* indices, uint32_t count);
 };
 
 }  // namespace renderer
