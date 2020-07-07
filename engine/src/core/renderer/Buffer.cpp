@@ -3,19 +3,22 @@
 #include "core/util/Assert.h"
 #include "core/renderer/Renderer.h"
 #include "core/renderer/RendererAPI.h"
+#include "core/memory/Pointers.h"
 #include "platform/opengl/OpenGLBuffer.h"
 
 namespace engine {
 namespace renderer {
 
-VertexBuffer* VertexBuffer::Create(float* vertices, uint32_t size) {
+memory::Shared<VertexBuffer> VertexBuffer::Create(
+    float* vertices, uint32_t size) {
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
       ENGINE_CORE_ASSERT(
           false, "There is no rendering API being used/available.");
       return nullptr;
     case RendererAPI::API::OpenGL:
-      return new platform::opengl::OpenGLVertexBuffer(vertices, size);
+      return memory::CreateShared<platform::opengl::OpenGLVertexBuffer>(
+          vertices, size);
     default:
       ENGINE_CORE_ASSERT(
           false,
@@ -24,14 +27,16 @@ VertexBuffer* VertexBuffer::Create(float* vertices, uint32_t size) {
   }
 }
 
-IndexBuffer* IndexBuffer::Create(uint32_t* indices, uint32_t count) {
+memory::Shared<IndexBuffer> IndexBuffer::Create(
+    uint32_t* indices, uint32_t count) {
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
       ENGINE_CORE_ASSERT(
           false, "There is no rendering API being used/available.");
       return nullptr;
     case RendererAPI::API::OpenGL:
-      return new platform::opengl::OpenGLIndexBuffer(indices, count);
+      return memory::CreateShared<platform::opengl::OpenGLIndexBuffer>(
+          indices, count);
     default:
       ENGINE_CORE_ASSERT(
           false,
