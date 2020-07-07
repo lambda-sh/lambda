@@ -26,6 +26,10 @@
 #include "core/util/Reverse.h"
 #include "core/util/Time.h"
 
+// ---------------------------------- MEMORY -----------------------------------
+
+#include "core/memory/Pointers.h"
+
 // --------------------------------- RENDERING ---------------------------------
 
 #include "core/renderer/Buffer.h"
