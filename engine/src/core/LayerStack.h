@@ -11,6 +11,7 @@
 
 #include "core/Core.h"
 #include "core/Layer.h"
+#include "core/memory/Pointers.h"
 
 namespace engine {
 
@@ -32,34 +33,37 @@ class ENGINE_API LayerStack {
    * @fn PushLayer
    * @brief Push a layer on to the Layer stack.
    */
-  void PushLayer(Layer* layer);
+  void PushLayer(memory::Shared<Layer> layer);
 
   /**
    * @fn PushOverlay
    * @brief Pushes an overlay on to the back of the stack.
    */
-  void PushOverlay(Layer* overlay);
+  void PushOverlay(memory::Shared<Layer> overlay);
 
   /**
    * @fn PopLayer
    * @brief Pops a layer off the layer stack.
    */
-  void PopLayer(Layer* layer);
+  void PopLayer(memory::Shared<Layer> layer);
 
   /**
    * @fn PopOverlay
    * @brief Pops an overlay off the layer stack.
    */
-  void PopOverlay(Layer* layer);
+  void PopOverlay(memory::Shared<Layer> layer);
 
-  std::vector<Layer*>::iterator begin() { return layers_.begin(); }
-  std::vector<Layer*>::iterator end() { return layers_.end(); }
+  std::vector<memory::Shared<Layer>>::iterator begin() {
+    return layers_.begin(); }
+  std::vector<memory::Shared<Layer>>::iterator end() { return layers_.end(); }
 
-  std::vector<Layer*>::reverse_iterator rbegin() { return layers_.rbegin(); }
-  std::vector<Layer*>::reverse_iterator rend() { return layers_.rend(); }
+  std::vector<memory::Shared<Layer>>::reverse_iterator rbegin() {
+    return layers_.rbegin(); }
+  std::vector<memory::Shared<Layer>>::reverse_iterator rend() {
+    return layers_.rend(); }
 
  private:
-  std::vector<Layer*> layers_;
+  std::vector<memory::Shared<Layer>> layers_;
   unsigned int layer_insert_location_ = 0;
 };
 

@@ -3,32 +3,24 @@
 #include <vector>
 
 #include "core/Layer.h"
+#include "core/memory/Pointers.h"
 
 namespace engine {
 
 LayerStack::LayerStack() {}
 
-// Layers are destroyed as soon as the layer stack also is.
-LayerStack::~LayerStack() {
-  for (Layer* layer : layers_) {
-    delete layer;
-  }
-}
+LayerStack::~LayerStack() {}
 
-void LayerStack::PushLayer(Layer* layer) {
+void LayerStack::PushLayer(memory::Shared<Layer> layer) {
   layers_.emplace(layers_.begin() + layer_insert_location_, layer);
   ++layer_insert_location_;
 }
 
-// Layers will always be pushed into the back of the list as the last thing to
-// be rendered/handled. This ensures that overlays are always on top of layers
-void LayerStack::PushOverlay(Layer* overlay) {
+void LayerStack::PushOverlay(memory::Shared<Layer> overlay) {
   layers_.emplace_back(overlay);
 }
 
-// Once a layer has been popped off of the LayerStack, it is no longer managed
-// by the layer stack.
-void LayerStack::PopLayer(Layer* layer) {
+void LayerStack::PopLayer(memory::Shared<Layer> layer) {
   auto it = std::find(layers_.begin(), layers_.end(), layer);
   if (it != layers_.end()) {
     layers_.erase(it);
@@ -36,9 +28,7 @@ void LayerStack::PopLayer(Layer* layer) {
   }
 }
 
-// Once an overlay has been popped off of the LayerStack, it is no longer
-// managed by the layer stack.
-void LayerStack::PopOverlay(Layer* overlay) {
+void LayerStack::PopOverlay(memory::Shared<Layer> overlay) {
   auto it = std::find(layers_.begin(), layers_.end(), overlay);
   if (it != layers_.end()) {
     layers_.erase(it);

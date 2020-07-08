@@ -9,6 +9,7 @@
 #include "core/events/ApplicationEvent.h"
 #include "core/events/KeyEvent.h"
 #include "core/events/MouseEvent.h"
+#include "core/memory/Pointers.h"
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
 #include "platform/opengl/OpenGLContext.h"
@@ -18,8 +19,10 @@ namespace engine {
 #ifdef ENGINE_PLATFORM_LINUX
 
 // Will create a windows based implementation of the window handler.
-Window* Window::Create(const engine::WindowProperties& properties) {
-  return new platform::linux::WindowImplementation(properties);
+memory::Shared<Window> Window::Create(
+    const engine::WindowProperties& properties) {
+  return memory::CreateShared<platform::linux::WindowImplementation>(
+      properties);
 }
 
 #endif  // ENGINE_PLATFORM_LINUX

@@ -6,6 +6,7 @@
 #define ENGINE_SRC_CORE_RENDERER_RENDERCOMMAND_H_
 
 #include "core/renderer/RendererAPI.h"
+#include "core/memory/Pointers.h"
 
 namespace engine {
 namespace renderer {
@@ -36,12 +37,12 @@ class RenderCommand {
    * @fn DrawIndexed
    * @brief Issues a platform specific graphics API to draw a vertex array.
    */
-  static void DrawIndexed(const std::shared_ptr<VertexArray>& vertex_array) {
+  static void DrawIndexed(const memory::Shared<VertexArray>& vertex_array) {
     renderer_API_->DrawIndexed(vertex_array);
   }
 
  private:
-  static RendererAPI* renderer_API_;
+  static memory::Unique<RendererAPI> renderer_API_;
 };
 
 }  // namespace renderer

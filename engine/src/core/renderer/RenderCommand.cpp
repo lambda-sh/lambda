@@ -5,8 +5,8 @@
 namespace engine {
 namespace renderer {
 
-RendererAPI* RenderCommand::renderer_API_ =
-    new platform::opengl::OpenGLRendererAPI();
+memory::Unique<RendererAPI> RenderCommand::renderer_API_ =
+    memory::CreateUnique<platform::opengl::OpenGLRendererAPI>();
 
 }  // namespace renderer
 }  // namespace engine
