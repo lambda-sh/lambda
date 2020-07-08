@@ -1,3 +1,7 @@
+/**
+ * @file Time.h
+ * @brief Timing
+ */
 #ifndef ENGINE_SRC_CORE_UTIL_TIME_H_
 #define ENGINE_SRC_CORE_UTIL_TIME_H_
 

@@ -9,6 +9,7 @@
 
 #include "core/Core.h"
 #include "core/events/Event.h"
+#include "core/memory/Pointers.h"
 
 namespace engine {
 
@@ -93,7 +94,7 @@ class ENGINE_API Window {
    * @brief Create a platform specific window. (Needs to be specified with
    * compiler flags.)
    */
-  static Window* Create(
+  static memory::Shared<Window> Create(
       const WindowProperties& properties = WindowProperties());
 };
 

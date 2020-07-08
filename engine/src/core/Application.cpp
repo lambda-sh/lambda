@@ -10,6 +10,7 @@
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
+#include "core/memory/Pointers.h"
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
 #include "core/util/Reverse.h"
@@ -17,16 +18,16 @@
 
 namespace engine {
 
-Application* Application::kApplication_ = nullptr;
+memory::Unique<Application> Application::kApplication_ = nullptr;
 
 Application::Application() {
   ENGINE_CORE_ASSERT(!kApplication_, "Application already exists.");
-  kApplication_ = this;
+  kApplication_.reset(this);
 
-  window_.reset(Window::Create());
+  window_ = Window::Create();
   window_->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 
-  imgui_layer_ = new imgui::ImGuiLayer();
+  imgui_layer_ = memory::CreateShared<imgui::ImGuiLayer>();
   PushLayer(imgui_layer_);
 }
 
@@ -44,12 +45,12 @@ void Application::Run() {
     util::TimeStep time_step(last_frame_time_, current_frame_time);
 
     last_frame_time_ = current_frame_time;
-    for (Layer* layer : layer_stack_) {
+    for (memory::Shared<Layer> layer : layer_stack_) {
       layer->OnUpdate(time_step);
     }
 
     imgui_layer_->Begin();
-    for (Layer* layer : layer_stack_) {
+    for (memory::Shared<Layer> layer : layer_stack_) {
       layer->OnImGuiRender();
     }
     imgui_layer_->End();
@@ -67,7 +68,7 @@ void Application::OnEvent(events::Event* event) {
   dispatcher.Dispatch<events::WindowCloseEvent>
       (BIND_EVENT_FN(Application::OnWindowClosed));
 
-  for (Layer* layer : util::Reverse(layer_stack_)) {
+  for (memory::Shared<Layer> layer : util::Reverse(layer_stack_)) {
     layer->OnEvent(event);
     if (event->HasBeenHandled()) {
       break;
@@ -75,12 +76,12 @@ void Application::OnEvent(events::Event* event) {
   }
 }
 
-void Application::PushLayer(Layer* layer) {
+void Application::PushLayer(memory::Shared<Layer> layer) {
   layer_stack_.PushLayer(layer);
   layer->OnAttach();
 }
 
-void Application::PushOverlay(Layer* layer) {
+void Application::PushOverlay(memory::Shared<Layer> layer) {
   layer_stack_.PushOverlay(layer);
   layer->OnAttach();
 }

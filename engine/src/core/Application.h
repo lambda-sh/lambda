@@ -20,6 +20,7 @@
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiLayer.h"
+#include "core/memory/Pointers.h"
 #include "core/util/Time.h"
 
 namespace engine {
@@ -56,7 +57,7 @@ class ENGINE_API Application {
    * This allows the application instance to propage events, rendering, and any
    * desired pieces of data into the layer.
    */
-  void PushLayer(Layer* layer);
+  void PushLayer(memory::Shared<Layer> layer);
 
   /**
    * @fn PushOverlay
@@ -64,7 +65,7 @@ class ENGINE_API Application {
    * This allows the application instance to propage events, renderine,
    * and any desired pieces of data into the layer.
    */
-  void PushOverlay(Layer* layer);
+  void PushOverlay(memory::Shared<Layer> layer);
 
   /**
    * @fn GetWindow
@@ -84,9 +85,9 @@ class ENGINE_API Application {
   bool running_ = true;
   LayerStack layer_stack_;
   util::Time last_frame_time_;
-  imgui::ImGuiLayer* imgui_layer_;
-  std::unique_ptr<Window> window_;
-  static Application* kApplication_;
+  memory::Shared<imgui::ImGuiLayer> imgui_layer_;
+  memory::Shared<Window> window_;
+  static memory::Unique<Application> kApplication_;
 
   /**
    * Handles what to do when a window close event is received by the
