@@ -164,7 +164,7 @@ class ExampleLayer : public engine::Layer {
 
 class Sandbox : public engine::Application {
  public:
-  Sandbox() { PushLayer(new ExampleLayer()); }
+  Sandbox() { PushLayer(engine::memory::CreateShared<ExampleLayer>()); }
   ~Sandbox() {}
 };
 
