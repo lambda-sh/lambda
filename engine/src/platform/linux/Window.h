@@ -39,8 +39,8 @@ class WindowImplementation : public engine::Window {
   inline unsigned int GetWidth() const override { return properties_.Width; }
   inline unsigned int GetHeight() const override { return properties_.Height; }
 
-  inline void SetEventCallback(const EventCallbackFunction& callback) override
-      { properties_.EventCallback = callback; }
+  inline void SetEventCallback(const EventCallbackFunction& callback) override {
+      properties_.EventCallback = callback; }
 
   inline void* GetNativeWindow() const override { return window_; }
  private:

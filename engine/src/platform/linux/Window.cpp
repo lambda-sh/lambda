@@ -170,25 +170,25 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
 
   glfwSetScrollCallback(
       window_,
-      [](GLFWwindow* window, double xOffset, double yOffset) {
+      [](GLFWwindow* window, double x_offset, double y_offset) {
       internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
         events::MouseScrolledEvent event(
-            static_cast<float>(xOffset), static_cast<float>(yOffset));
+            static_cast<float>(x_offset), static_cast<float>(y_offset));
         properties->EventCallback(&event);
       });
 
   glfwSetCursorPosCallback(
       window_,
-      [](GLFWwindow* window, double xPosition, double yPosition) {
+      [](GLFWwindow* window, double x_position, double y_position) {
       internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
         events::MouseMovedEvent event(
-            static_cast<float>(xPosition), static_cast<float>(yPosition));
+            static_cast<float>(x_position), static_cast<float>(y_position));
         properties->EventCallback(&event);
       });
 }
@@ -206,12 +206,7 @@ void WindowImplementation::OnUpdate() {
 
 // Setup the current window to use or not use Vertical sync.
 void WindowImplementation::SetVerticalSync(bool enabled) {
-  if (enabled) {
-    glfwSwapInterval(1);
-  } else {
-    glfwSwapInterval(0);
-  }
-
+  glfwSwapInterval(enabled ? 1 : 0);
   properties_.VerticalSync = enabled;
 }
 

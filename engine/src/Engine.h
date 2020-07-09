@@ -39,7 +39,7 @@
 #include "core/renderer/Shader.h"
 #include "core/renderer/VertexArray.h"
 
-// --------------------------------- Entrypoint --------------------------------
+// --------------------------------- ENTRYPOINT --------------------------------
 
 #include "core/Entrypoint.h"
 
