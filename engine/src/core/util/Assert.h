@@ -1,3 +1,26 @@
+#ifndef ENGINE_SRC_CORE_UTIL_ASSERT_H_
+#define ENGINE_SRC_CORE_UTIL_ASSERT_H_
+
+#include "core/Core.h"
+#include "core/util/Log.h"
+
+#if ENGINE_ENABLE_ASSERTS
+  #define ENGINE_CLIENT_ASSERT(x, ...) { \
+      if (!(x)) { \
+          ENGINE_CLIENT_ERROR("Assertion Failed: {0},", __VA_ARGS__); \
+          ENGINE_DEBUG_BREAK(); }}
+
+  #define ENGINE_CORE_ASSERT(x, ...) { \
+      if (!(x)) { \
+          ENGINE_CORE_ERROR("Assertion Failed: {0},", __VA_ARGS__); \
+          ENGINE_DEBUG_BREAK(); }}
+#else
+  #define ENGINE_CLIENT_ASSERT(x, ...)
+  #define ENGINE_CORE_ASSERT(x, ...)
+#endif  // ENGINE_ENABLE_ASSERTS
+
+#endif  // ENGINE_SRC_CORE_UTIL_ASSERT_H_
+
 /**
  * @file engine/src/core/util/Assert.h
  * @brief This is a utility file that is primarily used for debugging the
@@ -22,25 +45,3 @@
  * its core to halt the application whenever the condition being asserted is
  * false.
  */
-#ifndef ENGINE_SRC_CORE_UTIL_ASSERT_H_
-#define ENGINE_SRC_CORE_UTIL_ASSERT_H_
-
-#include "core/Core.h"
-#include "core/util/Log.h"
-
-#if ENGINE_ENABLE_ASSERTS
-  #define ENGINE_CLIENT_ASSERT(x, ...) { \
-      if (!(x)) { \
-          ENGINE_CLIENT_ERROR("Assertion Failed: {0},", __VA_ARGS__); \
-          ENGINE_DEBUG_BREAK(); }}
-
-  #define ENGINE_CORE_ASSERT(x, ...) { \
-      if (!(x)) { \
-          ENGINE_CORE_ERROR("Assertion Failed: {0},", __VA_ARGS__); \
-          ENGINE_DEBUG_BREAK(); }}
-#else
-  #define ENGINE_CLIENT_ASSERT(x, ...)
-  #define ENGINE_CORE_ASSERT(x, ...)
-#endif  // ENGINE_ENABLE_ASSERTS
-
-#endif  // ENGINE_SRC_CORE_UTIL_ASSERT_H_
