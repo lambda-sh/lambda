@@ -1,3 +1,12 @@
+/**
+ * @file engine/src/core/Application.h
+ * @brief Contains the Application class definitions.
+ *
+ * The Application class is the primary driver of all applications being run by
+ * the engine. It is designed to handle everything from events to rendering
+ * without having to expose itself to applications that are being created with
+ * it.
+ */
 #ifndef ENGINE_SRC_CORE_APPLICATION_H_
 #define ENGINE_SRC_CORE_APPLICATION_H_
 
@@ -49,16 +58,6 @@ Application* CreateApplication();
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_APPLICATION_H_
-
-/**
- * @file engine/src/core/Application.h
- * @brief Contains the Application class definitions.
- *
- * The Application class is the primary driver of all applications being run by
- * the engine. It is designed to handle everything from events to rendering
- * without having to expose itself to applications that are being created with
- * it.
- */
 
 /**
  * @class Application
