@@ -1,8 +1,3 @@
-/**
- * @file Pointers.h
- * @brief Abstraction for handling pointers within the engine. Currently just
- * aliases for unique and shared pointers provided by c++11.
- */
 #ifndef ENGINE_SRC_CORE_MEMORY_POINTERS_H_
 #define ENGINE_SRC_CORE_MEMORY_POINTERS_H_
 
@@ -31,3 +26,9 @@ Shared<T> CreateShared(Args&&... args) {
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_MEMORY_POINTERS_H_
+
+/**
+ * @file Pointers.h
+ * @brief Abstraction for handling pointers within the engine. Currently just
+ * aliases for unique and shared pointers provided by c++11.
+ */
