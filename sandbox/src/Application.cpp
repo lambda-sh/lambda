@@ -13,12 +13,10 @@ class ExampleLayer : public engine::Layer {
       camera_(-1.6f, 1.6f, -0.9f, 0.9f),
       camera_position_({0.0f, 0.0f, 0.0f}),
       square_position_(0.0f) {
-    // Setup our vertices.
     float vertices[3 * 7] = {
-      -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.9f, 1.0f,
-       0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
-       0.0f, 0.5f, 0.0f, 1.0f, 1.0f, 0.9f, 1.0f,
-    };
+      -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
+       0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+       0.0f,  0.5f, 0.0f, 0.0f, 1.0f};
 
     vertex_array_.reset(engine::renderer::VertexArray::Create());
 
@@ -27,7 +25,7 @@ class ExampleLayer : public engine::Layer {
 
     engine::renderer::BufferLayout layout_init_list = {
         { engine::renderer::ShaderDataType::Float3, "a_Position"},
-        { engine::renderer::ShaderDataType::Float4, "a_Color", true}};
+        { engine::renderer::ShaderDataType::Float2, "a_TexCoord"}};
 
     engine::renderer::BufferLayout layout(layout_init_list);
     vertex_buffer_->SetLayout(layout);
@@ -75,6 +73,39 @@ class ExampleLayer : public engine::Layer {
 
     shader_.reset(
         engine::renderer::Shader::Create(vertex_source, fragment_source));
+
+    std::string texture_vertex_source = R"(
+        #version 330 core
+
+        layout(location = 0) in vec3 a_Position;
+        layout(location = 1) in vec2 a_TexCoord;
+
+        uniform mat4 u_ViewProjection;
+        uniform mat4 u_Transform;
+
+        out vec2 v_TexCoord;
+
+        void main() {
+          v_TexCoord = a_TexCoord;
+          gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);
+        }
+    )";
+
+    std::string texture_fragment_source = R"(
+        #version 330 core
+
+        layout(location = 0) out vec4 color;
+
+        in vec2 v_TexCoord;
+        uniform vec4 u_Color;
+
+        void main() {
+          color = vec4(v_TexCoord, 0.0, 1.0);
+        }
+    )";
+
+    texture_shader_.reset(engine::renderer::Shader::Create(
+        texture_vertex_source, texture_fragment_source));
   }
 
   void OnUpdate(engine::util::TimeStep time_step) override {
@@ -135,7 +166,8 @@ class ExampleLayer : public engine::Layer {
     }
 
     glm::mat4 transform = glm::translate(glm::mat4(1.0f), square_position_);
-    engine::renderer::Renderer::Submit(vertex_array_, shader_, transform);
+    engine::renderer::Renderer::Submit(
+        vertex_array_, texture_shader_, transform);
     engine::renderer::Renderer::EndScene();
   }
 
@@ -149,6 +181,7 @@ class ExampleLayer : public engine::Layer {
 
  private:
   engine::memory::Shared<engine::renderer::Shader> shader_;
+  engine::memory::Shared<engine::renderer::Shader> texture_shader_;
   engine::memory::Shared<engine::renderer::VertexBuffer> vertex_buffer_;
   engine::memory::Shared<engine::renderer::IndexBuffer> index_buffer_;
   engine::memory::Shared<engine::renderer::VertexArray> vertex_array_;
