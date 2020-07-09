@@ -70,18 +70,22 @@ Application* CreateApplication();
  */
 
 /**
+ * @class Application
  * @fn Run
  * @brief Controls the applications lifecycle and all lower level
  * functionality like input, events, rendering, networking, etc.
  */
 
 /**
+ * @class Application
  * @fn OnEvent
  * @param event An event pointer generated to be handled by the application.
  * @brief Passes events to all the layers.
  */
 
 /**
+ * @class Application
+ * @fn PushLayer
  * @param layer
  * @brief Attaches a layer to the application instance.
  *
@@ -90,6 +94,7 @@ Application* CreateApplication();
  */
 
 /**
+ * @class Application
  * @fn PushOverlay
  * @brief Attaches an overlay to the application instance.
  * This allows the application instance to propage events, renderine,
@@ -97,13 +102,8 @@ Application* CreateApplication();
  */
 
 /**
+ * @class Application
  * @fn GetWindow
  * @brief Gets a read only reference to the window pointer that is currently
  * being used.
- */
-
-/**
- * The application is instantiated at runtime and this function is independent
- * of any single application instance (There can currently only be one
- * instance running, anyways.)
  */
