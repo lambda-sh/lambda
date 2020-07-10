@@ -1,7 +1,7 @@
 #include "core/util/Log.h"
 
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 namespace engine {
 namespace util {
