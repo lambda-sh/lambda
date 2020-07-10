@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/Input.h
+ * @file Input.h
  * @brief The input abstraction class that handles input across
  */
 #ifndef ENGINE_SRC_CORE_INPUT_H_
@@ -20,15 +20,11 @@ namespace engine {
  */
 class ENGINE_API Input {
  public:
-  // -------------------------------- Key input --------------------------------
-
   /**
    * @brief Check if the current key is being pressed.
    */
   inline static bool IsKeyPressed(int key_code)
       { return kInput_->IsKeyPressedImpl(key_code); }
-
-  // ------------------------------- Mouse input -------------------------------
 
   /**
    * @brief Get the current mouse x position.

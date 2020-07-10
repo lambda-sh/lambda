@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/Entrypoint.h
+ * @file Entrypoint.h
  * @brief The entrypoint into the engine.
  *
  * It defines the CreateApplication function as an external function that is to

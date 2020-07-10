@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/Window.h
+ * @file Window.h
  * @brief The Abstract Window definition.
  */
 #ifndef ENGINE_SRC_CORE_WINDOW_H_
