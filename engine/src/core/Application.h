@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/Application.h
+ * @file Application.h
  * @brief Contains the Application class definitions.
  *
  * The Application class is the primary driver of all applications being run by
@@ -24,14 +24,6 @@
 
 namespace engine {
 
-/**
- * @class Application
- * @brief The primary driver of all applications extending this engine.
- *
- * The engine implements the application runner as an individual platform
- * independent application instance that manages the lifecycle of the core and
- * lower level components of the engine.
- */
 class ENGINE_API Application {
  public:
   Application();
@@ -56,13 +48,59 @@ class ENGINE_API Application {
   bool OnWindowClosed(const events::WindowCloseEvent& event);
 };
 
-/**
- * This is an external function that is to be defined inside of the client. It
- * allows the game developers to simply write a CreateApplication() method that
- * initializes their game specific code inside of the engine.
- */
 Application* CreateApplication();
 
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_APPLICATION_H_
+
+/**
+ * @class engine::Application
+ * @brief The primary driver of all applications extending this engine.
+ *
+ * The engine implements the application runner as an individual platform
+ * independent application instance that manages the lifecycle of the core and
+ * lower level components of the engine.
+ */
+
+/**
+ * @fn engine::Application::Run
+ * @brief Controls the applications lifecycle and all lower level
+ * functionality like input, events, rendering, networking, etc.
+ */
+
+/**
+ * @fn engine::Application::OnEvent
+ * @brief Passes events to all the layers.
+ * @param event An event pointer generated to be handled by the application.
+ */
+
+/**
+ * @fn engine::Application::PushLayer
+ * @brief Attaches a layer to the application instance.
+ * @param layer
+ *
+ * This allows the application instance to propage events, rendering, and any
+ * desired pieces of data into the layer.
+ */
+
+/**
+ * @fn engine::Application::PushOverlay
+ * @brief Attaches an overlay to the application instance.
+ *
+ * This allows the application instance to propage events, rendering,
+ * and any desired pieces of data into the layer.
+ */
+
+/**
+ * @fn engine::Application::OnWindowClosed
+ * @brief Handles what to do when a window has been closed.
+ */
+
+/**
+ * @fn engine::CreateApplication
+ * @brief An external function that is to be defined inside of the client.
+ *
+ * It allows the game developers to simply write a CreateApplication() method
+ * that initializes their game specific code inside of the engine.
+ */

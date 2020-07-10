@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/Core.h
+ * @file Core.h
  * @brief Core macros to be used all throughout the engine for development and
  * production purposes.
  *
@@ -9,33 +9,6 @@
  * `core/Assert.h` more useful as they extend core and provide logging and
  * assertions (If enabled).
  */
-
-/**
- * @def ENGINE_API
- * @brief Handles exporting the engine if it's being built as a dll.
- * Potentially deprecated and shouldn't be used outside of the engine.
- */
-
-/**
- * @def ENGINE_ENABLE_ASSERTS
- * @brief Allows the usage of `core/Assert.h` Assertions to execute in the
- * engine.
- */
-
-/**
- * @def ENGINE_DEBUG_BREAK()
- * @brief Allows the execution of breakpoints throughout the engine when
- * debuggin.
- */
-
-/**
- * @def BIT(x)
- * @param x The number to represent in bits.
- * @brief Creates the bit representation of an integer.
- *
- * Mostly for internal usage (Check `engine/src/core/events/Event.h`)
- */
-
 #ifndef ENGINE_SRC_CORE_CORE_H_
 #define ENGINE_SRC_CORE_CORE_H_
 
@@ -76,3 +49,29 @@
 #define BIT(x) (1 << x)
 
 #endif  // ENGINE_SRC_CORE_CORE_H_
+
+/**
+ * @def ENGINE_API
+ * @brief Handles exporting the engine if it's being built as a dll.
+ * Potentially deprecated and shouldn't be used outside of the engine.
+ */
+
+/**
+ * @def ENGINE_ENABLE_ASSERTS
+ * @brief Allows the usage of `core/Assert.h` Assertions to execute in the
+ * engine.
+ */
+
+/**
+ * @def ENGINE_DEBUG_BREAK()
+ * @brief Allows the execution of breakpoints throughout the engine when
+ * debuggin.
+ */
+
+/**
+ * @def BIT(x)
+ * @param x The number to represent in bits.
+ * @brief Creates the bit representation of an integer.
+ *
+ * Mostly for internal usage (Check `engine/src/core/events/Event.h`)
+ */

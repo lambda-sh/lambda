@@ -1,9 +1,6 @@
 #include "core/Application.h"
 
-#include <chrono>
 #include <functional>
-#include <initializer_list>
-#include <memory>
 
 #include "core/Input.h"
 #include "core/Layer.h"
@@ -33,10 +30,6 @@ Application::Application() {
 
 Application::~Application() {}
 
-/**
- * @brief Controls the applications lifecycle and all lower level
- * functionality like input, events, rendering, networking, etc.
- */
 void Application::Run() {
   while (running_) {
     util::Time current_frame_time;
@@ -57,10 +50,6 @@ void Application::Run() {
   }
 }
 
-/**
- * @param event An event pointer generated to be handled by the application.
- * @brief Passes events to all the layers.
- */
 void Application::OnEvent(events::Event* event) {
   events::EventDispatcher dispatcher(event);
   dispatcher.Dispatch<events::WindowCloseEvent>
@@ -74,25 +63,11 @@ void Application::OnEvent(events::Event* event) {
   }
 }
 
-/**
- * @param layer
- * @brief Attaches a layer to the application instance.
- *
- * This allows the application instance to propage events, rendering, and any
- * desired pieces of data into the layer.
- */
 void Application::PushLayer(memory::Shared<Layer> layer) {
   layer_stack_.PushLayer(layer);
   layer->OnAttach();
 }
 
-/**
- * @class Application
- * @fn PushOverlay
- * @brief Attaches an overlay to the application instance.
- * This allows the application instance to propage events, renderine,
- * and any desired pieces of data into the layer.
- */
 void Application::PushOverlay(memory::Shared<Layer> layer) {
   layer_stack_.PushOverlay(layer);
   layer->OnAttach();

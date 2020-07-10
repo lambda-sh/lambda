@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/MouseButtonCodes.h
+ * @file MouseButtonCodes.h
  * @brief Mouse button codes supported by the engine.
  *
  * Check engine/src/core/MouseButtonCodes.h for supported mouse buttons.

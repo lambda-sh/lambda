@@ -1,6 +1,6 @@
 /**
  * @file Time.h
- * @brief Timing
+ * @brief Cross platform timing utility for the game engine.
  */
 #ifndef ENGINE_SRC_CORE_UTIL_TIME_H_
 #define ENGINE_SRC_CORE_UTIL_TIME_H_
@@ -8,7 +8,6 @@
 #include <chrono>
 #include <concepts>
 #include <ratio>
-#include <string>
 
 namespace engine {
 namespace util {
@@ -19,11 +18,6 @@ concept FloatType = std::floating_point<T>;
 using Clock = std::chrono::steady_clock;
 using TimePoint = std::chrono::time_point<Clock>;
 
-/**
- * @class Time
- * @brief A wrapper for working with Time within the game engine. Uses
- * std::steady_clock for a platform independent Monotonic clock.
- */
 class Time {
  public:
   Time() noexcept : time_(Clock::now()) {}
@@ -43,11 +37,6 @@ class Time {
   TimePoint time_;
 };
 
-/**
- * @class TimeStep
- * @brief The timestep between two time intervals. Primarily used for layers to
- * consistently update the engine.
- */
 class TimeStep {
  public:
   TimeStep(Time start, Time stop) : start_(start), stop_(stop) {}
@@ -83,3 +72,55 @@ const T DurationTo(Time start, Time stop) {
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_UTIL_TIME_H_
+
+/**
+ * @class engine::util::Time
+ * @brief A wrapper for working with Time within the game engine. Uses
+ * std::steady_clock for a platform independent Monotonic clock.
+ */
+
+/**
+ * @fn engine::util::Time::InSeconds
+ * @brief Get the current system time in seconds.
+ */
+
+/**
+ * @fn engine::util::Time::InMilliSeconds
+ * @brief Get the current system time in milliseconds.
+ */
+
+/**
+ * @fn engine::util::Time::InMicroSeconds
+ * @brief Get the current system time in microseconds.
+ */
+
+/**
+ * @fn engine::util::Time::GetSeconds
+ * @brief Get the current system time in nanoseconds.
+ */
+
+/**
+ * @class engine::util::TimeStep
+ * @brief The timestep between two time intervals. Primarily used for layers to
+ * consistently update the engine.
+ */
+
+/**
+ * @fn engine::util::TimeStep::InSeconds
+ * @brief Get the interval between two Time objects in seconds.
+ */
+
+/**
+ * @fn engine::util::TimeStep::InMilliSeconds
+ * @brief Get the interval between two Time objects in milliseconds.
+ */
+
+/**
+ * @fn engine::util::TimeStep::InMicroSeconds
+ * @brief Get the interval between two Time objects in microseconds.
+ */
+
+/**
+ * @fn engine::util::TimeStep::InNanoSeconds
+ * @brief Get the interval between two Time objects in nanoseconds.
+ */
