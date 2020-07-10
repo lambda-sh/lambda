@@ -24,6 +24,14 @@
 
 namespace engine {
 
+/**
+ * @class Application
+ * @brief The primary driver of all applications extending this engine.
+ *
+ * The engine implements the application runner as an individual platform
+ * independent application instance that manages the lifecycle of the core and
+ * lower level components of the engine.
+ */
 class ENGINE_API Application {
  public:
   Application();
@@ -58,51 +66,3 @@ Application* CreateApplication();
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_APPLICATION_H_
-
-/**
- * @class Application
- * @brief The primary driver of all applications extending this engine.
- *
- * The engine implements the application runner as an individual platform
- * independent application instance that manages the lifecycle of the core and
- * lower level components of the engine.
- */
-
-/**
- * @class Application
- * @fn Run
- * @brief Controls the applications lifecycle and all lower level
- * functionality like input, events, rendering, networking, etc.
- */
-
-/**
- * @class Application
- * @fn OnEvent
- * @param event An event pointer generated to be handled by the application.
- * @brief Passes events to all the layers.
- */
-
-/**
- * @class Application
- * @fn PushLayer
- * @param layer
- * @brief Attaches a layer to the application instance.
- *
- * This allows the application instance to propage events, rendering, and any
- * desired pieces of data into the layer.
- */
-
-/**
- * @class Application
- * @fn PushOverlay
- * @brief Attaches an overlay to the application instance.
- * This allows the application instance to propage events, renderine,
- * and any desired pieces of data into the layer.
- */
-
-/**
- * @class Application
- * @fn GetWindow
- * @brief Gets a read only reference to the window pointer that is currently
- * being used.
- */

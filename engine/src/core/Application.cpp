@@ -34,10 +34,8 @@ Application::Application() {
 Application::~Application() {}
 
 /**
- * This currently does a lot of custom rendering when in reality it should
- * be implemented by a child project that is running the game. This will change
- * in the future, but at the moment implements a lot of specific rendering
- * tests that are for ensuring that the renderer currently works.
+ * @brief Controls the applications lifecycle and all lower level
+ * functionality like input, events, rendering, networking, etc.
  */
 void Application::Run() {
   while (running_) {
@@ -60,8 +58,8 @@ void Application::Run() {
 }
 
 /**
- * This function only specifically listens for when the window is requested to
- * close before passing the event to layers on the LayerStack.
+ * @param event An event pointer generated to be handled by the application.
+ * @brief Passes events to all the layers.
  */
 void Application::OnEvent(events::Event* event) {
   events::EventDispatcher dispatcher(event);
@@ -76,11 +74,25 @@ void Application::OnEvent(events::Event* event) {
   }
 }
 
+/**
+ * @param layer
+ * @brief Attaches a layer to the application instance.
+ *
+ * This allows the application instance to propage events, rendering, and any
+ * desired pieces of data into the layer.
+ */
 void Application::PushLayer(memory::Shared<Layer> layer) {
   layer_stack_.PushLayer(layer);
   layer->OnAttach();
 }
 
+/**
+ * @class Application
+ * @fn PushOverlay
+ * @brief Attaches an overlay to the application instance.
+ * This allows the application instance to propage events, renderine,
+ * and any desired pieces of data into the layer.
+ */
 void Application::PushOverlay(memory::Shared<Layer> layer) {
   layer_stack_.PushOverlay(layer);
   layer->OnAttach();
