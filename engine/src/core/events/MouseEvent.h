@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/events/MouseEvent.h
+ * @file MouseEvent.h
  * @brief All events related mouse input.
  */
 #ifndef ENGINE_SRC_CORE_EVENTS_MOUSEEVENT_H_
@@ -7,16 +7,12 @@
 
 #include <sstream>
 
-#include "Event.h"
+#include "core/events/Event.h"
 
 namespace engine {
 namespace events {
 
-/**
- * @class MouseMovedEvent
- * @brief Generated whenever the user moves their mouse within the application.
- */
-class ENGINE_API MouseMovedEvent : public Event {
+class MouseMovedEvent : public Event {
  public:
   MouseMovedEvent(float x, float y) : mouse_x_(x), mouse_y_(y) {}
 
@@ -35,12 +31,7 @@ class ENGINE_API MouseMovedEvent : public Event {
   float mouse_x_, mouse_y_;
 };
 
-/**
- * @class MouseScrolledEvent
- * @brief Generated whenever the user scrolls their mouse wheel within the
- * application.
- */
-class ENGINE_API MouseScrolledEvent : public Event {
+class MouseScrolledEvent : public Event {
  public:
   MouseScrolledEvent(float x_offset, float y_offset)
       : x_offset_(x_offset), y_offset_(y_offset) {}
@@ -64,11 +55,7 @@ class ENGINE_API MouseScrolledEvent : public Event {
   float x_offset_, y_offset_;
 };
 
-/**
- * @class MouseButtonEvent
- * @brief The generic Mouse button event.
- */
-class ENGINE_API MouseButtonEvent : public Event {
+class MouseButtonEvent : public Event {
  public:
   inline int GetMouseButton() const { return button_; }
 
@@ -79,12 +66,7 @@ class ENGINE_API MouseButtonEvent : public Event {
   int button_;
 };
 
-/**
- * @class MouseButtonPressedEvent
- * @brief Generated whenever the user presses a mouse button within the
- * application.
- */
-class ENGINE_API MouseButtonPressedEvent : public MouseButtonEvent {
+class MouseButtonPressedEvent : public MouseButtonEvent {
  public:
   explicit MouseButtonPressedEvent(int button) : MouseButtonEvent(button) {}
 
@@ -97,12 +79,7 @@ class ENGINE_API MouseButtonPressedEvent : public MouseButtonEvent {
   EVENT_CLASS_TYPE(kMouseButtonPressed)
 };
 
-/**
- * @class MouseButtonReleasedEvent
- * @brief Generated whenever the user releases a mouse button within an
- * application.
- */
-class ENGINE_API MouseButtonReleasedEvent : public MouseButtonEvent {
+class MouseButtonReleasedEvent : public MouseButtonEvent {
  public:
   explicit MouseButtonReleasedEvent(int button) : MouseButtonEvent(button) {}
 
@@ -119,3 +96,31 @@ class ENGINE_API MouseButtonReleasedEvent : public MouseButtonEvent {
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_EVENTS_MOUSEEVENT_H_
+
+/**
+ * @class engine::events::MouseMovedEvent
+ * @brief Generated whenever the user moves their mouse within the application.
+ */
+
+/**
+ * @class engine::events::MouseScrolledEvent
+ * @brief Generated whenever the user scrolls their mouse wheel within the
+ * application.
+ */
+
+/**
+ * @class engine::events::MouseButtonEvent
+ * @brief The generic Mouse button event.
+ */
+
+/**
+ * @class engine::events::MouseButtonPressedEvent
+ * @brief Generated whenever the user presses a mouse button within the
+ * application.
+ */
+
+/**
+ * @class engine::events::MouseButtonReleasedEvent
+ * @brief Generated whenever the user releases a mouse button within an
+ * application.
+ */

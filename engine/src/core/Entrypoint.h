@@ -16,7 +16,7 @@
 extern engine::Application* engine::CreateApplication();
 
 int main() {
-  engine::logging::Log::Init();
+  engine::util::Log::Init();
   ENGINE_CORE_WARN("Initialized core log");
   ENGINE_CLIENT_INFO("Initialized client log");
 
