@@ -11,13 +11,6 @@
 namespace engine {
 namespace renderer {
 
-/**
- * @class GraphicsContext
- * @brief The GrahpicsContext base class implementation.
- *
- * In order for a graphics API to be supported within the renderer, it needs to
- * extend and implement the functionality found in here.
- */
 class GraphicsContext {
  public:
   virtual void Init() = 0;
@@ -28,3 +21,11 @@ class GraphicsContext {
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_GRAPHICSCONTEXT_H_
+
+/**
+ * @class GraphicsContext
+ * @brief The GrahpicsContext base class implementation.
+ *
+ * In order for a graphics API to be supported within the renderer, it needs to
+ * extend and implement the functionality found in here.
+ */
