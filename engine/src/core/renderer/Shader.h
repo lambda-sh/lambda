@@ -9,6 +9,8 @@
 
 #include <glm/glm.hpp>
 
+#include "core/memory/Pointers.h"
+
 namespace engine {
 namespace renderer {
 
@@ -19,7 +21,7 @@ class Shader {
   virtual void Bind() const = 0;
   virtual void Unbind() const = 0;
 
-  static Shader* Create(
+  static memory::Shared<Shader> Create(
       const std::string& vertex_source, const std::string& fragment_source);
 
  private:
