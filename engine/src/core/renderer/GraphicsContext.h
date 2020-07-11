@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/renderer/GraphicsContext.h
+ * @file GraphicsContext.h
  * @brief The Graphics context definition.
  *
  * Platform independent graphics context that is to serve as the basis for

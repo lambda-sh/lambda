@@ -1,9 +1,9 @@
 #include "core/renderer/Buffer.h"
 
-#include "core/util/Assert.h"
+#include "core/memory/Pointers.h"
 #include "core/renderer/Renderer.h"
 #include "core/renderer/RendererAPI.h"
-#include "core/memory/Pointers.h"
+#include "core/util/Assert.h"
 #include "platform/opengl/OpenGLBuffer.h"
 
 namespace engine {

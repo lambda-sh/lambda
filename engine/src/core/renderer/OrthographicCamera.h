@@ -1,6 +1,7 @@
 /**
- * @file engine/src/core/renderer/OrthographicCamera.h
- * @brief A 2D orthographic camera implementation that is compatible with the renderer.
+ * @file OrthographicCamera.h
+ * @brief A 2D orthographic camera implementation that is compatible with the
+ * renderer.
  */
 #ifndef ENGINE_SRC_CORE_RENDERER_ORTHOGRAPHICCAMERA_H_
 #define ENGINE_SRC_CORE_RENDERER_ORTHOGRAPHICCAMERA_H_
@@ -10,11 +11,6 @@
 namespace engine {
 namespace renderer {
 
-/**
- * @class OrthographicCamera
- * @brief A 2D orthographic camera implementation that is compatible with the
- * engine.
- */
 class OrthographicCamera {
  public:
   OrthographicCamera(float left, float right, float bottom, float top);
@@ -22,10 +18,6 @@ class OrthographicCamera {
   inline const float GetRotation() const { return rotation_; }
   void SetRotation(float rotation);
 
-  /**
-   * @fn GetPosition
-   * @breif Get the cameras position from origin.
-   */
   inline const glm::vec3& GetPosition() const { return position_; }
   void SetPosition(const glm::vec3& position);
 
@@ -50,3 +42,14 @@ class OrthographicCamera {
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_ORTHOGRAPHICCAMERA_H_
+
+/**
+ * @class engine::renderer::OrthographicCamera
+ * @brief A 2D orthographic camera implementation that is compatible with the
+ * engine.
+ */
+
+/**
+ * @fn engine::renderer::OrthographicCamera::GetPosition
+ * @brief Get the cameras position from origin.
+ */
