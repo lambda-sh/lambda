@@ -1,10 +1,10 @@
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <imgui.h>
 
 #include "Engine.h"
-#include "platform/opengl/OpenGLShader.h"
 #include "ext/matrix_transform.hpp"
-#include <imgui.h>
-#include <glm/gtc/type_ptr.hpp>
+#include "platform/opengl/OpenGLShader.h"
 
 class ExampleLayer : public engine::Layer {
  public:
@@ -71,8 +71,7 @@ class ExampleLayer : public engine::Layer {
         }
     )";
 
-    shader_.reset(
-        engine::renderer::Shader::Create(vertex_source, fragment_source));
+    shader_ = engine::renderer::Shader::Create(vertex_source, fragment_source);
 
     std::string texture_vertex_source = R"(
         #version 330 core
@@ -104,8 +103,8 @@ class ExampleLayer : public engine::Layer {
         }
     )";
 
-    texture_shader_.reset(engine::renderer::Shader::Create(
-        texture_vertex_source, texture_fragment_source));
+    texture_shader_ = engine::renderer::Shader::Create(
+        texture_vertex_source, texture_fragment_source);
   }
 
   void OnUpdate(engine::util::TimeStep time_step) override {

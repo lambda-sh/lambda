@@ -6,15 +6,16 @@
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "core/util/Log.h"
-#include "core/renderer/RendererAPI.h"
+#include "core/memory/Pointers.h"
 #include "core/renderer/Renderer.h"
+#include "core/renderer/RendererAPI.h"
+#include "core/util/Log.h"
 #include "platform/opengl/OpenGLShader.h"
 
 namespace engine {
 namespace renderer {
 
-Shader* Shader::Create(
+memory::Shared<Shader> Shader::Create(
     const std::string &vertex_source, const std::string &fragment_source) {
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
@@ -22,7 +23,8 @@ Shader* Shader::Create(
           false, "There is no rendering API being used/available.");
       return nullptr;
     case RendererAPI::API::OpenGL:
-      return new platform::opengl::OpenGLShader(vertex_source, fragment_source);
+      return memory::CreateShared<platform::opengl::OpenGLShader>(
+          vertex_source, fragment_source);
     default:
       ENGINE_CORE_ASSERT(
           false,
