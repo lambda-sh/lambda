@@ -18,7 +18,7 @@ class ExampleLayer : public engine::Layer {
        0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
        0.0f,  0.5f, 0.0f, 0.0f, 1.0f};
 
-    vertex_array_.reset(engine::renderer::VertexArray::Create());
+    vertex_array_ = engine::renderer::VertexArray::Create();
 
     vertex_buffer_ = engine::renderer::VertexBuffer::Create(
         vertices, sizeof(vertices));
