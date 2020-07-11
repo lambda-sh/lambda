@@ -1,5 +1,5 @@
 /**
- * @file engine/src/core/renderer/Renderer.h
+ * @file Renderer.h
  * @brief The rendering API.
  */
 #ifndef ENGINE_SRC_CORE_RENDERER_RENDERER_H_
@@ -14,33 +14,14 @@
 namespace engine {
 namespace renderer {
 
-/**
- * @class Renderer
- * @brief A lightweight rendering API implementation. Allows generalized calls
- * to be written for users
- *
- * A lightweight and not fully finished rendering API that lets you set the a
- * specific graphics context to use for rendering. This must be set externally
- * in any rendering application.
- */
 class Renderer {
  public:
-  /**
-   * @fn BeginScene
-   * @brief Begin rendering a scene
-   */
   static void BeginScene(const OrthographicCamera& camera);
 
-  /**
-   * @fn EndScene
-   * @brief Stop rendering a scene.
-   */
   static void EndScene();
 
-  /**
-   * @fn Submit
-   * @brief Submit a scene data to the engine.
-   */
+  // TODO(C3NZ): update this to use engine memory allocators as opposed to
+  // generic smart pointers.
   static void Submit(
       const std::shared_ptr<VertexArray>& vertex_array,
       const std::shared_ptr<Shader>& shader,
@@ -60,3 +41,29 @@ class Renderer {
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_RENDERER_H_
+
+
+/**
+ * @class engine::renderer::Renderer
+ * @brief A lightweight rendering API implementation. Allows generalized calls
+ * to be written for users
+ *
+ * A lightweight and not fully finished rendering API that lets you set the a
+ * specific graphics context to use for rendering. This must be set externally
+ * in any rendering application.
+ */
+
+/**
+ * @fn engine::renderer::Renderer::BeginScene
+ * @brief Begin rendering a scene
+ */
+
+/**
+ * @fn engine::renderer::Renderer::EndScene
+ * @brief Stop rendering a scene.
+ */
+
+/**
+ * @fn engine::renderer::Renderer::Submit
+ * @brief Submit a scene data to the engine.
+ */
