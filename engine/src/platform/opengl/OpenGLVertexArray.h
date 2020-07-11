@@ -4,6 +4,7 @@
 #include <bits/stdint-uintn.h>
 #include <vector>
 
+#include "core/memory/Pointers.h"
 #include "core/renderer/Buffer.h"
 #include "core/renderer/VertexArray.h"
 
@@ -40,32 +41,32 @@ class OpenGLVertexArray : public renderer::VertexArray {
    * @brief Add a vertex buffer to the current Vertex Array.
    */
   void AddVertexBuffer(
-      const std::shared_ptr<renderer::VertexBuffer>& vertex_buffer) override;
+      const memory::Shared<renderer::VertexBuffer>& vertex_buffer) override;
 
   /**
    * @fn SetIndexBuffer
    * @brief Set the index buffer for rendering all vertex arrays.
    */
   void SetIndexBuffer(
-      const std::shared_ptr<renderer::IndexBuffer>& index_buffer) override;
+      const memory::Shared<renderer::IndexBuffer>& index_buffer) override;
 
   /**
    * @fn GetIndexBuffer
    * @brief Get the index buffer associated with this Vertex Array.
    */
-  inline const std::shared_ptr<renderer::IndexBuffer>& GetIndexBuffer()
+  inline const memory::Shared<renderer::IndexBuffer>& GetIndexBuffer()
       const override { return index_buffer_; }
 
   /**
    * @fn GetVertexBuffers
    * @brief Get the Vertex Buffers that are associated with this Vertex Array.
    */
-  inline const std::vector<std::shared_ptr<renderer::VertexBuffer>>&
+  inline const std::vector<memory::Shared<renderer::VertexBuffer>>&
      GetVertexBuffers() const override { return vertex_buffers_; }
 
  private:
-  std::shared_ptr<renderer::IndexBuffer> index_buffer_;
-  std::vector<std::shared_ptr<renderer::VertexBuffer>> vertex_buffers_;
+  memory::Shared<renderer::IndexBuffer> index_buffer_;
+  std::vector<memory::Shared<renderer::VertexBuffer>> vertex_buffers_;
   uint32_t renderer_id_;
 
 };

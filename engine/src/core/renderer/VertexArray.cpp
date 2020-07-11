@@ -1,5 +1,6 @@
 #include "core/renderer/VertexArray.h"
 
+#include "core/memory/Pointers.h"
 #include "core/util/Assert.h"
 #include "core/renderer/Renderer.h"
 
@@ -11,14 +12,14 @@ namespace renderer {
 /**
  * Only supports Vertex buffers that are available through the rendering API.
  */
-VertexArray* VertexArray::Create() {
+memory::Shared<VertexArray> VertexArray::Create() {
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
       ENGINE_CORE_ASSERT(
           false, "There is no rendering API being used/available.");
       return nullptr;
     case RendererAPI::API::OpenGL:
-      return new engine::platform::opengl::OpenGLVertexArray();
+      return memory::CreateShared<platform::opengl::OpenGLVertexArray>();
     default:
       ENGINE_CORE_ASSERT(
           false,
