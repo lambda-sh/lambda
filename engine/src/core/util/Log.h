@@ -20,14 +20,15 @@ class Log {
  public:
   static void Init();
 
-  inline static std::shared_ptr<spdlog::logger>& GetCoreLogger()
-      { return s_CoreLogger; }
-  inline static std::shared_ptr<spdlog::logger>& GetClientLogger()
-      { return s_ClientLogger; }
+  inline static std::shared_ptr<spdlog::logger>& GetCoreLogger() {
+      return kCoreLogger; }
+
+  inline static std::shared_ptr<spdlog::logger>& GetClientLogger() {
+      return kClientLogger; }
 
  private:
-  static std::shared_ptr<spdlog::logger> s_CoreLogger;
-  static std::shared_ptr<spdlog::logger> s_ClientLogger;
+  static std::shared_ptr<spdlog::logger> kCoreLogger;
+  static std::shared_ptr<spdlog::logger> kClientLogger;
 };
 
 }  // namespace util
