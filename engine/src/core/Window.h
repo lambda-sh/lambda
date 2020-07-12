@@ -21,8 +21,8 @@ struct WindowProperties {
   WindowProperties(
       const std::string& title = "Game Engine",
       unsigned int width = 1280,
-      unsigned int height = 720)
-          : Title(title), Width(width), Height(height) {}
+      unsigned int height = 720) :
+          Title(title), Width(width), Height(height) {}
 };
 
 class Window {
