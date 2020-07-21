@@ -46,6 +46,7 @@ target_include_directories(
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glm/glm
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glfw/include
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/imgui
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/stb_image/src
 )
 
 if (WIN32)
@@ -91,6 +92,9 @@ target_link_libraries(engine glfw)
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/imgui)
 target_link_libraries(engine imgui)
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/stb)
+target_link_libraries(engine stb)
+
 # ----------------------------------- SANDBOX ----------------------------------
 
 project(sandbox)
@@ -102,6 +106,8 @@ file(
     ${CMAKE_SOURCE_DIR}/sandbox/src/*.cpp
 )
 add_executable(app ${APP_SRC})
+
+file(COPY ${CMAKE_SOURCE_DIR}/sandbox/assets DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for sandbox.")
