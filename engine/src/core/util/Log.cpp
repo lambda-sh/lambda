@@ -6,16 +6,16 @@
 namespace engine {
 namespace util {
 
-std::shared_ptr<spdlog::logger> Log::s_CoreLogger;
-std::shared_ptr<spdlog::logger> Log::s_ClientLogger;
+std::shared_ptr<spdlog::logger> Log::kCoreLogger;
+std::shared_ptr<spdlog::logger> Log::kClientLogger;
 
 void Log::Init() {
   spdlog::set_pattern("%^[%T] %n: %v%$");
-  s_CoreLogger = spdlog::stdout_color_mt("Engine");
-  s_CoreLogger->set_level(spdlog::level::trace);
+  kCoreLogger = spdlog::stdout_color_mt("Engine");
+  kCoreLogger->set_level(spdlog::level::trace);
 
-  s_ClientLogger = spdlog::stdout_color_mt("App");
-  s_CoreLogger->set_level(spdlog::level::trace);
+  kClientLogger = spdlog::stdout_color_mt("App");
+  kCoreLogger->set_level(spdlog::level::trace);
 }
 
 }  // namespace util

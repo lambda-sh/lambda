@@ -24,6 +24,7 @@ int main() {
   app->Run();
   delete app;
 
+  ENGINE_CLIENT_INFO("Game has been closed");
   return 0;
 }
 
