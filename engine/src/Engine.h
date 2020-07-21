@@ -1,3 +1,9 @@
+/**
+ * @file engine/src/Engine.h
+ * @brief The entrypoint into the game engine source code.
+ *
+ * This exposes all engine headers for use of any application.
+ */
 #ifndef ENGINE_SRC_ENGINE_H_
 #define ENGINE_SRC_ENGINE_H_
 
@@ -30,6 +36,7 @@
 #include "core/renderer/RenderCommand.h"
 #include "core/renderer/Renderer.h"
 #include "core/renderer/Shader.h"
+#include "core/renderer/Texture.h"
 #include "core/renderer/VertexArray.h"
 
 // --------------------------------- ENTRYPOINT --------------------------------
@@ -37,10 +44,3 @@
 #include "core/Entrypoint.h"
 
 #endif  // ENGINE_SRC_ENGINE_H_
-
-/**
- * @file engine/src/Engine.h
- * @brief The entrypoint into the game engine source code.
- *
- * This exposes all engine headers for use of any application.
- */

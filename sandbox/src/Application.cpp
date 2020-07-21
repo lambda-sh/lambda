@@ -65,6 +65,7 @@ class ExampleLayer : public engine::Layer {
         uniform vec4 u_Color;
 
         in vec4 v_Color;
+        in vec2 v_TexCoord;
 
         void main() {
           color = u_Color;
@@ -96,15 +97,25 @@ class ExampleLayer : public engine::Layer {
         layout(location = 0) out vec4 color;
 
         in vec2 v_TexCoord;
-        uniform vec4 u_Color;
+
+        uniform sampler2D u_Texture;
 
         void main() {
-          color = vec4(v_TexCoord, 0.0, 1.0);
+
+          color = texture(u_Texture, v_TexCoord);
         }
     )";
 
     texture_shader_ = engine::renderer::Shader::Create(
         texture_vertex_source, texture_fragment_source);
+
+    texture_ = engine::renderer::Texture2D::Create(
+        "assets/textures/checkboard.png");
+
+    std::dynamic_pointer_cast< engine::platform::opengl::OpenGLShader>(
+        shader_)->Bind();
+    std::dynamic_pointer_cast<engine::platform::opengl::OpenGLShader>(
+        shader_)->UploadUniformInt("u_Texture", 0);
   }
 
   void OnUpdate(engine::util::TimeStep time_step) override {
@@ -165,6 +176,9 @@ class ExampleLayer : public engine::Layer {
     }
 
     glm::mat4 transform = glm::translate(glm::mat4(1.0f), square_position_);
+
+    // Bind the texture before using it with the shader.
+    texture_->Bind();
     engine::renderer::Renderer::Submit(
         vertex_array_, texture_shader_, transform);
     engine::renderer::Renderer::EndScene();
@@ -184,6 +198,7 @@ class ExampleLayer : public engine::Layer {
   engine::memory::Shared<engine::renderer::VertexBuffer> vertex_buffer_;
   engine::memory::Shared<engine::renderer::IndexBuffer> index_buffer_;
   engine::memory::Shared<engine::renderer::VertexArray> vertex_array_;
+  engine::memory::Shared<engine::renderer::Texture2D> texture_;
 
   engine::renderer::OrthographicCamera camera_;
   glm::vec3 camera_position_;
