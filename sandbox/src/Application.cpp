@@ -13,6 +13,9 @@ class ExampleLayer : public engine::Layer {
       camera_(-1.6f, 1.6f, -0.9f, 0.9f),
       camera_position_({0.0f, 0.0f, 0.0f}),
       square_position_(0.0f) {
+    // Initialize the renderer. (Handles graphics specific API setup.)
+    engine::renderer::Renderer::Init();
+
     float vertices[3 * 7] = {
       -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
        0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
@@ -119,6 +122,8 @@ class ExampleLayer : public engine::Layer {
   }
 
   void OnUpdate(engine::util::TimeStep time_step) override {
+    // Demo of the ability to get the time in many different time precisions
+    // with different floating point precisions.
     float ts = time_step.InSeconds<float>();
     float ts2 = time_step.InMicroSeconds<double>();
 

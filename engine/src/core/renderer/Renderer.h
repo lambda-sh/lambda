@@ -16,8 +16,8 @@ namespace renderer {
 
 class Renderer {
  public:
+  static void Init();
   static void BeginScene(const OrthographicCamera& camera);
-
   static void EndScene();
 
   // TODO(C3NZ): update this to use engine memory allocators as opposed to
