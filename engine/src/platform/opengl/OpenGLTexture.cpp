@@ -11,8 +11,13 @@ namespace opengl {
 
 OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
   int width, height, channels;
+
+  // Load the texture from the bottom up, as that's how OpenGL expects to render
+  // textures.
+  stbi_set_flip_vertically_on_load(1);
   stbi_uc* data = stbi_load(path_.c_str(), &width, &height, &channels, 0);
-  ENGINE_CORE_ASSERT(data, "Failed to load image");
+  ENGINE_CORE_TRACE("Attempting to load: {0}", path_);
+  ENGINE_CORE_ASSERT(data, "Failed to load the image: {0}", path_);
   width_ = width;
   height_ = height;
 
@@ -22,7 +27,7 @@ OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
 
   // Set the upscaling and downscaling functions to be linear.
   glTextureParameteri(renderer_ID_, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTextureParameteri(renderer_ID_, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTextureParameteri(renderer_ID_, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTextureSubImage2D(
       renderer_ID_, 0, 0, 0, width_, height_, GL_RGB, GL_UNSIGNED_BYTE, data);
 
