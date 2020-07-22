@@ -11,9 +11,14 @@ namespace renderer {
 
 Renderer::SceneData* Renderer::scene_data_ = new Renderer::SceneData;
 
+void Renderer::Init() {
+  RenderCommand::Init();
+}
+
 void Renderer::BeginScene(const OrthographicCamera& camera) {
   scene_data_->ViewProjectionMatrix = camera.GetViewProjectionMatrix();
 }
+
 void Renderer::EndScene() {}
 
 /**

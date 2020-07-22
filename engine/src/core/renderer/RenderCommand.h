@@ -13,6 +13,8 @@ namespace renderer {
 
 class RenderCommand {
  public:
+  inline static void Init() { renderer_API_->Init(); }
+
   inline static void SetClearColor(const glm::vec4& color) {
     renderer_API_->SetClearColor(color);
   }

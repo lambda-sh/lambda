@@ -18,6 +18,7 @@ namespace opengl {
  */
 class OpenGLRendererAPI : public renderer::RendererAPI {
  public:
+  void Init() override;
   void SetClearColor(const glm::vec4& color) override;
   void Clear() override;
 
