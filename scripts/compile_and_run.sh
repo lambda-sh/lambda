@@ -1,6 +1,8 @@
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 pushd $ROOT_DIR
 
+# Compile the game engine and sandbox application.
+
 export CC=gcc CXX=g++
 
 if [ "$1" = "Release" ] || [ "$1" = "Debug" ]; then
@@ -19,6 +21,10 @@ else
 fi
 
 make -j 8
-./"$1"/bin/app
+
+# Go to the output binary and run it.
+pushd "$1"/bin
+./app
+popd  # "$1/bin"
 
 popd  # ROOT_DIR
