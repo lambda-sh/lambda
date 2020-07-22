@@ -115,6 +115,9 @@ class ExampleLayer : public engine::Layer {
     texture_ = engine::renderer::Texture2D::Create(
         "assets/textures/checkboard.png");
 
+    lambda_texture_ = engine::renderer::Texture2D::Create(
+        "assets/textures/hl2.png");
+
     std::dynamic_pointer_cast< engine::platform::opengl::OpenGLShader>(
         shader_)->Bind();
     std::dynamic_pointer_cast<engine::platform::opengl::OpenGLShader>(
@@ -186,6 +189,11 @@ class ExampleLayer : public engine::Layer {
     texture_->Bind();
     engine::renderer::Renderer::Submit(
         vertex_array_, texture_shader_, transform);
+
+    lambda_texture_->Bind();
+    engine::renderer::Renderer::Submit(
+        vertex_array_, texture_shader_, transform);
+
     engine::renderer::Renderer::EndScene();
   }
 
@@ -203,7 +211,8 @@ class ExampleLayer : public engine::Layer {
   engine::memory::Shared<engine::renderer::VertexBuffer> vertex_buffer_;
   engine::memory::Shared<engine::renderer::IndexBuffer> index_buffer_;
   engine::memory::Shared<engine::renderer::VertexArray> vertex_array_;
-  engine::memory::Shared<engine::renderer::Texture2D> texture_;
+  engine::memory::Shared<engine::renderer::Texture2D> texture_, lambda_texture_;
+
 
   engine::renderer::OrthographicCamera camera_;
   glm::vec3 camera_position_;
