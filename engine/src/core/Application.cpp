@@ -3,7 +3,7 @@
 #include <functional>
 
 #include "core/Input.h"
-#include "core/Layer.h"
+#include "core/layers/Layer.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
@@ -36,12 +36,12 @@ void Application::Run() {
     util::TimeStep time_step(last_frame_time_, current_frame_time);
 
     last_frame_time_ = current_frame_time;
-    for (memory::Shared<Layer> layer : layer_stack_) {
+    for (memory::Shared<layers::Layer> layer : layer_stack_) {
       layer->OnUpdate(time_step);
     }
 
     imgui_layer_->Begin();
-    for (memory::Shared<Layer> layer : layer_stack_) {
+    for (memory::Shared<layers::Layer> layer : layer_stack_) {
       layer->OnImGuiRender();
     }
     imgui_layer_->End();
@@ -55,7 +55,7 @@ void Application::OnEvent(events::Event* event) {
   dispatcher.Dispatch<events::WindowCloseEvent>
       (BIND_EVENT_FN(Application::OnWindowClosed));
 
-  for (memory::Shared<Layer> layer : util::Reverse(layer_stack_)) {
+  for (memory::Shared<layers::Layer> layer : util::Reverse(layer_stack_)) {
     layer->OnEvent(event);
     if (event->HasBeenHandled()) {
       break;
@@ -63,12 +63,12 @@ void Application::OnEvent(events::Event* event) {
   }
 }
 
-void Application::PushLayer(memory::Shared<Layer> layer) {
+void Application::PushLayer(memory::Shared<layers::Layer> layer) {
   layer_stack_.PushLayer(layer);
   layer->OnAttach();
 }
 
-void Application::PushOverlay(memory::Shared<Layer> layer) {
+void Application::PushOverlay(memory::Shared<layers::Layer> layer) {
   layer_stack_.PushOverlay(layer);
   layer->OnAttach();
 }
