@@ -13,8 +13,8 @@
 #include <memory>
 
 #include "core/Core.h"
-#include "core/Layer.h"
-#include "core/LayerStack.h"
+#include "core/layers/Layer.h"
+#include "core/layers/LayerStack.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
@@ -30,15 +30,15 @@ class Application {
   virtual ~Application();
 
   void OnEvent(events::Event* event);
-  void PushLayer(memory::Shared<Layer> layer);
-  void PushOverlay(memory::Shared<Layer> layer);
+  void PushLayer(memory::Shared<layers::Layer> layer);
+  void PushOverlay(memory::Shared<layers::Layer> layer);
   void Run();
 
   inline const Window& GetWindow() const { return *window_; }
   inline static Application& GetApplication() {return *kApplication_; }
 
  private:
-  LayerStack layer_stack_;
+  layers::LayerStack layer_stack_;
   bool running_ = true;
   memory::Shared<Window> window_;
   memory::Shared<imgui::ImGuiLayer> imgui_layer_;

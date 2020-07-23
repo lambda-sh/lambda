@@ -10,7 +10,7 @@
 #define ENGINE_SRC_CORE_IMGUI_IMGUILAYER_H_
 
 #include "core/Core.h"
-#include "core/Layer.h"
+#include "core/layers/Layer.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
 #include "core/events/KeyEvent.h"
@@ -19,7 +19,7 @@
 namespace engine {
 namespace imgui {
 
-class ImGuiLayer : public Layer {
+class ImGuiLayer : public layers::Layer {
  public:
   ImGuiLayer();
   ~ImGuiLayer();
