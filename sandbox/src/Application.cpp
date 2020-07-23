@@ -6,7 +6,7 @@
 #include "ext/matrix_transform.hpp"
 #include "platform/opengl/OpenGLShader.h"
 
-class ExampleLayer : public engine::Layer {
+class ExampleLayer : public engine::layers::Layer {
  public:
   ExampleLayer() :
       Layer("Example"),
