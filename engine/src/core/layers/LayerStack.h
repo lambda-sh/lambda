@@ -4,16 +4,17 @@
  *
  * Primarily used within engine/src/core/Application.h
  */
-#ifndef ENGINE_SRC_CORE_LAYERSTACK_H_
-#define ENGINE_SRC_CORE_LAYERSTACK_H_
+#ifndef ENGINE_SRC_CORE_LAYERS_LAYERSTACK_H_
+#define ENGINE_SRC_CORE_LAYERS_LAYERSTACK_H_
 
 #include <vector>
 
 #include "core/Core.h"
-#include "core/Layer.h"
+#include "core/layers/Layer.h"
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace layers {
 
 /**
  * @class LayerStack
@@ -24,7 +25,7 @@ namespace engine {
  * expose functionality to safely interact with the one that is being used for
  * any given application being powered by the engine.
  */
-class ENGINE_API LayerStack {
+class LayerStack {
  public:
   LayerStack();
   ~LayerStack();
@@ -67,6 +68,7 @@ class ENGINE_API LayerStack {
   unsigned int layer_insert_location_ = 0;
 };
 
+}  // namespace layers
 }  // namespace engine
 
-#endif  // ENGINE_SRC_CORE_LAYERSTACK_H_
+#endif  // ENGINE_SRC_CORE_LAYERS_LAYERSTACK_H_

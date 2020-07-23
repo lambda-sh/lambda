@@ -1,11 +1,12 @@
-#include "core/LayerStack.h"
+#include "core/layers/LayerStack.h"
 
 #include <vector>
 
-#include "core/Layer.h"
+#include "core/layers/Layer.h"
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace layers {
 
 LayerStack::LayerStack() {}
 
@@ -35,4 +36,5 @@ void LayerStack::PopOverlay(memory::Shared<Layer> overlay) {
   }
 }
 
+}  // namespace layers
 }  // namespace engine

@@ -3,14 +3,15 @@
  * @brief The Layer implementation that allows application to specify layers to
  * be attached to the game.
  */
-#ifndef ENGINE_SRC_CORE_LAYER_H_
-#define ENGINE_SRC_CORE_LAYER_H_
+#ifndef ENGINE_SRC_CORE_LAYERS_LAYER_H_
+#define ENGINE_SRC_CORE_LAYERS_LAYER_H_
 
 #include "core/Core.h"
 #include "core/events/Event.h"
 #include "core/util/Time.h"
 
 namespace engine {
+namespace layers {
 
 class Layer {
  public:
@@ -29,12 +30,14 @@ class Layer {
   std::string debug_name_;
 };
 
+
+}  // namespace layers
 }  // namespace engine
 
-#endif  // ENGINE_SRC_CORE_LAYER_H_
+#endif  // ENGINE_SRC_CORE_LAYERS_LAYER_H_
 
 /**
- * @class engine::Layer
+ * @class engine::layers::Layer
  * @brief An abstract data structure that represents a "layer" within the
  * engine.
  *
@@ -43,7 +46,7 @@ class Layer {
  */
 
 /**
- * @fn engine::Layer::OnAttach
+ * @fn engine::layers::Layer::OnAttach
  * @brief What to do when a layer is attached to the game engine.
  *
  * Primarily for initializing anything in the layer when it's attached to the
@@ -51,7 +54,7 @@ class Layer {
  */
 
 /**
- * @fn engine::Layer::OnDetach
+ * @fn engine::layers::Layer::OnDetach
  * @brief Handles what to do when a layer is attached to the game engine.
  *
  * Primarily for cleaning up anything in the layer when it's no longer
@@ -59,7 +62,7 @@ class Layer {
  */
 
 /**
- * @fn engine::Layer::OnUpdate
+ * @fn engine::layers::Layer::OnUpdate
  * @brief Handles what to do when the game engine requests to update the
  * layer.
  *
@@ -67,7 +70,7 @@ class Layer {
  */
 
 /**
- * @fn engine::Layer::OnEvent
+ * @fn engine::layers::Layer::OnEvent
  * @param event - The event received by the engine.
  * @brief Handles what to do when the game engine passes an event.
  *
@@ -75,7 +78,7 @@ class Layer {
  */
 
 /**
- * @fn engine::Layer::OnImGuiRender
+ * @fn engine::layers::Layer::OnImGuiRender
  * @brief Handles what to do when the game engine requests the layer to
  * render ImGui components.
  *
