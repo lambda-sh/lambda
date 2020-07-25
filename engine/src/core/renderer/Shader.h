@@ -6,6 +6,7 @@
 #define ENGINE_SRC_CORE_RENDERER_SHADER_H_
 
 #include <string>
+#include <unordered_map>
 
 #include <glm/glm.hpp>
 
@@ -23,10 +24,22 @@ class Shader {
 
   static memory::Shared<Shader> Create(const std::string& path);
   static memory::Shared<Shader> Create(
-      const std::string& vertex_source, const std::string& fragment_source);
+      const std::string& name,
+      const std::string& vertex_source,
+      const std::string& fragment_source);
 
  private:
   std::uint32_t renderer_ID_;
+};
+
+class ShaderLibrary {
+ public:
+  void Add(const memory::Shared<Shader>& shader);
+  memory::Shared<Shader> Get(const std::string& name);
+  memory::Shared<Shader> Load(const std::string& path);
+  memory::Shared<Shader> Load(const std::string& name, const std::string& path);
+ private:
+  std::unordered_map<std::string, memory::Shared<Shader>> shader_mapping_;
 };
 
 }  // namespace renderer
