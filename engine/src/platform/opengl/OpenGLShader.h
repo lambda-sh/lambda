@@ -6,7 +6,9 @@
 #define ENGINE_SRC_PLATFORM_OPENGL_OPENGLSHADER_H_
 
 #include <string>
+#include <unordered_map>
 
+#include <glad/glad.h>
 #include <glm/glm.hpp>
 
 #include "core/renderer/Shader.h"
@@ -29,6 +31,7 @@ class OpenGLShader final : public renderer::Shader {
    * @brief Instantiates an OpenGL Shader with vertex and fragment source
    * strings.
    */
+  OpenGLShader(const std::string& path);
   OpenGLShader(
       const std::string& vertex_source, const std::string& fragment_source);
   ~OpenGLShader();
@@ -89,6 +92,11 @@ class OpenGLShader final : public renderer::Shader {
 
  private:
   std::uint32_t renderer_ID_;
+
+  std::string ReadFile(const std::string& path);
+  std::unordered_map<GLenum, std::string> PreProcess(const std::string& shader_source);
+  void Compile(const std::unordered_map<GLenum, std::string>& shader_source_map);
+
 };
 
 }  // namespace opengl
