@@ -21,6 +21,7 @@ class Shader {
   virtual void Bind() const = 0;
   virtual void Unbind() const = 0;
 
+  static memory::Shared<Shader> Create(const std::string& path);
   static memory::Shared<Shader> Create(
       const std::string& vertex_source, const std::string& fragment_source);
 
