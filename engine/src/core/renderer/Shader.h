@@ -29,7 +29,7 @@ class Shader {
       const std::string& fragment_source);
 
  private:
-  std::uint32_t renderer_ID_;
+  uint32_t renderer_ID_;
 };
 
 class ShaderLibrary {
