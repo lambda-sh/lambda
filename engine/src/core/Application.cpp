@@ -3,10 +3,10 @@
 #include <functional>
 
 #include "core/Input.h"
-#include "core/layers/Layer.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
+#include "core/layers/Layer.h"
 #include "core/memory/Pointers.h"
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
@@ -34,8 +34,8 @@ void Application::Run() {
   while (running_) {
     util::Time current_frame_time;
     util::TimeStep time_step(last_frame_time_, current_frame_time);
-
     last_frame_time_ = current_frame_time;
+
     for (memory::Shared<layers::Layer> layer : layer_stack_) {
       layer->OnUpdate(time_step);
     }
