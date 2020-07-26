@@ -22,19 +22,24 @@ class Shader {
   virtual void Bind() const = 0;
   virtual void Unbind() const = 0;
 
+  inline const std::string& GetName() { return name_; }
+
   static memory::Shared<Shader> Create(const std::string& path);
   static memory::Shared<Shader> Create(
       const std::string& name,
       const std::string& vertex_source,
       const std::string& fragment_source);
 
- private:
+ protected:
   uint32_t renderer_ID_;
+  std::string name_;
 };
 
 class ShaderLibrary {
  public:
   void Add(const memory::Shared<Shader>& shader);
+  void Add(const std::string& name, const memory::Shared<Shader>& shader);
+
   memory::Shared<Shader> Get(const std::string& name);
   memory::Shared<Shader> Load(const std::string& path);
   memory::Shared<Shader> Load(const std::string& name, const std::string& path);
