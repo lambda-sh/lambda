@@ -49,7 +49,7 @@ OpenGLShader::OpenGLShader(const std::string& path) {
     shader_name_length = last_extension - last_slash;
   }
 
-  name_ = path.substr(last_slash, last_extension);
+  name_ = path.substr(last_slash, shader_name_length);
 }
 
 OpenGLShader::OpenGLShader(
@@ -117,8 +117,9 @@ std::unordered_map<GLenum, std::string> OpenGLShader::PreProcess(
 
     // Determine the size of the shader currently being read.
     size_t shader_content_size =
-        position - (next_line_start == std::string::npos ?
-            shader_source.size() - 1 : next_line_start);
+        position - (
+            next_line_start == std::string::npos ?
+                shader_source.size() - 1 : next_line_start);
 
     shader_source_map[shader_type_enum] =
         shader_source.substr(next_line_start, shader_content_size);
