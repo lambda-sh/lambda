@@ -33,7 +33,10 @@ class OpenGLShader final : public renderer::Shader {
    */
   OpenGLShader(const std::string& path);
   OpenGLShader(
-      const std::string& vertex_source, const std::string& fragment_source);
+      const std::string& name,
+      const std::string& vertex_source,
+      const std::string& fragment_source);
+
   ~OpenGLShader();
 
   /**
@@ -91,8 +94,6 @@ class OpenGLShader final : public renderer::Shader {
   void UploadUniformMat4(const std::string& name, const glm::mat4& matrix);
 
  private:
-  std::uint32_t renderer_ID_;
-
   std::string ReadFile(const std::string& path);
   std::unordered_map<GLenum, std::string> PreProcess(const std::string& shader_source);
   void Compile(const std::unordered_map<GLenum, std::string>& shader_source_map);
