@@ -75,7 +75,8 @@ class ExampleLayer : public engine::layers::Layer {
         }
     )";
 
-    shader_ = engine::renderer::Shader::Create(vertex_source, fragment_source);
+    shader_ = engine::renderer::Shader::Create(
+        "yeet", vertex_source, fragment_source);
 
     texture_shader_ = engine::renderer::Shader::Create(
         "assets/shaders/Texture.glsl");
