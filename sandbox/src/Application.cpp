@@ -75,11 +75,13 @@ class ExampleLayer : public engine::layers::Layer {
         }
     )";
 
-    shader_ = engine::renderer::Shader::Create(
-        "yeet", vertex_source, fragment_source);
 
-    texture_shader_ = engine::renderer::Shader::Create(
-        "assets/shaders/Texture.glsl");
+    shader_lib_.Add(
+        engine::renderer::Shader::Create(
+            "yeet", vertex_source, fragment_source));
+
+    shader_lib_.Add(
+        engine::renderer::Shader::Create("assets/shaders/Texture.glsl"));
 
     texture_ = engine::renderer::Texture2D::Create(
         "assets/textures/checkboard.png");
@@ -88,9 +90,9 @@ class ExampleLayer : public engine::layers::Layer {
         "assets/textures/hl2.png");
 
     std::dynamic_pointer_cast< engine::platform::opengl::OpenGLShader>(
-        shader_)->Bind();
+        shader_lib_.Get("yeet"))->Bind();
     std::dynamic_pointer_cast<engine::platform::opengl::OpenGLShader>(
-        shader_)->UploadUniformInt("u_Texture", 0);
+        shader_lib_.Get("yeet"))->UploadUniformInt("u_Texture", 0);
   }
 
   void OnUpdate(engine::util::TimeStep time_step) override {
@@ -135,7 +137,7 @@ class ExampleLayer : public engine::layers::Layer {
 
 
     const auto& cast = std::dynamic_pointer_cast<
-      engine::platform::opengl::OpenGLShader>(shader_);
+      engine::platform::opengl::OpenGLShader>(shader_lib_.Get("yeet"));
 
     for (int y = 0; y < 20; ++y) {
       for (int x = 0; x < 20; ++x) {
@@ -148,7 +150,8 @@ class ExampleLayer : public engine::layers::Layer {
           cast->UploadUniformFloat4("u_Color", blue_color_);
         }
 
-        engine::renderer::Renderer::Submit(vertex_array_, shader_, transform);
+        engine::renderer::Renderer::Submit(
+            vertex_array_, shader_lib_.Get("yeet"), transform);
       }
     }
 
@@ -157,11 +160,11 @@ class ExampleLayer : public engine::layers::Layer {
     // Bind the texture before using it with the shader.
     texture_->Bind();
     engine::renderer::Renderer::Submit(
-        vertex_array_, texture_shader_, transform);
+        vertex_array_, shader_lib_.Get("Texture"), transform);
 
     lambda_texture_->Bind();
     engine::renderer::Renderer::Submit(
-        vertex_array_, texture_shader_, transform);
+        vertex_array_, shader_lib_.Get("Texture"), transform);
 
     engine::renderer::Renderer::EndScene();
   }
@@ -175,12 +178,11 @@ class ExampleLayer : public engine::layers::Layer {
   void OnEvent(engine::events::Event* event) override {}
 
  private:
-  engine::memory::Shared<engine::renderer::Shader> shader_;
-  engine::memory::Shared<engine::renderer::Shader> texture_shader_;
   engine::memory::Shared<engine::renderer::VertexBuffer> vertex_buffer_;
   engine::memory::Shared<engine::renderer::IndexBuffer> index_buffer_;
   engine::memory::Shared<engine::renderer::VertexArray> vertex_array_;
   engine::memory::Shared<engine::renderer::Texture2D> texture_, lambda_texture_;
+  engine::renderer::ShaderLibrary shader_lib_;
 
 
   engine::renderer::OrthographicCamera camera_;
