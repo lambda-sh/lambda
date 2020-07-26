@@ -59,17 +59,18 @@ void ShaderLibrary::Add(const memory::Shared<Shader>& shader) {
       "Shader is already stored within the engine.")
 
   shader_mapping_[name] = shader;
+  ENGINE_CORE_TRACE("Added the shader: {0}", name);
 }
 
 void ShaderLibrary::Add(
     const std::string& name, const memory::Shared<Shader>& shader) {
   ENGINE_CORE_ASSERT(
-      shader_mapping_.find(name) != shader_mapping_.end(),
+      shader_mapping_.find(name) == shader_mapping_.end(),
       "Shader is already stored within the engine.")
 
   shader_mapping_[name] = shader;
+  ENGINE_CORE_TRACE("Added the shader: {0}", name);
 }
-
 
 memory::Shared<Shader> ShaderLibrary::Load(const std::string& path) {
   memory::Shared<Shader> shader = Shader::Create(path);
@@ -88,7 +89,7 @@ memory::Shared<Shader> ShaderLibrary::Load(
 memory::Shared<Shader> ShaderLibrary::Get(const std::string& name) {
   ENGINE_CORE_ASSERT(
     shader_mapping_.find(name) != shader_mapping_.end(),
-    "Shader is already stored within the engine.");
+    "Failed to get the shader: {0}", name);
   return shader_mapping_[name];
 }
 }  // namespace renderer
