@@ -30,16 +30,39 @@ OpenGLShader::OpenGLShader(const std::string& path) {
       PreProcess(shader_source);
   Compile(shader_source_map);
 
+  unsigned long last_slash = path.find_last_of("/\\");
+
+  // Remove the last slash if necessary.
+  if (last_slash == std::string::npos) {
+    last_slash = 0;
+  } else {
+    last_slash += 1;
+  }
+
+  unsigned long last_extension = path.rfind('.');
+  unsigned long shader_name_length;
+
+  // Trim the extension if necessary.
+  if (last_extension == std::string::npos) {
+    shader_name_length = path.size() - last_slash;
+  } else {
+    shader_name_length = last_extension - last_slash;
+  }
+
+  name_ = path.substr(last_slash, last_extension);
 }
 
 OpenGLShader::OpenGLShader(
-    const std::string& vertex_source, const std::string& fragment_source) {
+    const std::string& name,
+    const std::string& vertex_source,
+    const std::string& fragment_source) {
   std::unordered_map<GLenum, std::string> shader_source_map;
 
   shader_source_map[GL_VERTEX_SHADER] = vertex_source;
   shader_source_map[GL_FRAGMENT_SHADER] = fragment_source;
 
   Compile(shader_source_map);
+  name_ = name;
 }
 
 OpenGLShader::~OpenGLShader() {
@@ -143,16 +166,16 @@ void OpenGLShader::Compile(
 
   glLinkProgram(program);
   int program_linked = GL_FALSE;
-  glGetProgramiv(renderer_ID_, GL_LINK_STATUS, &program_linked);
+  glGetProgramiv(program, GL_LINK_STATUS, &program_linked);
 
   if (program_linked == GL_FALSE) {
     int maxLength = 0;
-    glGetProgramiv(renderer_ID_, GL_INFO_LOG_LENGTH, &maxLength);
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
 
     std::vector<char> info_log(maxLength);
-    glGetProgramInfoLog(renderer_ID_, maxLength, &maxLength, &info_log[0]);
+    glGetProgramInfoLog(program, maxLength, &maxLength, &info_log[0]);
 
-    glDeleteProgram(renderer_ID_);
+    glDeleteProgram(program);
 
     for (GLuint id : gl_shader_ids) {
       glDeleteShader(id);
