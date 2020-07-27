@@ -6,7 +6,23 @@
 #include "ext/matrix_transform.hpp"
 #include "platform/opengl/OpenGLShader.h"
 
-class ExampleLayer : public engine::layers::Layer {
+using engine::layers::Layer;
+using engine::memory::Shared;
+using engine::renderer::BufferLayout;
+using engine::renderer::IndexBuffer;
+using engine::renderer::OrthographicCamera;
+using engine::renderer::RenderCommand;
+using engine::renderer::Renderer;
+using engine::renderer::Shader;
+using engine::renderer::ShaderDataType;
+using engine::renderer::ShaderDataType;
+using engine::renderer::ShaderLibrary;
+using engine::renderer::Texture2D;
+using engine::renderer::VertexArray;
+using engine::renderer::VertexBuffer;
+using engine::util::TimeStep;
+
+class ExampleLayer : public Layer {
  public:
   ExampleLayer() :
       Layer("Example"),
@@ -14,29 +30,29 @@ class ExampleLayer : public engine::layers::Layer {
       camera_position_({0.0f, 0.0f, 0.0f}),
       square_position_(0.0f) {
     // Initialize the renderer. (Handles graphics specific API setup.)
-    engine::renderer::Renderer::Init();
+    Renderer::Init();
 
     float vertices[3 * 7] = {
       -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
        0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
        0.0f,  0.5f, 0.0f, 0.0f, 1.0f};
 
-    vertex_array_ = engine::renderer::VertexArray::Create();
+    vertex_array_ = VertexArray::Create();
 
-    vertex_buffer_ = engine::renderer::VertexBuffer::Create(
+    vertex_buffer_ = VertexBuffer::Create(
         vertices, sizeof(vertices));
 
-    engine::renderer::BufferLayout layout_init_list = {
-        { engine::renderer::ShaderDataType::Float3, "a_Position"},
-        { engine::renderer::ShaderDataType::Float2, "a_TexCoord"}};
+    BufferLayout layout_init_list = {
+        { ShaderDataType::Float3, "a_Position"},
+        { ShaderDataType::Float2, "a_TexCoord"}};
 
-    engine::renderer::BufferLayout layout(layout_init_list);
+    BufferLayout layout(layout_init_list);
     vertex_buffer_->SetLayout(layout);
 
     vertex_array_->AddVertexBuffer(vertex_buffer_);
 
     unsigned int indices[3] = { 0, 1, 2 };
-    index_buffer_ = engine::renderer::IndexBuffer::Create(indices, 3);
+    index_buffer_ = IndexBuffer::Create(indices, 3);
 
     vertex_array_->SetIndexBuffer(index_buffer_);
 
@@ -77,16 +93,18 @@ class ExampleLayer : public engine::layers::Layer {
 
 
     shader_lib_.Add(
-        engine::renderer::Shader::Create(
+        Shader::Create(
             "yeet", vertex_source, fragment_source));
 
     shader_lib_.Add(
-        engine::renderer::Shader::Create("assets/shaders/Texture.glsl"));
+        Shader::Create("assets/shaders/Texture.glsl"));
 
-    texture_ = engine::renderer::Texture2D::Create(
+    shader_lib_.Load("Texture2", "assets/shaders/Texture.glsl");
+
+    texture_ = Texture2D::Create(
         "assets/textures/checkboard.png");
 
-    lambda_texture_ = engine::renderer::Texture2D::Create(
+    lambda_texture_ = Texture2D::Create(
         "assets/textures/hl2.png");
 
     std::dynamic_pointer_cast< engine::platform::opengl::OpenGLShader>(
@@ -95,7 +113,7 @@ class ExampleLayer : public engine::layers::Layer {
         shader_lib_.Get("yeet"))->UploadUniformInt("u_Texture", 0);
   }
 
-  void OnUpdate(engine::util::TimeStep time_step) override {
+  void OnUpdate(TimeStep time_step) override {
     // Demo of the ability to get the time in many different time precisions
     // with different floating point precisions.
     float ts = time_step.InSeconds<float>();
@@ -125,15 +143,15 @@ class ExampleLayer : public engine::layers::Layer {
       square_position_.x += square_move_speed_ * ts;
     }
 
-    engine::renderer::RenderCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
-    engine::renderer::RenderCommand::Clear();
+    RenderCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
+    RenderCommand::Clear();
 
     camera_.SetPosition(camera_position_);
     camera_.SetRotation(45.0f);
 
     glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 
-    engine::renderer::Renderer::BeginScene(camera_);
+    Renderer::BeginScene(camera_);
 
 
     const auto& cast = std::dynamic_pointer_cast<
@@ -150,7 +168,7 @@ class ExampleLayer : public engine::layers::Layer {
           cast->UploadUniformFloat4("u_Color", blue_color_);
         }
 
-        engine::renderer::Renderer::Submit(
+        Renderer::Submit(
             vertex_array_, shader_lib_.Get("yeet"), transform);
       }
     }
@@ -159,14 +177,14 @@ class ExampleLayer : public engine::layers::Layer {
 
     // Bind the texture before using it with the shader.
     texture_->Bind();
-    engine::renderer::Renderer::Submit(
+    Renderer::Submit(
         vertex_array_, shader_lib_.Get("Texture"), transform);
 
     lambda_texture_->Bind();
-    engine::renderer::Renderer::Submit(
+    Renderer::Submit(
         vertex_array_, shader_lib_.Get("Texture"), transform);
 
-    engine::renderer::Renderer::EndScene();
+    Renderer::EndScene();
   }
 
   void OnImGuiRender() override {
@@ -178,14 +196,14 @@ class ExampleLayer : public engine::layers::Layer {
   void OnEvent(engine::events::Event* event) override {}
 
  private:
-  engine::memory::Shared<engine::renderer::VertexBuffer> vertex_buffer_;
-  engine::memory::Shared<engine::renderer::IndexBuffer> index_buffer_;
-  engine::memory::Shared<engine::renderer::VertexArray> vertex_array_;
-  engine::memory::Shared<engine::renderer::Texture2D> texture_, lambda_texture_;
-  engine::renderer::ShaderLibrary shader_lib_;
+  Shared<VertexBuffer> vertex_buffer_;
+  Shared<IndexBuffer> index_buffer_;
+  Shared<VertexArray> vertex_array_;
+  Shared<Texture2D> texture_, lambda_texture_;
+  ShaderLibrary shader_lib_;
 
 
-  engine::renderer::OrthographicCamera camera_;
+  OrthographicCamera camera_;
   glm::vec3 camera_position_;
   glm::vec3 square_position_;
   float camera_speed_ = 0.01f;
