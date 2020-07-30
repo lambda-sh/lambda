@@ -47,6 +47,8 @@ target_include_directories(
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glfw/include
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/imgui
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/stb_image/src
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/readerwriterqueue
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/concurrentqueue
 )
 
 if (WIN32)
@@ -94,6 +96,9 @@ target_link_libraries(engine imgui)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/stb)
 target_link_libraries(engine stb)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/readerwriterqueue)
+target_link_libraries(engine readerwriterqueue)
 
 # ----------------------------------- SANDBOX ----------------------------------
 

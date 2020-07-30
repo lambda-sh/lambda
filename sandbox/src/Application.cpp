@@ -119,27 +119,29 @@ class ExampleLayer : public Layer {
     float ts = time_step.InSeconds<float>();
     float ts2 = time_step.InMicroSeconds<double>();
 
-    if (engine::Input::IsKeyPressed(ENGINE_KEY_W)) {
+    using engine::Input;
+
+    if (Input::IsKeyPressed(ENGINE_KEY_W)) {
       camera_position_.y += camera_speed_ * ts;
-    } else if (engine::Input::IsKeyPressed(ENGINE_KEY_S)) {
+    } else if (Input::IsKeyPressed(ENGINE_KEY_S)) {
       camera_position_.y -= camera_speed_ * ts;
     }
 
-    if (engine::Input::IsKeyPressed(ENGINE_KEY_A)) {
+    if (Input::IsKeyPressed(ENGINE_KEY_A)) {
       camera_position_.x -= camera_speed_ * ts;
-    } else if (engine::Input::IsKeyPressed(ENGINE_KEY_D)) {
+    } else if (Input::IsKeyPressed(ENGINE_KEY_D)) {
       camera_position_.x += camera_speed_ * ts;
     }
 
-    if (engine::Input::IsKeyPressed(ENGINE_KEY_I)) {
+    if (Input::IsKeyPressed(ENGINE_KEY_I)) {
       square_position_.y += square_move_speed_ * ts;
-    } else if (engine::Input::IsKeyPressed(ENGINE_KEY_K)) {
+    } else if (Input::IsKeyPressed(ENGINE_KEY_K)) {
       square_position_.y -= square_move_speed_ * ts;
     }
 
-    if (engine::Input::IsKeyPressed(ENGINE_KEY_J)) {
+    if (Input::IsKeyPressed(ENGINE_KEY_J)) {
       square_position_.x -= square_move_speed_ * ts;
-    } else if (engine::Input::IsKeyPressed(ENGINE_KEY_L)) {
+    } else if (Input::IsKeyPressed(ENGINE_KEY_L)) {
       square_position_.x += square_move_speed_ * ts;
     }
 
@@ -201,7 +203,6 @@ class ExampleLayer : public Layer {
   Shared<VertexArray> vertex_array_;
   Shared<Texture2D> texture_, lambda_texture_;
   ShaderLibrary shader_lib_;
-
 
   OrthographicCamera camera_;
   glm::vec3 camera_position_;
