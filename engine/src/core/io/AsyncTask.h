@@ -1,3 +1,4 @@
+// TODO(C3NZ): Add documentation for this file.
 #ifndef ENGINE_SRC_CORE_IO_ASYNCTASK_H_
 #define ENGINE_SRC_CORE_IO_ASYNCTASK_H_
 
@@ -12,7 +13,7 @@ namespace io {
 
 class AsyncTask;
 
-typedef std::function<bool()> EventFunc;
+typedef std::function<bool()> AsyncCallback;
 typedef memory::Unique<AsyncTask> UniqueAsyncTask;
 
 enum class AsyncStatus {
@@ -31,7 +32,7 @@ enum class AsyncResult {
 class AsyncTask {
  public:
   AsyncTask(
-      EventFunc callback,
+      AsyncCallback callback,
       util::Time execute_at = util::Time(),
       util::Time expires_at = util::Time().AddSeconds(5)) :
           callback_(callback),
@@ -39,13 +40,14 @@ class AsyncTask {
           execute_at_(execute_at),
           expires_at_(expires_at) {}
 
-  AsyncTask(EventFunc callback, uint32_t interval_in_ms, bool should_repeat) :
-      callback_(callback),
-      should_repeat_(should_repeat),
-      interval_in_ms_(interval_in_ms) {
-        scheduled_at_ = util::Time();
-        execute_at_ = scheduled_at_.AddMilliseconds(interval_in_ms_);
-        expires_at_ = util::Time(execute_at_.AddSeconds(5));
+  AsyncTask(
+      AsyncCallback callback, uint32_t interval_in_ms, bool should_repeat) :
+          callback_(callback),
+          should_repeat_(should_repeat),
+          interval_in_ms_(interval_in_ms) {
+    scheduled_at_ = util::Time();
+    execute_at_ = scheduled_at_.AddMilliseconds(interval_in_ms_);
+    expires_at_ = util::Time(execute_at_.AddSeconds(5));
       }
 
   bool ShouldRepeat() { return should_repeat_; }
@@ -84,7 +86,7 @@ class AsyncTask {
 
  private:
   std::string name_;
-  EventFunc callback_;
+  AsyncCallback callback_;
   bool should_repeat_ = false;
   uint32_t interval_in_ms_;
   util::Time scheduled_at_, execute_at_, executed_at_, expires_at_;
