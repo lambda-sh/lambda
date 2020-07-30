@@ -1,3 +1,5 @@
+#include <thread>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -30,6 +32,16 @@ class ExampleLayer : public Layer {
       camera_position_({0.0f, 0.0f, 0.0f}),
       square_position_(0.0f) {
     // Initialize the renderer. (Handles graphics specific API setup.)
+    loop_ = engine::memory::CreateShared<engine::io::EventLoop>();
+
+    loop_->SetInterval(
+        [&]() {
+          ENGINE_CLIENT_INFO("Executing every 2 seconds!");
+          return true;
+          }, 2000);
+
+    std::thread t([&]() { loop_->Run(); });
+    t.detach();
     Renderer::Init();
 
     float vertices[3 * 7] = {
@@ -202,6 +214,7 @@ class ExampleLayer : public Layer {
   Shared<IndexBuffer> index_buffer_;
   Shared<VertexArray> vertex_array_;
   Shared<Texture2D> texture_, lambda_texture_;
+  Shared<engine::io::EventLoop> loop_;
   ShaderLibrary shader_lib_;
 
   OrthographicCamera camera_;
@@ -215,7 +228,9 @@ class ExampleLayer : public Layer {
 
 class Sandbox : public engine::Application {
  public:
-  Sandbox() { PushLayer(engine::memory::CreateShared<ExampleLayer>()); }
+  Sandbox() {
+    PushLayer(engine::memory::CreateShared<ExampleLayer>());
+  }
   ~Sandbox() {}
 };
 
