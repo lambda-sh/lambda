@@ -46,13 +46,13 @@ class Time {
   const TimePoint GetTime() const { return time_; }
 
   Time AddMilliseconds(uint32_t milliseconds) {
-    time_ += std::chrono::milliseconds(milliseconds);
-    return Time(time_);
+    TimePoint new_time = time_ + std::chrono::milliseconds(milliseconds);
+    return Time(new_time);
   }
 
   Time AddSeconds(uint32_t seconds) {
-    time_ += std::chrono::seconds(seconds);
-    return Time(time_);
+    TimePoint new_time = time_ + std::chrono::seconds(seconds);
+    return Time(new_time);
   }
 
   bool IsAfter(const Time& t) {
