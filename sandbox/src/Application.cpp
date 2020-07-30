@@ -103,7 +103,6 @@ class ExampleLayer : public Layer {
         }
     )";
 
-
     shader_lib_.Add(
         Shader::Create(
             "yeet", vertex_source, fragment_source));
