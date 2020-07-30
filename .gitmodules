@@ -19,3 +19,6 @@
 [submodule "engine/vendor/concurrentqueue"]
 	path = engine/vendor/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue
+[submodule "engine/vendor/googletest"]
+	path = engine/vendor/googletest
+	url = https://github.com/google/googletest
