@@ -9,8 +9,12 @@
 #include <concepts>
 #include <ratio>
 
+#include "core/util/Assert.h"
+
 namespace engine {
 namespace util {
+
+// Time concepts and aliases.
 
 template<class T>
 concept FloatType = std::floating_point<T>;
@@ -18,9 +22,17 @@ concept FloatType = std::floating_point<T>;
 using Clock = std::chrono::steady_clock;
 using TimePoint = std::chrono::time_point<Clock>;
 
+// Forward declarations of both Time and DurationTo.
+
+class Time;
+
+template<FloatType T, typename Ratio>
+const T DurationTo(const Time& start, const Time& end);
+
 class Time {
  public:
   Time() noexcept : time_(Clock::now()) {}
+  explicit Time(const TimePoint& t) : time_(t) {}
 
   const TimePoint InSeconds() const {
     return std::chrono::time_point_cast<std::chrono::seconds>(time_); }
@@ -32,6 +44,28 @@ class Time {
     return std::chrono::time_point_cast<std::chrono::microseconds>(time_); }
 
   const TimePoint GetTime() const { return time_; }
+
+  Time AddMilliseconds(uint32_t milliseconds) {
+    time_ += std::chrono::milliseconds(milliseconds);
+    return Time(time_);
+  }
+
+  Time AddSeconds(uint32_t seconds) {
+    time_ += std::chrono::seconds(seconds);
+    return Time(time_);
+  }
+
+  bool IsAfter(const Time& t) {
+    return DurationTo<float, std::milli>(t, *this) < 0;
+  }
+
+  bool IsBefore(const Time& t) {
+    return DurationTo<float, std::milli>(t, *this) > 0;
+  }
+
+  bool HasPassed() {
+    return DurationTo<float, std::milli>(Time(), *this) < 0;
+  }
 
  private:
   TimePoint time_;
@@ -63,9 +97,38 @@ class TimeStep {
 };
 
 template<FloatType T, typename Ratio>
-const T DurationTo(Time start, Time stop) {
+const T DurationTo(const Time& start, const Time& stop) {
   std::chrono::duration<T, Ratio> d(stop.GetTime() - start.GetTime());
   return d.count();
+}
+
+template<typename NumType, typename Ratio>
+const std::chrono::duration<NumType, Ratio> ToDuration(NumType units) {
+  return std::chrono::duration<NumType, Ratio>(units);
+}
+
+template<typename NumType>
+const std::chrono::duration<NumType, std::milli> Nanoseconds(
+    NumType nanoseconds) {
+  return ToDuration<NumType, std::milli>(nanoseconds);
+}
+
+template<typename NumType>
+const std::chrono::duration<NumType, std::milli> Milliseconds(
+    NumType milliseconds) {
+  return ToDuration<NumType, std::milli>(milliseconds);
+}
+
+template<typename NumType>
+const std::chrono::duration<NumType, std::deci> Seconds(
+    NumType seconds) {
+  return ToDuration<NumType, std::milli>(seconds);
+}
+
+template<typename NumType>
+const std::chrono::duration<NumType, std::nano> Microseconds(
+    NumType microseconds) {
+  return ToDuration<NumType, std::milli>(microseconds);
 }
 
 }  // namespace util
