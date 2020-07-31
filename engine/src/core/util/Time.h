@@ -67,6 +67,9 @@ class Time {
     return DurationTo<float, std::milli>(Time(), *this) < 0;
   }
 
+  // Effectively an alias for getting the current time.
+  static Time Now() { return Time(); }
+
  private:
   TimePoint time_;
 };

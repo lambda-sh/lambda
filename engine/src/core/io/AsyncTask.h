@@ -41,14 +41,15 @@ class AsyncTask {
           expires_at_(expires_at) {}
 
   AsyncTask(
-      AsyncCallback callback, uint32_t interval_in_ms, bool should_repeat) :
+      AsyncCallback callback,
+      uint32_t interval_in_ms,
+      bool should_repeat) :
           callback_(callback),
+          scheduled_at_(util::Time()),
+          execute_at_(scheduled_at_.AddMilliseconds(interval_in_ms_)),
+          expires_at_(execute_at_.AddSeconds(5)),
           should_repeat_(should_repeat),
-          interval_in_ms_(interval_in_ms) {
-    scheduled_at_ = util::Time();
-    execute_at_ = scheduled_at_.AddMilliseconds(interval_in_ms_);
-    expires_at_ = util::Time(execute_at_.AddSeconds(5));
-      }
+          interval_in_ms_(interval_in_ms) {}
 
   bool ShouldRepeat() { return should_repeat_; }
 
