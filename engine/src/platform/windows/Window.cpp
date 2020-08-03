@@ -2,7 +2,6 @@
 
 #include "platform/windows/Window.h"
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include "core/Core.h"
@@ -10,21 +9,40 @@
 #include "core/events/ApplicationEvent.h"
 #include "core/events/KeyEvent.h"
 #include "core/events/MouseEvent.h"
+#include "core/memory/Pointers.h"
+#include "core/memory/Pointers.h"
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
+#include "platform/opengl/OpenGLContext.h"
 
 namespace engine {
 
+
 #ifdef ENGINE_PLATFORM_WINDOWS
 
-Window* Window::Create(const engine::WindowProperties& properties) {
-  return new platform::windows::WindowImplementation(properties);
+// Will create a windows based implementation of the window handler.
+memory::Shared<Window> Window::Create(
+    const engine::WindowProperties& properties) {
+  return memory::CreateShared<platform::windows::WindowImplementation>(
+      properties);
 }
 
 #endif  // ENGINE_PLATFORM_WINDOWS
 
 namespace platform {
 namespace windows {
+
+using engine::events::KeyPressedEvent;
+using engine::events::KeyReleasedEvent;
+using engine::events::KeyTypedEvent;
+using engine::events::MouseButtonPressedEvent;
+using engine::events::MouseButtonReleasedEvent;
+using engine::events::MouseMovedEvent;
+using engine::events::MouseScrolledEvent;
+using engine::events::WindowCloseEvent;
+using engine::events::WindowResizeEvent;
+using engine::memory::CreateShared;
+using engine::memory::Shared;
 
 // Error callback for handling GLFW specific errors
 static void GLFWErrorCallback(int error, const char* description) {
@@ -58,6 +76,7 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   if (!GLFWInitialized) {
     int success = glfwInit();
     ENGINE_CORE_ASSERT(success, "Could not initialize GLFW!");
+    glfwSetErrorCallback(GLFWErrorCallback);
     GLFWInitialized = true;
   }
 
@@ -68,38 +87,36 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
       nullptr,
       nullptr);
 
-  // Initialize GLFW
-  glfwMakeContextCurrent(window_);
-  glfwSetWindowUserPointer(window_, &properties_);
+  context_ = new opengl::OpenGLContext(window_);
+  context_->Init();
 
-  int status = gladLoadGLLoader(
-      reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
-  ENGINE_CORE_ASSERT(status, "Failed to initialize glad.");
+  glfwSetWindowUserPointer(window_, &properties_);
   SetVerticalSync(true);
 
   glfwSetWindowSizeCallback(
       window_,
-      [](GLFWwindow* window, int width, int height) {
-        internal::Properties* properties =
+      [](GLFWwindow* window, int new_width, int new_height) {
+      internal::Properties* properties =
               static_cast<internal::Properties*>(
                   glfwGetWindowUserPointer(window));
 
-          events::WindowResizeEvent event(width, height);
-          properties->Width = width;
-          properties->Height = height;
+          Shared<WindowResizeEvent> event = CreateShared<WindowResizeEvent>(
+              new_width, new_height);
+          properties->Width = new_width;
+          properties->Height = new_height;
 
-          properties->EventCallback(&event);
+          properties->EventCallback(event);
       });
 
   glfwSetWindowCloseCallback(
       window_,
       [](GLFWwindow* window) {
-      internal::Properties& properties =
-            *static_cast<internal::Properties*>(
+      internal::Properties* properties =
+            static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-            events::WindowCloseEvent event;
-            properties.EventCallback(&event);
+            Shared<WindowCloseEvent> event = CreateShared<WindowCloseEvent>();
+            properties->EventCallback(event);
       });
 
   glfwSetKeyCallback(
@@ -112,20 +129,23 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
         switch (action) {
           case GLFW_PRESS:
           {
-            events::KeyPressedEvent event(key, 0);
-            properties->EventCallback(&event);
+            Shared<KeyPressedEvent> event = CreateShared<KeyPressedEvent>(
+                key, 0);
+            properties->EventCallback(event);
             break;
           }
           case GLFW_RELEASE:
           {
-            events::KeyReleasedEvent event(key);
-            properties->EventCallback(&event);
+            Shared<KeyReleasedEvent> event = CreateShared<KeyReleasedEvent>(
+                key);
+            properties->EventCallback(event);
             break;
           }
           case GLFW_REPEAT:
           {
-            events::KeyPressedEvent event(key, 1);
-            properties->EventCallback(&event);
+            Shared<KeyPressedEvent> event = CreateShared<KeyPressedEvent>(
+                key, 0);
+            properties->EventCallback(event);
             break;
           }
         }
@@ -138,8 +158,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        events::KeyTypedEvent event(character);
-        properties->EventCallback(&event);
+            Shared<KeyTypedEvent> event = CreateShared<KeyTypedEvent>(
+                character);
+            properties->EventCallback(event);
       });
 
   glfwSetMouseButtonCallback(
@@ -152,14 +173,16 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
         switch (action) {
           case GLFW_PRESS:
           {
-            events::MouseButtonPressedEvent event(button);
-            properties->EventCallback(&event);
+            Shared<MouseButtonPressedEvent> event = CreateShared<
+                MouseButtonPressedEvent>(button);
+            properties->EventCallback(event);
             break;
           }
           case GLFW_RELEASE:
           {
-            events::MouseButtonReleasedEvent event(button);
-            properties->EventCallback(&event);
+            Shared<MouseButtonReleasedEvent> event = CreateShared<
+                MouseButtonReleasedEvent>(button);
+            properties->EventCallback(event);
             break;
           }
         }
@@ -167,26 +190,26 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
 
   glfwSetScrollCallback(
       window_,
-      [](GLFWwindow* window, double xOffset, double yOffset) {
+      [](GLFWwindow* window, double x_offset, double y_offset) {
       internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        events::MouseScrolledEvent event(
-            static_cast<float>(xOffset), static_cast<float>(yOffset));
-        properties->EventCallback(&event);
+        Shared<MouseScrolledEvent> event = CreateShared<MouseScrolledEvent>(
+            static_cast<float>(x_offset), static_cast<float>(y_offset));
+        properties->EventCallback(event);
       });
 
   glfwSetCursorPosCallback(
       window_,
-      [](GLFWwindow* window, double xPosition, double yPosition) {
+      [](GLFWwindow* window, double x_position, double y_position) {
       internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        events::MouseMovedEvent event(
-            static_cast<float>(xPosition), static_cast<float>(yPosition));
-        properties->EventCallback(&event);
+        Shared<MouseMovedEvent> event = CreateShared<MouseMovedEvent>(
+            static_cast<float>(x_position), static_cast<float>(y_position));
+        properties->EventCallback(event);
       });
 }
 
@@ -198,19 +221,12 @@ void WindowImplementation::Shutdown() {
 // Handling updates to the screen.
 void WindowImplementation::OnUpdate() {
   glfwPollEvents();
-  glfwSwapBuffers(window_);
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
+  context_->SwapBuffers();
 }
 
-// Setup the current window to use or not use Vsync.
+// Setup the current window to use or not use Vertical sync.
 void WindowImplementation::SetVerticalSync(bool enabled) {
-  if (enabled) {
-    glfwSwapInterval(1);
-  } else {
-    glfwSwapInterval(0);
-  }
-
+  glfwSwapInterval(enabled ? 1 : 0);
   properties_.VerticalSync = enabled;
 }
 
