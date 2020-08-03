@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 
 #include "core/Window.h"
+#include "core/memory/Pointers.h"
 #include "core/renderer/GraphicsContext.h"
 
 namespace engine {
