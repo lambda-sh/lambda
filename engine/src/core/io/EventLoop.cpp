@@ -3,8 +3,9 @@
 namespace engine {
 namespace io {
 
-// TODO(C3NZ) Investigate into the amount of time needed to sleep by the thread
+// TODO(C3NZ): Investigate into the amount of time needed to sleep by the thread
 // that this loop is running in.
+// TODO(C3NZ): Is this as performant as it can possibly be?
 void EventLoop::Run() {
   while (running_) {
     std::this_thread::sleep_for(util::Milliseconds(50));
@@ -47,7 +48,11 @@ void EventLoop::Run() {
 
     // Reschedule if it should repeat.
     if (next_task->ShouldRepeat()) {
-      next_task->ExecuteIn(next_task->GetIntervalInMilliseconds());
+      Time next_execution_time = Time().AddMilliseconds(
+          next_task->GetIntervalInMilliseconds());
+      Time next_expiration_time = next_execution_time.AddMilliseconds(5000);
+      next_task->RescheduleTask(next_execution_time, next_expiration_time);
+
       bool has_space = event_queue_.enqueue(std::move(next_task));
       ENGINE_CORE_ASSERT(has_space, "The Event loop has run out of space")
     }
@@ -73,6 +78,8 @@ bool EventLoop::Dispatch(
   return Dispatch(std::move(task));
 }
 
+// TODO(C3NZ): Do we need to use std::move since objects with well defined move
+// semantics are copyable into the queue?
 // Private dispatch for putting the task into the queue.
 bool EventLoop::Dispatch(UniqueAsyncTask task) {
   bool has_space = event_queue_.enqueue(std::move(task));
