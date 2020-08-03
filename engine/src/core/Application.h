@@ -29,7 +29,7 @@ class Application {
   Application();
   virtual ~Application();
 
-  void OnEvent(events::Event* event);
+  void OnEvent(memory::Shared<Event> event);
   void PushLayer(memory::Shared<layers::Layer> layer);
   void PushOverlay(memory::Shared<layers::Layer> layer);
   void Run();

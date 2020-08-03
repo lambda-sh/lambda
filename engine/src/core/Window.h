@@ -13,6 +13,9 @@
 
 namespace engine {
 
+using events::Event;
+using memory::Shared;
+
 struct WindowProperties {
   std::string Title;
   unsigned int Width;
@@ -27,7 +30,7 @@ struct WindowProperties {
 
 class Window {
  public:
-  typedef std::function<void(events::Event*)> EventCallbackFunction;
+  typedef std::function<void(Shared<Event>)> EventCallbackFunction;
   virtual ~Window() {}
 
   virtual void OnUpdate() = 0;
