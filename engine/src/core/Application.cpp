@@ -15,6 +15,8 @@
 
 namespace engine {
 
+using engine::memory::Shared;
+
 memory::Unique<Application> Application::kApplication_ = nullptr;
 
 Application::Application() {
@@ -36,7 +38,7 @@ void Application::Run() {
     util::TimeStep time_step(last_frame_time_, current_frame_time);
     last_frame_time_ = current_frame_time;
 
-    for (memory::Shared<layers::Layer> layer : layer_stack_) {
+    for (Shared<layers::Layer> layer : layer_stack_) {
       layer->OnUpdate(time_step);
     }
 
@@ -50,7 +52,7 @@ void Application::Run() {
   }
 }
 
-void Application::OnEvent(events::Event* event) {
+void Application::OnEvent(memory::Shared<Event> event) {
   events::EventDispatcher dispatcher(event);
   dispatcher.Dispatch<events::WindowCloseEvent>
       (BIND_EVENT_FN(Application::OnWindowClosed));

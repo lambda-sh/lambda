@@ -8,6 +8,7 @@
 #include "ext/matrix_transform.hpp"
 #include "platform/opengl/OpenGLShader.h"
 
+using engine::events::Event;
 using engine::layers::Layer;
 using engine::memory::Shared;
 using engine::renderer::BufferLayout;
@@ -206,7 +207,7 @@ class ExampleLayer : public Layer {
     ImGui::End();
   }
 
-  void OnEvent(engine::events::Event* event) override {}
+  void OnEvent(Shared<Event> event) override {}
 
  private:
   Shared<VertexBuffer> vertex_buffer_;

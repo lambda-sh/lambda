@@ -8,10 +8,14 @@
 
 #include "core/Core.h"
 #include "core/events/Event.h"
+#include "core/memory/Pointers.h"
 #include "core/util/Time.h"
 
 namespace engine {
 namespace layers {
+
+using engine::events::Event;
+using engine::memory::Shared;
 
 class Layer {
  public:
@@ -21,7 +25,7 @@ class Layer {
   virtual void OnAttach() {}
   virtual void OnDetach() {}
   virtual void OnUpdate(util::TimeStep time_step) {}
-  virtual void OnEvent(events::Event* event) {}
+  virtual void OnEvent(Shared<Event> event) {}
   virtual void OnImGuiRender() {}
 
   inline const std::string& GetName() const { return debug_name_; }

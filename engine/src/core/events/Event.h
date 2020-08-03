@@ -17,9 +17,12 @@
 #include <spdlog/fmt/ostr.h>
 
 #include "core/Core.h"
+#include "core/memory/Pointers.h"
 
 namespace engine {
 namespace events {
+
+using memory::Shared;
 
 // ----------------------- EVENT TYPES & CATEGORIES ---------------------------
 
@@ -80,19 +83,19 @@ class EventDispatcher {
   using EventFn = const std::function<bool(const T&)>;
 
  public:
-  explicit EventDispatcher(Event* event) : event_(event) {}
+  explicit EventDispatcher(Shared<Event> event) : event_(event) {}
 
-  template<typename T>
-  bool Dispatch(EventFn<T> func) {
-    if (event_->GetEventType() == T::GetStaticType()) {
-      event_->SetHandled(func(dynamic_cast<const T&>(*event_)));
+  template<class Event>
+  bool Dispatch(EventFn<Event> func) {
+    if (event_->GetEventType() == Event::GetStaticType()) {
+      event_->SetHandled(func(dynamic_cast<const Event&>(*event_)));
       return true;
     }
     return false;
   }
 
  private:
-  Event* event_;
+  Shared<Event> event_;
 };
 
 }  // namespace events
