@@ -8,13 +8,11 @@
 #include <string>
 
 #include "core/Core.h"
+#include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
 #include "core/memory/Pointers.h"
 
 namespace engine {
-
-using events::Event;
-using memory::Shared;
 
 struct WindowProperties {
   std::string Title;
@@ -30,7 +28,8 @@ struct WindowProperties {
 
 class Window {
  public:
-  typedef std::function<void(Shared<Event>)> EventCallbackFunction;
+  typedef std::function<void(memory::Shared<events::Event>)>
+      EventCallbackFunction;
   virtual ~Window() {}
 
   virtual void OnUpdate() = 0;
@@ -42,6 +41,7 @@ class Window {
   virtual void SetVerticalSync(bool enabled) = 0;
   virtual bool HasVerticalSync() const = 0;
   virtual void* GetNativeWindow() const = 0;
+
 
   static memory::Shared<Window> Create(
       const WindowProperties& properties = WindowProperties());
