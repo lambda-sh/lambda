@@ -12,10 +12,9 @@
 #include "core/util/Log.h"
 #include "core/util/Reverse.h"
 #include "core/util/Time.h"
+#include "core/renderer/Renderer.h"
 
 namespace engine {
-
-using engine::memory::Shared;
 
 memory::Unique<Application> Application::kApplication_ = nullptr;
 
@@ -38,8 +37,10 @@ void Application::Run() {
     util::TimeStep time_step(last_frame_time_, current_frame_time);
     last_frame_time_ = current_frame_time;
 
-    for (Shared<layers::Layer> layer : layer_stack_) {
-      layer->OnUpdate(time_step);
+    if (!minimized_) {
+      for (memory::Shared<layers::Layer> layer : layer_stack_) {
+        layer->OnUpdate(time_step);
+      }
     }
 
     imgui_layer_->Begin();
@@ -52,10 +53,13 @@ void Application::Run() {
   }
 }
 
-void Application::OnEvent(memory::Shared<Event> event) {
+void Application::OnEvent(memory::Shared<events::Event> event) {
   events::EventDispatcher dispatcher(event);
-  dispatcher.Dispatch<events::WindowCloseEvent>
-      (BIND_EVENT_FN(Application::OnWindowClosed));
+  dispatcher.Dispatch<events::WindowCloseEvent>(
+      BIND_EVENT_FN(Application::OnWindowClosed));
+
+  dispatcher.Dispatch<events::WindowResizeEvent>(
+      BIND_EVENT_FN(Application::OnWindowResize));
 
   for (memory::Shared<layers::Layer> layer : util::Reverse(layer_stack_)) {
     layer->OnEvent(event);
@@ -78,6 +82,19 @@ void Application::PushOverlay(memory::Shared<layers::Layer> layer) {
 bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
   running_ = false;
   return true;
+}
+
+bool Application::OnWindowResize(const events::WindowResizeEvent& event) {
+  if (event.GetWidth() == 0 || event.GetHeight() == 0) {
+    minimized_ = true;
+    return false;
+  }
+
+  // Send the resize to the renderer.
+  minimized_ = false;
+  renderer::Renderer::OnWindowResize(event.GetWidth(), event.GetHeight());
+
+  return false;
 }
 
 }  // namespace engine

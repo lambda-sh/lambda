@@ -29,22 +29,26 @@ class Application {
   Application();
   virtual ~Application();
 
-  void OnEvent(memory::Shared<Event> event);
+  void OnEvent(memory::Shared<events::Event> event);
   void PushLayer(memory::Shared<layers::Layer> layer);
   void PushOverlay(memory::Shared<layers::Layer> layer);
   void Run();
 
-  inline const Window& GetWindow() const { return *window_; }
-  inline static Application& GetApplication() {return *kApplication_; }
+  const Window& GetWindow() const { return *window_; }
+  static Application& GetApplication() {return *kApplication_; }
 
  private:
-  layers::LayerStack layer_stack_;
   bool running_ = true;
+  bool minimized_ = false;
+
+  layers::LayerStack layer_stack_;
   memory::Shared<Window> window_;
   memory::Shared<imgui::ImGuiLayer> imgui_layer_;
-  static memory::Unique<Application> kApplication_;
   util::Time last_frame_time_;
 
+  static memory::Unique<Application> kApplication_;
+
+  bool OnWindowResize(const events::WindowResizeEvent& event);
   bool OnWindowClosed(const events::WindowCloseEvent& event);
 };
 
