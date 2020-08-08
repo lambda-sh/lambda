@@ -32,18 +32,6 @@ memory::Shared<Window> Window::Create(
 namespace platform {
 namespace linux {
 
-using engine::events::KeyPressedEvent;
-using engine::events::KeyReleasedEvent;
-using engine::events::KeyTypedEvent;
-using engine::events::MouseButtonPressedEvent;
-using engine::events::MouseButtonReleasedEvent;
-using engine::events::MouseMovedEvent;
-using engine::events::MouseScrolledEvent;
-using engine::events::WindowCloseEvent;
-using engine::events::WindowResizeEvent;
-using engine::memory::CreateShared;
-using engine::memory::Shared;
-
 // Error callback for handling GLFW specific errors
 static void GLFWErrorCallback(int error, const char* description) {
   ENGINE_CORE_ERROR("GFLW Error ({0}): {1}", error, description);
@@ -97,55 +85,58 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetWindowSizeCallback(
       window_,
       [](GLFWwindow* window, int new_width, int new_height) {
-      internal::Properties* properties =
-              static_cast<internal::Properties*>(
-                  glfwGetWindowUserPointer(window));
+        internal::Properties* properties =
+            static_cast<internal::Properties*>(
+                glfwGetWindowUserPointer(window));
 
-          Shared<WindowResizeEvent> event = CreateShared<WindowResizeEvent>(
-              new_width, new_height);
-          properties->Width = new_width;
-          properties->Height = new_height;
+        memory::Shared<events::WindowResizeEvent> event =
+            memory::CreateShared<events::WindowResizeEvent>(
+                new_width, new_height);
 
-          properties->EventCallback(event);
+        properties->Width = new_width;
+        properties->Height = new_height;
+
+        properties->EventCallback(event);
       });
 
   glfwSetWindowCloseCallback(
       window_,
       [](GLFWwindow* window) {
-      internal::Properties* properties =
+        internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-            Shared<WindowCloseEvent> event = CreateShared<WindowCloseEvent>();
-            properties->EventCallback(event);
+        memory::Shared<events::WindowCloseEvent> event =
+            memory::CreateShared<events::WindowCloseEvent>();
+        properties->EventCallback(event);
       });
 
   glfwSetKeyCallback(
       window_,
       [](GLFWwindow* window, int key, int scancode, int action, int mods) {
-      internal::Properties* properties =
+        internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
         switch (action) {
           case GLFW_PRESS:
           {
-            Shared<KeyPressedEvent> event = CreateShared<KeyPressedEvent>(
-                key, 0);
+            memory::Shared<events::KeyPressedEvent> event =
+                memory::CreateShared<events::KeyPressedEvent>(key, 0);
             properties->EventCallback(event);
             break;
           }
           case GLFW_RELEASE:
           {
-            Shared<KeyReleasedEvent> event = CreateShared<KeyReleasedEvent>(
-                key);
+            memory::Shared<events::KeyReleasedEvent> event =
+                memory::CreateShared<events::KeyReleasedEvent>(key);
             properties->EventCallback(event);
             break;
           }
           case GLFW_REPEAT:
           {
-            Shared<KeyPressedEvent> event = CreateShared<KeyPressedEvent>(
-                key, 1);
+            memory::Shared<events::KeyPressedEvent> event =
+                memory::CreateShared<events::KeyPressedEvent>(key, 1);
             properties->EventCallback(event);
             break;
           }
@@ -155,34 +146,34 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetCharCallback(
       window_,
       [](GLFWwindow* window, unsigned int character) {
-      internal::Properties* properties =
+        internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-            Shared<KeyTypedEvent> event = CreateShared<KeyTypedEvent>(
-                character);
+            memory::Shared<events::KeyTypedEvent> event =
+                memory::CreateShared<events::KeyTypedEvent>(character);
             properties->EventCallback(event);
-      });
+        });
 
   glfwSetMouseButtonCallback(
       window_,
       [](GLFWwindow* window, int button, int action, int mods) {
-      internal::Properties* properties =
+        internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
         switch (action) {
           case GLFW_PRESS:
           {
-            Shared<MouseButtonPressedEvent> event = CreateShared<
-                MouseButtonPressedEvent>(button);
+            memory::Shared<events::MouseButtonPressedEvent> event =
+                memory::CreateShared<events::MouseButtonPressedEvent>(button);
             properties->EventCallback(event);
             break;
           }
           case GLFW_RELEASE:
           {
-            Shared<MouseButtonReleasedEvent> event = CreateShared<
-                MouseButtonReleasedEvent>(button);
+            memory::Shared<events::MouseButtonReleasedEvent> event =
+                memory::CreateShared<events::MouseButtonReleasedEvent>(button);
             properties->EventCallback(event);
             break;
           }
@@ -192,24 +183,26 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
   glfwSetScrollCallback(
       window_,
       [](GLFWwindow* window, double x_offset, double y_offset) {
-      internal::Properties* properties =
+        internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        Shared<MouseScrolledEvent> event = CreateShared<MouseScrolledEvent>(
-            static_cast<float>(x_offset), static_cast<float>(y_offset));
+        memory::Shared<events::MouseScrolledEvent> event =
+            memory::CreateShared<events::MouseScrolledEvent>(
+                static_cast<float>(x_offset), static_cast<float>(y_offset));
         properties->EventCallback(event);
       });
 
   glfwSetCursorPosCallback(
       window_,
       [](GLFWwindow* window, double x_position, double y_position) {
-      internal::Properties* properties =
+        internal::Properties* properties =
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        Shared<MouseMovedEvent> event = CreateShared<MouseMovedEvent>(
-            static_cast<float>(x_position), static_cast<float>(y_position));
+        memory::Shared<events::MouseMovedEvent> event =
+            memory::CreateShared<events::MouseMovedEvent>(
+                static_cast<float>(x_position), static_cast<float>(y_position));
         properties->EventCallback(event);
       });
 }

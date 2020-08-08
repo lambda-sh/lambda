@@ -24,8 +24,10 @@ class OrthographicCamera {
 
   const glm::mat4& GetProjectionMatrix() const {
       return projection_matrix_; }
+
   void SetProjectionMatrix(float left, float right, float bottom, float top) {
     projection_matrix_ = glm::ortho(left, right, bottom, top, -1.0f, 1.0f);
+    RecalculateViewMatrix();
   }
   const glm::mat4& GetViewMatrix() const { return view_matrix_; }
   const glm::mat4& GetViewProjectionMatrix() const {

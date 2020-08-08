@@ -32,13 +32,6 @@ void OpenGLContext::Init() {
 }
 
 void OpenGLContext::SwapBuffers() {
-  int width, height;
-
-  // TODO(C3NZ): Need to move this out of the Buffer swap so that it doesn't
-  // get invoked on every single call.
-  glfwGetFramebufferSize(window_handle_, &width, &height);
-  glViewport(0, 0, width, height);
-
   glfwSwapBuffers(window_handle_);
 }
 

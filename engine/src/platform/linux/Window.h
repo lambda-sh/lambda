@@ -1,6 +1,7 @@
 #ifndef ENGINE_SRC_PLATFORM_LINUX_WINDOW_H_
 #define ENGINE_SRC_PLATFORM_LINUX_WINDOW_H_
 
+#include "core/events/ApplicationEvent.h"
 #if defined ENGINE_PLATFORM_LINUX || defined ENGINE_DEBUG
 
 #include <string>
@@ -28,22 +29,23 @@ struct Properties {
 
 }  // namespace internal
 
-class WindowImplementation : public engine::Window {
+class WindowImplementation : public Window {
  public:
-  explicit WindowImplementation(const engine::WindowProperties& properties);
+  explicit WindowImplementation(const WindowProperties& properties);
   virtual ~WindowImplementation();
 
   void OnUpdate() override;
+
   void SetVerticalSync(bool enabled) override;
   bool HasVerticalSync() const override;
 
-  inline unsigned int GetWidth() const override { return properties_.Width; }
-  inline unsigned int GetHeight() const override { return properties_.Height; }
+  unsigned int GetWidth() const override { return properties_.Width; }
+  unsigned int GetHeight() const override { return properties_.Height; }
 
-  inline void SetEventCallback(const EventCallbackFunction& callback) override {
+  void SetEventCallback(const EventCallbackFunction& callback) override {
       properties_.EventCallback = callback; }
 
-  inline void* GetNativeWindow() const override { return window_; }
+  void* GetNativeWindow() const override { return window_; }
  private:
   GLFWwindow* window_;
   renderer::GraphicsContext* context_;

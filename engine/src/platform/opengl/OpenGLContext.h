@@ -9,7 +9,6 @@ namespace engine {
 namespace platform {
 namespace opengl {
 
-
 class OpenGLContext : public renderer::GraphicsContext {
  public:
   explicit OpenGLContext(GLFWwindow* window_handle);
