@@ -14,13 +14,18 @@
 namespace engine {
 namespace util {
 
-// Time concepts and aliases.
-
 template<class T>
 concept FloatType = std::floating_point<T>;
 
-using Clock = std::chrono::steady_clock;
-using TimePoint = std::chrono::time_point<Clock>;
+// Clock & Time typedefs
+typedef std::chrono::steady_clock Clock;
+typedef std::chrono::time_point<Clock> TimePoint;
+
+// Duration typedefs
+typedef std::chrono::duration<int64_t, std::nano> Nanoseconds;
+typedef std::chrono::duration<int64_t, std::micro> Microseconds;
+typedef std::chrono::duration<int64_t, std::milli> Milliseconds;
+typedef std::chrono::duration<int64_t, std::deci> Seconds;
 
 // Forward declarations of both Time and DurationTo.
 
@@ -45,14 +50,13 @@ class Time {
 
   const TimePoint GetTime() const { return time_; }
 
-  Time AddMilliseconds(uint32_t milliseconds) {
-    TimePoint new_time = time_ + std::chrono::milliseconds(milliseconds);
-    return Time(new_time);
+
+  inline Time AddMilliseconds(int64_t milliseconds) {
+    return Time(time_ + Milliseconds(milliseconds));
   }
 
-  Time AddSeconds(uint32_t seconds) {
-    TimePoint new_time = time_ + std::chrono::seconds(seconds);
-    return Time(new_time);
+  Time AddSeconds(int64_t seconds) {
+    return Time(time_ + Seconds(seconds));
   }
 
   bool IsAfter(const Time& t) {
@@ -68,7 +72,23 @@ class Time {
   }
 
   // Effectively an alias for getting the current time.
-  static Time Now() { return Time(); }
+  inline static Time Now() { return Time(); }
+
+  inline static Time NanosecondsFromNow(int64_t nanoseconds) {
+    return Time().AddMilliseconds(nanoseconds);
+  }
+  inline static Time MicrosecondsFromNow(int64_t microseconds) {
+    return Time().AddMilliseconds(microseconds);
+  }
+
+  inline static Time MillisecondsFromNow(int64_t milliseconds) {
+    return Time().AddMilliseconds(milliseconds);
+  }
+
+  inline static Time SecondsFromNow(int64_t seconds) {
+    return Time().AddSeconds(seconds);
+  }
+
 
  private:
   TimePoint time_;
@@ -99,40 +119,13 @@ class TimeStep {
   Time stop_;
 };
 
+
 template<FloatType T, typename Ratio>
 const T DurationTo(const Time& start, const Time& stop) {
   std::chrono::duration<T, Ratio> d(stop.GetTime() - start.GetTime());
   return d.count();
 }
 
-template<typename NumType, typename Ratio>
-const std::chrono::duration<NumType, Ratio> ToDuration(NumType units) {
-  return std::chrono::duration<NumType, Ratio>(units);
-}
-
-template<typename NumType>
-const std::chrono::duration<NumType, std::milli> Nanoseconds(
-    NumType nanoseconds) {
-  return ToDuration<NumType, std::milli>(nanoseconds);
-}
-
-template<typename NumType>
-const std::chrono::duration<NumType, std::milli> Milliseconds(
-    NumType milliseconds) {
-  return ToDuration<NumType, std::milli>(milliseconds);
-}
-
-template<typename NumType>
-const std::chrono::duration<NumType, std::deci> Seconds(
-    NumType seconds) {
-  return ToDuration<NumType, std::milli>(seconds);
-}
-
-template<typename NumType>
-const std::chrono::duration<NumType, std::nano> Microseconds(
-    NumType microseconds) {
-  return ToDuration<NumType, std::milli>(microseconds);
-}
 
 }  // namespace util
 }  // namespace engine

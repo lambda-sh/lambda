@@ -13,7 +13,7 @@ using engine::layers::Layer;
 using engine::memory::Shared;
 using engine::renderer::BufferLayout;
 using engine::renderer::IndexBuffer;
-using engine::renderer::OrthographicCamera;
+using engine::OrthographicCameraController;
 using engine::renderer::RenderCommand;
 using engine::renderer::Renderer;
 using engine::renderer::Shader;
@@ -24,13 +24,13 @@ using engine::renderer::Texture2D;
 using engine::renderer::VertexArray;
 using engine::renderer::VertexBuffer;
 using engine::util::TimeStep;
+using engine::Input;
 
 class ExampleLayer : public Layer {
  public:
   ExampleLayer() :
       Layer("Example"),
-      camera_(-1.6f, 1.6f, -0.9f, 0.9f),
-      camera_position_({0.0f, 0.0f, 0.0f}),
+      camera_(1280.0f / 720.0f, true),
       square_position_(0.0f) {
     // Initialize the renderer. (Handles graphics specific API setup.)
     loop_ = engine::memory::CreateShared<engine::io::EventLoop>();
@@ -131,19 +131,7 @@ class ExampleLayer : public Layer {
     float ts = time_step.InSeconds<float>();
     float ts2 = time_step.InMicroSeconds<double>();
 
-    using engine::Input;
-
-    if (Input::IsKeyPressed(ENGINE_KEY_W)) {
-      camera_position_.y += camera_speed_ * ts;
-    } else if (Input::IsKeyPressed(ENGINE_KEY_S)) {
-      camera_position_.y -= camera_speed_ * ts;
-    }
-
-    if (Input::IsKeyPressed(ENGINE_KEY_A)) {
-      camera_position_.x -= camera_speed_ * ts;
-    } else if (Input::IsKeyPressed(ENGINE_KEY_D)) {
-      camera_position_.x += camera_speed_ * ts;
-    }
+    camera_.OnUpdate(time_step);
 
     if (Input::IsKeyPressed(ENGINE_KEY_I)) {
       square_position_.y += square_move_speed_ * ts;
@@ -160,13 +148,9 @@ class ExampleLayer : public Layer {
     RenderCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
     RenderCommand::Clear();
 
-    camera_.SetPosition(camera_position_);
-    camera_.SetRotation(45.0f);
-
     glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 
-    Renderer::BeginScene(camera_);
-
+    Renderer::BeginScene(camera_.GetOrthographicCamera());
 
     const auto& cast = std::dynamic_pointer_cast<
       engine::platform::opengl::OpenGLShader>(shader_lib_.Get("yeet"));
@@ -207,7 +191,9 @@ class ExampleLayer : public Layer {
     ImGui::End();
   }
 
-  void OnEvent(Shared<Event> event) override {}
+  void OnEvent(Shared<Event> event) override {
+    camera_.OnEvent(event);
+  }
 
  private:
   Shared<VertexBuffer> vertex_buffer_;
@@ -217,7 +203,7 @@ class ExampleLayer : public Layer {
   Shared<engine::io::EventLoop> loop_;
   ShaderLibrary shader_lib_;
 
-  OrthographicCamera camera_;
+  OrthographicCameraController camera_;
   glm::vec3 camera_position_;
   glm::vec3 square_position_;
   float camera_speed_ = 0.01f;
