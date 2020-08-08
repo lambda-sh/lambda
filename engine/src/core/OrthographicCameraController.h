@@ -30,7 +30,7 @@ class OrthographicCameraController {
   bool can_rotate_;
   float zoom_level_ = 1.0f;
 
-  renderer::OrthographicCamera camera_;
+  OrthographicCamera camera_;
   glm::vec3 camera_position_ = {0.0f, 0.0f, 0.0f};
   float camera_translation_speed_ = 0.01f;
   float camera_rotation_speed_ =  0.03f;

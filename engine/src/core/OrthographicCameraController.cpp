@@ -29,7 +29,7 @@ OrthographicCameraController::OrthographicCameraController(
         can_rotate_(can_rotate) {}
 
 void OrthographicCameraController::OnUpdate(TimeStep delta) {
-    float delta_in_ms = delta.InSeconds<float>();
+    float delta_in_ms = delta.InMilliSeconds<float>();
     if (Input::IsKeyPressed(ENGINE_KEY_W)) {
       camera_position_.y += camera_translation_speed_ * delta_in_ms;
     } else if (Input::IsKeyPressed(ENGINE_KEY_S)) {
