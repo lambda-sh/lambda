@@ -17,8 +17,11 @@ namespace renderer {
 class Renderer {
  public:
   static void Init();
+
   static void BeginScene(const OrthographicCamera& camera);
   static void EndScene();
+
+  static void OnWindowResize(uint32_t width, uint32_t height);
 
   // TODO(C3NZ): update this to use engine memory allocators as opposed to
   // generic smart pointers.

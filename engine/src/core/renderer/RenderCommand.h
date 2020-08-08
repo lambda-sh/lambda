@@ -19,6 +19,11 @@ class RenderCommand {
     renderer_API_->SetClearColor(color);
   }
 
+  static void SetViewport(
+      uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+    renderer_API_->SetViewport(x, y, width, height);
+  }
+
   inline static void Clear() {
     renderer_API_->Clear();
   }

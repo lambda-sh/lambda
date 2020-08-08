@@ -21,6 +21,10 @@ void Renderer::BeginScene(const OrthographicCamera& camera) {
 
 void Renderer::EndScene() {}
 
+void Renderer::OnWindowResize(uint32_t width, uint32_t height) {
+  RenderCommand::SetViewport(0, 0, width, height);
+}
+
 /**
  * Binds both the shader and vertex array before issuing a draw call.
  */
