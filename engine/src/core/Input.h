@@ -13,16 +13,16 @@ namespace engine {
 
 class Input {
  public:
-  inline static bool IsKeyPressed(int key_code)
-      { return kInput_->IsKeyPressedImpl(key_code); }
+  static bool IsKeyPressed(int key_code) {
+      return kInput_->IsKeyPressedImpl(key_code); }
 
-  inline static float GetMouseX() { return kInput_->GetMouseXImpl(); }
-  inline static float GetMouseY() { return kInput_->GetMouseYImpl(); }
+  static float GetMouseX() { return kInput_->GetMouseXImpl(); }
+  static float GetMouseY() { return kInput_->GetMouseYImpl(); }
 
-  inline static std::pair<float, float> GetMousePosition() {
+  static std::pair<float, float> GetMousePosition() {
       return kInput_->GetMousePositionImpl(); }
 
-  inline static bool IsMouseButtonPressed(int button) {
+  static bool IsMouseButtonPressed(int button) {
       return kInput_->IsMouseButtonPressedImpl(button); }
 
  protected:
