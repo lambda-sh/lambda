@@ -1,8 +1,6 @@
-/**
- * @file Layer.h
- * @brief The Layer implementation that allows application to specify layers to
- * be attached to the game.
- */
+/// @file Layer.h
+/// @brief The Layer implementation that allows application to specify layers to
+/// be attached to the game.
 #ifndef LAMBDA_SRC_CORE_LAYERS_LAYER_H_
 #define LAMBDA_SRC_CORE_LAYERS_LAYER_H_
 
@@ -15,75 +13,36 @@ namespace lambda {
 namespace core {
 namespace layers {
 
+/// @brief The lambda Layer abstraction. Primarily used for direct access into
+/// lambdas tick and event system.
+///
+/// Anyone implementing lambda as a library in their project will at some point
+/// need to create a layer in order to receive updates and events from lambda.
 class Layer {
  public:
   explicit Layer(const std::string& name = "Layer");
   virtual ~Layer();
 
+  /// @brief What to do when a layer is attached to lambda.
   virtual void OnAttach() {}
+  /// @brief What to do when a layer is detached from lambda.
   virtual void OnDetach() {}
+  /// @brief What to do when lambda has an update for the layer.
   virtual void OnUpdate(util::TimeStep time_step) {}
+  /// @brief What to do when lambda has an event for the layer.
   virtual void OnEvent(memory::Shared<events::Event> event) {}
+  /// @brief What to do when lambda is rendering with ImGui.
   virtual void OnImGuiRender() {}
 
-  inline const std::string& GetName() const { return debug_name_; }
+  /// @brief Get the debug name of the layer. Might not be in production builds.
+  const std::string& GetName() const { return debug_name_; }
 
  protected:
   std::string debug_name_;
 };
-
 
 }  // namespace layers
 }  // namespace core
 }  // namespace lambda
 
 #endif  // LAMBDA_SRC_CORE_LAYERS_LAYER_H_
-
-/**
- * @class lambda::layers::Layer
- * @brief An abstract data structure that represents a "layer" within the
- * engine.
- *
- * Layers are the primary hook for applications to specify logic that they want
- * to be apart of the engines event loop.
- */
-
-/**
- * @fn lambda::layers::Layer::OnAttach
- * @brief What to do when a layer is attached to the game engine.
- *
- * Primarily for initializing anything in the layer when it's attached to the
- * engine.
- */
-
-/**
- * @fn lambda::layers::Layer::OnDetach
- * @brief Handles what to do when a layer is attached to the game engine.
- *
- * Primarily for cleaning up anything in the layer when it's no longer
- * attached to the engine.
- */
-
-/**
- * @fn lambda::layers::Layer::OnUpdate
- * @brief Handles what to do when the game engine requests to update the
- * layer.
- *
- * This can only be accessed if the layer is attached to the engine.
- */
-
-/**
- * @fn lambda::layers::Layer::OnEvent
- * @param event - The event received by the engine.
- * @brief Handles what to do when the game engine passes an event.
- *
- * This can only be accessed if the layer is attached to the engine.
- */
-
-/**
- * @fn lambda::layers::Layer::OnImGuiRender
- * @brief Handles what to do when the game engine requests the layer to
- * render ImGui components.
- *
- * This can only be accessed if the layer is attached to the engine.
- */
