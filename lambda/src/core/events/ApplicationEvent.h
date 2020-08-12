@@ -1,10 +1,8 @@
-/**
- * @file ApplicationEvent.h
- * @brief Events that are to be specifically handled at the application level.
- *
- * I can't really think of a use case for this class file if you're not directly
- * working on the game engine yourself.
- */
+/// @file ApplicationEvent.h
+/// @brief Events that are to be specifically handled at the application level.
+///
+/// I can't really think of a use case for this class file if you're not
+/// directly working on the game engine yourself.
 #ifndef LAMBDA_SRC_CORE_EVENTS_APPLICATIONEVENT_H_
 #define LAMBDA_SRC_CORE_EVENTS_APPLICATIONEVENT_H_
 
@@ -17,14 +15,19 @@ namespace lambda {
 namespace core {
 namespace events {
 
+/// @brief An Event generated when the Window has resized.
 class WindowResizeEvent : public Event {
  public:
   WindowResizeEvent(unsigned int width, unsigned int height)
     : width_(width), height_(height) {}
 
-  inline const unsigned int GetWidth() const { return width_; }
-  inline const unsigned int GetHeight() const { return height_; }
+  /// @brief Get the new width.
+  const unsigned int GetWidth() const { return width_; }
 
+  /// @brief Get the new height.
+  const unsigned int GetHeight() const { return height_; }
+
+  /// @brief Represents the resize event as a string.
   std::string ToString() const override {
     std::stringstream event_string;
     event_string << "WindowResizeEvent: " << width_ << ", " << height_;
@@ -38,6 +41,7 @@ class WindowResizeEvent : public Event {
   unsigned int width_, height_;
 };
 
+/// @brief An Event generated when the Window has closed.
 class WindowCloseEvent: public Event {
  public:
   WindowCloseEvent() {}
@@ -46,6 +50,7 @@ class WindowCloseEvent: public Event {
   EVENT_CLASS_CATEGORY(kEventCategoryApplication)
 };
 
+/// @brief An Event generated when the app has ticked.
 class AppTickEvent : public Event {
  public:
   AppTickEvent() {}
@@ -54,6 +59,7 @@ class AppTickEvent : public Event {
   EVENT_CLASS_CATEGORY(kEventCategoryApplication)
 };
 
+/// @brief An event generated when the app has updated.
 class AppUpdateEvent : public Event {
  public:
   AppUpdateEvent() {}
@@ -62,6 +68,7 @@ class AppUpdateEvent : public Event {
   EVENT_CLASS_CATEGORY(kEventCategoryApplication)
 };
 
+/// @brief An event generated when the app has rendered.
 class AppRenderEvent : public Event {
  public:
   AppRenderEvent() {}
@@ -75,46 +82,3 @@ class AppRenderEvent : public Event {
 }  // namespace lambda
 
 #endif  // LAMBDA_SRC_CORE_EVENTS_APPLICATIONEVENT_H_
-
-/**
- * @class lambda::events::WindowResizeEvent
- * @brief Generated whenever a window is resized.
- *
- * Platform independent.
- */
-
-/**
- * @fn lambda::events::WindowResizeEvent::GetWidth
- * @brief The new width that was registered with the event.
- */
-
-/**
- * @fn lambda::events::WindowResizeEvent::GetHeight
- * @brief The new height that was registered with the event.
- */
-
-/**
- * @class lambda::events::WindowCloseEvent
- * @brief Generated whenever a window is closed.
- */
-
-/**
- * @class lambda::events::AppTickEvent
- * @brief Generated whenever the app ticks.
- *
- * Currently not implemented.
- */
-
-/**
- * @class lambda::events::AppUpdateEvent
- * @brief Generated whenever the app updates.
- *
- * Currently not implemented.
- */
-
-/**
- * @class lambda::events::AppRenderEvent
- * @brief Generated whenever the app renders.
- *
- * Currently not implemented.
- */
