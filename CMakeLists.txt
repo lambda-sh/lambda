@@ -20,85 +20,85 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ----------------------------------- ENGINE ----------------------------------
 
-project(engine)
+project(lambda)
 
 set(OpenGL_GL_PREFERENCE "GLVND")
 
 file(
     GLOB_RECURSE
-    ENGINE_SRC
-    ${CMAKE_SOURCE_DIR}/engine/src/*.h
-    ${CMAKE_SOURCE_DIR}/engine/src/*.cpp
+    LAMBDA_SRC
+    ${CMAKE_SOURCE_DIR}/lambda/src/*.h
+    ${CMAKE_SOURCE_DIR}/lambda/src/*.cpp
 )
 
-add_library(engine STATIC ${ENGINE_SRC})
+add_library(lambda STATIC ${LAMBDA_SRC})
 
 set_target_properties(
-    engine
-    PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/engine/src/Engine.h
+    lambda
+    PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/lambda/src/Engine.h
 )
 
 target_include_directories(
-    engine
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/src
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/spdlog/include
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glad/include
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glm/glm
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/glfw/include
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/imgui
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/stb_image/src
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/readerwriterqueue
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/vendor/concurrentqueue
+    lambda
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/src
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/spdlog/include
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/glad/include
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/glm/glm
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/glfw/include
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/imgui
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/stb_image/src
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/readerwriterqueue
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/concurrentqueue
 )
 
 if (WIN32)
-    message (STATUS ">>> Setting windows compile definitions for the engine.")
+    message (STATUS ">>> Setting windows compile definitions for the lambda.")
     target_compile_definitions(
-        engine
+        lambda
         PUBLIC GLFW_INCLUDE_NONE
         PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD
-        PRIVATE ENGINE_PLATFORM_WINDOWS
-        PRIVATE ENGINE_BUILD_DLL
-        PRIVATE ENGINE_DEBUG
+        PRIVATE LAMBDA_PLATFORM_WINDOWS
+        PRIVATE LAMBDA_BUILD_DLL
+        PRIVATE LAMBDA_DEBUG
     )
 
     # Use a Multi threaded specific and DLL specific runtime for windows.
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
 elseif (UNIX)
-    message (STATUS ">>> Setting linux compile definitions for the engine.")
+    message (STATUS ">>> Setting linux compile definitions for the lambda.")
     target_compile_definitions(
-        engine
+        lambda
         PUBLIC GLFW_INCLUDE_NONE
         PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD
-        PRIVATE ENGINE_PLATFORM_LINUX
-        PRIVATE ENGINE_BUILD_DLL
-        PRIVATE ENGINE_DEBUG
+        PRIVATE LAMBDA_PLATFORM_LINUX
+        PRIVATE LAMBDA_BUILD_DLL
+        PRIVATE LAMBDA_DEBUG
     )
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/spdlog)
-target_link_libraries(engine spdlog::spdlog)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/spdlog)
+target_link_libraries(lambda spdlog::spdlog)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glad)
-target_link_libraries(engine glad)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/glad)
+target_link_libraries(lambda glad)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glm)
-target_link_libraries(engine glm)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/glm)
+target_link_libraries(lambda glm)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/glfw)
-target_link_libraries(engine glfw)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/glfw)
+target_link_libraries(lambda glfw)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/imgui)
-target_link_libraries(engine imgui)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/imgui)
+target_link_libraries(lambda imgui)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/stb)
-target_link_libraries(engine stb)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/stb)
+target_link_libraries(lambda stb)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/engine/vendor/readerwriterqueue)
-target_link_libraries(engine readerwriterqueue)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/readerwriterqueue)
+target_link_libraries(lambda readerwriterqueue)
 
 # ----------------------------------- SANDBOX ----------------------------------
 
@@ -118,16 +118,16 @@ if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for sandbox.")
     target_compile_definitions(
         app
-        PRIVATE ENGINE_PLATFORM_WINDOWS
+        PRIVATE LAMBDA_PLATFORM_WINDOWS
     )
 elseif (UNIX)
     message (STATUS ">>> Setting linux compile definitions for sandbox.")
     target_compile_definitions(
         app
-        PRIVATE ENGINE_PLATFORM_LINUX
+        PRIVATE LAMBDA_PLATFORM_LINUX
     )
 endif()
 
-target_link_libraries(app PRIVATE engine)
+target_link_libraries(app PRIVATE lambda)
 # Load resources necessary for the executable to launch (Shaders, images, etc)
 # file(COPY ${CMAKE_BINARY_DIR}/res DESTINATION ${CMAKE_BINARY_DIR}/bin/res)
