@@ -1,24 +1,24 @@
 [submodule "engine/vendor/glfw"]
-	path = engine/vendor/glfw
+	path = lambda/vendor/glfw
 	url = https://github.com/glfw/glfw
 [submodule "engine/vendor/imgui"]
-	path = engine/vendor/imgui
+	path = lambda/vendor/imgui
 	url = https://github.com/C3NZ/imgui
 [submodule "engine/vendor/glm"]
-	path = engine/vendor/glm
+	path = lambda/vendor/glm
 	url = https://github.com/g-truc/glm
 [submodule "docs"]
 	path = docs
 	url = https://github.com/C3NZ/game-engine-docs.git
 [submodule "engine/vendor/spdlog"]
-	path = engine/vendor/spdlog
+	path = lambda/vendor/spdlog
 	url = https://github.com/gabime/spdlog.git
 [submodule "engine/vendor/readerwriterqueue"]
-	path = engine/vendor/readerwriterqueue
+	path = lambda/vendor/readerwriterqueue
 	url = https://github.com/cameron314/readerwriterqueue
 [submodule "engine/vendor/concurrentqueue"]
-	path = engine/vendor/concurrentqueue
+	path = lambda/vendor/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue
 [submodule "engine/vendor/googletest"]
-	path = engine/vendor/googletest
+	path = lambda/vendor/googletest
 	url = https://github.com/google/googletest
