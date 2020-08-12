@@ -8,8 +8,8 @@
 #include <ranges>
 
 namespace engine {
+namespace core {
 namespace util {
-
 namespace internal {
 
 template<class Container>
@@ -29,6 +29,7 @@ class Reverse {
 };
 
 }  // namespace util
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_UTIL_REVERSE_H_

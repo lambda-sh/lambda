@@ -7,6 +7,7 @@
 #include "platform/opengl/OpenGLShader.h"
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 Renderer::SceneData* Renderer::scene_data_ = new Renderer::SceneData;
@@ -48,4 +49,5 @@ void Renderer::Submit(
 }
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine

@@ -1,6 +1,7 @@
 #include "core/io/EventLoop.h"
 
 namespace engine {
+namespace core {
 namespace io {
 
 // TODO(C3NZ): Investigate into the amount of time needed to sleep by the thread
@@ -48,9 +49,10 @@ void EventLoop::Run() {
 
     // Reschedule if it should repeat.
     if (next_task->ShouldRepeat()) {
-      Time next_execution_time = Time().AddMilliseconds(
+      util::Time next_execution_time = core::util::Time().AddMilliseconds(
           next_task->GetIntervalInMilliseconds());
-      Time next_expiration_time = next_execution_time.AddMilliseconds(5000);
+      util::Time next_expiration_time = next_execution_time.AddMilliseconds(
+          5000);
       next_task->RescheduleTask(next_execution_time, next_expiration_time);
 
       bool has_space = event_queue_.enqueue(std::move(next_task));
@@ -88,4 +90,5 @@ bool EventLoop::Dispatch(UniqueAsyncTask task) {
 }
 
 }  // namespace io
+}  // namespace core
 }  // namespace engine

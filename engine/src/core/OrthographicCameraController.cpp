@@ -1,22 +1,16 @@
 #include "core/OrthographicCameraController.h"
 
-#include "core/Input.h"
-#include "core/KeyCodes.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
 #include "core/events/MouseEvent.h"
+#include "core/input/Input.h"
+#include "core/input/KeyCodes.h"
 #include "core/memory/Pointers.h"
 #include "core/renderer/OrthographicCamera.h"
 #include "core/util/Time.h"
 
 namespace engine {
-
-using engine::events::Event;
-using engine::events::EventDispatcher;
-using engine::events::MouseScrolledEvent;
-using engine::events::WindowResizeEvent;
-using memory::Shared;
-using util::TimeStep;
+namespace core {
 
 OrthographicCameraController::OrthographicCameraController(
     float aspect_ratio, bool can_rotate) :
@@ -28,26 +22,26 @@ OrthographicCameraController::OrthographicCameraController(
             zoom_level_),
         can_rotate_(can_rotate) {}
 
-void OrthographicCameraController::OnUpdate(TimeStep delta) {
+void OrthographicCameraController::OnUpdate(util::TimeStep delta) {
     float delta_in_ms = delta.InMilliSeconds<float>();
-    if (Input::IsKeyPressed(ENGINE_KEY_W)) {
+    if (input::Input::IsKeyPressed(ENGINE_KEY_W)) {
       camera_position_.y += camera_translation_speed_ * delta_in_ms;
-    } else if (Input::IsKeyPressed(ENGINE_KEY_S)) {
+    } else if (input::Input::IsKeyPressed(ENGINE_KEY_S)) {
       camera_position_.y -= camera_translation_speed_ * delta_in_ms;
     }
 
-    if (Input::IsKeyPressed(ENGINE_KEY_A)) {
+    if (input::Input::IsKeyPressed(ENGINE_KEY_A)) {
       camera_position_.x -= camera_translation_speed_ * delta_in_ms;
-    } else if (Input::IsKeyPressed(ENGINE_KEY_D)) {
+    } else if (input::Input::IsKeyPressed(ENGINE_KEY_D)) {
       camera_position_.x += camera_translation_speed_ * delta_in_ms;
     }
 
     camera_.SetPosition(camera_position_);
 
     if (can_rotate_) {
-      if (Input::IsKeyPressed(ENGINE_KEY_Q)) {
+      if (input::Input::IsKeyPressed(ENGINE_KEY_Q)) {
         camera_rotation_ -= camera_rotation_speed_  * delta_in_ms;
-      } else if (Input::IsKeyPressed(ENGINE_KEY_E)) {
+      } else if (input::Input::IsKeyPressed(ENGINE_KEY_E)) {
         camera_rotation_ += camera_rotation_speed_ * delta_in_ms;
       }
 
@@ -56,7 +50,7 @@ void OrthographicCameraController::OnUpdate(TimeStep delta) {
 }
 
 bool OrthographicCameraController::OnMouseScrolled(
-    const MouseScrolledEvent& event) {
+    const events::MouseScrolledEvent& event) {
   zoom_level_ -= event.GetYOffset() * 0.20f;
   camera_.SetProjectionMatrix(
       -aspect_ratio_ * zoom_level_,
@@ -67,7 +61,7 @@ bool OrthographicCameraController::OnMouseScrolled(
 }
 
 bool OrthographicCameraController::OnWindowResize(
-    const WindowResizeEvent& event) {
+    const events::WindowResizeEvent& event) {
   aspect_ratio_ = static_cast<float>(event.GetWidth()) / static_cast<float>(
       event.GetHeight());
 
@@ -80,14 +74,16 @@ bool OrthographicCameraController::OnWindowResize(
   return false;
 }
 
-void OrthographicCameraController::OnEvent(Shared<Event> event) {
-  EventDispatcher dispatcher(event);
+void OrthographicCameraController::OnEvent(
+    memory::Shared<events::Event> event) {
+  events::EventDispatcher dispatcher(event);
 
-  dispatcher.Dispatch<WindowResizeEvent>(
+  dispatcher.Dispatch<events::WindowResizeEvent>(
       BIND_EVENT_FN(OrthographicCameraController::OnWindowResize));
 
-  dispatcher.Dispatch<MouseScrolledEvent>(
+  dispatcher.Dispatch<events::MouseScrolledEvent>(
       BIND_EVENT_FN(OrthographicCameraController::OnMouseScrolled));
 }
 
+}  // namespace core
 }  // namespace engine

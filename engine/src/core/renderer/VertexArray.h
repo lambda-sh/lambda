@@ -14,6 +14,7 @@
 #include "core/renderer/Buffer.h"
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 class VertexArray {
@@ -39,6 +40,7 @@ class VertexArray {
 };
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_VERTEXARRAY_H_

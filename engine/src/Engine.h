@@ -10,14 +10,16 @@
 // ------------------------------------ CORE -----------------------------------
 
 #include "core/Application.h"
-#include "core/Input.h"
-#include "core/KeyCodes.h"
-#include "core/KeyCodes.h"
-#include "core/layers/Layer.h"
-#include "core/MouseButtonCodes.h"
 #include "core/OrthographicCameraController.h"
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiLayer.h"
+#include "core/layers/Layer.h"
+
+// ------------------------------------ INPUT ----------------------------------
+
+#include "core/input/Input.h"
+#include "core/input/KeyCodes.h"
+#include "core/input/MouseButtonCodes.h"
 
 // ------------------------------------ UTIL -----------------------------------
 

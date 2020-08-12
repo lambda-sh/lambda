@@ -9,9 +9,8 @@
 #include "core/util/Time.h"
 
 namespace engine {
+namespace core {
 namespace io {
-
-using util::Time;
 
 // TODO(C3NZ):
 // Dispatch -- To diapatch callbacks to that are meant to run ASAP.
@@ -45,8 +44,8 @@ class EventLoop {
   moodycamel::ConcurrentQueue<UniqueAsyncTask> event_queue_;
 };
 
-
 }  // namespace io
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_IO_EVENTLOOP_H_

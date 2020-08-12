@@ -12,65 +12,43 @@ namespace engine {
 namespace platform {
 namespace opengl {
 
-/**
- * @class VertexArray
- * @brief The abstraction for representing Vertex arrays and their sub
- * components.
- */
-class OpenGLVertexArray : public renderer::VertexArray {
+/// @brief The abstraction for representing Vertex arrays and their sub
+/// components.
+class OpenGLVertexArray : public core::renderer::VertexArray {
  public:
   OpenGLVertexArray();
   ~OpenGLVertexArray();
 
-  /**
-   * @fn Bind
-   * @brief Bind the Vertex array and it's components to the rendering API and
-   * GPU.
-   */
+  /// @brief Bind the Vertex array and it's components to the rendering API and
+  /// GPU.
   void Bind() const override;
 
-  /**
-   * @fn Unbind
-   * @brief Unbind the vertex array and it's components from the rendering API
-   * and memory.
-   */
+  /// @brief Unbind the vertex array and it's components from the rendering API
+  /// and memory.
   void Unbind() const override;
 
-  /**
-   * @fn AddVertexBuffer
-   * @brief Add a vertex buffer to the current Vertex Array.
-   */
+ /// @brief Add a vertex buffer to the current Vertex Array.
   void AddVertexBuffer(
-      const memory::Shared<renderer::VertexBuffer>& vertex_buffer) override;
+      const core::memory::Shared<
+          core::renderer::VertexBuffer>& vertex_buffer) override;
 
-  /**
-   * @fn SetIndexBuffer
-   * @brief Set the index buffer for rendering all vertex arrays.
-   */
+  /// @brief Set the index buffer for rendering all vertex arrays.
   void SetIndexBuffer(
-      const memory::Shared<renderer::IndexBuffer>& index_buffer) override;
+      const core::memory::Shared<core::renderer::IndexBuffer>& index_buffer) override;
 
-  /**
-   * @fn GetIndexBuffer
-   * @brief Get the index buffer associated with this Vertex Array.
-   */
-  inline const memory::Shared<renderer::IndexBuffer>& GetIndexBuffer()
+  /// @brief Get the index buffer associated with this Vertex Array.
+  const core::memory::Shared<core::renderer::IndexBuffer>& GetIndexBuffer()
       const override { return index_buffer_; }
 
-  /**
-   * @fn GetVertexBuffers
-   * @brief Get the Vertex Buffers that are associated with this Vertex Array.
-   */
-  inline const std::vector<memory::Shared<renderer::VertexBuffer>>&
+  /// @brief Get the Vertex Buffers that are associated with this Vertex Array.
+  const std::vector<core::memory::Shared<core::renderer::VertexBuffer>>&
      GetVertexBuffers() const override { return vertex_buffers_; }
 
  private:
-  memory::Shared<renderer::IndexBuffer> index_buffer_;
-  std::vector<memory::Shared<renderer::VertexBuffer>> vertex_buffers_;
+  core::memory::Shared<core::renderer::IndexBuffer> index_buffer_;
+  std::vector<core::memory::Shared<core::renderer::VertexBuffer>> vertex_buffers_;
   uint32_t renderer_id_;
-
 };
-
 
 }  // namespace opengl
 }  // namespace platform

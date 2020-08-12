@@ -8,23 +8,23 @@
 #include "ext/matrix_transform.hpp"
 #include "platform/opengl/OpenGLShader.h"
 
-using engine::events::Event;
-using engine::layers::Layer;
-using engine::memory::Shared;
-using engine::renderer::BufferLayout;
-using engine::renderer::IndexBuffer;
-using engine::OrthographicCameraController;
-using engine::renderer::RenderCommand;
-using engine::renderer::Renderer;
-using engine::renderer::Shader;
-using engine::renderer::ShaderDataType;
-using engine::renderer::ShaderDataType;
-using engine::renderer::ShaderLibrary;
-using engine::renderer::Texture2D;
-using engine::renderer::VertexArray;
-using engine::renderer::VertexBuffer;
-using engine::util::TimeStep;
-using engine::Input;
+using engine::core::events::Event;
+using engine::core::layers::Layer;
+using engine::core::memory::Shared;
+using engine::core::renderer::BufferLayout;
+using engine::core::renderer::IndexBuffer;
+using engine::core::OrthographicCameraController;
+using engine::core::renderer::RenderCommand;
+using engine::core::renderer::Renderer;
+using engine::core::renderer::Shader;
+using engine::core::renderer::ShaderDataType;
+using engine::core::renderer::ShaderDataType;
+using engine::core::renderer::ShaderLibrary;
+using engine::core::renderer::Texture2D;
+using engine::core::renderer::VertexArray;
+using engine::core::renderer::VertexBuffer;
+using engine::core::util::TimeStep;
+using engine::core::input::Input;
 
 class ExampleLayer : public Layer {
  public:
@@ -33,7 +33,7 @@ class ExampleLayer : public Layer {
       camera_(1280.0f / 720.0f, true),
       square_position_(0.0f) {
     // Initialize the renderer. (Handles graphics specific API setup.)
-    loop_ = engine::memory::CreateShared<engine::io::EventLoop>();
+    loop_ = engine::core::memory::CreateShared<engine::core::io::EventLoop>();
 
     loop_->SetInterval(
         [&]() {
@@ -119,7 +119,7 @@ class ExampleLayer : public Layer {
     lambda_texture_ = Texture2D::Create(
         "assets/textures/hl2.png");
 
-    std::dynamic_pointer_cast< engine::platform::opengl::OpenGLShader>(
+    std::dynamic_pointer_cast<engine::platform::opengl::OpenGLShader>(
         shader_lib_.Get("yeet"))->Bind();
     std::dynamic_pointer_cast<engine::platform::opengl::OpenGLShader>(
         shader_lib_.Get("yeet"))->UploadUniformInt("u_Texture", 0);
@@ -200,7 +200,7 @@ class ExampleLayer : public Layer {
   Shared<IndexBuffer> index_buffer_;
   Shared<VertexArray> vertex_array_;
   Shared<Texture2D> texture_, lambda_texture_;
-  Shared<engine::io::EventLoop> loop_;
+  Shared<engine::core::io::EventLoop> loop_;
   ShaderLibrary shader_lib_;
 
   OrthographicCameraController camera_;
@@ -212,12 +212,13 @@ class ExampleLayer : public Layer {
   glm::vec4 blue_color_ = {0.2f, 0.3f, 0.8f, 1.0f};
 };
 
-class Sandbox : public engine::Application {
+class Sandbox : public engine::core::Application {
  public:
   Sandbox() {
-    PushLayer(engine::memory::CreateShared<ExampleLayer>());
+    PushLayer(engine::core::memory::CreateShared<ExampleLayer>());
   }
   ~Sandbox() {}
 };
 
-engine::Application* engine::CreateApplication() { return new Sandbox(); }
+engine::core::Application* engine::core::CreateApplication() {
+  return new Sandbox(); }

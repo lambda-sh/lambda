@@ -22,14 +22,14 @@ struct Properties {
   unsigned int Width, Height;
   bool VerticalSync;
 
-  Window::EventCallbackFunction EventCallback;
+  core::Window::EventCallbackFunction EventCallback;
 };
 
 }  // namespace internal
 
-class WindowImplementation : public engine::Window {
+class WindowImplementation : public core::Window {
  public:
-  explicit WindowImplementation(const engine::WindowProperties& properties);
+  explicit WindowImplementation(const core::WindowProperties& properties);
   virtual ~WindowImplementation();
 
   void OnUpdate() override;
@@ -44,10 +44,10 @@ class WindowImplementation : public engine::Window {
   inline void* GetNativeWindow() const override { return window_; }
  private:
   GLFWwindow* window_;
-  renderer::GraphicsContext* context_;
+  core::renderer::GraphicsContext* context_;
   internal::Properties properties_;
 
-  virtual void Init(const engine::WindowProperties& properties);
+  virtual void Init(const core::WindowProperties& properties);
   virtual void Shutdown();
 };
 

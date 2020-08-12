@@ -9,6 +9,7 @@
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 class RenderCommand {
@@ -37,6 +38,7 @@ class RenderCommand {
 };
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_RENDERCOMMAND_H_

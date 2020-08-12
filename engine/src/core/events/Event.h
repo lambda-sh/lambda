@@ -20,9 +20,8 @@
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace core {
 namespace events {
-
-using memory::Shared;
 
 // ----------------------- EVENT TYPES & CATEGORIES ---------------------------
 
@@ -83,7 +82,7 @@ class EventDispatcher {
   using EventFn = const std::function<bool(const T&)>;
 
  public:
-  explicit EventDispatcher(Shared<Event> event) : event_(event) {}
+  explicit EventDispatcher(memory::Shared<Event> event) : event_(event) {}
 
   template<class Event>
   bool Dispatch(EventFn<Event> func) {
@@ -95,10 +94,11 @@ class EventDispatcher {
   }
 
  private:
-  Shared<Event> event_;
+  memory::Shared<Event> event_;
 };
 
 }  // namespace events
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_EVENTS_EVENT_H_

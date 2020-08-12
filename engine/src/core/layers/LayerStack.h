@@ -14,6 +14,7 @@
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace core {
 namespace layers {
 
 class LayerStack {
@@ -41,6 +42,7 @@ class LayerStack {
 };
 
 }  // namespace layers
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_LAYERS_LAYERSTACK_H_

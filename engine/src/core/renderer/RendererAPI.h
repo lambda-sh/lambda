@@ -12,6 +12,7 @@
 #include "core/renderer/VertexArray.h"
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 class RendererAPI {
@@ -36,6 +37,7 @@ class RendererAPI {
 };
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_RENDERERAPI_H_

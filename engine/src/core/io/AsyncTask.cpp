@@ -3,6 +3,7 @@
 #include "core/util/Time.h"
 
 namespace engine {
+namespace core {
 namespace io {
 
 using util::Time;
@@ -35,6 +36,6 @@ void AsyncTask::RescheduleTask(
   expires_at_ = new_expiration_time;
 }
 
-
 }  // namespace io
+}  // namespace core
 }  // namespace engine

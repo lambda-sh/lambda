@@ -9,6 +9,7 @@
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace core {
 namespace util {
 
 enum FileMode {
@@ -109,6 +110,7 @@ class File {
 };
 
 }  // namespace util
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_UTIL_FILE_H_

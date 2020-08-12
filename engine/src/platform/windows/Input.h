@@ -5,13 +5,16 @@
 
 #include <utility>
 
-#include "core/Input.h"
+#include "core/input/Input.h"
 
 namespace engine {
 namespace platform {
 namespace windows {
 
-class InputImplementation : public Input {
+/// @brief The windows input implementation.
+// TODO(C3NZ): Rename this to WindowsInput to create a class system for all
+// windows platform specific classes.
+class InputImplementation : public core::input::Input {
  protected:
   bool IsKeyPressedImpl(int key_code) override;
 

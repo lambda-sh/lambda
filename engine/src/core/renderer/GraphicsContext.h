@@ -9,6 +9,7 @@
 #define ENGINE_SRC_CORE_RENDERER_GRAPHICSCONTEXT_H_
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 class GraphicsContext {
@@ -18,6 +19,7 @@ class GraphicsContext {
 };
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_GRAPHICSCONTEXT_H_

@@ -10,6 +10,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 class OrthographicCamera {
@@ -45,6 +46,7 @@ class OrthographicCamera {
 };
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_ORTHOGRAPHICCAMERA_H_

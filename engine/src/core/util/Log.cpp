@@ -4,6 +4,7 @@
 #include <spdlog/spdlog.h>
 
 namespace engine {
+namespace core {
 namespace util {
 
 std::shared_ptr<spdlog::logger> Log::kCoreLogger;
@@ -19,4 +20,5 @@ void Log::Init() {
 }
 
 }  // namespace util
+}  // namespace core
 }  // namespace engine

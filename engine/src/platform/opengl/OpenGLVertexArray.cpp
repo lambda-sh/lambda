@@ -14,19 +14,19 @@ namespace opengl {
  * @brief Convert an renderer shader type to it's corresponding OpenGL type.
  */
 static GLenum ShaderDataTypeToOpenGLBaseType(
-    engine::renderer::ShaderDataType type) {
+    core::renderer::ShaderDataType type) {
   switch (type) {
-    case engine::renderer::ShaderDataType::Bool: return GL_BOOL;
-    case engine::renderer::ShaderDataType::Float2: return GL_FLOAT;
-    case engine::renderer::ShaderDataType::Float3: return GL_FLOAT;
-    case engine::renderer::ShaderDataType::Float4: return GL_FLOAT;
-    case engine::renderer::ShaderDataType::Float: return GL_FLOAT;
-    case engine::renderer::ShaderDataType::Int2: return GL_INT;
-    case engine::renderer::ShaderDataType::Int3: return GL_INT;
-    case engine::renderer::ShaderDataType::Int4: return GL_INT;
-    case engine::renderer::ShaderDataType::Int: return GL_INT ;
-    case engine::renderer::ShaderDataType::Mat3: return GL_FLOAT;
-    case engine::renderer::ShaderDataType::Mat4: return GL_FLOAT;
+    case core::renderer::ShaderDataType::Bool: return GL_BOOL;
+    case core::renderer::ShaderDataType::Float2: return GL_FLOAT;
+    case core::renderer::ShaderDataType::Float3: return GL_FLOAT;
+    case core::renderer::ShaderDataType::Float4: return GL_FLOAT;
+    case core::renderer::ShaderDataType::Float: return GL_FLOAT;
+    case core::renderer::ShaderDataType::Int2: return GL_INT;
+    case core::renderer::ShaderDataType::Int3: return GL_INT;
+    case core::renderer::ShaderDataType::Int4: return GL_INT;
+    case core::renderer::ShaderDataType::Int: return GL_INT ;
+    case core::renderer::ShaderDataType::Mat3: return GL_FLOAT;
+    case core::renderer::ShaderDataType::Mat4: return GL_FLOAT;
     default: ENGINE_CORE_ASSERT(false, "Unknown shader type."); return 0;
   }
 }
@@ -48,16 +48,16 @@ void OpenGLVertexArray::Unbind() const {
 }
 
 void OpenGLVertexArray::AddVertexBuffer(
-    const memory::Shared<renderer::VertexBuffer>& vertex_buffer) {
+    const core::memory::Shared<core::renderer::VertexBuffer>& vertex_buffer) {
   glBindVertexArray(renderer_id_);
   vertex_buffer->Bind();
 
 
   uint32_t index = 0;
-  const engine::renderer::BufferLayout& layout = vertex_buffer->GetLayout();
+  const core::renderer::BufferLayout& layout = vertex_buffer->GetLayout();
   ENGINE_CORE_ASSERT(layout.HasElements(), "The vertex buffer doesn't have a layout.");
 
-  for (const renderer::BufferElement& element : layout) {
+  for (const core::renderer::BufferElement& element : layout) {
     glEnableVertexAttribArray(index);
     glVertexAttribPointer(
         index,
@@ -73,7 +73,7 @@ void OpenGLVertexArray::AddVertexBuffer(
 }
 
 void OpenGLVertexArray::SetIndexBuffer(
-    const memory::Shared<renderer::IndexBuffer>& index_buffer) {
+    const core::memory::Shared<core::renderer::IndexBuffer>& index_buffer) {
   glBindVertexArray(renderer_id_);
   index_buffer->Bind();
 

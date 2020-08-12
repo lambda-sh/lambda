@@ -12,10 +12,8 @@
 #include "core/util/Time.h"
 
 namespace engine {
+namespace core {
 namespace layers {
-
-using engine::events::Event;
-using engine::memory::Shared;
 
 class Layer {
  public:
@@ -25,7 +23,7 @@ class Layer {
   virtual void OnAttach() {}
   virtual void OnDetach() {}
   virtual void OnUpdate(util::TimeStep time_step) {}
-  virtual void OnEvent(Shared<Event> event) {}
+  virtual void OnEvent(memory::Shared<events::Event> event) {}
   virtual void OnImGuiRender() {}
 
   inline const std::string& GetName() const { return debug_name_; }
@@ -36,6 +34,7 @@ class Layer {
 
 
 }  // namespace layers
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_LAYERS_LAYER_H_

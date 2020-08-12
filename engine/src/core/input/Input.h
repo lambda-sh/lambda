@@ -2,14 +2,16 @@
  * @file Input.h
  * @brief The input abstraction class that handles input across
  */
-#ifndef ENGINE_SRC_CORE_INPUT_H_
-#define ENGINE_SRC_CORE_INPUT_H_
+#ifndef ENGINE_SRC_CORE_INPUT_INPUT_H_
+#define ENGINE_SRC_CORE_INPUT_INPUT_H_
 
 #include <utility>
 
 #include "core/Core.h"
 
 namespace engine {
+namespace core {
+namespace input {
 
 class Input {
  public:
@@ -37,9 +39,11 @@ class Input {
   static Input* kInput_;
 };
 
+}  // namespace input
+}  // namespace core
 }  // namespace engine
 
-#endif  // ENGINE_SRC_CORE_INPUT_H_
+#endif  // ENGINE_SRC_CORE_INPUT_INPUT_H_
 
 /**
  * @class engine::Input

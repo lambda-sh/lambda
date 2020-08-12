@@ -21,6 +21,8 @@
 #include "core/util/Log.h"
 
 namespace engine {
+namespace core {
+
 namespace renderer {
 
 enum class ShaderDataType {
@@ -167,6 +169,7 @@ class IndexBuffer {
 };
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_BUFFER_H_

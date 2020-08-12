@@ -17,6 +17,7 @@
 #include "core/layers/Layer.h"
 
 namespace engine {
+namespace core {
 namespace imgui {
 
 class ImGuiLayer : public layers::Layer {
@@ -37,6 +38,7 @@ class ImGuiLayer : public layers::Layer {
 };
 
 }  // namespace imgui
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_IMGUI_IMGUILAYER_H_

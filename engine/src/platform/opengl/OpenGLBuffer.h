@@ -16,7 +16,7 @@ namespace opengl {
  * The OpenGL VertexBuffer  implementation based off the generic
  * VertexBuffer base class provided by the engines renderer.
  */
-class OpenGLVertexBuffer : public renderer::VertexBuffer {
+class OpenGLVertexBuffer : public core::renderer::VertexBuffer {
  public:
   OpenGLVertexBuffer(float* vertices, uint32_t size);
   ~OpenGLVertexBuffer();
@@ -35,23 +35,23 @@ class OpenGLVertexBuffer : public renderer::VertexBuffer {
   /**
    * Get the BufferLayout associated with the current VertexBuffer.
    */
-  const renderer::BufferLayout& GetLayout() const override { return layout_; };
+  const core::renderer::BufferLayout& GetLayout() const override { return layout_; };
 
   /**
    * Set the BufferLayout associated with the current VertexBuffer.
    */
-  void SetLayout(const renderer::BufferLayout& layout) override
+  void SetLayout(const core::renderer::BufferLayout& layout) override
     { layout_ = layout; };
 
  private:
   uint32_t renderer_ID_;
-  renderer::BufferLayout layout_;
+  core::renderer::BufferLayout layout_;
 
 };
 
 // ----------------------------- INDEX BUFFER IMPL -----------------------------
 
-class OpenGLIndexBuffer : public renderer::IndexBuffer {
+class OpenGLIndexBuffer : public core::renderer::IndexBuffer {
  public:
    OpenGLIndexBuffer(uint32_t* indices, uint32_t count);
    ~OpenGLIndexBuffer();

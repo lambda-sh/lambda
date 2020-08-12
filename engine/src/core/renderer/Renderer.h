@@ -12,6 +12,7 @@
 
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 class Renderer {
@@ -41,6 +42,7 @@ class Renderer {
 };
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_RENDERER_H_

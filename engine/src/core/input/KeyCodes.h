@@ -6,8 +6,8 @@
  * the source of this file should be pretty straight forward in the event you're
  * trying to integrate user input into your application.
  */
-#ifndef ENGINE_SRC_CORE_KEYCODES_H_
-#define ENGINE_SRC_CORE_KEYCODES_H_
+#ifndef ENGINE_SRC_CORE_INPUT_KEYCODES_H_
+#define ENGINE_SRC_CORE_INPUT_KEYCODES_H_
 
 // From <GLFW/glfw3.h>
 #define ENGINE_KEY_SPACE              32
@@ -133,4 +133,4 @@
 #define ENGINE_KEY_RIGHT_SUPER        347
 #define ENGINE_KEY_MENU               348
 
-#endif  // ENGINE_SRC_CORE_KEYCODES_H_
+#endif  // ENGINE_SRC_CORE_INPUT_KEYCODES_H_

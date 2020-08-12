@@ -6,6 +6,7 @@
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace core {
 namespace layers {
 
 LayerStack::LayerStack() {}
@@ -37,4 +38,5 @@ void LayerStack::PopOverlay(memory::Shared<Layer> overlay) {
 }
 
 }  // namespace layers
+}  // namespace core
 }  // namespace engine
