@@ -24,7 +24,7 @@ namespace opengl {
  * Expects sources to be strings that are designed for the shading language
  * that is being used in the API.
  */
-class OpenGLShader final : public renderer::Shader {
+class OpenGLShader final : public core::renderer::Shader {
  public:
   /**
    * @fn OpenGLShader

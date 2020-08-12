@@ -9,9 +9,8 @@
 #include "core/util/Time.h"
 
 namespace engine {
+namespace core {
 namespace io {
-
-using util::Time;
 
 class AsyncTask;
 
@@ -35,10 +34,10 @@ class AsyncTask {
  public:
   AsyncTask(
       AsyncCallback callback,
-      Time execute_at = Time(),
-      Time expires_at = Time().AddSeconds(5)) :
+      util::Time execute_at = util::Time(),
+      util::Time expires_at = util::Time().AddSeconds(5)) :
           callback_(callback),
-          scheduled_at_(Time()),
+          scheduled_at_(util::Time()),
           execute_at_(execute_at),
           expires_at_(expires_at) {}
 
@@ -47,7 +46,7 @@ class AsyncTask {
       uint32_t interval_in_ms,
       bool should_repeat) :
           callback_(callback),
-          scheduled_at_(Time()),
+          scheduled_at_(util::Time()),
           execute_at_(scheduled_at_.AddMilliseconds(interval_in_ms_)),
           expires_at_(execute_at_.AddSeconds(5)),
           should_repeat_(should_repeat),
@@ -58,7 +57,8 @@ class AsyncTask {
   AsyncResult Execute();
   AsyncStatus GetStatus();
 
-  void RescheduleTask(Time new_execution_time, Time new_expiration_time);
+  void RescheduleTask(
+      util::Time new_execution_time, util::Time new_expiration_time);
 
   const std::string& GetName() const { return name_; }
   const uint32_t GetIntervalInMilliseconds() const { return interval_in_ms_; }
@@ -68,10 +68,11 @@ class AsyncTask {
   AsyncCallback callback_;
   bool should_repeat_ = false;
   uint32_t interval_in_ms_;
-  Time scheduled_at_, execute_at_, executed_at_, expires_at_;
+  util::Time scheduled_at_, execute_at_, executed_at_, expires_at_;
 };
 
 }  // namespace io
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_IO_ASYNCTASK_H_

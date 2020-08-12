@@ -14,6 +14,7 @@
 #include "platform/opengl/OpenGLShader.h"
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 memory::Shared<Shader> Shader::Create(const std::string& path) {
@@ -92,5 +93,7 @@ memory::Shared<Shader> ShaderLibrary::Get(const std::string& name) {
     "Failed to get the shader: {0}", name);
   return shader_mapping_[name];
 }
+
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine

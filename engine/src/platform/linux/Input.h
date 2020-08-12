@@ -5,14 +5,14 @@
 
 #include <utility>
 
-#include "core/Input.h"
+#include "core/input/Input.h"
 
 // TODO(C3NZ): Implement this for the windows platform
 namespace engine {
 namespace platform {
 namespace linux {
 
-class InputImplementation : public Input {
+class InputImplementation : public core::input::Input {
  protected:
   bool IsKeyPressedImpl(int key_code) override;
 

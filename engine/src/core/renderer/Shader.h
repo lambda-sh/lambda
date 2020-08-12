@@ -13,6 +13,7 @@
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 class Shader {
@@ -48,6 +49,7 @@ class ShaderLibrary {
 };
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_SHADER_H_

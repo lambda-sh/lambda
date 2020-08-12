@@ -4,6 +4,7 @@
 #include <memory>
 
 namespace engine {
+namespace core {
 namespace memory {
 
 template<typename T>
@@ -23,6 +24,7 @@ Shared<T> CreateShared(Args&&... args) {
 }
 
 }  // namespace memory
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_MEMORY_POINTERS_H_

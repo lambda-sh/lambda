@@ -13,6 +13,7 @@
 #include "core/events/Event.h"
 
 namespace engine {
+namespace core {
 namespace events {
 
 class KeyEvent : public Event {
@@ -78,6 +79,7 @@ class KeyTypedEvent : public KeyEvent {
 };
 
 }  // namespace events
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_EVENTS_KEYEVENT_H_

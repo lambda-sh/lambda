@@ -16,7 +16,7 @@ namespace engine {
 namespace platform {
 namespace opengl {
 
-class OpenGLTexture2D : public renderer::Texture2D {
+class OpenGLTexture2D : public core::renderer::Texture2D {
  public:
   OpenGLTexture2D(const std::string& path);
   virtual ~OpenGLTexture2D();

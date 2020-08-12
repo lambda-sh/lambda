@@ -23,6 +23,8 @@
 #include "core/util/Time.h"
 
 namespace engine {
+namespace core {
+
 
 class Application {
  public:
@@ -54,6 +56,7 @@ class Application {
 
 Application* CreateApplication();
 
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_APPLICATION_H_

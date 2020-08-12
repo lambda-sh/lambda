@@ -9,7 +9,7 @@ namespace engine {
 namespace platform {
 namespace opengl {
 
-class OpenGLContext : public renderer::GraphicsContext {
+class OpenGLContext : public core::renderer::GraphicsContext {
  public:
   explicit OpenGLContext(GLFWwindow* window_handle);
   void Init() override;

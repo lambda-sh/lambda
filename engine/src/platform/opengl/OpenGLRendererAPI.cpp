@@ -22,8 +22,9 @@ void OpenGLRendererAPI::Clear() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
+// TODO(C3NZ): Update this to use the engines memory system.
 void OpenGLRendererAPI::DrawIndexed(
-    const std::shared_ptr<renderer::VertexArray>& vertex_array) {
+    const std::shared_ptr<core::renderer::VertexArray>& vertex_array) {
   glDrawElements(
       GL_TRIANGLES,
       vertex_array->GetIndexBuffer()->GetCount(),

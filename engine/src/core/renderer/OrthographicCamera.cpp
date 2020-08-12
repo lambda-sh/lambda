@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 OrthographicCamera::OrthographicCamera(
@@ -34,4 +35,5 @@ void OrthographicCamera::RecalculateViewMatrix() {
 }
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine

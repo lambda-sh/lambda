@@ -14,6 +14,7 @@
 #include "core/events/Event.h"
 
 namespace engine {
+namespace core {
 namespace events {
 
 class WindowResizeEvent : public Event {
@@ -70,6 +71,7 @@ class AppRenderEvent : public Event {
 };
 
 }  // namespace events
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_EVENTS_APPLICATIONEVENT_H_

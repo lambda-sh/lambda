@@ -11,6 +11,7 @@
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 class Texture {
@@ -29,6 +30,7 @@ class Texture2D : public Texture {
 };
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_RENDERER_TEXTURE_H_

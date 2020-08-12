@@ -16,14 +16,14 @@ namespace opengl {
  * @class OpenGLRendererAPI
  * @brief The Rendering implementation for OpenGL.
  */
-class OpenGLRendererAPI : public renderer::RendererAPI {
+class OpenGLRendererAPI : public core::renderer::RendererAPI {
  public:
   void Init() override;
   void SetClearColor(const glm::vec4& color) override;
   void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) override;
   void Clear() override;
 
-  void DrawIndexed(const std::shared_ptr<renderer::VertexArray>& vertex_array)
+  void DrawIndexed(const std::shared_ptr<core::renderer::VertexArray>& vertex_array)
       override;
 
 };

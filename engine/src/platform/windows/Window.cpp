@@ -22,7 +22,7 @@ namespace engine {
 
 // Will create a windows based implementation of the window handler.
 memory::Shared<Window> Window::Create(
-    const engine::WindowProperties& properties) {
+    const core::WindowProperties& properties) {
   return memory::CreateShared<platform::windows::WindowImplementation>(
       properties);
 }
@@ -32,17 +32,17 @@ memory::Shared<Window> Window::Create(
 namespace platform {
 namespace windows {
 
-using engine::events::KeyPressedEvent;
-using engine::events::KeyReleasedEvent;
-using engine::events::KeyTypedEvent;
-using engine::events::MouseButtonPressedEvent;
-using engine::events::MouseButtonReleasedEvent;
-using engine::events::MouseMovedEvent;
-using engine::events::MouseScrolledEvent;
-using engine::events::WindowCloseEvent;
-using engine::events::WindowResizeEvent;
-using engine::memory::CreateShared;
-using engine::memory::Shared;
+using core::events::KeyPressedEvent;
+using core::events::KeyReleasedEvent;
+using core::events::KeyTypedEvent;
+using core::events::MouseButtonPressedEvent;
+using core::events::MouseButtonReleasedEvent;
+using core::events::MouseMovedEvent;
+using core::events::MouseScrolledEvent;
+using core::events::WindowCloseEvent;
+using core::events::WindowResizeEvent;
+using core::memory::CreateShared;
+using core::memory::Shared;
 
 // Error callback for handling GLFW specific errors
 static void GLFWErrorCallback(int error, const char* description) {
@@ -52,7 +52,7 @@ static void GLFWErrorCallback(int error, const char* description) {
 static bool GLFWInitialized = false;
 
 WindowImplementation::WindowImplementation(
-    const engine::WindowProperties& properties) {
+    const core::WindowProperties& properties) {
   Init(properties);
 }
 
@@ -62,7 +62,7 @@ WindowImplementation::~WindowImplementation() {
 
 // Initialize the windows given generic window properties to be applied to the
 // current window.
-void WindowImplementation::Init(const engine::WindowProperties& properties) {
+void WindowImplementation::Init(const core::WindowProperties& properties) {
   properties_.Title = properties.Title;
   properties_.Width = properties.Width;
   properties_.Height = properties.Height;

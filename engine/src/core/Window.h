@@ -13,6 +13,7 @@
 #include "core/memory/Pointers.h"
 
 namespace engine {
+namespace core {
 
 struct WindowProperties {
   std::string Title;
@@ -47,6 +48,7 @@ class Window {
       const WindowProperties& properties = WindowProperties());
 };
 
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_WINDOW_H_

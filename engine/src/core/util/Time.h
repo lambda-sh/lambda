@@ -12,6 +12,7 @@
 #include "core/util/Assert.h"
 
 namespace engine {
+namespace core {
 namespace util {
 
 template<class T>
@@ -128,6 +129,7 @@ const T DurationTo(const Time& start, const Time& stop) {
 
 
 }  // namespace util
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_UTIL_TIME_H_

@@ -8,6 +8,7 @@
 #include "core/imgui/ImGuiBuild.h"
 
 namespace engine {
+namespace core {
 namespace imgui {
 
 bool ImGuiLayer::show_demo_window_ = true;
@@ -82,4 +83,5 @@ void ImGuiLayer::OnImGuiRender() {
 }
 
 }  // namespace imgui
+}  // namespace core
 }  // namespace engine

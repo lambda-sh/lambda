@@ -8,13 +8,14 @@
 #include <GLFW/glfw3.h>
 
 #include "core/Application.h"
-#include "core/Input.h"
+#include "core/input/Input.h"
 
 namespace engine {
 
 #ifdef ENGINE_PLATFORM_LINUX
 
-Input* Input::kInput_ = new platform::linux::InputImplementation();
+core::input::Input* core::input::Input::kInput_ =
+    new platform::linux::InputImplementation();
 
 #endif  // ENGINE_PLATFORM_LINUX
 
@@ -23,7 +24,7 @@ namespace linux {
 
 bool InputImplementation::IsKeyPressedImpl(int key_code) {
   GLFWwindow* window = static_cast<GLFWwindow*>(
-      Application::GetApplication().GetWindow().GetNativeWindow());
+      core::Application::GetApplication().GetWindow().GetNativeWindow());
 
   int state = glfwGetKey(window, key_code);
   return state == GLFW_PRESS || state == GLFW_REPEAT;
@@ -41,7 +42,7 @@ float InputImplementation::GetMouseYImpl() {
 
 std::pair<float, float> InputImplementation::GetMousePositionImpl() {
   GLFWwindow* window = static_cast<GLFWwindow*>(
-      Application::GetApplication().GetWindow().GetNativeWindow());
+      core::Application::GetApplication().GetWindow().GetNativeWindow());
 
   double x_pos, y_pos;
   glfwGetCursorPos(window, &x_pos, &y_pos);
@@ -51,7 +52,7 @@ std::pair<float, float> InputImplementation::GetMousePositionImpl() {
 
 bool InputImplementation::IsMouseButtonPressedImpl(int button) {
   GLFWwindow* window = static_cast<GLFWwindow*>(
-      Application::GetApplication().GetWindow().GetNativeWindow());
+      core::Application::GetApplication().GetWindow().GetNativeWindow());
 
   int state = glfwGetMouseButton(window, button);
   return state == GLFW_PRESS;

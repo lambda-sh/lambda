@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "core/Input.h"
+#include "core/input/Input.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
@@ -15,6 +15,7 @@
 #include "core/renderer/Renderer.h"
 
 namespace engine {
+namespace core {
 
 memory::Unique<Application> Application::kApplication_ = nullptr;
 
@@ -97,4 +98,6 @@ bool Application::OnWindowResize(const events::WindowResizeEvent& event) {
   return false;
 }
 
+
+}  // namespace core
 }  // namespace engine

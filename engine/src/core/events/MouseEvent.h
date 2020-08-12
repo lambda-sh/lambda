@@ -10,6 +10,7 @@
 #include "core/events/Event.h"
 
 namespace engine {
+namespace core {
 namespace events {
 
 class MouseMovedEvent : public Event {
@@ -93,6 +94,7 @@ class MouseButtonReleasedEvent : public MouseButtonEvent {
 };
 
 }  // namespace events
+}  // namespace core
 }  // namespace engine
 
 #endif  // ENGINE_SRC_CORE_EVENTS_MOUSEEVENT_H_

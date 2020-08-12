@@ -15,14 +15,15 @@
 #include "core/util/Log.h"
 #include "platform/opengl/OpenGLContext.h"
 
-namespace engine {
+using engine::core::memory::Shared;
 
+namespace engine {
 
 #ifdef ENGINE_PLATFORM_LINUX
 
 // Will create a windows based implementation of the window handler.
-memory::Shared<Window> Window::Create(
-    const engine::WindowProperties& properties) {
+Shared<core::Window> core::Window::Create(
+    const core::WindowProperties& properties) {
   return memory::CreateShared<platform::linux::WindowImplementation>(
       properties);
 }
@@ -40,7 +41,7 @@ static void GLFWErrorCallback(int error, const char* description) {
 static bool GLFWInitialized = false;
 
 WindowImplementation::WindowImplementation(
-    const engine::WindowProperties& properties) {
+    const core::WindowProperties& properties) {
   Init(properties);
 }
 
@@ -50,7 +51,7 @@ WindowImplementation::~WindowImplementation() {
 
 // Initialize the windows given generic window properties to be applied to the
 // current window.
-void WindowImplementation::Init(const engine::WindowProperties& properties) {
+void WindowImplementation::Init(const core::WindowProperties& properties) {
   properties_.Title = properties.Title;
   properties_.Width = properties.Width;
   properties_.Height = properties.Height;
@@ -89,8 +90,8 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        memory::Shared<events::WindowResizeEvent> event =
-            memory::CreateShared<events::WindowResizeEvent>(
+        core::memory::Shared<core::events::WindowResizeEvent> event =
+            core::memory::CreateShared<core::events::WindowResizeEvent>(
                 new_width, new_height);
 
         properties->Width = new_width;
@@ -106,8 +107,8 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        memory::Shared<events::WindowCloseEvent> event =
-            memory::CreateShared<events::WindowCloseEvent>();
+        core::memory::Shared<core::events::WindowCloseEvent> event =
+            core::memory::CreateShared<core::events::WindowCloseEvent>();
         properties->EventCallback(event);
       });
 
@@ -121,22 +122,24 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
         switch (action) {
           case GLFW_PRESS:
           {
-            memory::Shared<events::KeyPressedEvent> event =
-                memory::CreateShared<events::KeyPressedEvent>(key, 0);
+            core::memory::Shared<core::events::KeyPressedEvent> event =
+                core::memory::CreateShared<core::events::KeyPressedEvent>(
+                    key, 0);
             properties->EventCallback(event);
             break;
           }
           case GLFW_RELEASE:
           {
-            memory::Shared<events::KeyReleasedEvent> event =
-                memory::CreateShared<events::KeyReleasedEvent>(key);
+            core::memory::Shared<core::events::KeyReleasedEvent> event =
+                core::memory::CreateShared<core::events::KeyReleasedEvent>(key);
             properties->EventCallback(event);
             break;
           }
           case GLFW_REPEAT:
           {
-            memory::Shared<events::KeyPressedEvent> event =
-                memory::CreateShared<events::KeyPressedEvent>(key, 1);
+            core::memory::Shared<core::events::KeyPressedEvent> event =
+                core::memory::CreateShared<core::events::KeyPressedEvent>(
+                    key, 1);
             properties->EventCallback(event);
             break;
           }
@@ -150,8 +153,9 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-            memory::Shared<events::KeyTypedEvent> event =
-                memory::CreateShared<events::KeyTypedEvent>(character);
+            core::memory::Shared<core::events::KeyTypedEvent> event =
+                core::memory::CreateShared<core::events::KeyTypedEvent>(
+                    character);
             properties->EventCallback(event);
         });
 
@@ -165,15 +169,17 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
         switch (action) {
           case GLFW_PRESS:
           {
-            memory::Shared<events::MouseButtonPressedEvent> event =
-                memory::CreateShared<events::MouseButtonPressedEvent>(button);
+            core::memory::Shared<core::events::MouseButtonPressedEvent> event =
+                core::memory::CreateShared<
+                core::events::MouseButtonPressedEvent>(button);
             properties->EventCallback(event);
             break;
           }
           case GLFW_RELEASE:
           {
-            memory::Shared<events::MouseButtonReleasedEvent> event =
-                memory::CreateShared<events::MouseButtonReleasedEvent>(button);
+            core::memory::Shared<core::events::MouseButtonReleasedEvent> event =
+                core::memory::CreateShared<
+                    core::events::MouseButtonReleasedEvent>(button);
             properties->EventCallback(event);
             break;
           }
@@ -187,8 +193,8 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        memory::Shared<events::MouseScrolledEvent> event =
-            memory::CreateShared<events::MouseScrolledEvent>(
+            core::memory::Shared<core::events::MouseScrolledEvent> event =
+            core::memory::CreateShared<core::events::MouseScrolledEvent>(
                 static_cast<float>(x_offset), static_cast<float>(y_offset));
         properties->EventCallback(event);
       });
@@ -200,8 +206,8 @@ void WindowImplementation::Init(const engine::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        memory::Shared<events::MouseMovedEvent> event =
-            memory::CreateShared<events::MouseMovedEvent>(
+            core::memory::Shared<core::events::MouseMovedEvent> event =
+            core::memory::CreateShared<core::events::MouseMovedEvent>(
                 static_cast<float>(x_position), static_cast<float>(y_position));
         properties->EventCallback(event);
       });

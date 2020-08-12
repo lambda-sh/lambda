@@ -7,6 +7,7 @@
 #include "platform/opengl/OpenGLBuffer.h"
 
 namespace engine {
+namespace core {
 namespace renderer {
 
 memory::Shared<VertexBuffer> VertexBuffer::Create(
@@ -46,4 +47,5 @@ memory::Shared<IndexBuffer> IndexBuffer::Create(
 }
 
 }  // namespace renderer
+}  // namespace core
 }  // namespace engine
