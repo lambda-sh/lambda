@@ -13,7 +13,7 @@
 #include "core/memory/Pointers.h"
 #include "core/renderer/GraphicsContext.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace linux {
 
@@ -60,7 +60,7 @@ class WindowImplementation : public core::Window {
 
 }  // namespace linux
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_PLATFORM_LINUX
 #endif  // ENGINE_SRC_PLATFORM_LINUX_WINDOW_H_

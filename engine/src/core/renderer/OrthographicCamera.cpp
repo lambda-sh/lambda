@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -36,4 +36,4 @@ void OrthographicCamera::RecalculateViewMatrix() {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

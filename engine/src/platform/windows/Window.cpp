@@ -15,7 +15,7 @@
 #include "core/util/Log.h"
 #include "platform/opengl/OpenGLContext.h"
 
-namespace engine {
+namespace lambda {
 
 
 #ifdef ENGINE_PLATFORM_WINDOWS
@@ -237,6 +237,6 @@ bool WindowImplementation::HasVerticalSync() const {
 
 }  // namespace windows
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_PLATFORM_WINDOWS

@@ -12,7 +12,7 @@
 
 #include "core/events/Event.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace events {
 
@@ -80,12 +80,12 @@ class KeyTypedEvent : public KeyEvent {
 
 }  // namespace events
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_EVENTS_KEYEVENT_H_
 
 /**
- * @class engine::events::KeyEvent
+ * @class lambda::events::KeyEvent
  * @brief The base event for all other Key input events.
  *
  * Registers the Event category as both a keyboard and input event.
@@ -93,7 +93,7 @@ class KeyTypedEvent : public KeyEvent {
  */
 
 /**
- * @fn engine::events::KeyEvent::GetKeyCode
+ * @fn lambda::events::KeyEvent::GetKeyCode
  * @brief obtain the key code that generated the user had input into the
  * application.
  *
@@ -101,34 +101,34 @@ class KeyTypedEvent : public KeyEvent {
  */
 
 /**
- * @fn engine::events::KeyEvent::KeyEvent
+ * @fn lambda::events::KeyEvent::KeyEvent
  * @brief Only classes that derive from the KeyEvent class are allowed to
  * invoke the constructor of the KeyEvent class.
  */
 
 /**
- * @class engine::events::KeyPressedEvent
+ * @class lambda::events::KeyPressedEvent
  * @brief Generated when a key is pressed by the user in the application.
  *
  */
 
 /**
- * @fn engine::events::KeyPressedEvent::KeyPressedEvent
+ * @fn lambda::events::KeyPressedEvent::KeyPressedEvent
  * @brief Generated whenever a key is pressed by the user.
  */
 
 /**
- * @fn engine::events::KeyPressedEvent::GetRepeatCount
+ * @fn lambda::events::KeyPressedEvent::GetRepeatCount
  * @brief Gets the count of which the key code associated with this event was
  * pressed.
  */
 
 /**
- * @class engine::events::KeyReleasedEvent
+ * @class lambda::events::KeyReleasedEvent
  * @brief Generated when a key is released by the user in the application.
  */
 
 /**
- * @class engine::events::KeyTypedEvent
+ * @class lambda::events::KeyTypedEvent
  * @brief Generated when a key is typed by the user in the application.
  */

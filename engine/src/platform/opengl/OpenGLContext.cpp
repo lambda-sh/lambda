@@ -7,7 +7,7 @@
 #include "core/util/Assert.h"
 #include "core/Core.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -37,4 +37,4 @@ void OpenGLContext::SwapBuffers() {
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda

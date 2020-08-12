@@ -8,7 +8,7 @@
 #include "core/renderer/RendererAPI.h"
 #include "core/memory/Pointers.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -39,26 +39,26 @@ class RenderCommand {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_RENDERER_RENDERCOMMAND_H_
 
 /**
- * @class engine::renderer::RenderCommand
+ * @class lambda::renderer::RenderCommand
  * @brief A static wrapper class to send commands to the Renderer.
  */
 
 /**
- * @fn engine::renderer::RenderCommand::SetClearColor
+ * @fn lambda::renderer::RenderCommand::SetClearColor
  * @brief Sets the color to be used for clearing the screen.
  */
 
 /**
- * @fn engine::renderer::RenderCommand::Clear
+ * @fn lambda::renderer::RenderCommand::Clear
  * @brief Clear the screen.
  */
 
 /**
- * @fn engine::renderer::RenderCommand::DrawIndexed
+ * @fn lambda::renderer::RenderCommand::DrawIndexed
  * @brief Issues a platform specific graphics API to draw a vertex array.
  */

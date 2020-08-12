@@ -15,9 +15,9 @@
 #include "core/util/Log.h"
 #include "platform/opengl/OpenGLContext.h"
 
-using engine::core::memory::Shared;
+using lambda::core::memory::Shared;
 
-namespace engine {
+namespace lambda {
 
 #ifdef ENGINE_PLATFORM_LINUX
 
@@ -237,6 +237,6 @@ bool WindowImplementation::HasVerticalSync() const {
 
 }  // namespace linux
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_PLATFORM_LINUX

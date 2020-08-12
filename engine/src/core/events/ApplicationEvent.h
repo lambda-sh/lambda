@@ -13,7 +13,7 @@
 #include "core/Core.h"
 #include "core/events/Event.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace events {
 
@@ -72,48 +72,48 @@ class AppRenderEvent : public Event {
 
 }  // namespace events
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_EVENTS_APPLICATIONEVENT_H_
 
 /**
- * @class engine::events::WindowResizeEvent
+ * @class lambda::events::WindowResizeEvent
  * @brief Generated whenever a window is resized.
  *
  * Platform independent.
  */
 
 /**
- * @fn engine::events::WindowResizeEvent::GetWidth
+ * @fn lambda::events::WindowResizeEvent::GetWidth
  * @brief The new width that was registered with the event.
  */
 
 /**
- * @fn engine::events::WindowResizeEvent::GetHeight
+ * @fn lambda::events::WindowResizeEvent::GetHeight
  * @brief The new height that was registered with the event.
  */
 
 /**
- * @class engine::events::WindowCloseEvent
+ * @class lambda::events::WindowCloseEvent
  * @brief Generated whenever a window is closed.
  */
 
 /**
- * @class engine::events::AppTickEvent
+ * @class lambda::events::AppTickEvent
  * @brief Generated whenever the app ticks.
  *
  * Currently not implemented.
  */
 
 /**
- * @class engine::events::AppUpdateEvent
+ * @class lambda::events::AppUpdateEvent
  * @brief Generated whenever the app updates.
  *
  * Currently not implemented.
  */
 
 /**
- * @class engine::events::AppRenderEvent
+ * @class lambda::events::AppRenderEvent
  * @brief Generated whenever the app renders.
  *
  * Currently not implemented.

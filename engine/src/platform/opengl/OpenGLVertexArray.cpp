@@ -5,7 +5,7 @@
 #include "core/util/Assert.h"
 #include "core/renderer/Buffer.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -82,4 +82,4 @@ void OpenGLVertexArray::SetIndexBuffer(
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda

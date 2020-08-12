@@ -22,7 +22,7 @@
 #include "core/memory/Pointers.h"
 #include "core/util/Time.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 
 
@@ -57,12 +57,12 @@ class Application {
 Application* CreateApplication();
 
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_APPLICATION_H_
 
 /**
- * @class engine::Application
+ * @class lambda::Application
  * @brief The primary driver of all applications extending this engine.
  *
  * The engine implements the application runner as an individual platform
@@ -71,19 +71,19 @@ Application* CreateApplication();
  */
 
 /**
- * @fn engine::Application::Run
+ * @fn lambda::Application::Run
  * @brief Controls the applications lifecycle and all lower level
  * functionality like input, events, rendering, networking, etc.
  */
 
 /**
- * @fn engine::Application::OnEvent
+ * @fn lambda::Application::OnEvent
  * @brief Passes events to all the layers.
  * @param event An event pointer generated to be handled by the application.
  */
 
 /**
- * @fn engine::Application::PushLayer
+ * @fn lambda::Application::PushLayer
  * @brief Attaches a layer to the application instance.
  * @param layer
  *
@@ -92,7 +92,7 @@ Application* CreateApplication();
  */
 
 /**
- * @fn engine::Application::PushOverlay
+ * @fn lambda::Application::PushOverlay
  * @brief Attaches an overlay to the application instance.
  *
  * This allows the application instance to propage events, rendering,
@@ -100,12 +100,12 @@ Application* CreateApplication();
  */
 
 /**
- * @fn engine::Application::OnWindowClosed
+ * @fn lambda::Application::OnWindowClosed
  * @brief Handles what to do when a window has been closed.
  */
 
 /**
- * @fn engine::CreateApplication
+ * @fn lambda::CreateApplication
  * @brief An external function that is to be defined inside of the client.
  *
  * It allows the game developers to simply write a CreateApplication() method

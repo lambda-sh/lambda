@@ -7,7 +7,7 @@
 #include "core/renderer/OrthographicCamera.h"
 #include "core/util/Time.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 
 class OrthographicCameraController {
@@ -37,6 +37,6 @@ class OrthographicCameraController {
 
 
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_ORTHOGRAPHICCAMERACONTROLLER_H_

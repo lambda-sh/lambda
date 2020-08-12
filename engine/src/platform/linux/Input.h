@@ -8,7 +8,7 @@
 #include "core/input/Input.h"
 
 // TODO(C3NZ): Implement this for the windows platform
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace linux {
 
@@ -24,7 +24,7 @@ class InputImplementation : public core::input::Input {
 
 }  // namespace linux
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_PLATFORM_LINUX
 #endif  // ENGINE_SRC_PLATFORM_LINUX_INPUT_H_

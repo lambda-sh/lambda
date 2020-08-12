@@ -7,7 +7,7 @@
 
 #include "core/input/Input.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace windows {
 
@@ -26,7 +26,7 @@ class InputImplementation : public core::input::Input {
 
 }  // namespace windows
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_PLATFORM_WINDOWS
 #endif  // ENGINE_SRC_PLATFORM_WINDOWS_INPUT_H_

@@ -6,7 +6,7 @@
 #include "core/util/Assert.h"
 #include "platform/opengl/OpenGLBuffer.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -48,4 +48,4 @@ memory::Shared<IndexBuffer> IndexBuffer::Create(
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

@@ -13,7 +13,7 @@
 
 #include "platform/opengl/OpenGLShader.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -96,4 +96,4 @@ memory::Shared<Shader> ShaderLibrary::Get(const std::string& name) {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

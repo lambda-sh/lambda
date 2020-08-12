@@ -7,7 +7,7 @@
 #include "core/events/Event.h"
 #include "core/imgui/ImGuiBuild.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace imgui {
 
@@ -84,4 +84,4 @@ void ImGuiLayer::OnImGuiRender() {
 
 }  // namespace imgui
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

@@ -2,7 +2,7 @@
 
 #include "platform/opengl/OpenGLRendererAPI.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -11,4 +11,4 @@ memory::Unique<RendererAPI> RenderCommand::renderer_API_ =
 
 }  // namespace renderer
 }  // namesapce core
-}  // namespace engine
+}  // namespace lambda

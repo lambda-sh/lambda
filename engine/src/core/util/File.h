@@ -8,7 +8,7 @@
 #include "core/Core.h"
 #include "core/memory/Pointers.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace util {
 
@@ -111,6 +111,6 @@ class File {
 
 }  // namespace util
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_UTIL_FILE_H_

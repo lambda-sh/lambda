@@ -8,7 +8,7 @@
 #include "core/renderer/Buffer.h"
 #include "core/renderer/VertexArray.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -52,6 +52,6 @@ class OpenGLVertexArray : public core::renderer::VertexArray {
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_PLATFORM_OPENGL_OPENGLVERTEXARRAY_H_

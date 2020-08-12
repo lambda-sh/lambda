@@ -9,7 +9,7 @@
 
 #include "core/Core.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace input {
 
@@ -41,12 +41,12 @@ class Input {
 
 }  // namespace input
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_INPUT_INPUT_H_
 
 /**
- * @class engine::Input
+ * @class lambda::Input
  * @brief The generalized Input class for all input systems.
  *
  * All Input instances will be child classes of Input, but never called directly
@@ -55,27 +55,27 @@ class Input {
 
 
 /**
- * @function engine::Input::IsKeyPressed
+ * @function lambda::Input::IsKeyPressed
  * @brief Check if the current key is being pressed.
  */
 
 
 /**
- * @function engine::Input::GetMouseX
+ * @function lambda::Input::GetMouseX
  * @brief Get the current mouse x position.
  */
 
 /**
- * @function engine::Input::GetMouseY
+ * @function lambda::Input::GetMouseY
  * @brief Get the current mouse y position.
  */
 
 /**
- * @function engine::Input::GetMousePosition
+ * @function lambda::Input::GetMousePosition
  * @brief Get the current mouse x & y positions.
  */
 
 /**
- * @function engine::Input::IsMouseButtonPressed
+ * @function lambda::Input::IsMouseButtonPressed
  * @brief Check to see if a mouse button is being pressed.
  */

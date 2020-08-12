@@ -3,7 +3,7 @@
 
 #include <memory>
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace memory {
 
@@ -25,7 +25,7 @@ Shared<T> CreateShared(Args&&... args) {
 
 }  // namespace memory
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_MEMORY_POINTERS_H_
 

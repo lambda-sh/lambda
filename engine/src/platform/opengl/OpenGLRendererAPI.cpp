@@ -1,7 +1,7 @@
 #include "platform/opengl/OpenGLRendererAPI.h"
 #include <glad/glad.h>
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -35,4 +35,4 @@ void OpenGLRendererAPI::DrawIndexed(
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda

@@ -12,7 +12,7 @@
 
 #include "core/renderer/Texture.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -35,27 +35,27 @@ class OpenGLTexture2D : public core::renderer::Texture2D {
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_PLATFORM_OPENGL_OPENGLTEXTURE_H_
 
 /**
- * @class engine::platform::opengl::OpenGLTexture2D
+ * @class lambda::platform::opengl::OpenGLTexture2D
  * @brief The opengl 2D texture implementation.
  *
  */
 
 /**
- * @function engine::platform::opengl::OpenGLTexture2D::GetWidth
+ * @function lambda::platform::opengl::OpenGLTexture2D::GetWidth
  * @brief Get the width of the texure.
  */
 
 /**
- * @function engine::platform::opengl::OpenGLTexture2D::GetHeight
+ * @function lambda::platform::opengl::OpenGLTexture2D::GetHeight
  * @brief Get the height of the texure.
  */
 
 /**
- * @function engine::platform::opengl::OpenGLTexture2D::Bind
+ * @function lambda::platform::opengl::OpenGLTexture2D::Bind
  * @brief Bind the texture to the engine.
  */

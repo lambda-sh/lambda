@@ -19,7 +19,7 @@
 #include "core/Core.h"
 #include "core/memory/Pointers.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace events {
 
@@ -99,12 +99,12 @@ class EventDispatcher {
 
 }  // namespace events
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_EVENTS_EVENT_H_
 
 /**
- * @enum engine::events::EventType
+ * @enum lambda::events::EventType
  * @brief An Events specific type.
  *
  * This defines all the EventTypes that are available within the engine. Events
@@ -113,7 +113,7 @@ class EventDispatcher {
  */
 
 /**
- * @enum engine::events::EventCategory
+ * @enum lambda::events::EventCategory
  * @brief An events specific category.
  *
  * This is primarily used for determining what categories an event belongs to.
@@ -149,7 +149,7 @@ class EventDispatcher {
  */
 
 /**
- * @class engine::events::Event
+ * @class lambda::events::Event
  * @brief The abstract Event class.
  *
  * The base Event implementation that is the parent class for any Event that
@@ -161,20 +161,20 @@ class EventDispatcher {
  */
 
 /**
- * @fn engine::events::Event::IsInCategory
+ * @fn lambda::events::Event::IsInCategory
  * @param category The category to be checked against.
  * @brief Check if an event belongs to an EventCategory
  */
 
 /**
- * @fn engine::events::Event::HasBeenHandled
+ * @fn lambda::events::Event::HasBeenHandled
  * @brief Check if an event has already been handled.
  *
  * Only the EventDispatcher is capable of setting an event as being handled.
  */
 
 /**
- * @class engine::events::EventDispatcher
+ * @class lambda::events::EventDispatcher
  * @brief The event handling system.
  *
  * The EventDispatcher is the key to handling all events. It is created per
@@ -184,12 +184,12 @@ class EventDispatcher {
  */
 
 /**
- * @typedef engine::events::EventDispatcher::EventFn
+ * @typedef lambda::events::EventDispatcher::EventFn
  * @brief The expected function header to be used for dispatching events.
  */
 
 /**
- * @fn engine::events::EventDispatcher::Dispatch
+ * @fn lambda::events::EventDispatcher::Dispatch
  * @param func A function of type EventFn<T> that will be used to dispatch an
  * event if they have they have the same corresponding type.
  * @brief Ensures that functions are dispatched by event handlers that match

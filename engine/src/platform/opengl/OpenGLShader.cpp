@@ -10,7 +10,7 @@
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -244,4 +244,4 @@ void OpenGLShader::UploadUniformMat4(
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda

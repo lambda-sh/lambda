@@ -9,7 +9,7 @@
 #include "core/renderer/OrthographicCamera.h"
 #include "core/util/Time.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 
 OrthographicCameraController::OrthographicCameraController(
@@ -86,4 +86,4 @@ void OrthographicCameraController::OnEvent(
 }
 
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

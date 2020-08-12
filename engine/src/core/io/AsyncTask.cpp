@@ -2,7 +2,7 @@
 
 #include "core/util/Time.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace io {
 
@@ -38,4 +38,4 @@ void AsyncTask::RescheduleTask(
 
 }  // namespace io
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

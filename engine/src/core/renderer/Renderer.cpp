@@ -6,7 +6,7 @@
 #include "core/renderer/OrthographicCamera.h"
 #include "platform/opengl/OpenGLShader.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -50,4 +50,4 @@ void Renderer::Submit(
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

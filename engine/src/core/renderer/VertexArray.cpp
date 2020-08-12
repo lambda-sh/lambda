@@ -6,7 +6,7 @@
 
 #include "platform/opengl/OpenGLVertexArray.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -31,4 +31,4 @@ memory::Shared<VertexArray> VertexArray::Create() {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

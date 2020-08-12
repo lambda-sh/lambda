@@ -11,7 +11,7 @@
 #include "core/Window.h"
 #include "core/renderer/GraphicsContext.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace windows {
 
@@ -53,7 +53,7 @@ class WindowImplementation : public core::Window {
 
 }  // namespace windows
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_PLATFORM_WINDOWS
 #endif  // ENGINE_SRC_PLATFORM_WINDOWS_WINDOW_H_

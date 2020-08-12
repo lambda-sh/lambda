@@ -8,23 +8,23 @@
 #include "ext/matrix_transform.hpp"
 #include "platform/opengl/OpenGLShader.h"
 
-using engine::core::events::Event;
-using engine::core::layers::Layer;
-using engine::core::memory::Shared;
-using engine::core::renderer::BufferLayout;
-using engine::core::renderer::IndexBuffer;
-using engine::core::OrthographicCameraController;
-using engine::core::renderer::RenderCommand;
-using engine::core::renderer::Renderer;
-using engine::core::renderer::Shader;
-using engine::core::renderer::ShaderDataType;
-using engine::core::renderer::ShaderDataType;
-using engine::core::renderer::ShaderLibrary;
-using engine::core::renderer::Texture2D;
-using engine::core::renderer::VertexArray;
-using engine::core::renderer::VertexBuffer;
-using engine::core::util::TimeStep;
-using engine::core::input::Input;
+using lambda::core::events::Event;
+using lambda::core::layers::Layer;
+using lambda::core::memory::Shared;
+using lambda::core::renderer::BufferLayout;
+using lambda::core::renderer::IndexBuffer;
+using lambda::core::OrthographicCameraController;
+using lambda::core::renderer::RenderCommand;
+using lambda::core::renderer::Renderer;
+using lambda::core::renderer::Shader;
+using lambda::core::renderer::ShaderDataType;
+using lambda::core::renderer::ShaderDataType;
+using lambda::core::renderer::ShaderLibrary;
+using lambda::core::renderer::Texture2D;
+using lambda::core::renderer::VertexArray;
+using lambda::core::renderer::VertexBuffer;
+using lambda::core::util::TimeStep;
+using lambda::core::input::Input;
 
 class ExampleLayer : public Layer {
  public:
@@ -33,7 +33,7 @@ class ExampleLayer : public Layer {
       camera_(1280.0f / 720.0f, true),
       square_position_(0.0f) {
     // Initialize the renderer. (Handles graphics specific API setup.)
-    loop_ = engine::core::memory::CreateShared<engine::core::io::EventLoop>();
+    loop_ = lambda::core::memory::CreateShared<lambda::core::io::EventLoop>();
 
     loop_->SetInterval(
         [&]() {
@@ -119,9 +119,9 @@ class ExampleLayer : public Layer {
     lambda_texture_ = Texture2D::Create(
         "assets/textures/hl2.png");
 
-    std::dynamic_pointer_cast<engine::platform::opengl::OpenGLShader>(
+    std::dynamic_pointer_cast<lambda::platform::opengl::OpenGLShader>(
         shader_lib_.Get("yeet"))->Bind();
-    std::dynamic_pointer_cast<engine::platform::opengl::OpenGLShader>(
+    std::dynamic_pointer_cast<lambda::platform::opengl::OpenGLShader>(
         shader_lib_.Get("yeet"))->UploadUniformInt("u_Texture", 0);
   }
 
@@ -153,7 +153,7 @@ class ExampleLayer : public Layer {
     Renderer::BeginScene(camera_.GetOrthographicCamera());
 
     const auto& cast = std::dynamic_pointer_cast<
-      engine::platform::opengl::OpenGLShader>(shader_lib_.Get("yeet"));
+      lambda::platform::opengl::OpenGLShader>(shader_lib_.Get("yeet"));
 
     for (int y = 0; y < 20; ++y) {
       for (int x = 0; x < 20; ++x) {
@@ -200,7 +200,7 @@ class ExampleLayer : public Layer {
   Shared<IndexBuffer> index_buffer_;
   Shared<VertexArray> vertex_array_;
   Shared<Texture2D> texture_, lambda_texture_;
-  Shared<engine::core::io::EventLoop> loop_;
+  Shared<lambda::core::io::EventLoop> loop_;
   ShaderLibrary shader_lib_;
 
   OrthographicCameraController camera_;
@@ -212,13 +212,13 @@ class ExampleLayer : public Layer {
   glm::vec4 blue_color_ = {0.2f, 0.3f, 0.8f, 1.0f};
 };
 
-class Sandbox : public engine::core::Application {
+class Sandbox : public lambda::core::Application {
  public:
   Sandbox() {
-    PushLayer(engine::core::memory::CreateShared<ExampleLayer>());
+    PushLayer(lambda::core::memory::CreateShared<ExampleLayer>());
   }
   ~Sandbox() {}
 };
 
-engine::core::Application* engine::core::CreateApplication() {
+lambda::core::Application* lambda::core::CreateApplication() {
   return new Sandbox(); }

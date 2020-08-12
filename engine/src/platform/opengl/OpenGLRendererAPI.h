@@ -8,7 +8,7 @@
 #include "core/renderer/RendererAPI.h"
 #include "core/renderer/VertexArray.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -31,6 +31,6 @@ class OpenGLRendererAPI : public core::renderer::RendererAPI {
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_PLATFORM_OPENGL_OPENGLRENDERERAPI_H_
