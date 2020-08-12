@@ -4,7 +4,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 
-#include "Engine.h"
+#include "Lambda.h"
 #include "ext/matrix_transform.hpp"
 #include "platform/opengl/OpenGLShader.h"
 
@@ -37,7 +37,7 @@ class ExampleLayer : public Layer {
 
     loop_->SetInterval(
         [&]() {
-          ENGINE_CLIENT_INFO("Executing every 2 seconds!");
+          LAMBDA_CLIENT_INFO("Executing every 2 seconds!");
           return true;
           }, 2000);
 
@@ -133,15 +133,15 @@ class ExampleLayer : public Layer {
 
     camera_.OnUpdate(time_step);
 
-    if (Input::IsKeyPressed(ENGINE_KEY_I)) {
+    if (Input::IsKeyPressed(LAMBDA_KEY_I)) {
       square_position_.y += square_move_speed_ * ts;
-    } else if (Input::IsKeyPressed(ENGINE_KEY_K)) {
+    } else if (Input::IsKeyPressed(LAMBDA_KEY_K)) {
       square_position_.y -= square_move_speed_ * ts;
     }
 
-    if (Input::IsKeyPressed(ENGINE_KEY_J)) {
+    if (Input::IsKeyPressed(LAMBDA_KEY_J)) {
       square_position_.x -= square_move_speed_ * ts;
-    } else if (Input::IsKeyPressed(ENGINE_KEY_L)) {
+    } else if (Input::IsKeyPressed(LAMBDA_KEY_L)) {
       square_position_.x += square_move_speed_ * ts;
     }
 
