@@ -5,7 +5,7 @@
 
 #include "core/util/Assert.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -69,4 +69,4 @@ void OpenGLTexture2D::Bind(uint32_t slot) const {
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda

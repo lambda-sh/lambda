@@ -9,7 +9,7 @@
 
 #include "core/events/Event.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace events {
 
@@ -95,34 +95,34 @@ class MouseButtonReleasedEvent : public MouseButtonEvent {
 
 }  // namespace events
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_EVENTS_MOUSEEVENT_H_
 
 /**
- * @class engine::events::MouseMovedEvent
+ * @class lambda::events::MouseMovedEvent
  * @brief Generated whenever the user moves their mouse within the application.
  */
 
 /**
- * @class engine::events::MouseScrolledEvent
+ * @class lambda::events::MouseScrolledEvent
  * @brief Generated whenever the user scrolls their mouse wheel within the
  * application.
  */
 
 /**
- * @class engine::events::MouseButtonEvent
+ * @class lambda::events::MouseButtonEvent
  * @brief The generic Mouse button event.
  */
 
 /**
- * @class engine::events::MouseButtonPressedEvent
+ * @class lambda::events::MouseButtonPressedEvent
  * @brief Generated whenever the user presses a mouse button within the
  * application.
  */
 
 /**
- * @class engine::events::MouseButtonReleasedEvent
+ * @class lambda::events::MouseButtonReleasedEvent
  * @brief Generated whenever the user releases a mouse button within an
  * application.
  */

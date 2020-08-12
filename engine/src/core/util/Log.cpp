@@ -3,7 +3,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace util {
 
@@ -21,4 +21,4 @@ void Log::Init() {
 
 }  // namespace util
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

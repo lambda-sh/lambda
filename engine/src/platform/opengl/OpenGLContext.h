@@ -5,7 +5,7 @@
 
 #include "core/renderer/GraphicsContext.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -21,6 +21,6 @@ class OpenGLContext : public core::renderer::GraphicsContext {
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_PLATFORM_OPENGL_OPENGLCONTEXT_H_

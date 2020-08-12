@@ -13,7 +13,7 @@
 #include "core/memory/Pointers.h"
 #include "core/renderer/Buffer.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -41,45 +41,45 @@ class VertexArray {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_RENDERER_VERTEXARRAY_H_
 
 /**
- * @class engine::renderer::VertexArray
+ * @class lambda::renderer::VertexArray
  * @brief The abstraction for representing Vertex arrays and their sub
  * components.
  */
 
 /**
- * @fn engine::renderer::VertexArray::Bind
+ * @fn lambda::renderer::VertexArray::Bind
  * @brief Bind the Vertex array and it's components to the rendering API and
  * GPU.
  */
 
 /**
- * @fn engine::renderer::VertexArray::Unbind
+ * @fn lambda::renderer::VertexArray::Unbind
  * @brief Unbind the vertex array and it's components from the rendering API
  * and memory.
  */
 
 /**
- * @fn engine::renderer::VertexArray::AddVertexBuffer
+ * @fn lambda::renderer::VertexArray::AddVertexBuffer
  * @brief Add a vertex buffer to the vertex array.
  */
 
 /**
- * @fn engine::renderer::VertexArray::SetIndexBuffer
+ * @fn lambda::renderer::VertexArray::SetIndexBuffer
  * @brief Set the index buffer of the vertex array.
  */
 
 /**
- * @fn engine::renderer::VertexArray::GetIndexBuffers
+ * @fn lambda::renderer::VertexArray::GetIndexBuffers
  * @brief Get all the index buffers that are associated with this class.
  */
 
 /**
- * @fn engine::renderer::VertexArray::Create
+ * @fn lambda::renderer::VertexArray::Create
  * @brief Creates a vertex array through the platform specific API that is
  * being used at runtime.
  */

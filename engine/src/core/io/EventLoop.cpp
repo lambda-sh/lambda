@@ -1,6 +1,6 @@
 #include "core/io/EventLoop.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace io {
 
@@ -91,4 +91,4 @@ bool EventLoop::Dispatch(UniqueAsyncTask task) {
 
 }  // namespace io
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

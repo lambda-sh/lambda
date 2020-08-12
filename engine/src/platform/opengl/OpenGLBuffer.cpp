@@ -2,7 +2,7 @@
 
 #include <glad/glad.h>
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -63,4 +63,4 @@ void OpenGLIndexBuffer::Unbind() const {
 
 }  // namespace renderer
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda

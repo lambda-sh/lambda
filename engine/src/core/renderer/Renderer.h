@@ -11,7 +11,7 @@
 #include "core/renderer/Shader.h"
 
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -43,13 +43,13 @@ class Renderer {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_RENDERER_RENDERER_H_
 
 
 /**
- * @class engine::renderer::Renderer
+ * @class lambda::renderer::Renderer
  * @brief A lightweight rendering API implementation. Allows generalized calls
  * to be written for users
  *
@@ -59,16 +59,16 @@ class Renderer {
  */
 
 /**
- * @fn engine::renderer::Renderer::BeginScene
+ * @fn lambda::renderer::Renderer::BeginScene
  * @brief Begin rendering a scene
  */
 
 /**
- * @fn engine::renderer::Renderer::EndScene
+ * @fn lambda::renderer::Renderer::EndScene
  * @brief Stop rendering a scene.
  */
 
 /**
- * @fn engine::renderer::Renderer::Submit
+ * @fn lambda::renderer::Renderer::Submit
  * @brief Submit a scene data to the engine.
  */

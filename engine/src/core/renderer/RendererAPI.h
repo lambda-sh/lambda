@@ -11,7 +11,7 @@
 
 #include "core/renderer/VertexArray.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -38,36 +38,36 @@ class RendererAPI {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_RENDERER_RENDERERAPI_H_
 
 /**
- * @class engine::renderer::RendererAPI
+ * @class lambda::renderer::RendererAPI
  * @brief The Rendering API for displaying graphics through the engine api!
  */
 
 /**
- * @enum engine::renderer::RendererAPI::API
+ * @enum lambda::renderer::RendererAPI::API
  * @brief The APIs provided by the engine.
  */
 
 /**
- * @fn engine::renderer::RendererAPI::SetClearColor
+ * @fn lambda::renderer::RendererAPI::SetClearColor
  * @brief Set the clear color to be used for the renderer.
  */
 
 /**
- * @fn engine::renderer::RendererAPI::Clear
+ * @fn lambda::renderer::RendererAPI::Clear
  * @brief Clear the screen.
  */
 
 /**
- * @fn engine::renderer::RendererAPI::DrawIndexed
+ * @fn lambda::renderer::RendererAPI::DrawIndexed
  * @brief Render a vertex array.
  */
 
 /**
- * @fn engine::renderer::RendererAPI::GetAPI
+ * @fn lambda::renderer::RendererAPI::GetAPI
  * @brief Return the API being used within the engine.
  */

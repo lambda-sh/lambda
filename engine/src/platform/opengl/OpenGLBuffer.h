@@ -5,7 +5,7 @@
 
 #include "core/renderer/Buffer.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -69,6 +69,6 @@ class OpenGLIndexBuffer : public core::renderer::IndexBuffer {
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_PLATFORM_OPENGL_OPENGLBUFFER_H_

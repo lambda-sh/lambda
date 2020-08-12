@@ -13,7 +13,7 @@
 #include "core/layers/Layer.h"
 #include "core/memory/Pointers.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace layers {
 
@@ -43,12 +43,12 @@ class LayerStack {
 
 }  // namespace layers
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_LAYERS_LAYERSTACK_H_
 
 /**
- * @class engine::layers::LayerStack
+ * @class lambda::layers::LayerStack
  * @brief A stack based data structure for the storage of layers to be
  * managed by the engine.
  *
@@ -58,21 +58,21 @@ class LayerStack {
  */
 
 /**
- * @fn engine::layers::LayerStack::PushLayer
+ * @fn lambda::layers::LayerStack::PushLayer
  * @brief Push a layer on to the Layer stack.
  */
 
 /**
- * @fn engine::layers::LayerStack::PushOverlay
+ * @fn lambda::layers::LayerStack::PushOverlay
  * @brief Pushes an overlay on to the back of the stack.
  */
 
 /**
- * @fn engine::layers::LayerStack::PopLayer
+ * @fn lambda::layers::LayerStack::PopLayer
  * @brief Pops a layer off the layer stack.
  */
 
 /**
- * @fn engine::layers::LayerStack::PopOverlay
+ * @fn lambda::layers::LayerStack::PopOverlay
  * @brief Pops an overlay off the layer stack.
  */

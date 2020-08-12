@@ -7,7 +7,7 @@
 
 #include <ranges>
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace util {
 namespace internal {
@@ -30,12 +30,12 @@ class Reverse {
 
 }  // namespace util
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_UTIL_REVERSE_H_
 
 /**
- * @class engine::util::Reverse
+ * @class lambda::util::Reverse
  * @brief Provides a clean interface for iterating through any container that
  * implements rbegin and rend.
  */

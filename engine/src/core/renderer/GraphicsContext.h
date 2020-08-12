@@ -8,7 +8,7 @@
 #ifndef ENGINE_SRC_CORE_RENDERER_GRAPHICSCONTEXT_H_
 #define ENGINE_SRC_CORE_RENDERER_GRAPHICSCONTEXT_H_
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -20,7 +20,7 @@ class GraphicsContext {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_RENDERER_GRAPHICSCONTEXT_H_
 

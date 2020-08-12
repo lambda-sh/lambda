@@ -20,7 +20,7 @@
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 
 namespace renderer {
@@ -170,28 +170,28 @@ class IndexBuffer {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_RENDERER_BUFFER_H_
 
 /**
- * @enum engine::renderer::ShaderDataType
+ * @enum lambda::renderer::ShaderDataType
  * @brief Data types that are compatible with shaders supported by the engine.
  */
 
 /**
- * @fn engine::renderer::ShaderDataTypeSize
+ * @fn lambda::renderer::ShaderDataTypeSize
  * @brief Helper function that determines the size of a ShaderDataType in bytes.
  */
 
 /**
- * @fn engine::renderer::ShaderDataTypeComponentCount
+ * @fn lambda::renderer::ShaderDataTypeComponentCount
  * @brief Helper function that determines the number of components in a
  * ShaderDataType.
  */
 
 /**
- * @struct engine::renderer::BufferElement
+ * @struct lambda::renderer::BufferElement
  * @brief A generic buffer element representation to be used in conjuction with
  * BufferLayouts.
  *
@@ -201,19 +201,19 @@ class IndexBuffer {
  */
 
 /**
- * @fn engine::renderer::BufferElement::BufferElement
+ * @fn lambda::renderer::BufferElement::BufferElement
  * @param type The ShaderDataType that should be sent into the graphics API.
  * @param name The name to be registered in the graphics API.
  */
 
 /**
- * @class engine::renderer::BufferLayout
+ * @class lambda::renderer::BufferLayout
  * @brief A layout that specifies the elements to be associated with a vertex
  * buffer.
  */
 
 /**
- * @fn engine::renderer::BufferLayout::BufferLayout
+ * @fn lambda::renderer::BufferLayout::BufferLayout
  * @brief Instantiate a BufferLayout with an initializer list of
  * BufferElements.
  *
@@ -229,24 +229,24 @@ class IndexBuffer {
  */
 
 /**
- * @fn engine::renderer::BufferLayout::GetStride
+ * @fn lambda::renderer::BufferLayout::GetStride
  * @brief Get the overall stride of the current buffer layout.
  *
  * The stride is essentially the total size of the Buffer layout elements.
  */
 
 /**
- * @fn engine::renderer::BufferLayout::GetElements
+ * @fn lambda::renderer::BufferLayout::GetElements
  * @brief Get a const reference to the elements associated with this layout.
  */
 
 /**
- * @fn engine::renderer::BufferLayout::HasElements
+ * @fn lambda::renderer::BufferLayout::HasElements
  * @brief Checks to see if the current buffer layout has elements.
  */
 
 /**
- * @class engine::renderer::VertexBuffer
+ * @class lambda::renderer::VertexBuffer
  * @brief The base VertexBuffer class to be used for creating vertex buffers.
  *
  * Platform specific graphics API should extend this class in order to be
@@ -254,7 +254,7 @@ class IndexBuffer {
  */
 
 /**
- * @fn engine::renderer::VertexBuffer::Bind
+ * @fn lambda::renderer::VertexBuffer::Bind
  * @brief Bind the vertex buffer to the current rendering context.
  *
  * The binding process is entirely dependent upon the grahpics API. However,
@@ -263,7 +263,7 @@ class IndexBuffer {
  */
 
 /**
- * @fn engine::renderer::VertexBuffer::Unbind
+ * @fn lambda::renderer::VertexBuffer::Unbind
  * @brief Unbind the vertex buffer to the current rendering context.
  *
  * The unbinding process is entirely dependent upon the grahpics API. However,
@@ -273,17 +273,17 @@ class IndexBuffer {
  */
 
 /**
- * @fn engine::renderer::VertexBuffer::GetLayout
+ * @fn lambda::renderer::VertexBuffer::GetLayout
  * @brief Get the BufferLayout tied to the current VertexBuffer.
  */
 
 /**
- * @fn engine::renderer::VertexBuffer::SetLayout
+ * @fn lambda::renderer::VertexBuffer::SetLayout
  * @brief Set the BufferLayout for the current VertexBuffer.
  */
 
 /**
- * @fn engine::renderer::VertexBuffer::Create
+ * @fn lambda::renderer::VertexBuffer::Create
  * @param vertices - a pointer to an array of vertices to be registered.
  * @param size - The size of the vertices in bytes.
  * @brief Creates a VertexBuffer through the Graphics API that is being used
@@ -295,7 +295,7 @@ class IndexBuffer {
  */
 
 /**
- * @class engine::renderer::IndexBuffer
+ * @class lambda::renderer::IndexBuffer
  * @brief The base IndexBuffer class to be used for creating index buffers.
  *
  * Platform specific graphics API should extend this class in order to be
@@ -303,12 +303,12 @@ class IndexBuffer {
  */
 
 /**
- * @fn engine::renderer::IndexBuffer::Bind
+ * @fn lambda::renderer::IndexBuffer::Bind
  * @brief Bind the current IndexBuffer to the current rendering context.
  */
 
 /**
- * @fn engine::renderer::IndexBuffer::Unbind
+ * @fn lambda::renderer::IndexBuffer::Unbind
  * @brief Unbind the current IndexBuffer from the current rendering context.
  *
  * Any vertex buffer that relies on this buffer will not be able to access
@@ -316,12 +316,12 @@ class IndexBuffer {
  */
 
 /**
- * @fn engine::renderer::IndexBuffer::GetCount
+ * @fn lambda::renderer::IndexBuffer::GetCount
  * @brief Get the count of indices within the current IndexBuffer.
  */
 
 /**
- * @fn engine::renderer::IndexBuffer::Create
+ * @fn lambda::renderer::IndexBuffer::Create
  * @param indices - a pointer to an array of indices to be registered.
  * @param size - The size of the vertices in bytes.
  * @brief Creates a IndexBuffer through the Graphics API that is being used

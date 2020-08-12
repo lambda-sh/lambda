@@ -13,14 +13,14 @@
 
 #ifdef ENGINE_PLATFORM_LINUX
 
-extern engine::core::Application* engine::core::CreateApplication();
+extern lambda::core::Application* lambda::core::CreateApplication();
 
 int main() {
-  engine::core::util::Log::Init();
+  lambda::core::util::Log::Init();
   ENGINE_CORE_WARN("Initialized core log");
   ENGINE_CLIENT_INFO("Initialized client log");
 
-  auto app = engine::core::CreateApplication();
+  auto app = lambda::core::CreateApplication();
   app->Run();
   delete app;
 

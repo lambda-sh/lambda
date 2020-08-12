@@ -14,7 +14,7 @@
 #include "core/util/Time.h"
 #include "core/renderer/Renderer.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 
 memory::Unique<Application> Application::kApplication_ = nullptr;
@@ -100,4 +100,4 @@ bool Application::OnWindowResize(const events::WindowResizeEvent& event) {
 
 
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

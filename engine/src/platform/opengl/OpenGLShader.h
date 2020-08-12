@@ -13,7 +13,7 @@
 
 #include "core/renderer/Shader.h"
 
-namespace engine {
+namespace lambda {
 namespace platform {
 namespace opengl {
 
@@ -102,6 +102,6 @@ class OpenGLShader final : public core::renderer::Shader {
 
 }  // namespace opengl
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_PLATFORM_OPENGL_OPENGLSHADER_H_

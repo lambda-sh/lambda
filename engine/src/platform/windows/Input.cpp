@@ -10,7 +10,7 @@
 #include "core/Application.h"
 #include "core/input/Input.h"
 
-namespace engine {
+namespace lambda {
 
 #ifdef ENGINE_PLATFORM_WINDOWS
 
@@ -60,6 +60,6 @@ bool InputImplementation::IsMouseButtonPressedImpl(int button) {
 
 }  // namespace windows
 }  // namespace platform
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_PLATFORM_WINDOWS

@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace layers {
 
@@ -12,4 +12,4 @@ Layer::~Layer() {}
 
 }  // namespace layers
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

@@ -8,7 +8,7 @@
 #include "core/memory/Pointers.h"
 #include "core/util/Time.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace io {
 
@@ -46,6 +46,6 @@ class EventLoop {
 
 }  // namespace io
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_IO_EVENTLOOP_H_

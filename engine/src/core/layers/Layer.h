@@ -11,7 +11,7 @@
 #include "core/memory/Pointers.h"
 #include "core/util/Time.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace layers {
 
@@ -35,12 +35,12 @@ class Layer {
 
 }  // namespace layers
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_LAYERS_LAYER_H_
 
 /**
- * @class engine::layers::Layer
+ * @class lambda::layers::Layer
  * @brief An abstract data structure that represents a "layer" within the
  * engine.
  *
@@ -49,7 +49,7 @@ class Layer {
  */
 
 /**
- * @fn engine::layers::Layer::OnAttach
+ * @fn lambda::layers::Layer::OnAttach
  * @brief What to do when a layer is attached to the game engine.
  *
  * Primarily for initializing anything in the layer when it's attached to the
@@ -57,7 +57,7 @@ class Layer {
  */
 
 /**
- * @fn engine::layers::Layer::OnDetach
+ * @fn lambda::layers::Layer::OnDetach
  * @brief Handles what to do when a layer is attached to the game engine.
  *
  * Primarily for cleaning up anything in the layer when it's no longer
@@ -65,7 +65,7 @@ class Layer {
  */
 
 /**
- * @fn engine::layers::Layer::OnUpdate
+ * @fn lambda::layers::Layer::OnUpdate
  * @brief Handles what to do when the game engine requests to update the
  * layer.
  *
@@ -73,7 +73,7 @@ class Layer {
  */
 
 /**
- * @fn engine::layers::Layer::OnEvent
+ * @fn lambda::layers::Layer::OnEvent
  * @param event - The event received by the engine.
  * @brief Handles what to do when the game engine passes an event.
  *
@@ -81,7 +81,7 @@ class Layer {
  */
 
 /**
- * @fn engine::layers::Layer::OnImGuiRender
+ * @fn lambda::layers::Layer::OnImGuiRender
  * @brief Handles what to do when the game engine requests the layer to
  * render ImGui components.
  *

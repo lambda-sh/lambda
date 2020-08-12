@@ -12,7 +12,7 @@
 
 #include "core/memory/Pointers.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -50,21 +50,21 @@ class ShaderLibrary {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_RENDERER_SHADER_H_
 
 /**
- * @class engine::renderer::Shader
+ * @class lambda::renderer::Shader
  * @brief The abstract Shader API.
  */
 
 /**
- * @fn engine::renderer::Bind
+ * @fn lambda::renderer::Bind
  * @brief Binds the shader to the current graphics context.
  */
 
 /**
- * @fn engine::renderer::Unbind
+ * @fn lambda::renderer::Unbind
  * @brief Unbinds the shader from the current graphics context.
  */

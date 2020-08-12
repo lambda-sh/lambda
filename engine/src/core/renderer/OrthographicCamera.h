@@ -9,7 +9,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -47,17 +47,17 @@ class OrthographicCamera {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_RENDERER_ORTHOGRAPHICCAMERA_H_
 
 /**
- * @class engine::renderer::OrthographicCamera
+ * @class lambda::renderer::OrthographicCamera
  * @brief A 2D orthographic camera implementation that is compatible with the
  * engine.
  */
 
 /**
- * @fn engine::renderer::OrthographicCamera::GetPosition
+ * @fn lambda::renderer::OrthographicCamera::GetPosition
  * @brief Get the cameras position from origin.
  */

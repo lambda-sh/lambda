@@ -6,7 +6,7 @@
 
 #include "platform/opengl/OpenGLTexture.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace renderer {
 
@@ -28,4 +28,4 @@ memory::Shared<Texture2D> Texture2D::Create(const std::string& path) {
 
 }  // namespace renderer
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda

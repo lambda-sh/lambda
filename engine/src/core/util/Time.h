@@ -11,7 +11,7 @@
 
 #include "core/util/Assert.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace util {
 
@@ -130,58 +130,58 @@ const T DurationTo(const Time& start, const Time& stop) {
 
 }  // namespace util
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_UTIL_TIME_H_
 
 /**
- * @class engine::util::Time
+ * @class lambda::util::Time
  * @brief A wrapper for working with Time within the game engine. Uses
  * std::steady_clock for a platform independent Monotonic clock.
  */
 
 /**
- * @fn engine::util::Time::InSeconds
+ * @fn lambda::util::Time::InSeconds
  * @brief Get the current system time in seconds.
  */
 
 /**
- * @fn engine::util::Time::InMilliSeconds
+ * @fn lambda::util::Time::InMilliSeconds
  * @brief Get the current system time in milliseconds.
  */
 
 /**
- * @fn engine::util::Time::InMicroSeconds
+ * @fn lambda::util::Time::InMicroSeconds
  * @brief Get the current system time in microseconds.
  */
 
 /**
- * @fn engine::util::Time::GetSeconds
+ * @fn lambda::util::Time::GetSeconds
  * @brief Get the current system time in nanoseconds.
  */
 
 /**
- * @class engine::util::TimeStep
+ * @class lambda::util::TimeStep
  * @brief The timestep between two time intervals. Primarily used for layers to
  * consistently update the engine.
  */
 
 /**
- * @fn engine::util::TimeStep::InSeconds
+ * @fn lambda::util::TimeStep::InSeconds
  * @brief Get the interval between two Time objects in seconds.
  */
 
 /**
- * @fn engine::util::TimeStep::InMilliSeconds
+ * @fn lambda::util::TimeStep::InMilliSeconds
  * @brief Get the interval between two Time objects in milliseconds.
  */
 
 /**
- * @fn engine::util::TimeStep::InMicroSeconds
+ * @fn lambda::util::TimeStep::InMicroSeconds
  * @brief Get the interval between two Time objects in microseconds.
  */
 
 /**
- * @fn engine::util::TimeStep::InNanoSeconds
+ * @fn lambda::util::TimeStep::InNanoSeconds
  * @brief Get the interval between two Time objects in nanoseconds.
  */

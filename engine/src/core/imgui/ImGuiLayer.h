@@ -16,7 +16,7 @@
 #include "core/events/MouseEvent.h"
 #include "core/layers/Layer.h"
 
-namespace engine {
+namespace lambda {
 namespace core {
 namespace imgui {
 
@@ -39,17 +39,17 @@ class ImGuiLayer : public layers::Layer {
 
 }  // namespace imgui
 }  // namespace core
-}  // namespace engine
+}  // namespace lambda
 
 #endif  // ENGINE_SRC_CORE_IMGUI_IMGUILAYER_H_
 
 /**
- * @class engine::imgui::ImGuiLayer
+ * @class lambda::imgui::ImGuiLayer
  * @brief An abstract Imgui layer implementation
  */
 
 /**
- * @fn engine::imgui::ImGuiLayer::OnAttach
+ * @fn lambda::imgui::ImGuiLayer::OnAttach
  * @brief Handles an ImGuiLayers attachment to the engine.
  *
  * This is currently setup with a default implementation but will most likely
@@ -57,7 +57,7 @@ class ImGuiLayer : public layers::Layer {
  */
 
 /**
- * @fn engine::imgui::ImGuiLayer::OnDetach
+ * @fn lambda::imgui::ImGuiLayer::OnDetach
  * @brief Handles an ImGuiLayers detachment to the engine.
  *
  * This is currently setup with a default implementation but will most likely
@@ -65,14 +65,14 @@ class ImGuiLayer : public layers::Layer {
  */
 
 /**
- * @fn engine::imgui::ImGuiLayer::OnImGuiRender
+ * @fn lambda::imgui::ImGuiLayer::OnImGuiRender
  * @brief Handles an ImGuiRender Call by the engine.
  *
  * This will only be called when the engine is compiled with imgui attached.
  */
 
 /**
- * @fn engine::imgui::ImGuiLayer::Begin
+ * @fn lambda::imgui::ImGuiLayer::Begin
  * @brief Instantiates the context for the Imgui layer.
  *
  * Must be closed out with End() in order to prevent the imgui context from
@@ -80,7 +80,7 @@ class ImGuiLayer : public layers::Layer {
  */
 
 /**
- * @fn engine::imgui::ImGuiLayer::End
+ * @fn lambda::imgui::ImGuiLayer::End
  * @brief Closes and cleans up the context for the Imgui layer.
  *
  * Must be opened with Begin() in order to prevent the imgui context from
