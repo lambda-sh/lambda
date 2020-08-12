@@ -1,9 +1,7 @@
-/**
- * @file MouseButtonCodes.h
- * @brief Mouse button codes supported by the engine.
- *
- * Check engine/src/core/MouseButtonCodes.h for supported mouse buttons.
- */
+/// @file MouseButtonCodes.h
+/// @brief Mouse button codes supported by the engine.
+///
+/// Check engine/src/core/MouseButtonCodes.h for supported mouse buttons.
 #ifndef LAMBDA_SRC_CORE_INPUT_MOUSEBUTTONCODES_H_
 #define LAMBDA_SRC_CORE_INPUT_MOUSEBUTTONCODES_H_
 
