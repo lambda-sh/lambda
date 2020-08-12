@@ -1,8 +1,6 @@
-/**
- * @file engine/src/core/imgui/ImGuiBuild.h
- * @brief The Imgui build header for compiling platform specific
- * imgui implementations.
- */
+/// @file engine/src/core/imgui/ImGuiBuild.h
+/// @brief The Imgui build header for compiling platform specific
+/// imgui implementations.
 #ifndef LAMBDA_SRC_CORE_IMGUI_IMGUIBUILD_H_
 #define LAMBDA_SRC_CORE_IMGUI_IMGUIBUILD_H_
 

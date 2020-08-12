@@ -16,11 +16,9 @@ bool ImGuiLayer::show_demo_window_ = true;
 ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
 ImGuiLayer::~ImGuiLayer() {}
 
-/**
- * The default OnAttach creates a context, activates dark mode, and register
- * inputs with GLFW keys. This implementation currently only supports OpenGL and
- * will be modified in the future to use engine specified key codes.
- */
+/// The default OnAttach creates a context, activates dark mode, and register
+/// inputs with GLFW keys. This implementation currently only supports OpenGL
+/// and will be modified in the future to use engine specified key codes.
 void ImGuiLayer::OnAttach() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
@@ -46,21 +44,22 @@ void ImGuiLayer::OnAttach() {
   ImGui_ImplOpenGL3_Init("#version 410");
 }
 
-/**
- * Currently also only supports OpenGL.
- */
+/// Currently also only supports OpenGL.
 void ImGuiLayer::OnDetach() {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
 }
 
+/// Begins an OpenGL frame at the moment and should probably be abstracted a bit
+/// (Or done platform independent.)
 void ImGuiLayer::Begin() {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 }
 
+/// Ends an opengl frame.
 void ImGuiLayer::End() {
   ImGuiIO& io = ImGui::GetIO();
   const Application& app = Application::GetApplication();
@@ -78,6 +77,7 @@ void ImGuiLayer::End() {
   }
 }
 
+/// The default thing to do on render.
 void ImGuiLayer::OnImGuiRender() {
   ImGui::ShowDemoWindow(&show_demo_window_);
 }
