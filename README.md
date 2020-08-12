@@ -1,17 +1,15 @@
-# game-engine
+# lambda
 
 ## Description
-This repo is for learning how to structure and make a game engine! This entire
-repository couldn't have been created without the help of The Cherno's series on
-making a game engine. If you'd like to learn more about the awesome series,
-please check out the link to his channel & series down below.
+This repo is for learning how to structure and make a game engine! This
+repository is inspired by The Cherno's game engine series and is especially
+reliant on the rendering engine that is implemented in Hazel. If you'd like
+to learn more about the awesome series, please check out the link to his
+channel & series down below.
 
-## Goals
-- [ ] Create a game engine.
-- [ ] Learn more about C++
-- [ ] Make a game of my own(?)
-- [ ] Integrate Simplistic, a physics engine that I'm developing into the engine
-as an optional physics engine to be run by the engine.
+lambda on the other hand is my own take at a cross platform game engine that is
+is meant to be entirely free and easy to use. It is also for me to further my
+knowledge in C++.
 
 ## How to run/setup
 In order to get external dependencies that are needed in order to run the project,
@@ -21,7 +19,6 @@ please run:
 ```
 This will initialize pre commit checks for development and also initialize all
 git submodules.
-
 
 In order to build and run a release build of the project, utilize:
 ```bash
@@ -39,6 +36,9 @@ you're executing the command is within the repo.
 All documentation can be found at [engine-docs](https://engine-docs.cenz.io).
 Documentation is being written as the engine progresses, so it may currently
 lack behind what the engine is capable of.
+
+The documentation is currently going an overhaul and has not been updated as of
+being renamed to lambda.
 
 ## Live deployments
 This project may or may not be used in games, but will definitely be used to create
