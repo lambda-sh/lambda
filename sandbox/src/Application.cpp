@@ -8,12 +8,16 @@
 #include "ext/matrix_transform.hpp"
 #include "platform/opengl/OpenGLShader.h"
 
+using lambda::core::Application;
+using lambda::core::OrthographicCameraController;
 using lambda::core::events::Event;
+using lambda::core::input::Input;
+using lambda::core::io::EventLoop;
 using lambda::core::layers::Layer;
+using lambda::core::memory::CreateShared;
 using lambda::core::memory::Shared;
 using lambda::core::renderer::BufferLayout;
 using lambda::core::renderer::IndexBuffer;
-using lambda::core::OrthographicCameraController;
 using lambda::core::renderer::RenderCommand;
 using lambda::core::renderer::Renderer;
 using lambda::core::renderer::Shader;
@@ -24,7 +28,6 @@ using lambda::core::renderer::Texture2D;
 using lambda::core::renderer::VertexArray;
 using lambda::core::renderer::VertexBuffer;
 using lambda::core::util::TimeStep;
-using lambda::core::input::Input;
 
 class ExampleLayer : public Layer {
  public:
@@ -33,7 +36,7 @@ class ExampleLayer : public Layer {
       camera_(1280.0f / 720.0f, true),
       square_position_(0.0f) {
     // Initialize the renderer. (Handles graphics specific API setup.)
-    loop_ = lambda::core::memory::CreateShared<lambda::core::io::EventLoop>();
+    loop_ = CreateShared<EventLoop>();
 
     loop_->SetInterval(
         [&]() {
@@ -200,7 +203,7 @@ class ExampleLayer : public Layer {
   Shared<IndexBuffer> index_buffer_;
   Shared<VertexArray> vertex_array_;
   Shared<Texture2D> texture_, lambda_texture_;
-  Shared<lambda::core::io::EventLoop> loop_;
+  Shared<EventLoop> loop_;
   ShaderLibrary shader_lib_;
 
   OrthographicCameraController camera_;
@@ -212,7 +215,7 @@ class ExampleLayer : public Layer {
   glm::vec4 blue_color_ = {0.2f, 0.3f, 0.8f, 1.0f};
 };
 
-class Sandbox : public lambda::core::Application {
+class Sandbox : public Application {
  public:
   Sandbox() {
     PushLayer(lambda::core::memory::CreateShared<ExampleLayer>());
