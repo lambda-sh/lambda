@@ -1,7 +1,5 @@
-/**
- * @file Input.h
- * @brief The input abstraction class that handles input across
- */
+/// @file Input.h
+/// @brief The input abstraction class that handles input across
 #ifndef LAMBDA_SRC_CORE_INPUT_INPUT_H_
 #define LAMBDA_SRC_CORE_INPUT_INPUT_H_
 
@@ -13,17 +11,24 @@ namespace lambda {
 namespace core {
 namespace input {
 
+/// @brief The generic input system for getting input data from
+/// applications built on lambda.
 class Input {
  public:
+  /// @brief Check if a lambda key code was pressed.
   static bool IsKeyPressed(int key_code) {
       return kInput_->IsKeyPressedImpl(key_code); }
 
+  /// @brief Get the current Mouse X Coordinate.
   static float GetMouseX() { return kInput_->GetMouseXImpl(); }
+  /// @brief Get the current Mouse Y Coordinate.
   static float GetMouseY() { return kInput_->GetMouseYImpl(); }
 
+  /// @brief Get the current mouse position (X, Y) as a pair.
   static std::pair<float, float> GetMousePosition() {
       return kInput_->GetMousePositionImpl(); }
 
+  /// @brief Check to see if a mouse button is being pressed.
   static bool IsMouseButtonPressed(int button) {
       return kInput_->IsMouseButtonPressedImpl(button); }
 
@@ -44,38 +49,3 @@ class Input {
 }  // namespace lambda
 
 #endif  // LAMBDA_SRC_CORE_INPUT_INPUT_H_
-
-/**
- * @class lambda::Input
- * @brief The generalized Input class for all input systems.
- *
- * All Input instances will be child classes of Input, but never called directly
- * in order to abstract platform specific implementations.
- */
-
-
-/**
- * @function lambda::Input::IsKeyPressed
- * @brief Check if the current key is being pressed.
- */
-
-
-/**
- * @function lambda::Input::GetMouseX
- * @brief Get the current mouse x position.
- */
-
-/**
- * @function lambda::Input::GetMouseY
- * @brief Get the current mouse y position.
- */
-
-/**
- * @function lambda::Input::GetMousePosition
- * @brief Get the current mouse x & y positions.
- */
-
-/**
- * @function lambda::Input::IsMouseButtonPressed
- * @brief Check to see if a mouse button is being pressed.
- */
