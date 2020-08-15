@@ -2,17 +2,17 @@
 
 #include <functional>
 
-#include "core/input/Input.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
+#include "core/input/Input.h"
 #include "core/layers/Layer.h"
 #include "core/memory/Pointers.h"
+#include "core/renderer/Renderer.h"
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
 #include "core/util/Reverse.h"
 #include "core/util/Time.h"
-#include "core/renderer/Renderer.h"
 
 namespace lambda {
 namespace core {
