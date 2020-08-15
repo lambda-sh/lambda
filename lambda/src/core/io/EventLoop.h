@@ -12,30 +12,39 @@ namespace lambda {
 namespace core {
 namespace io {
 
-// TODO(C3NZ):
-// Dispatch -- To diapatch callbacks to that are meant to run ASAP.
-// SetInterval -- For Setting a callback to run in an interval.
-// SetTimeout -- For setting a callback that should run in the future.
-//
-// Currently will be copy only, since accessing data across threads can lead
-// to problems. (At least without locking or atomics.)
+/// @brief Asynchronous Event Loop that allows the execution of code to happen
+/// in another thread. This is not recommended for production as of yet.
+///
+/// This currently depends on everything passed into the queue being atomic
+/// or protected by locks to ensure that data isn't corrupted. The easy way to
+/// remedy this is to copy data into your callback as opposed to using instances
+/// of it, as that has the potential for major issues.
 class EventLoop {
  public:
   explicit EventLoop(uint32_t size = 256)
       : running_(true), event_queue_(size) {}
 
+  /// @brief Runs the event loop. This will block any thread it's running in and
+  /// should not be used in the main thread.
   void Run();
 
-  // Functions to interact with the event loop from another thread.
+  /// @brief Set a callback function to execute in a certain amount of
+  /// milliseconds
   bool SetTimeout(AsyncCallback callback, uint32_t milliseconds);
+
+  /// @brief Set a callback function to execute in an interval every specified
+  /// amount of milliseconds.
   bool SetInterval(AsyncCallback callback, uint32_t milliseconds);
+
+  /// @brief Dispatch a callback to run immediately. (naturally expires after 5
+  /// seconds of not being run.)
   bool Dispatch(
       AsyncCallback callback,
-      util::Time execute_at = util::Time(),
-      util::Time expire_at = util::Time().AddSeconds(5));
+      core::util::Time execute_at = core::util::Time(),
+      core::util::Time expire_at = core::util::Time().AddSeconds(5));
 
  private:
-  // Private dispatch that is used after a task is created.
+  /// @brief Private dispatch that is used after a task is created.
   bool Dispatch(UniqueAsyncTask task);
 
   bool running_;

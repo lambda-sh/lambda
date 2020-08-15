@@ -19,6 +19,8 @@ namespace core {
 
 memory::Unique<Application> Application::kApplication_ = nullptr;
 
+/// Will only be instantiated so long as assertions are enabled
+/// and there isn't another application instance already running.
 Application::Application() {
   LAMBDA_CORE_ASSERT(!kApplication_, "Application already exists.");
   kApplication_.reset(this);
