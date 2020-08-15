@@ -35,17 +35,6 @@ class ExampleLayer : public Layer {
       Layer("Example"),
       camera_(1280.0f / 720.0f, true),
       square_position_(0.0f) {
-    // Initialize the renderer. (Handles graphics specific API setup.)
-    loop_ = CreateShared<EventLoop>();
-
-    loop_->SetInterval(
-        [&]() {
-          LAMBDA_CLIENT_INFO("Executing every 2 seconds!");
-          return true;
-          }, 2000);
-
-    std::thread t([&]() { loop_->Run(); });
-    t.detach();
     Renderer::Init();
 
     float vertices[3 * 7] = {
@@ -223,5 +212,5 @@ class Sandbox : public Application {
   ~Sandbox() {}
 };
 
-lambda::core::Application* lambda::core::CreateApplication() {
-  return new Sandbox(); }
+Unique<Application> lambda::core::CreateApplication() {
+  return memory::CreateUnique<Sandbox>(); }
