@@ -30,7 +30,11 @@ Application::Application() {
   PushLayer(imgui_layer_);
 }
 
-Application::~Application() {}
+/// The application must tell the single to release itself once it's being
+/// destroyed, so that it's destructor is not called again.
+Application::~Application() {
+  kApplication_.release();
+}
 
 void Application::Run() {
   while (running_) {
@@ -82,9 +86,10 @@ void Application::PushOverlay(memory::Shared<layers::Layer> layer) {
 
 bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
   running_ = false;
-  return true;
+  return false;
 }
 
+/// Doesn't update when the window is resized.
 bool Application::OnWindowResize(const events::WindowResizeEvent& event) {
   if (event.GetWidth() == 0 || event.GetHeight() == 0) {
     minimized_ = true;
