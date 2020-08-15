@@ -1,9 +1,7 @@
-/**
- * @file engine/src/Engine.h
- * @brief The entrypoint into the game engine source code.
- *
- * This exposes all engine headers for use of any application.
- */
+/// @file engine/src/Engine.h
+/// @brief The entrypoint into the game engine source code.
+///
+/// This exposes all engine headers for use of any application.
 #ifndef LAMBDA_SRC_LAMBDA_H_
 #define LAMBDA_SRC_LAMBDA_H_
 
