@@ -1,13 +1,11 @@
-/**
- * @file Assert.h
- * @brief This is a utility file that is primarily used for debugging the
- * internals of the engine when incorrect behavior or invalid use of the API is
- * occurring.
- *
- * This should most likely not be deployed into any game extending
- * this engine. LAMBDA_ENABLE_ASSERTS enables and disables assertions for both
- * the client and the engine at compile time.
- */
+/// @file Assert.h
+/// @brief This is a utility file that is primarily used for debugging the
+/// internals of the engine when incorrect behavior or invalid use of the API is
+/// occurring.
+///
+/// This should most likely not be deployed into any game extending
+/// this engine. LAMBDA_ENABLE_ASSERTS enables and disables assertions for both
+/// the client and the engine at compile time.
 #ifndef LAMBDA_SRC_CORE_UTIL_ASSERT_H_
 #define LAMBDA_SRC_CORE_UTIL_ASSERT_H_
 
@@ -15,6 +13,9 @@
 #include "core/util/Log.h"
 
 #if LAMBDA_ENABLE_ASSERTS
+  /// @brief When assertions are enabled, the client is allowed to use asserts
+  /// in their code to halt their application whenever the condition being
+  /// asserted is false.
   #define LAMBDA_CLIENT_ASSERT(x, ...) { \
       if (!(x)) { \
           LAMBDA_CLIENT_ERROR("Assertion Failed: {0},", __VA_ARGS__); \
