@@ -34,20 +34,23 @@ class OpenGLVertexArray : public core::renderer::VertexArray {
 
   /// @brief Set the index buffer for rendering all vertex arrays.
   void SetIndexBuffer(
-      const core::memory::Shared<core::renderer::IndexBuffer>& index_buffer) override;
+      const core::memory::Shared<core::renderer::IndexBuffer>& index_buffer)
+          override;
 
   /// @brief Get the index buffer associated with this Vertex Array.
-  const core::memory::Shared<core::renderer::IndexBuffer>& GetIndexBuffer()
+  const core::memory::Shared<core::renderer::IndexBuffer> GetIndexBuffer()
       const override { return index_buffer_; }
 
   /// @brief Get the Vertex Buffers that are associated with this Vertex Array.
-  const std::vector<core::memory::Shared<core::renderer::VertexBuffer>>&
+  const std::vector<core::memory::Shared<core::renderer::VertexBuffer>>
      GetVertexBuffers() const override { return vertex_buffers_; }
 
  private:
-  core::memory::Shared<core::renderer::IndexBuffer> index_buffer_;
-  std::vector<core::memory::Shared<core::renderer::VertexBuffer>> vertex_buffers_;
   uint32_t renderer_id_;
+  core::memory::Shared<core::renderer::IndexBuffer> index_buffer_;
+  std::vector<core::memory::Shared<core::renderer::VertexBuffer>>
+      vertex_buffers_;
+
 };
 
 }  // namespace opengl
