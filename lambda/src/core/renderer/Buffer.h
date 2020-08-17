@@ -109,7 +109,7 @@ struct BufferElement {
 /// buffer elements for it to work properly.
 class BufferLayout {
  public:
-  explicit BufferLayout(const std::initializer_list<BufferElement>& elements)
+  BufferLayout(const std::initializer_list<BufferElement>& elements)
     : elements_(elements) { CalculateOffsetAndStride(); }
 
   BufferLayout() {}
