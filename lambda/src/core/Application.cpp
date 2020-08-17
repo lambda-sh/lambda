@@ -2,23 +2,25 @@
 
 #include <functional>
 
-#include "core/input/Input.h"
 #include "core/Window.h"
 #include "core/events/ApplicationEvent.h"
 #include "core/events/Event.h"
+#include "core/input/Input.h"
 #include "core/layers/Layer.h"
 #include "core/memory/Pointers.h"
+#include "core/renderer/Renderer.h"
 #include "core/util/Assert.h"
 #include "core/util/Log.h"
 #include "core/util/Reverse.h"
 #include "core/util/Time.h"
-#include "core/renderer/Renderer.h"
 
 namespace lambda {
 namespace core {
 
 memory::Unique<Application> Application::kApplication_ = nullptr;
 
+/// Will only be instantiated so long as assertions are enabled
+/// and there isn't another application instance already running.
 Application::Application() {
   LAMBDA_CORE_ASSERT(!kApplication_, "Application already exists.");
   kApplication_.reset(this);
