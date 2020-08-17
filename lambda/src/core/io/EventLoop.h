@@ -1,3 +1,9 @@
+/// @file EventLoop.h
+/// @brief  An Attempt to make an Asynchronous dispatcher to run in another
+/// thread.
+///
+/// Hopefully, the interface included in here will enable applications consuming
+/// lambda to offload i/o intensive work to another thread.
 // TODO(C3NZ): Add documentation for this file.
 #ifndef LAMBDA_SRC_CORE_IO_EVENTLOOP_H_
 #define LAMBDA_SRC_CORE_IO_EVENTLOOP_H_

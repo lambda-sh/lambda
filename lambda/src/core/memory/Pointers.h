@@ -7,6 +7,7 @@ namespace lambda {
 namespace core {
 namespace memory {
 
+/// @brief
 template<typename T>
 using Unique = std::unique_ptr<T>;
 
