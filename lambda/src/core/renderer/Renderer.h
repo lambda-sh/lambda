@@ -1,7 +1,5 @@
-/**
- * @file Renderer.h
- * @brief The rendering API.
- */
+/// @file Renderer.h
+/// @brief The rendering API.
 #ifndef LAMBDA_SRC_CORE_RENDERER_RENDERER_H_
 #define LAMBDA_SRC_CORE_RENDERER_RENDERER_H_
 
@@ -10,20 +8,32 @@
 #include "core/renderer/OrthographicCamera.h"
 #include "core/renderer/Shader.h"
 
-
 namespace lambda {
 namespace core {
 namespace renderer {
 
+/// @brief The primary interface used for managing
 class Renderer {
  public:
+  /// @brief Initialize the Renderer.
   static void Init();
 
+  /// @brief Begin a scene to be renderer.
+  ///
+  /// Uses a single orthograhpic camera to determine where things should be
+  /// renderered on screen.
   static void BeginScene(const OrthographicCamera& camera);
+
+  /// @begin Ends the rendering scene
   static void EndScene();
 
+  /// @brief Updates the renderer with the new screen width and height.
   static void OnWindowResize(uint32_t width, uint32_t height);
 
+  /// @brief Submit a vertex array, shader, and transform matrix for rendering.
+  ///
+  /// Must be associated with a specific scene. (used in between BeginScene and
+  /// EndScene calls)
   // TODO(C3NZ): update this to use engine memory allocators as opposed to
   // generic smart pointers.
   static void Submit(
@@ -31,7 +41,8 @@ class Renderer {
       const std::shared_ptr<Shader>& shader,
       const glm::mat4& transform = glm::mat4(1.0f));
 
-  inline static RendererAPI::API GetAPI() { return RendererAPI::GetAPI(); }
+  /// @brief Get the API being used by the current renderer.
+  static RendererAPI::API GetAPI() { return RendererAPI::GetAPI(); }
 
  private:
   struct SceneData {
@@ -46,29 +57,3 @@ class Renderer {
 }  // namespace lambda
 
 #endif  // LAMBDA_SRC_CORE_RENDERER_RENDERER_H_
-
-
-/**
- * @class lambda::renderer::Renderer
- * @brief A lightweight rendering API implementation. Allows generalized calls
- * to be written for users
- *
- * A lightweight and not fully finished rendering API that lets you set the a
- * specific graphics context to use for rendering. This must be set externally
- * in any rendering application.
- */
-
-/**
- * @fn lambda::renderer::Renderer::BeginScene
- * @brief Begin rendering a scene
- */
-
-/**
- * @fn lambda::renderer::Renderer::EndScene
- * @brief Stop rendering a scene.
- */
-
-/**
- * @fn lambda::renderer::Renderer::Submit
- * @brief Submit a scene data to the engine.
- */

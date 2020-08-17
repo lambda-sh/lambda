@@ -1,10 +1,8 @@
-/**
- * @file VertexArray.h
- * @brief The Generic VertexArray API.
- *
- * Contains the generic API implementation for creating Vertex arrays that are
- * compatible with the engines rendering API.
- */
+/// @file VertexArray.h
+/// @brief The Generic VertexArray API.
+///
+/// Contains the generic API implementation for creating Vertex arrays that are
+/// compatible with the engines rendering API.
 #ifndef LAMBDA_SRC_CORE_RENDERER_VERTEXARRAY_H_
 #define LAMBDA_SRC_CORE_RENDERER_VERTEXARRAY_H_
 
@@ -17,25 +15,37 @@ namespace lambda {
 namespace core {
 namespace renderer {
 
+/// @brief The abstract VertexArray API.
+///
+/// Implemented by platform specific APIs.
 class VertexArray {
  public:
   virtual ~VertexArray() {}
 
+  /// @brief Bind the VertexArray to the GPU.
   virtual void Bind() const = 0;
+
+  /// @brief Unbind the VertexArray from the GPU.
   virtual void Unbind() const = 0;
 
+  /// @brief Add a VertexBuffer to the current VertexArray.
   virtual void AddVertexBuffer(
       const memory::Shared<VertexBuffer>& vertex_buffer) = 0;
 
+  /// @brief Set an IndexBuffer for the current VertexArray.
   virtual void SetIndexBuffer(
       const memory::Shared<IndexBuffer>& index_buffer) = 0;
 
-  virtual const memory::Shared<IndexBuffer>&
+  /// @brief Get the current IndexBuffer being used.
+  virtual const memory::Shared<IndexBuffer>
       GetIndexBuffer() const = 0;
 
-  virtual const std::vector<memory::Shared<VertexBuffer>>&
+  /// @brief Get an array of VertexBuffers that are associated with the
+  /// VertexArray.
+  virtual const std::vector<memory::Shared<VertexBuffer>>
       GetVertexBuffers() const = 0;
 
+  /// @brief Create a new VertexArray.
   static memory::Shared<VertexArray> Create();
 };
 
@@ -44,42 +54,3 @@ class VertexArray {
 }  // namespace lambda
 
 #endif  // LAMBDA_SRC_CORE_RENDERER_VERTEXARRAY_H_
-
-/**
- * @class lambda::renderer::VertexArray
- * @brief The abstraction for representing Vertex arrays and their sub
- * components.
- */
-
-/**
- * @fn lambda::renderer::VertexArray::Bind
- * @brief Bind the Vertex array and it's components to the rendering API and
- * GPU.
- */
-
-/**
- * @fn lambda::renderer::VertexArray::Unbind
- * @brief Unbind the vertex array and it's components from the rendering API
- * and memory.
- */
-
-/**
- * @fn lambda::renderer::VertexArray::AddVertexBuffer
- * @brief Add a vertex buffer to the vertex array.
- */
-
-/**
- * @fn lambda::renderer::VertexArray::SetIndexBuffer
- * @brief Set the index buffer of the vertex array.
- */
-
-/**
- * @fn lambda::renderer::VertexArray::GetIndexBuffers
- * @brief Get all the index buffers that are associated with this class.
- */
-
-/**
- * @fn lambda::renderer::VertexArray::Create
- * @brief Creates a vertex array through the platform specific API that is
- * being used at runtime.
- */

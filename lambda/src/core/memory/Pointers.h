@@ -1,3 +1,6 @@
+/// @file Pointers.h
+/// @brief Abstraction for handling pointers within the engine. Currently just
+/// aliases for unique and shared pointers provided by c++11.
 #ifndef LAMBDA_SRC_CORE_MEMORY_POINTERS_H_
 #define LAMBDA_SRC_CORE_MEMORY_POINTERS_H_
 
@@ -28,9 +31,3 @@ Shared<T> CreateShared(Args&&... args) {
 }  // namespace lambda
 
 #endif  // LAMBDA_SRC_CORE_MEMORY_POINTERS_H_
-
-/**
- * @file Pointers.h
- * @brief Abstraction for handling pointers within the engine. Currently just
- * aliases for unique and shared pointers provided by c++11.
- */

@@ -1,13 +1,11 @@
-/**
- * @file Buffer.h
- * @brief Buffer abstractions that allow the ease of implementing Buffers for
- * any graphics API.
- *
- * All platform specific graphics API will implement buffer implementations in
- * their corresponding API syntax through this generalized engine API. This will
- * allow application developers to not have to worry (Not entirely true) about
- * platform specific buffer implementations.
- */
+/// @file Buffer.h
+/// @brief Buffer abstractions that allow the ease of implementing Buffers for
+/// any graphics API.
+///
+/// All platform specific graphics API will implement buffer implementations in
+/// their corresponding API syntax through this generalized engine API. This
+/// will allow application developers to not have to worry (Not entirely true)
+/// about platform specific buffer implementations.
 #ifndef LAMBDA_SRC_CORE_RENDERER_BUFFER_H_
 #define LAMBDA_SRC_CORE_RENDERER_BUFFER_H_
 
@@ -22,9 +20,9 @@
 
 namespace lambda {
 namespace core {
-
 namespace renderer {
 
+/// @brief Data types supported by the shader.
 enum class ShaderDataType {
   None = 0,
   Bool,
@@ -40,6 +38,7 @@ enum class ShaderDataType {
   Mat4,
 };
 
+/// @brief Convert ShaderData types to their respective sizes in bytes.
 static uint32_t ShaderDataTypeSize(ShaderDataType type) {
   switch (type) {
     case ShaderDataType::Bool:  return 1;
@@ -57,6 +56,7 @@ static uint32_t ShaderDataTypeSize(ShaderDataType type) {
   }
 }
 
+/// @brief Obtain the component count from the shader type.
 static uint32_t ShaderDataTypeComponentCount(ShaderDataType type) {
   switch (type) {
     case ShaderDataType::Bool:  return 1;
@@ -74,6 +74,7 @@ static uint32_t ShaderDataTypeComponentCount(ShaderDataType type) {
   }
 }
 
+/// @brief A generic buffer element used for describing the layout of a buffer.
 struct BufferElement {
   ShaderDataType Type;
   std::string Name;
@@ -104,19 +105,25 @@ struct BufferElement {
   inline std::ostream& operator<<(std::ostream& os) { return os << ToString(); }
 };
 
+/// @brief The layout of a vertex buffer. Should always be instantiated with
+/// buffer elements for it to work properly.
 class BufferLayout {
  public:
-  BufferLayout(const std::initializer_list<BufferElement>& elements)
+  explicit BufferLayout(const std::initializer_list<BufferElement>& elements)
     : elements_(elements) { CalculateOffsetAndStride(); }
 
   BufferLayout() {}
 
-  inline uint32_t GetStride() const { return stride_; }
+  /// @brief Get the stride
+  uint32_t GetStride() const { return stride_; }
 
-  inline const std::vector<BufferElement>& GetElements() const {
+  /// @brief Get a reference to the list of the elements associated with the
+  /// Buffer.
+  const std::vector<BufferElement>& GetElements() const {
       return elements_; }
 
-  inline const bool HasElements() const { return elements_.size() > 0; }
+  /// @brief Checks to see if the BufferLayout has any elements associated with.
+  const bool HasElements() const { return elements_.size() > 0; }
 
   std::vector<BufferElement>::iterator begin() { return elements_.begin(); }
   std::vector<BufferElement>::iterator end() { return elements_.end(); }
@@ -130,6 +137,8 @@ class BufferLayout {
   std::vector<BufferElement> elements_;
   uint32_t stride_;
 
+  /// @brief Calculates the offset per element and the stride for the overall
+  /// buffer.
   void CalculateOffsetAndStride() {
     uint32_t offset = 0;
     stride_ = 0;
@@ -142,29 +151,49 @@ class BufferLayout {
   }
 };
 
-
+/// @brief A general abstraction of Vertex Buffer.
+///
+/// This should be constructed
 class VertexBuffer {
  public:
   virtual ~VertexBuffer() {}
 
+  /// @brief Binds a vertex buffer to the GPU.
   virtual void Bind() const = 0;
+  /// @brief Unbinds a vertex buffer from the GPU. (Rarely needs to be used.)
   virtual void Unbind() const = 0;
 
+  /// @brief Get the layout associated
   virtual const BufferLayout& GetLayout() const = 0;
+  /// @brief Set the layout associated with the VertexBuffer.
   virtual void SetLayout(const BufferLayout&) = 0;
 
+  /// @brief Create a Vertex buffer given a pointer to an array of vertices
+  /// and the size of the buffer to be stored.
+  ///
+  /// While this returns a platform independent vertex buffer, it is still
+  /// bound to a platform specific implementation under the hood.
   static memory::Shared<VertexBuffer> Create(float* vertices, uint32_t size);
 };
 
+/// @brief A general abstraction of an Index Buffer.
 class IndexBuffer {
  public:
   virtual ~IndexBuffer() {}
 
+  /// @brief Binds the IndexBuffer to the GPU.
   virtual void Bind() const = 0;
+  /// @brief Unbinds the IndexBuffer to the GPU.
   virtual void Unbind() const = 0;
 
+  /// @brief Get the count
   virtual uint32_t GetCount() const = 0;
 
+  /// @brief Create an IndexBuffer given a pointer to an array of indices and
+  /// the count of indices in the array.
+  ///
+  /// While this returns a platform independent IndexBuffer, the IndexBuffer is
+  /// still platform specific.
   static memory::Shared<IndexBuffer> Create(uint32_t* indices, uint32_t count);
 };
 
@@ -173,161 +202,3 @@ class IndexBuffer {
 }  // namespace lambda
 
 #endif  // LAMBDA_SRC_CORE_RENDERER_BUFFER_H_
-
-/**
- * @enum lambda::renderer::ShaderDataType
- * @brief Data types that are compatible with shaders supported by the engine.
- */
-
-/**
- * @fn lambda::renderer::ShaderDataTypeSize
- * @brief Helper function that determines the size of a ShaderDataType in bytes.
- */
-
-/**
- * @fn lambda::renderer::ShaderDataTypeComponentCount
- * @brief Helper function that determines the number of components in a
- * ShaderDataType.
- */
-
-/**
- * @struct lambda::renderer::BufferElement
- * @brief A generic buffer element representation to be used in conjuction with
- * BufferLayouts.
- *
- * The creation of every buffer is logged if LAMBDA_DEVELOPMENT_MODE is enabled
- * at compile time of of the engine. (Will disable in the future, but currently
- * still testing.)
- */
-
-/**
- * @fn lambda::renderer::BufferElement::BufferElement
- * @param type The ShaderDataType that should be sent into the graphics API.
- * @param name The name to be registered in the graphics API.
- */
-
-/**
- * @class lambda::renderer::BufferLayout
- * @brief A layout that specifies the elements to be associated with a vertex
- * buffer.
- */
-
-/**
- * @fn lambda::renderer::BufferLayout::BufferLayout
- * @brief Instantiate a BufferLayout with an initializer list of
- * BufferElements.
- *
- * Stride is calculated once a non empty elements e.g.
- * ```
- * renderer::BufferLayout layout_init_list = {
- *     { renderer::ShaderDataType::Float3, "a_Position"},
- *     { renderer::ShaderDataType::Float4, "a_Color"},
- *     { renderer::ShaderDataType::Float3, "a_Normal"}};
- *
- * renderer::BufferLayout layout(layout_init_list);
- * ```
- */
-
-/**
- * @fn lambda::renderer::BufferLayout::GetStride
- * @brief Get the overall stride of the current buffer layout.
- *
- * The stride is essentially the total size of the Buffer layout elements.
- */
-
-/**
- * @fn lambda::renderer::BufferLayout::GetElements
- * @brief Get a const reference to the elements associated with this layout.
- */
-
-/**
- * @fn lambda::renderer::BufferLayout::HasElements
- * @brief Checks to see if the current buffer layout has elements.
- */
-
-/**
- * @class lambda::renderer::VertexBuffer
- * @brief The base VertexBuffer class to be used for creating vertex buffers.
- *
- * Platform specific graphics API should extend this class in order to be
- * supported by the the rendering API.
- */
-
-/**
- * @fn lambda::renderer::VertexBuffer::Bind
- * @brief Bind the vertex buffer to the current rendering context.
- *
- * The binding process is entirely dependent upon the grahpics API. However,
- * it should be noted that this function needs to be called by the user
- * whenever they're trying to bind the buffer to the render API.
- */
-
-/**
- * @fn lambda::renderer::VertexBuffer::Unbind
- * @brief Unbind the vertex buffer to the current rendering context.
- *
- * The unbinding process is entirely dependent upon the grahpics API. However,
- * it should be noted that this function needs to be called by the user
- * whenever they're trying to unbind the buffer from the render API. (For
- * cleaning up anything still in memory.)
- */
-
-/**
- * @fn lambda::renderer::VertexBuffer::GetLayout
- * @brief Get the BufferLayout tied to the current VertexBuffer.
- */
-
-/**
- * @fn lambda::renderer::VertexBuffer::SetLayout
- * @brief Set the BufferLayout for the current VertexBuffer.
- */
-
-/**
- * @fn lambda::renderer::VertexBuffer::Create
- * @param vertices - a pointer to an array of vertices to be registered.
- * @param size - The size of the vertices in bytes.
- * @brief Creates a VertexBuffer through the Graphics API that is being used
- * at compile time.
- *
- * This is the primary method of creating platform independent vertex buffers
- * and what should be used by users to create Vertex Buffers that are
- * compatible with the rendering API.
- */
-
-/**
- * @class lambda::renderer::IndexBuffer
- * @brief The base IndexBuffer class to be used for creating index buffers.
- *
- * Platform specific graphics API should extend this class in order to be
- * supported by the the rendering API.
- */
-
-/**
- * @fn lambda::renderer::IndexBuffer::Bind
- * @brief Bind the current IndexBuffer to the current rendering context.
- */
-
-/**
- * @fn lambda::renderer::IndexBuffer::Unbind
- * @brief Unbind the current IndexBuffer from the current rendering context.
- *
- * Any vertex buffer that relies on this buffer will not be able to access
- * the contents of it once unbound from the graphics context.
- */
-
-/**
- * @fn lambda::renderer::IndexBuffer::GetCount
- * @brief Get the count of indices within the current IndexBuffer.
- */
-
-/**
- * @fn lambda::renderer::IndexBuffer::Create
- * @param indices - a pointer to an array of indices to be registered.
- * @param size - The size of the vertices in bytes.
- * @brief Creates a IndexBuffer through the Graphics API that is being used
- * at compile time.
- *
- * This is the primary method of creating platform independent index buffers
- * and what should be used by users to create Vertex Buffers that are
- * compatible with the rendering API.
- */
