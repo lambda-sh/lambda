@@ -1,4 +1,7 @@
-# lambda
+<p align="center" style="text-align:center;">
+  <img src="https://github.com/C3NZ/lambda/blob/master/lambda/assets/logos/first_logo.png">
+  <h1 align="center">lambda</h1>
+</p>
 
 ## Description
 This repo is for learning how to structure and make a game engine! This
@@ -52,3 +55,4 @@ my schedule, and any other variable factors.
 
 ## Resources
 [The Cherno's playlist for making a game engine](https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT)
+[Creator of the logo's github. (Huge shoutout)](https://github.com/RinniSwift)
