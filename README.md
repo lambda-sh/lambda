@@ -54,4 +54,5 @@ my schedule, and any other variable factors.
 
 ## Resources
 [The Cherno's playlist for making a game engine](https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT)
+
 [Creator of the logo's github. (Huge shoutout)](https://github.com/RinniSwift)
