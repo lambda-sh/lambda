@@ -107,27 +107,27 @@ project(sandbox)
 file(
     GLOB_RECURSE
     APP_SRC
-    ${CMAKE_SOURCE_DIR}/sandbox/src/*.h
-    ${CMAKE_SOURCE_DIR}/sandbox/src/*.cpp
+    ${CMAKE_SOURCE_DIR}/tools/sandbox/src/*.h
+    ${CMAKE_SOURCE_DIR}/tools/sandbox/src/*.cpp
 )
-add_executable(app ${APP_SRC})
+add_executable(sandbox ${APP_SRC})
 
-file(COPY ${CMAKE_SOURCE_DIR}/sandbox/assets DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+file(COPY ${CMAKE_SOURCE_DIR}/tools/sandbox/assets DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for sandbox.")
     target_compile_definitions(
-        app
+        sandbox
         PRIVATE LAMBDA_PLATFORM_WINDOWS
     )
 elseif (UNIX)
     message (STATUS ">>> Setting linux compile definitions for sandbox.")
     target_compile_definitions(
-        app
+        sandbox
         PRIVATE LAMBDA_PLATFORM_LINUX
     )
 endif()
 
-target_link_libraries(app PRIVATE lambda)
+target_link_libraries(sandbox PRIVATE lambda)
 # Load resources necessary for the executable to launch (Shaders, images, etc)
 # file(COPY ${CMAKE_BINARY_DIR}/res DESTINATION ${CMAKE_BINARY_DIR}/bin/res)

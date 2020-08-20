@@ -22,13 +22,15 @@ please run:
 This will initialize pre commit checks for development and also initialize all
 git submodules.
 
-In order to build and run a release build of the project, utilize:
+In order to build and run a release version of the sandbox that comes with the
+engine, you can simply run:
 ```bash
-./scripts/compile_and_run.sh Release
+./scripts/compile_and_run.sh
 ```
-In order to build and run a debug build of the project, utilize:
+
+In order to change the build, you can utilize:
 ```bash
-./scripts/compile_and_run.sh Debug
+./scripts/compile_and_run.sh --build Debug
 ```
 
 It is to note that all scripts can be run from anywhere so long as the place
