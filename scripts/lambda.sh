@@ -82,7 +82,7 @@ LAMBDA_TRACE() {
 
 # Log info to the console.
 LAMBDA_INFO() {
-    __LAMBDA_SET_FOREGROUND $__LAMBDA_COLOR_WHITE
+    __LAMBDA_SET_FOREGROUND $__LAMBDA_COLOR_BLACK
     __LAMBDA_SET_BACKGROUND $__LAMBDA_COLOR_GREEN
     __LAMBDA_SET_BOLD
     printf "[INFO][%s][%s]:" $(date +"%F") $(date +"%T")
@@ -91,7 +91,7 @@ LAMBDA_INFO() {
 }
 
 LAMBDA_WARN() {
-    __LAMBDA_SET_FOREGROUND $__LAMBDA_COLOR_WHITE
+    __LAMBDA_SET_FOREGROUND $__LAMBDA_COLOR_BLACK
     __LAMBDA_SET_BACKGROUND $__LAMBDA_COLOR_YELLOW
     __LAMBDA_SET_BOLD
     printf "[WARN][%s][%s]:" $(date +"%F") $(date +"%T")
@@ -100,7 +100,7 @@ LAMBDA_WARN() {
 }
 
 LAMBDA_ERROR() {
-    __LAMBDA_SET_FOREGROUND $__LAMBDA_COLOR_WHITE
+    __LAMBDA_SET_FOREGROUND $__LAMBDA_COLOR_BLACK
     __LAMBDA_SET_BACKGROUND $__LAMBDA_COLOR_RED
     __LAMBDA_SET_BOLD
     printf "[ERROR][%s][%s]:" $(date +"%F") $(date +"%T")
@@ -131,7 +131,6 @@ LAMBDA_START_NAMESPACE() {
     __LAMBDA_CURRENT_NAMESPACE;
 }
 
-
 export __LAMBDA_REGISTERED_ARG_MAP=()
 export __LAMBDA_ARG_DEFAULT_VALUES=()
 export __LAMBDA_ARG_HELP_STRINGS=()
@@ -156,6 +155,7 @@ LAMBDA_PARSE_ARG() {
     __LAMBDA_ARG_COUNT=$((1 + __LAMBDA_ARG_COUNT))
 }
 
+# Compile a list of arguments. While
 LAMBDA_COMPILE_ARGS() {
     if !(("$#")); then
          for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
@@ -167,9 +167,10 @@ LAMBDA_COMPILE_ARGS() {
 
             if [ "${__LAMBDA_ARG_IS_SET[${ARG_INDEX}]}" = 0 ]; then
                 DEFAULT_VALUE="${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}"
-                export "LAMBDA_${LONG_HAND}"="$DEFAULT_VALUE"
+                export "LAMBDA_${LONG_HAND//-/_}"="$DEFAULT_VALUE"
             fi
          done
+         return
     fi
 
     while (("$#")); do
@@ -183,12 +184,12 @@ LAMBDA_COMPILE_ARGS() {
 
             if [ "${__LAMBDA_ARG_IS_SET[${ARG_INDEX}]}" = 0 ]; then
                 DEFAULT_VALUE="${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}"
-                export "LAMBDA_${LONG_HAND}"="$DEFAULT_VALUE"
+                export "LAMBDA_${LONG_HAND//-/_}"="$DEFAULT_VALUE"
             fi
 
             if [ "$1" = "-$SHORT_HAND" ] || [ "$1" = "--$LONG_HAND" ]; then
                 if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-                    export "LAMBDA_${LONG_HAND}"="$2"
+                    export "LAMBDA_${LONG_HAND//-/_}"="$2"
                     __LAMBDA_ARG_IS_SET[${ARG_INDEX}]=1
                     FOUND=1
                     echo $FOUND
