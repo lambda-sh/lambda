@@ -157,6 +157,21 @@ LAMBDA_PARSE_ARG() {
 }
 
 LAMBDA_COMPILE_ARGS() {
+    if !(("$#")); then
+         for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
+            IFS=':' read -ra ARG_NAME <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
+
+            SHORT_HAND="${ARG_NAME[0]}"
+            LONG_HAND="${ARG_NAME[1]}"
+            ARG_INDEX="${ARG_NAME[2]}"
+
+            if [ "${__LAMBDA_ARG_IS_SET[${ARG_INDEX}]}" = 0 ]; then
+                DEFAULT_VALUE="${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}"
+                export "LAMBDA_${LONG_HAND}"="$DEFAULT_VALUE"
+            fi
+         done
+    fi
+
     while (("$#")); do
         FOUND=0
         for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
