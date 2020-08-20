@@ -1,5 +1,5 @@
 <p align="center" style="text-align:center;">
-  <img src="https://github.com/C3NZ/lambda/blob/master/lambda/assets/logos/lambda_logo_v2.png">
+  <img src="https://github.com/C3NZ/lambda/blob/master/lambda/assets/logos/lambda_header.png">
 </p>
 
 ## Description
