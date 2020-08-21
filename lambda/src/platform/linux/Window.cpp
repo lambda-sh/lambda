@@ -76,7 +76,7 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
       nullptr,
       nullptr);
 
-  // TODO(C3NZ): Integrate the open gl context for the windows platform.
+  /// TODO(C3NZ): Integrate the open gl context for the windows platform.
   context_ = new opengl::OpenGLContext(window_);
   context_->Init();
 

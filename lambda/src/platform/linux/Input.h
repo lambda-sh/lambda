@@ -7,7 +7,7 @@
 
 #include "core/input/Input.h"
 
-// TODO(C3NZ): Implement this for the windows platform
+/// TODO(C3NZ): Implement this for the windows platform
 namespace lambda {
 namespace platform {
 namespace linux {

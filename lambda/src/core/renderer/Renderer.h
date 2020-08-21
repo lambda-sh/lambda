@@ -34,7 +34,7 @@ class Renderer {
   ///
   /// Must be associated with a specific scene. (used in between BeginScene and
   /// EndScene calls)
-  // TODO(C3NZ): update this to use engine memory allocators as opposed to
+  /// TODO(C3NZ): update this to use engine memory allocators as opposed to
   // generic smart pointers.
   static void Submit(
       const std::shared_ptr<VertexArray>& vertex_array,

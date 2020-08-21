@@ -23,7 +23,7 @@ void LayerStack::PushOverlay(memory::Shared<Layer> overlay) {
 }
 
 /// Pop a layer off of the layer stack. Compares layers via Shared resources.
-// TODO(C3NZ): Is this problematic since it's using a shared pointer?
+/// TODO(C3NZ): Is this problematic since it's using a shared pointer?
 void LayerStack::PopLayer(memory::Shared<Layer> layer) {
   auto it = std::find(layers_.begin(), layers_.end(), layer);
 
@@ -33,7 +33,7 @@ void LayerStack::PopLayer(memory::Shared<Layer> layer) {
   }
 }
 
-// TODO(C3NZ): Is this problematic since it's using a shared pointer?
+/// TODO(C3NZ): Is this problematic since it's using a shared pointer?
 void LayerStack::PopOverlay(memory::Shared<Layer> overlay) {
   auto it = std::find(layers_.begin(), layers_.end(), overlay);
   if (it != layers_.end()) {

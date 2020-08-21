@@ -33,7 +33,7 @@ enum FilePosition {
 };
 
 
-// TODO(C3NZ): Implement this for linux and (maybe) Windows system next.
+/// TODO(C3NZ): Implement this for linux and (maybe) Windows system next.
 // I will probably create a file store that will be used to sync files within a
 // temp or local directory.
 class File {

@@ -6,7 +6,7 @@ namespace lambda {
 namespace core {
 namespace io {
 
-// TODO(C3NZ): Callbacks should be made more generic. Is it possible to allow
+/// TODO(C3NZ): Callbacks should be made more generic. Is it possible to allow
 // values to escape the callback once it's been resolved/rejected?
 /// Executes the task if and returns a success if the callback succeeds.
 AsyncResult AsyncTask::Execute() {

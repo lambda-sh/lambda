@@ -4,7 +4,7 @@
 #ifndef LAMBDA_SRC_CORE_IMGUI_IMGUIBUILD_H_
 #define LAMBDA_SRC_CORE_IMGUI_IMGUIBUILD_H_
 
-// TODO(C3NZ): Investigate into if there is a better way of handling imgui
+/// TODO(C3NZ): Investigate into if there is a better way of handling imgui
 // integrations into our engine such that we can integrate imgui into multiple
 // different types of windows and rendering backends while also allowing imgui
 // to be completely stripped from the engine when compiled.
