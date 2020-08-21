@@ -19,7 +19,7 @@ LAMBDA_COMPILE_ARGS $@
 
 # -------------------- COMPILE THE ENGINE AND ALL TOOLS ------------------------
 
-export CC=$LAMBDA_cpp_compiler CXX=$LAMBDA_cpp_compiler
+export CC=$LAMBDA_c_compiler CXX=$LAMBDA_cpp_compiler
 
 if [ $LAMBDA_build = "Release" ] || [ $LAMBDA_build = "Debug" ]; then
     LAMBDA_INFO "Compiling a $LAMBDA_build build for the engine."
@@ -41,7 +41,7 @@ make -j $LAMBDA_cores
 # ------------------------- RUN THE REQUESTED TOOL ----------------------------
 
 # Go to the output binary and run it.
-pushd "$LAMBDA_build/bin"
+pushd "builds/$LAMBDA_build/bin"
 ./"$LAMBDA_tool"
 popd  # "$1/bin"
 popd  # ROOT_DIR
