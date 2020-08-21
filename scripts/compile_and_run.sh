@@ -38,6 +38,8 @@ fi
 LAMBDA_INFO "Compiling the engine with make -j 8."
 make -j $LAMBDA_cores
 
+# ------------------------- RUN THE REQUESTED TOOL ----------------------------
+
 # Go to the output binary and run it.
 pushd "$LAMBDA_build/bin"
 ./"$LAMBDA_tool"
