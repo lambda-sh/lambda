@@ -178,7 +178,7 @@ LAMBDA_PARSE_ARG() {
 # Compile a list of arguments that are created from LAMBDA_PARSE_ARG calls.
 # Example usage:
 #
-# LAMBDA_PARSE_ARG t tool sandbox "This is an argument help string"
+# LAMBDA_PARSE_ARG tool sandbox "This is an argument help string"
 # LAMBDA_COMPILE_ARGS $@
 # echo $LAMBDA_tool
 #
@@ -187,60 +187,62 @@ LAMBDA_PARSE_ARG() {
 # goes wrong with parsing then you'll have access to either the value or default
 # value of the argument that you've passed in as shown with $LAMBDA_tool.
 #
+# Values that have no default values are assumed to be arguments that are
+# required to be passed in by the person interacting with the script.
+#
 # TODO(C3NZ): This can be broken down into sub components and also has
 # repetitive & potentially inefficient behaviour. While this isn't problematic
 # right now, this implementation might not be concrete depending on finding an
 # implementation that works better than using multiple arrays.
 LAMBDA_COMPILE_ARGS() {
-    if !(("$#")); then
-         for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
-            IFS=':' read -ra ARG_MAP <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
+  # Iterate through the arguments and parse them into variables.
+  while (("$#")); do
+    FOUND=0
+    for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
+        IFS=':' read -ra ARG_MAP <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
 
-            ARG_NAME="${ARG_MAP[0]}"
-            ARG_INDEX="${ARG_MAP[1]}"
+        ARG_NAME="${ARG_MAP[0]}"
+        ARG_INDEX="${ARG_MAP[1]}"
 
-            if [ "${__LAMBDA_ARG_IS_SET[${ARG_INDEX}]}" = 0 ]; then
-                DEFAULT_VALUE="${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}"
-                export "LAMBDA_${ARG_NAME//-/_}"="$DEFAULT_VALUE"
-            fi
-         done
-         return
-    fi
-
-    while (("$#")); do
-        FOUND=0
-        for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
-            IFS=':' read -ra ARG_MAP <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
-
-            ARG_NAME="${ARG_MAP[0]}"
-            ARG_INDEX="${ARG_MAP[1]}"
-
-            if [ "${__LAMBDA_ARG_IS_SET[${ARG_INDEX}]}" = 0 ]; then
-                DEFAULT_VALUE="${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}"
-                export "LAMBDA_${ARG_NAME//-/_}"="$DEFAULT_VALUE"
-            fi
-
-            if [ "$1" = "--$ARG_NAME" ]; then
-                if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-                    export "LAMBDA_${ARG_NAME//-/_}"="$2"
-                    __LAMBDA_ARG_IS_SET[${ARG_INDEX}]=1
-                    FOUND=1
-                    shift 2
-                    break
-                else
-                    LAMBDA_FATAL "No argument for flag $1"
-                fi
-            fi
-         done
-         # Check to see if the argument has been found.
-         if [[ $FOUND = 0 ]]; then
-           echo $1
-            if [[ "$1" =~ --* ]]; then
-                LAMBDA_FATAL \
-                  "Unsupported flag: $1. Run with --help to see the flags."
+        if [ "$1" = "--$ARG_NAME" ]; then
+            if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+                export "LAMBDA_${ARG_NAME//-/_}"="$2"
+                __LAMBDA_ARG_IS_SET[${ARG_INDEX}]=1
+                FOUND=1
+                shift 2
+                break
             else
-                LAMBDA_FATAL "No support for positional arguments."
+                LAMBDA_FATAL "No argument for flag $1"
             fi
-         fi
-    done
+        fi
+     done
+
+     # If the argument cannot be found, let the user know that
+     # it's not an unsupported flag or a positional argument.
+     if [ $FOUND = 0 ]; then
+        if [[ "$1" =~ --* ]]; then
+            LAMBDA_FATAL \
+              "Unsupported flag: $1. Run with --help to see the flags."
+        else
+            LAMBDA_FATAL "No support for positional arguments."
+        fi
+     fi
+  done
+
+  # Add default values to any argument that wasn't given a value.
+  for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
+    IFS=':' read -ra ARG_MAP <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
+
+    ARG_NAME="${ARG_MAP[0]}"
+    ARG_INDEX="${ARG_MAP[1]}"
+
+    if [ "${__LAMBDA_ARG_IS_SET[${ARG_INDEX}]}" = 0 ]; then
+      if [ -z "${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}" ]; then
+        LAMBDA_FATAL \
+          "--$ARG_NAME has no default value and therefore cannot be left empty."
+      fi
+        DEFAULT_VALUE="${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}"
+        export "LAMBDA_${ARG_NAME//-/_}"="$DEFAULT_VALUE"
+    fi
+  done
 }
