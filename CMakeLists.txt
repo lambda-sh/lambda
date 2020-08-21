@@ -1,28 +1,30 @@
 cmake_minimum_required(VERSION 3.0.0)
 
 if (${DISTRIBUTION_BUILD})
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/bin)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/builds/Dist/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/builds/Dist/lib)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/builds/Dist/bin)
 elseif (${CMAKE_BUILD_TYPE} STREQUAL "Release" OR ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
+        ${CMAKE_BINARY_DIR}/builds/${CMAKE_BUILD_TYPE}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY
+        ${CMAKE_BINARY_DIR}/builds/${CMAKE_BUILD_TYPE}/lib)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
+        ${CMAKE_BINARY_DIR}/builds/${CMAKE_BUILD_TYPE}/bin)
 endif()
 
+# ----------------------------------- SETTINGS ---------------------------------
 
-# For vim setup.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# ----------------------------------- ENGINE ----------------------------------
+set(OpenGL_GL_PREFERENCE "GLVND")
+# ----------------------------------- LAMBDA -----------------------------------
 
 project(lambda)
-
-set(OpenGL_GL_PREFERENCE "GLVND")
 
 file(
     GLOB_RECURSE
