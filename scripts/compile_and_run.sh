@@ -11,7 +11,7 @@ source scripts/lambda.sh
 
 LAMBDA_PARSE_ARG tool sandbox "The tool to compile and run."
 LAMBDA_PARSE_ARG build Release "The type of build to produce."
-LAMBDA_PARSE_ARG cores "" "The amount of cores to use for compiling."
+LAMBDA_PARSE_ARG cores 8 "The amount of cores to use for compiling."
 LAMBDA_PARSE_ARG c-compiler gcc "The compiler to use for C code."
 LAMBDA_PARSE_ARG cpp-compiler g++ "The compiler to use for C++ code."
 
@@ -19,7 +19,6 @@ LAMBDA_COMPILE_ARGS $@
 
 # -------------------- COMPILE THE ENGINE AND ALL TOOLS ------------------------
 
-echo $LAMBDA_cpp_compiler
 export CC=$LAMBDA_c_compiler CXX=$LAMBDA_cpp_compiler
 
 if [ $LAMBDA_build = "Release" ] || [ $LAMBDA_build = "Debug" ]; then
@@ -28,7 +27,7 @@ if [ $LAMBDA_build = "Release" ] || [ $LAMBDA_build = "Debug" ]; then
         -DCMAKE_BUILD_TYPE="$LAMBDA_build" \
         -DDISTRIBUTION_BUILD=False \
         -DENGINE_DEVELOPMENT_MODE=True .
-elif [ "$1" = "Dist" ]; then
+elif [ "$LAMBDA_build" = "Dist" ]; then
     echo "Compiling a Distribution build."
     LAMBDA_INFO "Compiling a distribution build for the engine."
     cmake -DCMAKE_BUILD_TYPE="Release" -DDISTRIBUTION_BUILD=True .
