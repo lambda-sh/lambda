@@ -35,7 +35,7 @@ void Renderer::Submit(
     const glm::mat4& transform) {
   shader->Bind();
 
-  // TODO(C3NZ): This is a temporary cast to an opengl specific shader and
+  /// TODO(C3NZ): This is a temporary cast to an opengl specific shader and
   // should be replaced when the rendering api becomes more mature.
   const auto& cast = std::dynamic_pointer_cast<platform::opengl::OpenGLShader>
       (shader);

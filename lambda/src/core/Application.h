@@ -24,6 +24,7 @@ namespace lambda {
 namespace core {
 
 /// @brief The mind, body, and soul of Lambda. The Application class is the
+///
 /// interface into lambda that brings your application to life.
 class Application {
  public:

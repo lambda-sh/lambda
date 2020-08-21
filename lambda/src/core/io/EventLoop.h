@@ -4,7 +4,7 @@
 ///
 /// Hopefully, the interface included in here will enable applications consuming
 /// lambda to offload i/o intensive work to another thread.
-// TODO(C3NZ): Add documentation for this file.
+/// TODO(C3NZ): Add documentation for this file.
 #ifndef LAMBDA_SRC_CORE_IO_EVENTLOOP_H_
 #define LAMBDA_SRC_CORE_IO_EVENTLOOP_H_
 
@@ -47,14 +47,14 @@ class EventLoop {
   bool Dispatch(
       AsyncCallback callback,
       core::util::Time execute_at = core::util::Time(),
-      core::util::Time expire_at = core::util::Time().AddSeconds(5));
+      core::util::Time expire_at = core::util::Time().AddSeconds(6));
 
  private:
   /// @brief Private dispatch that is used after a task is created.
   bool Dispatch(UniqueAsyncTask task);
 
   bool running_;
-  // TODO(C3NZ): Investigate into the performance of std::atomic
+  /// TODO(C3NZ): Investigate into the performance of std::atomic
   // vs using a mutex.
   moodycamel::ConcurrentQueue<UniqueAsyncTask> event_queue_;
 };

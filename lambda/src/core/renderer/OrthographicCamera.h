@@ -45,7 +45,7 @@ class OrthographicCamera {
   const glm::mat4& GetViewMatrix() const { return view_matrix_; }
 
   /// @brief Get the view projection matrix.
-  // TODO(C3NZ): Implement this to be platform independent. (Need it's own math
+  /// TODO(C3NZ): Implement this to be platform independent. (Need it's own math
   // library?)
   const glm::mat4& GetViewProjectionMatrix() const {
       return view_projection_matrix_; }

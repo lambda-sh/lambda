@@ -49,7 +49,7 @@ class WindowImplementation : public core::Window {
 
  private:
   GLFWwindow* window_;
-  // TODO(C3NZ): Convert this into a Shared resource as opposed to just a raw
+  /// TODO(C3NZ): Convert this into a Shared resource as opposed to just a raw
   // pointer.
   core::renderer::GraphicsContext* context_;
   internal::Properties properties_;

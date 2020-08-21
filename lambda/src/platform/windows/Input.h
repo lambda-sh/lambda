@@ -12,7 +12,7 @@ namespace platform {
 namespace windows {
 
 /// @brief The windows input implementation.
-// TODO(C3NZ): Rename this to WindowsInput to create a class system for all
+/// TODO(C3NZ): Rename this to WindowsInput to create a class system for all
 // windows platform specific classes.
 class InputImplementation : public core::input::Input {
  protected:

@@ -4,11 +4,11 @@ namespace lambda {
 namespace core {
 namespace io {
 
-// TODO(C3NZ): Investigate into the amount of time needed to sleep by the thread
-// that this loop is running in.
-// TODO(C3NZ): Is this as performant as it can possibly be?
-// TODO(C3NZ): There is no way to currently turn this off when there should be.
-// Especially if this is running in another thread.
+/// TODO(C3NZ): Investigate into the amount of time needed to sleep by the
+/// thread that this loop is running in.
+/// TODO(C3NZ): Is this as performant as it can possibly be?
+/// TODO(C3NZ): There is no way to currently turn this off when there should be.
+/// Especially if this is running in another thread.
 void EventLoop::Run() {
   while (running_) {
     std::this_thread::sleep_for(core::util::Milliseconds(50));
@@ -83,7 +83,7 @@ bool EventLoop::Dispatch(
   return Dispatch(std::move(task));
 }
 
-// TODO(C3NZ): Do we need to use std::move since objects with well defined move
+/// TODO(C3NZ): Do we need to use std::move since objects with well defined move
 // semantics are copyable into the queue?
 // Private dispatch for putting the task into the queue.
 bool EventLoop::Dispatch(UniqueAsyncTask task) {
