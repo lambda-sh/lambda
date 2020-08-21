@@ -152,25 +152,23 @@ export __LAMBDA_ARG_COUNT=0
 
 # Parse an argument that you want to use for your script.
 # Example usage looks like:
-# LAMBDA_PARSE_ARG t tool sandbox "The tool to compile and run."
+# LAMBDA_PARSE_ARG tool sandbox "The tool to compile and run."
 #
-# This would register an argument given the short hand (-t), long hand (--tool),
+# This would register an argument given the arg name (--tool),
 # default value (sandbox), and lastly a help string. The arguments are then
 # pushed into arrays and bounded by a key to the index they hold within all
 # arrays.
 #
-# SHORT_HAND -> The short hand flag of the argument.
-# LONG_HAND -> The long hand name of the argument.
+# ARG_NAME -> The long hand name of the argument.
 # DEFAULT_VALUE -> The default value of argument.
 # HELP_STRING -> The Help string for the argument.
 LAMBDA_PARSE_ARG() {
-    SHORT_HAND="$1"
-    LONG_HAND="$2"
-    DEFAULT_VALUE="$3"
-    HELP_STRING="$4"
+    ARG_NAME="$1"
+    DEFAULT_VALUE="$2"
+    HELP_STRING="$3"
 
-    MAP_KEY="${SHORT_HAND}:${LONG_HAND}:${__LAMBDA_ARG_COUNT}"
-    __LAMBDA_REGISTERED_ARG_MAP+=("$MAP_KEY")
+    ARG_NAME_TO_INDEX="${ARG_NAME}:${__LAMBDA_ARG_COUNT}"
+    __LAMBDA_REGISTERED_ARG_MAP+=("$ARG_NAME_TO_INDEX")
     __LAMBDA_ARG_DEFAULT_VALUES+=("$DEFAULT_VALUE")
     __LAMBDA_ARG_HELP_STRINGS+=("$HELP_STRING")
     __LAMBDA_ARG_IS_SET+=(0)
@@ -196,15 +194,14 @@ LAMBDA_PARSE_ARG() {
 LAMBDA_COMPILE_ARGS() {
     if !(("$#")); then
          for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
-            IFS=':' read -ra ARG_NAME <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
+            IFS=':' read -ra ARG_MAP <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
 
-            SHORT_HAND="${ARG_NAME[0]}"
-            LONG_HAND="${ARG_NAME[1]}"
-            ARG_INDEX="${ARG_NAME[2]}"
+            ARG_NAME="${ARG_MAP[0]}"
+            ARG_INDEX="${ARG_MAP[1]}"
 
             if [ "${__LAMBDA_ARG_IS_SET[${ARG_INDEX}]}" = 0 ]; then
                 DEFAULT_VALUE="${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}"
-                export "LAMBDA_${LONG_HAND//-/_}"="$DEFAULT_VALUE"
+                export "LAMBDA_${ARG_NAME//-/_}"="$DEFAULT_VALUE"
             fi
          done
          return
@@ -213,23 +210,21 @@ LAMBDA_COMPILE_ARGS() {
     while (("$#")); do
         FOUND=0
         for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
-            IFS=':' read -ra ARG_NAME <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
+            IFS=':' read -ra ARG_MAP <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
 
-            SHORT_HAND="${ARG_NAME[0]}"
-            LONG_HAND="${ARG_NAME[1]}"
-            ARG_INDEX="${ARG_NAME[2]}"
+            ARG_NAME="${ARG_MAP[0]}"
+            ARG_INDEX="${ARG_MAP[1]}"
 
             if [ "${__LAMBDA_ARG_IS_SET[${ARG_INDEX}]}" = 0 ]; then
                 DEFAULT_VALUE="${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}"
-                export "LAMBDA_${LONG_HAND//-/_}"="$DEFAULT_VALUE"
+                export "LAMBDA_${ARG_NAME//-/_}"="$DEFAULT_VALUE"
             fi
 
-            if [ "$1" = "-$SHORT_HAND" ] || [ "$1" = "--$LONG_HAND" ]; then
+            if [ "$1" = "--$ARG_NAME" ]; then
                 if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-                    export "LAMBDA_${LONG_HAND//-/_}"="$2"
+                    export "LAMBDA_${ARG_NAME//-/_}"="$2"
                     __LAMBDA_ARG_IS_SET[${ARG_INDEX}]=1
                     FOUND=1
-                    echo $FOUND
                     shift 2
                     break
                 else
@@ -239,8 +234,10 @@ LAMBDA_COMPILE_ARGS() {
          done
          # Check to see if the argument has been found.
          if [[ $FOUND = 0 ]]; then
-            if [ "$1" = "-*" ] || [ "$1" = "--*" ]; then
-                LAMBDA_FATAL "Unsupported flag $1"
+           echo $1
+            if [[ "$1" =~ --* ]]; then
+                LAMBDA_FATAL \
+                  "Unsupported flag: $1. Run with --help to see the flags."
             else
                 LAMBDA_FATAL "No support for positional arguments."
             fi
