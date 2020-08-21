@@ -4,11 +4,11 @@ namespace lambda {
 namespace core {
 namespace io {
 
-/// TODO(C3NZ): Investigate into the amount of time needed to sleep by the
+/// @todo (C3NZ): Investigate into the amount of time needed to sleep by the
 /// thread that this loop is running in.
-/// TODO(C3NZ): Is this as performant as it can possibly be?
-/// TODO(C3NZ): There is no way to currently turn this off when there should be.
-/// Especially if this is running in another thread.
+/// @todo (C3NZ): Is this as performant as it can possibly be?
+/// @todo (C3NZ): There is no way to currently turn this off when there should
+/// be. Especially if this is running in another thread.
 void EventLoop::Run() {
   while (running_) {
     std::this_thread::sleep_for(core::util::Milliseconds(50));
