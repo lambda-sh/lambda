@@ -165,12 +165,12 @@ export __LAMBDA_ARG_COUNT=0
 LAMBDA_PARSE_ARG() {
     ARG_NAME="$1"
     DEFAULT_VALUE="$2"
-    HELP_STRING="$3"
+    DESCRIPTION="$3"
 
     ARG_NAME_TO_INDEX="${ARG_NAME}:${__LAMBDA_ARG_COUNT}"
     __LAMBDA_REGISTERED_ARG_MAP+=("$ARG_NAME_TO_INDEX")
     __LAMBDA_ARG_DEFAULT_VALUES+=("$DEFAULT_VALUE")
-    __LAMBDA_ARG_HELP_STRINGS+=("$HELP_STRING")
+    __LAMBDA_ARG_DESCRIPTIONS+=("$DESCRIPTION")
     __LAMBDA_ARG_IS_SET+=(0)
     __LAMBDA_ARG_COUNT=$((1 + __LAMBDA_ARG_COUNT))
 }
@@ -194,7 +194,41 @@ LAMBDA_PARSE_ARG() {
 # repetitive & potentially inefficient behaviour. While this isn't problematic
 # right now, this implementation might not be concrete depending on finding an
 # implementation that works better than using multiple arrays.
+__LAMBDA_SHOW_HELP_STRING() {
+  # Add default values to any argument that wasn't given a value.
+  __LAMBDA_SET_FOREGROUND $__LAMBDA_COLOR_GREEN
+  printf "\n%-20s %-20s %-20s %-20s\n" "Arg" "Default value" "Required" "Description"
+  __LAMBDA_CLEAR_ATTRIBUTES
+
+  for ((i=0; i<$__LAMBDA_ARG_COUNT; i++)); do
+    IFS=':' read -ra ARG_MAP <<< "${__LAMBDA_REGISTERED_ARG_MAP[${i}]}"
+
+    ARG_NAME="${ARG_MAP[0]}"
+    ARG_INDEX="${ARG_MAP[1]}"
+    ARG_DEFAULT_VALUE="${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}"
+    ARG_DESCRIPTION="${__LAMBDA_ARG_DESCRIPTIONS[${ARG_INDEX}]}"
+    ARG_REQUIRED="False"
+
+    if [ -z "${__LAMBDA_ARG_DEFAULT_VALUES[${ARG_INDEX}]}" ]; then
+      ARG_REQUIRED="True"
+    fi
+
+    printf "%-20s %-20s %-20s %-20s\n" \
+      "--$ARG_NAME" \
+      "$ARG_DEFAULT_VALUE" \
+      "$ARG_REQUIRED" \
+      "$ARG_DESCRIPTION"
+
+  done
+  printf "\n"
+}
+
 LAMBDA_COMPILE_ARGS() {
+  if [ "$1" = "--help" ]; then
+    __LAMBDA_SHOW_HELP_STRING $0
+    LAMBDA_FATAL "Script execution disabled when using --help"
+  fi
+
   # Iterate through the arguments and parse them into variables.
   while (("$#")); do
     FOUND=0
