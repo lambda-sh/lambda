@@ -175,27 +175,7 @@ LAMBDA_PARSE_ARG() {
     __LAMBDA_ARG_COUNT=$((1 + __LAMBDA_ARG_COUNT))
 }
 
-# Compile a list of arguments that are created from LAMBDA_PARSE_ARG calls.
-# Example usage:
-#
-# LAMBDA_PARSE_ARG tool sandbox "This is an argument help string"
-# LAMBDA_COMPILE_ARGS $@
-# echo $LAMBDA_tool
-#
-# You first register the arguments that you want your script to take in and then
-# forward your scripts arguments directly into LAMBDA_COMPILE_ARGS. If nothing
-# goes wrong with parsing then you'll have access to either the value or default
-# value of the argument that you've passed in as shown with $LAMBDA_tool.
-#
-# Values that have no default values are assumed to be arguments that are
-# required to be passed in by the person interacting with the script.
-#
-# TODO(C3NZ): This can be broken down into sub components and also has
-# repetitive & potentially inefficient behaviour. While this isn't problematic
-# right now, this implementation might not be concrete depending on finding an
-# implementation that works better than using multiple arrays.
 __LAMBDA_SHOW_HELP_STRING() {
-  # Add default values to any argument that wasn't given a value.
   __LAMBDA_SET_FOREGROUND $__LAMBDA_COLOR_GREEN
   printf "\n%-20s %-20s %-20s %-20s\n" "Arg" "Default value" "Required" "Description"
   __LAMBDA_CLEAR_ATTRIBUTES
@@ -223,6 +203,25 @@ __LAMBDA_SHOW_HELP_STRING() {
   printf "\n"
 }
 
+# Compile a list of arguments that are created from LAMBDA_PARSE_ARG calls.
+# Example usage:
+#
+# LAMBDA_PARSE_ARG tool sandbox "This is an argument help string"
+# LAMBDA_COMPILE_ARGS $@
+# echo $LAMBDA_tool
+#
+# You first register the arguments that you want your script to take in and then
+# forward your scripts arguments directly into LAMBDA_COMPILE_ARGS. If nothing
+# goes wrong with parsing then you'll have access to either the value or default
+# value of the argument that you've passed in as shown with $LAMBDA_tool.
+#
+# Values that have no default values are assumed to be arguments that are
+# required to be passed in by the person interacting with the script.
+#
+# TODO(C3NZ): This can be broken down into sub components and also has
+# repetitive & potentially inefficient behaviour. While this isn't problematic
+# right now, this implementation might not be concrete depending on finding an
+# implementation that works better than using multiple arrays.
 LAMBDA_COMPILE_ARGS() {
   if [ "$1" = "--help" ]; then
     __LAMBDA_SHOW_HELP_STRING $0
