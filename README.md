@@ -143,7 +143,7 @@ class HelloLayer : Layer {
 // Our Application instance. We can only ever instantiate one of these at a
 // time! (Will fail if LAMBDA_ASSERT_ENABLES is true.)
 class HelloLambda : public Application {
-  public:
+  publi:
     // Push the HelloLayer into the Application. The layer and your logic now
     // have access to events and the update loop!
     HelloLambda() {
