@@ -1,7 +1,5 @@
-/**
- * @file Reverse.h
- * @brief A lightweight utility for Reversing STL based containers.
- */
+/// @file Reverse.h
+/// @brief A lightweight utility for Reversing STL based containers.
 #ifndef LAMBDA_SRC_CORE_UTIL_REVERSE_H_
 #define LAMBDA_SRC_CORE_UTIL_REVERSE_H_
 
@@ -17,6 +15,8 @@ concept Iterable = std::ranges::bidirectional_range<Container>;
 
 }  // namespace internal
 
+/// @brief A clean container for iterating through any container that implements
+/// rbegin and rend.
 template<internal::Iterable Container>
 class Reverse {
  public:
@@ -33,9 +33,3 @@ class Reverse {
 }  // namespace lambda
 
 #endif  // LAMBDA_SRC_CORE_UTIL_REVERSE_H_
-
-/**
- * @class lambda::util::Reverse
- * @brief Provides a clean interface for iterating through any container that
- * implements rbegin and rend.
- */
