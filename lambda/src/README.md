@@ -50,10 +50,13 @@ style.
 ## Directory structure
 
 `lambda` -- The source code, dependencies, and assets for the lambda engine.
+
 `docs` -- the documentation server and static content for lambda.
 Primarily used internally.
+
 `tools` -- C++ tools that are made from the engine for testing it and
 experimenting with it's potential.
+
 `scripts` -- bash scripts used for automating tedious tasks. (Like compiling and
 running tools)
 
