@@ -35,82 +35,115 @@ class Time;
 template<FloatType T, typename Ratio>
 const T DurationTo(const Time& start, const Time& end);
 
+/// @brief A platform independent clock implementation that is monotonic and
+/// used.
+///
+/// Uses std::stead_clock under the hood, but provides methods that are common
+/// for game development.
 class Time {
  public:
+  /// @brief Create a new Time instance set to now.
   Time() noexcept : time_(Clock::now()) {}
-  explicit Time(const TimePoint& t) : time_(t) {}
 
+  /// @brief Create a new Time instance as a copy from another time instance.
+  explicit Time(Time& t) noexcept : time_(t.GetTime()) {}
+
+  /// @brief Create a time instance from another clocks time point.
+  explicit Time(const TimePoint& t) noexcept : time_(t) {}
+
+  /// @brief Get the time in seconds.
   const TimePoint InSeconds() const {
     return std::chrono::time_point_cast<std::chrono::seconds>(time_); }
 
+  /// @brief Get the time in Milliseconds.
   const TimePoint InMilliSeconds() const {
     return std::chrono::time_point_cast<std::chrono::milliseconds>(time_); }
 
+  /// @brief Get the time in Microseconds.
   const TimePoint InMicroSeconds() const {
     return std::chrono::time_point_cast<std::chrono::microseconds>(time_); }
 
+  /// @brief Get the raw Timepoint of the wrapper.
   const TimePoint GetTime() const { return time_; }
 
-
-  inline Time AddMilliseconds(int64_t milliseconds) {
+  /// @brief Add milliseconds to the current time and return a new Time
+  /// instance.
+  Time AddMilliseconds(int64_t milliseconds) {
     return Time(time_ + Milliseconds(milliseconds));
   }
 
+  /// @brief Add seconds to the current time and return a new instance.
   Time AddSeconds(int64_t seconds) {
     return Time(time_ + Seconds(seconds));
   }
 
+  /// @brief Check if this time is after another time.
   bool IsAfter(const Time& t) {
     return DurationTo<float, std::milli>(t, *this) < 0;
   }
 
+  /// @brief Check if the time is before another time.
   bool IsBefore(const Time& t) {
     return DurationTo<float, std::milli>(t, *this) > 0;
   }
 
+  /// @brief Check if the time has passed the current time..
   bool HasPassed() {
     return DurationTo<float, std::milli>(Time(), *this) < 0;
   }
 
-  // Effectively an alias for getting the current time.
-  inline static Time Now() { return Time(); }
+  /// @brief Effectively an alias for getting the current time.
+  static Time Now() { return Time(); }
 
-  inline static Time NanosecondsFromNow(int64_t nanoseconds) {
+  /// @brief Create an instance of Time that is a specified amount of
+  /// nanoseconds into the future.
+  static Time NanosecondsFromNow(int64_t nanoseconds) {
     return Time().AddMilliseconds(nanoseconds);
   }
-  inline static Time MicrosecondsFromNow(int64_t microseconds) {
+
+  /// @brief Create an instance of Time that is a specified amount of
+  /// Microseconds into the future.
+  static Time MicrosecondsFromNow(int64_t microseconds) {
     return Time().AddMilliseconds(microseconds);
   }
 
-  inline static Time MillisecondsFromNow(int64_t milliseconds) {
+  /// @brief Create an instance of Time that is a specified amount of
+  /// Milliseconds into the future.
+  static Time MillisecondsFromNow(int64_t milliseconds) {
     return Time().AddMilliseconds(milliseconds);
   }
 
-  inline static Time SecondsFromNow(int64_t seconds) {
+  /// @brief Create an instance of Time that is a specified amount of Seconds
+  /// into the future.
+  static Time SecondsFromNow(int64_t seconds) {
     return Time().AddSeconds(seconds);
   }
-
 
  private:
   TimePoint time_;
 };
 
+/// @brief Measuring the delta between two different times.
 class TimeStep {
  public:
   TimeStep(Time start, Time stop) : start_(start), stop_(stop) {}
 
+  /// @brief Get the timestep in seconds.
   template<FloatType T>
   const T InSeconds() const {
     return DurationTo<T, std::deci>(start_, stop_); }
 
+  /// @brief Get the timestep in milliseconds.
   template<FloatType T>
   const T InMilliSeconds() const {
     return DurationTo<T, std::milli>(start_, stop_); }
 
+  /// @brief Get the timestep in microseconds.
   template<FloatType T>
   const T InMicroSeconds() const {
     return DurationTo<T, std::micro>(start_, stop_); }
 
+  /// @brief Get the timestep in nanoseconds.
   template<FloatType T>
   const T InNanoSeconds() const {
     return DurationTo<T, std::nano>(start_, stop_); }
@@ -120,68 +153,17 @@ class TimeStep {
   Time stop_;
 };
 
-
+/// @brief Convert two Time instances into a duration of float type T.
+///
+/// FloatType T is either a double or float.
 template<FloatType T, typename Ratio>
 const T DurationTo(const Time& start, const Time& stop) {
   std::chrono::duration<T, Ratio> d(stop.GetTime() - start.GetTime());
   return d.count();
 }
 
-
 }  // namespace util
 }  // namespace core
 }  // namespace lambda
 
 #endif  // LAMBDA_SRC_CORE_UTIL_TIME_H_
-
-/**
- * @class lambda::util::Time
- * @brief A wrapper for working with Time within the game engine. Uses
- * std::steady_clock for a platform independent Monotonic clock.
- */
-
-/**
- * @fn lambda::util::Time::InSeconds
- * @brief Get the current system time in seconds.
- */
-
-/**
- * @fn lambda::util::Time::InMilliSeconds
- * @brief Get the current system time in milliseconds.
- */
-
-/**
- * @fn lambda::util::Time::InMicroSeconds
- * @brief Get the current system time in microseconds.
- */
-
-/**
- * @fn lambda::util::Time::GetSeconds
- * @brief Get the current system time in nanoseconds.
- */
-
-/**
- * @class lambda::util::TimeStep
- * @brief The timestep between two time intervals. Primarily used for layers to
- * consistently update the engine.
- */
-
-/**
- * @fn lambda::util::TimeStep::InSeconds
- * @brief Get the interval between two Time objects in seconds.
- */
-
-/**
- * @fn lambda::util::TimeStep::InMilliSeconds
- * @brief Get the interval between two Time objects in milliseconds.
- */
-
-/**
- * @fn lambda::util::TimeStep::InMicroSeconds
- * @brief Get the interval between two Time objects in microseconds.
- */
-
-/**
- * @fn lambda::util::TimeStep::InNanoSeconds
- * @brief Get the interval between two Time objects in nanoseconds.
- */
