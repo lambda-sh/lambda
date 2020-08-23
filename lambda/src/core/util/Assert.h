@@ -12,10 +12,17 @@
 #include "core/Core.h"
 #include "core/util/Log.h"
 
+/// @def LAMBDA_CLIENT_ASSERT(x, ...)
+/// @brief When assertions are enabled, the client is allowed to use asserts
+/// in their code to halt their application whenever the condition being
+/// asserted is false.
+
+/// @def LAMBDA_CORE_ASSERT(x, ...)
+/// @brief When assertions are enabled, the engine is allowed to use asserts
+/// in its core to halt the application whenever the condition being asserted
+/// is false.
+
 #if LAMBDA_ENABLE_ASSERTS
-  /// @brief When assertions are enabled, the client is allowed to use asserts
-  /// in their code to halt their application whenever the condition being
-  /// asserted is false.
   #define LAMBDA_CLIENT_ASSERT(x, ...) { \
       if (!(x)) { \
           LAMBDA_CLIENT_ERROR("Assertion Failed: {0},", __VA_ARGS__); \
@@ -31,17 +38,3 @@
 #endif  // LAMBDA_ENABLE_ASSERTS
 
 #endif  // LAMBDA_SRC_CORE_UTIL_ASSERT_H_
-
-/**
- * @def LAMBDA_CLIENT_ASSERT(x, ...)
- * @brief When assertions are enabled, the client is allowed to use asserts in
- * their code to halt their application whenever the condition being asserted is
- * false.
- */
-
-/**
- * @def LAMBDA_CORE_ASSERT(x, ...)
- * @brief When assertions are enabled, the engine is allowed to use asserts in
- * its core to halt the application whenever the condition being asserted is
- * false.
- */
