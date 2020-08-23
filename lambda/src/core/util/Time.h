@@ -46,7 +46,7 @@ class Time {
   Time() noexcept : time_(Clock::now()) {}
 
   /// @brief Create a new Time instance as a copy from another time instance.
-  explicit Time(Time& t) noexcept : time_(t.GetTime()) {}
+  Time(Time& t) noexcept : time_(t.GetTime()) {}
 
   /// @brief Create a time instance from another clocks time point.
   explicit Time(const TimePoint& t) noexcept : time_(t) {}
