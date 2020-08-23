@@ -33,20 +33,134 @@ In order to change the build, you can utilize:
 ./scripts/compile_and_run.sh --build Debug
 ```
 
-It is to note that all scripts can be run from anywhere so long as the place
-you're executing the command is within the repo.
+To learn more about what scripts offer, try passing --help into them like so:
+```bash
+./scripts/compile_and_run.sh --help
+```
 
 ## Documentation
-All documentation can be found at [engine-docs](https://engine-docs.cenz.io).
+All documentation can be found at [lambda-docs](https://engine-docs.cenz.io).
 Documentation is being written as the engine progresses, so it may currently
 lack behind what the engine is capable of.
 
-The documentation is currently going an overhaul and has not been updated as of
-being renamed to lambda.
+All documentation is generated using doxygen. Feel free to contribute to areas
+of the codebase that currently don't have documentation or dont use the majority
+style.
 
-## Live deployments
-This project may or may not be used in games, but will definitely be used to create
-my own unique rendering engine in the future.
+## Directory structure
+
+`lambda` -- The source code, dependencies, and assets for the lambda engine.
+`docs` -- the documentation server and static content for lambda.
+Primarily used internally.
+`tools` -- C++ tools that are made from the engine for testing it and
+experimenting with it's potential.
+`scripts` -- bash scripts used for automating tedious tasks. (Like compiling and
+running tools)
+
+## Getting started
+
+### Support
+
+Currently only linux is being supported and hasn't been tested on other
+platforms. A very useful type of contribution to this project would be to verify
+and potentially extend the current API to support as many platforms and graphics
+APIs as possible, but getting lambda to work, be highly efficient, and be well
+thought out is the current plan to avoid as much technical debt as possible in
+the future.
+
+### Building
+
+Currently, lambda is built using cmake. In order to add this to your own
+project that also was using cmake, you could use these commands:
+```
+# In your CMakeLists.txt file...
+
+add_subdirectory(dependency_dir/lambda)
+target_link_libraries(your_app lambda)
+```
+
+In the above example, `dependency_dir` is where your dependencies and most likely
+lambda will be setting. This should be relative and below the cmake file (Like
+how lambda structures it's dependencies.) `your_app` should be the name of the
+executable that you're trying to build.
+
+Once that's done, you should now be able to include <Lambda.h> into your code
+and now should have access to the `lambda` namespace.
+
+### Your first application
+There are two components that are required to know with hooking into Lambda.
+
+1. Application
+2. Layers
+
+The `Application` class within `lambda::core::Application` is what allows you to
+hook lambda in order for it to power all of your applications. By creating a a
+class that extends from `Application`, you're provided with a set of
+functionality that allows you to automatically add `Layers` of code to the
+engine that do exactly what you need to do via `PushLayer(new Layer())`. Let's
+look at a simple program that hooks into lambda and does exactly that:
+
+```c++
+#include <Lambda.h>
+
+// Gives us access to CreateShared<Class T>(...);
+// The engine rarely does work with raw pointers and unless you have good reason
+// for doing so, neither should you!
+using lambda::core::memory::CreateShared;
+
+// Gives us access to Unique<Class T>, which is just a smart pointer at the
+// moment (Will be changed in the future but should be used right now.)
+using lambda::core::memory::Unique
+
+// Gives us access to Shared<Class T>, which is just a smart pointer at the
+// moment (Will be changed in the future but should be used right now.)
+using lambda::core::memory::Shared;
+
+// Gives us access to the Application API
+using lambda::core::Application;
+
+// Gives us access to the generic layer API
+using lambda::core::layers::Layer;
+
+using lambda::core::util::TimeStep;
+
+// Our Layer to receive events and hook into the update loop within lambda. You
+// can make as many layers as you like!
+class HelloLayer : Layer {
+  public:
+    // Hook into Lambdas update loop!
+    void OnUpdate(TimeStep delta) override {
+      ENGINE_CLIENT_LOG(
+          "{} seconds since last update." delta<double>.InSeconds());
+    }
+
+    // Hook into Lambda's event system!
+    void OnEvent(Shared<Event> event) override {
+
+    }
+};
+
+// Our Application instance. We can only ever instantiate one of these at a
+// time! (Will fail if LAMBDA_ASSERT_ENABLES is true.)
+class HelloLambda : public Application {
+  public:
+    // Push the HelloLayer into the Application. The layer and your logic now
+    // have access to events and the update loop!
+    HelloLambda() {
+      PushLayer(CreateShared<HelloLayer>());
+    }
+};
+
+// Once you've created an application and a layer, you now have the ability to
+// spin up your application with:
+Unique<Application> lambda::core::CreateApplication() {
+  return CreateUnique<HelloLambda>(); }
+```
+
+And boom, this starter pack will get you on your feet and running! While this
+tutorial doesn't cover the majority of the library, there will be more tutorials
+like this. Please refer to the documentation if need to figure out how to use
+the API. It is regularly updated.
 
 ## How to contribute
 Fork the current repository and then make the changes that you'd like to said fork. Upon adding features, fixing bugs,

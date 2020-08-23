@@ -3,8 +3,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
+#include <Lambda.h>
 
-#include "Lambda.h"
 #include "ext/matrix_transform.hpp"
 #include "platform/opengl/OpenGLShader.h"
 
