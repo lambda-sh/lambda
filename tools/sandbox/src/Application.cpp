@@ -29,6 +29,9 @@ using lambda::core::renderer::VertexArray;
 using lambda::core::renderer::VertexBuffer;
 using lambda::core::util::TimeStep;
 
+namespace tools {
+namespace sandbox {
+
 class ExampleLayer : public Layer {
  public:
   ExampleLayer() :
@@ -212,5 +215,9 @@ class Sandbox : public Application {
   ~Sandbox() {}
 };
 
+
+}  // namespace sandbox
+}  // namespace tools
+
 Unique<Application> lambda::core::CreateApplication() {
-  return memory::CreateUnique<Sandbox>(); }
+  return memory::CreateUnique<sandbox::Sandbox>(); }
