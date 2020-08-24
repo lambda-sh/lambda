@@ -220,4 +220,4 @@ class Sandbox : public Application {
 }  // namespace tools
 
 Unique<Application> lambda::core::CreateApplication() {
-  return memory::CreateUnique<sandbox::Sandbox>(); }
+  return memory::CreateUnique<tools::sandbox::Sandbox>(); }
