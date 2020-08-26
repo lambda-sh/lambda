@@ -9,8 +9,8 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_UTIL_ASSERT_H_
 #define LAMBDA_SRC_LAMBDA_CORE_UTIL_ASSERT_H_
 
-#include "core/Core.h"
-#include "core/util/Log.h"
+#include "Lambda/core/Core.h"
+#include "Lambda/core/util/Log.h"
 
 /// @def LAMBDA_CLIENT_ASSERT(x, ...)
 /// @brief When assertions are enabled, the client is allowed to use asserts

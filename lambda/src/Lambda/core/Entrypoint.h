@@ -7,8 +7,8 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_ENTRYPOINT_H_
 #define LAMBDA_SRC_LAMBDA_CORE_ENTRYPOINT_H_
 
-#include "core/Application.h"
-#include "core/util/Log.h"
+#include "Lambda/core/Application.h"
+#include "Lambda/core/util/Log.h"
 
 #ifdef LAMBDA_PLATFORM_LINUX
 

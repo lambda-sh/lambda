@@ -1,13 +1,13 @@
-#include "core/OrthographicCameraController.h"
+#include "Lambda/core/OrthographicCameraController.h"
 
-#include "core/events/ApplicationEvent.h"
-#include "core/events/Event.h"
-#include "core/events/MouseEvent.h"
-#include "core/input/Input.h"
-#include "core/input/KeyCodes.h"
-#include "core/memory/Pointers.h"
-#include "core/renderer/OrthographicCamera.h"
-#include "core/util/Time.h"
+#include "Lambda/core/events/ApplicationEvent.h"
+#include "Lambda/core/events/Event.h"
+#include "Lambda/core/events/MouseEvent.h"
+#include "Lambda/core/input/Input.h"
+#include "Lambda/core/input/KeyCodes.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/OrthographicCamera.h"
+#include "Lambda/core/util/Time.h"
 
 namespace lambda {
 namespace core {

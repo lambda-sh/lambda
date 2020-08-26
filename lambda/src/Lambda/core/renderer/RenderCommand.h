@@ -3,8 +3,8 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERCOMMAND_H_
 #define LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERCOMMAND_H_
 
-#include "core/memory/Pointers.h"
-#include "core/renderer/RendererAPI.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/RendererAPI.h"
 
 namespace lambda {
 namespace core {

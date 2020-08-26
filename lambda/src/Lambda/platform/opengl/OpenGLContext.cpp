@@ -1,11 +1,11 @@
-#include "platform/opengl/OpenGLContext.h"
+#include "Lambda/platform/opengl/OpenGLContext.h"
 
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "core/util/Assert.h"
-#include "core/Core.h"
+#include "Lambda/core/util/Assert.h"
+#include "Lambda/core/Core.h"
 
 namespace lambda {
 namespace platform {

@@ -1,11 +1,11 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_ORTHOGRAPHICCAMERACONTROLLER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_ORTHOGRAPHICCAMERACONTROLLER_H_
 
-#include "core/events/ApplicationEvent.h"
-#include "core/events/MouseEvent.h"
-#include "core/memory/Pointers.h"
-#include "core/renderer/OrthographicCamera.h"
-#include "core/util/Time.h"
+#include "Lambda/core/events/ApplicationEvent.h"
+#include "Lambda/core/events/MouseEvent.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/OrthographicCamera.h"
+#include "Lambda/core/util/Time.h"
 
 namespace lambda {
 namespace core {

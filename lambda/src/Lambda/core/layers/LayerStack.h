@@ -7,9 +7,9 @@
 
 #include <vector>
 
-#include "core/Core.h"
-#include "core/layers/Layer.h"
-#include "core/memory/Pointers.h"
+#include "Lambda/core/Core.h"
+#include "Lambda/core/layers/Layer.h"
+#include "Lambda/core/memory/Pointers.h"
 
 namespace lambda {
 namespace core {

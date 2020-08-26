@@ -2,8 +2,8 @@
 /// @brief The entrypoint into the game engine source code.
 ///
 /// This exposes all engine headers for use of any application.
-#ifndef LAMBDA_SRC_LAMBDA_LAMBDA_H_
-#define LAMBDA_SRC_LAMBDA_LAMBDA_H_
+#ifndef LAMBDA_SRC_LAMBDA_H_
+#define LAMBDA_SRC_LAMBDA_H_
 
 // ------------------------------------ CORE -----------------------------------
 
@@ -45,4 +45,4 @@
 #include "Lambda/core/renderer/Texture.h"
 #include "Lambda/core/renderer/VertexArray.h"
 
-#endif  // LAMBDA_SRC_LAMBDA_LAMBDA_H_
+#endif  // LAMBDA_SRC_LAMBDA_H_

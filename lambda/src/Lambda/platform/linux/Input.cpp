@@ -1,14 +1,14 @@
 #if defined LAMBDA_PLATFORM_LINUX || defined LAMBDA_DEBUG
 
-#include "platform/linux/Input.h"
+#include "Lambda/platform/linux/Input.h"
 
 #include <utility>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "core/Application.h"
-#include "core/input/Input.h"
+#include "Lambda/core/Application.h"
+#include "Lambda/core/input/Input.h"
 
 namespace lambda {
 

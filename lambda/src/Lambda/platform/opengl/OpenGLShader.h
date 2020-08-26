@@ -11,7 +11,7 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
-#include "core/renderer/Shader.h"
+#include "Lambda/core/renderer/Shader.h"
 
 namespace lambda {
 namespace platform {

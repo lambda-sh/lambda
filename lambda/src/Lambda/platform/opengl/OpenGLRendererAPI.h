@@ -5,8 +5,8 @@
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLRENDERERAPI_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLRENDERERAPI_H_
 
-#include "core/renderer/RendererAPI.h"
-#include "core/renderer/VertexArray.h"
+#include "Lambda/core/renderer/RendererAPI.h"
+#include "Lambda/core/renderer/VertexArray.h"
 
 namespace lambda {
 namespace platform {

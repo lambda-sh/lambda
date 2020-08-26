@@ -6,7 +6,7 @@
 #include <bits/stdint-uintn.h>
 #include <string>
 
-#include "core/memory/Pointers.h"
+#include "Lambda/core/memory/Pointers.h"
 
 namespace lambda {
 namespace core {

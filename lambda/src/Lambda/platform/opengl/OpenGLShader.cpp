@@ -1,4 +1,4 @@
-#include "platform/opengl/OpenGLShader.h"
+#include "Lambda/platform/opengl/OpenGLShader.h"
 
 #include <string>
 #include <vector>
@@ -7,8 +7,8 @@
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "core/util/Assert.h"
-#include "core/util/Log.h"
+#include "Lambda/core/util/Assert.h"
+#include "Lambda/core/util/Log.h"
 
 namespace lambda {
 namespace platform {

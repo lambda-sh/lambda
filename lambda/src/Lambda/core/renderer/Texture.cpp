@@ -1,10 +1,10 @@
-#include "core/renderer/Texture.h"
+#include "Lambda/core/renderer/Texture.h"
 
-#include "core/renderer/RendererAPI.h"
-#include "core/renderer/Renderer.h"
-#include "core/memory/Pointers.h"
+#include "Lambda/core/renderer/RendererAPI.h"
+#include "Lambda/core/renderer/Renderer.h"
+#include "Lambda/core/memory/Pointers.h"
 
-#include "platform/opengl/OpenGLTexture.h"
+#include "Lambda/platform/opengl/OpenGLTexture.h"
 
 namespace lambda {
 namespace core {

@@ -1,10 +1,10 @@
-#include "core/renderer/VertexArray.h"
+#include "Lambda/core/renderer/VertexArray.h"
 
-#include "core/memory/Pointers.h"
-#include "core/util/Assert.h"
-#include "core/renderer/Renderer.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/util/Assert.h"
+#include "Lambda/core/renderer/Renderer.h"
 
-#include "platform/opengl/OpenGLVertexArray.h"
+#include "Lambda/platform/opengl/OpenGLVertexArray.h"
 
 namespace lambda {
 namespace core {

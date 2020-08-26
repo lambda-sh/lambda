@@ -1,19 +1,19 @@
 #if defined LAMBDA_PLATFORM_WINDOWS || defined LAMBDA_DEBUG
 
-#include "platform/windows/Window.h"
+#include "Lambda/platform/windows/Window.h"
 
 #include <GLFW/glfw3.h>
 
-#include "core/Core.h"
-#include "core/Window.h"
-#include "core/events/ApplicationEvent.h"
-#include "core/events/KeyEvent.h"
-#include "core/events/MouseEvent.h"
-#include "core/memory/Pointers.h"
-#include "core/memory/Pointers.h"
-#include "core/util/Assert.h"
-#include "core/util/Log.h"
-#include "platform/opengl/OpenGLContext.h"
+#include "Lambda/core/Core.h"
+#include "Lambda/core/Window.h"
+#include "Lambda/core/events/ApplicationEvent.h"
+#include "Lambda/core/events/KeyEvent.h"
+#include "Lambda/core/events/MouseEvent.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/util/Assert.h"
+#include "Lambda/core/util/Log.h"
+#include "Lambda/platform/opengl/OpenGLContext.h"
 
 namespace lambda {
 

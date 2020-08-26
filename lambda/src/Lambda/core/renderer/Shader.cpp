@@ -1,4 +1,4 @@
-#include "core/renderer/Shader.h"
+#include "Lambda/core/renderer/Shader.h"
 
 #include <string>
 #include <vector>
@@ -6,12 +6,12 @@
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "core/memory/Pointers.h"
-#include "core/renderer/Renderer.h"
-#include "core/renderer/RendererAPI.h"
-#include "core/util/Log.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/Renderer.h"
+#include "Lambda/core/renderer/RendererAPI.h"
+#include "Lambda/core/util/Log.h"
 
-#include "platform/opengl/OpenGLShader.h"
+#include "Lambda/platform/opengl/OpenGLShader.h"
 
 namespace lambda {
 namespace core {

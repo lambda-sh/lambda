@@ -3,7 +3,7 @@
 
 #include <bits/stdint-uintn.h>
 
-#include "core/renderer/Buffer.h"
+#include "Lambda/core/renderer/Buffer.h"
 
 namespace lambda {
 namespace platform {

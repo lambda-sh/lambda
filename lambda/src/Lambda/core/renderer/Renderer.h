@@ -3,10 +3,10 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERER_H_
 
-#include "core/memory/Pointers.h"
-#include "core/renderer/OrthographicCamera.h"
-#include "core/renderer/RendererAPI.h"
-#include "core/renderer/Shader.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/OrthographicCamera.h"
+#include "Lambda/core/renderer/RendererAPI.h"
+#include "Lambda/core/renderer/Shader.h"
 
 namespace lambda {
 namespace core {

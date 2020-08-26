@@ -1,4 +1,4 @@
-#include "core/renderer/OrthographicCamera.h"
+#include "Lambda/core/renderer/OrthographicCamera.h"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
