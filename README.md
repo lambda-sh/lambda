@@ -104,8 +104,11 @@ engine that do exactly what you need to do via `PushLayer(new Layer())`. Let's
 look at a simple program that hooks into lambda and does exactly that:
 
 ```c++
-#include <Lambda.h>
-#include "core/Entrypoint.h"
+// This gets you all of lambdas core. (Minus the entrypoint)
+#include <Lambda/Lambda.h>
+// This is required by the entrypoint of your application file. This is where
+// lambda::core::CreateApplication gets run to create your instance!
+#include <Lambda/core/Entrypoint.h>
 
 // Gives us access to CreateShared<Class T>(...);
 // The engine rarely does work with raw pointers and unless you have good reason
