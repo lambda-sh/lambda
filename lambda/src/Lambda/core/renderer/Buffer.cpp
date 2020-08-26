@@ -1,10 +1,10 @@
-#include "core/renderer/Buffer.h"
+#include "Lambda/core/renderer/Buffer.h"
 
-#include "core/memory/Pointers.h"
-#include "core/renderer/Renderer.h"
-#include "core/renderer/RendererAPI.h"
-#include "core/util/Assert.h"
-#include "platform/opengl/OpenGLBuffer.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/Renderer.h"
+#include "Lambda/core/renderer/RendererAPI.h"
+#include "Lambda/core/util/Assert.h"
+#include "Lambda/platform/opengl/OpenGLBuffer.h"
 
 namespace lambda {
 namespace core {

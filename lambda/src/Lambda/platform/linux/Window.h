@@ -1,7 +1,7 @@
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_LINUX_WINDOW_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_LINUX_WINDOW_H_
 
-#include "core/events/ApplicationEvent.h"
+#include "Lambda/core/events/ApplicationEvent.h"
 #if defined LAMBDA_PLATFORM_LINUX || defined LAMBDA_DEBUG
 
 #include <string>
@@ -9,9 +9,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "core/Window.h"
-#include "core/memory/Pointers.h"
-#include "core/renderer/GraphicsContext.h"
+#include "Lambda/core/Window.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/GraphicsContext.h"
 
 namespace lambda {
 namespace platform {

@@ -1,6 +1,6 @@
-#include "core/renderer/RenderCommand.h"
+#include "Lambda/core/renderer/RenderCommand.h"
 
-#include "platform/opengl/OpenGLRendererAPI.h"
+#include "Lambda/platform/opengl/OpenGLRendererAPI.h"
 
 namespace lambda {
 namespace core {

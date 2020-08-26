@@ -1,10 +1,10 @@
-#include "core/renderer/Renderer.h"
+#include "Lambda/core/renderer/Renderer.h"
 
 #include <glm/glm.hpp>
 
-#include "core/renderer/RenderCommand.h"
-#include "core/renderer/OrthographicCamera.h"
-#include "platform/opengl/OpenGLShader.h"
+#include "Lambda/core/renderer/RenderCommand.h"
+#include "Lambda/core/renderer/OrthographicCamera.h"
+#include "Lambda/platform/opengl/OpenGLShader.h"
 
 namespace lambda {
 namespace core {

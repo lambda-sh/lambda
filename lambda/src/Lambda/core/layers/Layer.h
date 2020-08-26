@@ -4,10 +4,10 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_LAYERS_LAYER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_LAYERS_LAYER_H_
 
-#include "core/Core.h"
-#include "core/events/Event.h"
-#include "core/memory/Pointers.h"
-#include "core/util/Time.h"
+#include "Lambda/core/Core.h"
+#include "Lambda/core/events/Event.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/util/Time.h"
 
 namespace lambda {
 namespace core {

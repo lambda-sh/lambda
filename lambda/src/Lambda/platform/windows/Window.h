@@ -8,8 +8,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "core/Window.h"
-#include "core/renderer/GraphicsContext.h"
+#include "Lambda/core/Window.h"
+#include "Lambda/core/renderer/GraphicsContext.h"
 
 namespace lambda {
 namespace platform {

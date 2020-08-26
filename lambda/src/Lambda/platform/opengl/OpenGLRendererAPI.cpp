@@ -1,4 +1,4 @@
-#include "platform/opengl/OpenGLRendererAPI.h"
+#include "Lambda/platform/opengl/OpenGLRendererAPI.h"
 #include <glad/glad.h>
 
 namespace lambda {

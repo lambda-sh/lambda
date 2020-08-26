@@ -10,15 +10,15 @@
 
 #include <memory>
 
-#include "core/Core.h"
-#include "core/Window.h"
-#include "core/events/ApplicationEvent.h"
-#include "core/events/Event.h"
-#include "core/imgui/ImGuiLayer.h"
-#include "core/layers/Layer.h"
-#include "core/layers/LayerStack.h"
-#include "core/memory/Pointers.h"
-#include "core/util/Time.h"
+#include "Lambda/core/Core.h"
+#include "Lambda/core/Window.h"
+#include "Lambda/core/events/ApplicationEvent.h"
+#include "Lambda/core/events/Event.h"
+#include "Lambda/core/imgui/ImGuiLayer.h"
+#include "Lambda/core/layers/Layer.h"
+#include "Lambda/core/layers/LayerStack.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/util/Time.h"
 
 namespace lambda {
 namespace core {

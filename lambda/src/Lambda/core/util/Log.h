@@ -11,7 +11,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "core/Core.h"
+#include "Lambda/core/Core.h"
 
 namespace lambda {
 namespace core {

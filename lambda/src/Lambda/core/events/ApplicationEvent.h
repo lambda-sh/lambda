@@ -8,8 +8,8 @@
 
 #include <sstream>
 
-#include "core/Core.h"
-#include "core/events/Event.h"
+#include "Lambda/core/Core.h"
+#include "Lambda/core/events/Event.h"
 
 namespace lambda {
 namespace core {

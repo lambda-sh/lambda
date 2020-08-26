@@ -1,11 +1,11 @@
-#include "core/imgui/ImGuiLayer.h"
+#include "Lambda/core/imgui/ImGuiLayer.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "core/Application.h"
-#include "core/events/Event.h"
-#include "core/imgui/ImGuiBuild.h"
+#include "Lambda/core/Application.h"
+#include "Lambda/core/events/Event.h"
+#include "Lambda/core/imgui/ImGuiBuild.h"
 
 namespace lambda {
 namespace core {

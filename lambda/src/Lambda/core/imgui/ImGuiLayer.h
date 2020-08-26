@@ -7,12 +7,12 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_IMGUI_IMGUILAYER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_IMGUI_IMGUILAYER_H_
 
-#include "core/Core.h"
-#include "core/events/ApplicationEvent.h"
-#include "core/events/Event.h"
-#include "core/events/KeyEvent.h"
-#include "core/events/MouseEvent.h"
-#include "core/layers/Layer.h"
+#include "Lambda/core/Core.h"
+#include "Lambda/core/events/ApplicationEvent.h"
+#include "Lambda/core/events/Event.h"
+#include "Lambda/core/events/KeyEvent.h"
+#include "Lambda/core/events/MouseEvent.h"
+#include "Lambda/core/layers/Layer.h"
 
 namespace lambda {
 namespace core {

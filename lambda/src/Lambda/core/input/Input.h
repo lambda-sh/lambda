@@ -5,7 +5,7 @@
 
 #include <utility>
 
-#include "core/Core.h"
+#include "Lambda/core/Core.h"
 
 namespace lambda {
 namespace core {

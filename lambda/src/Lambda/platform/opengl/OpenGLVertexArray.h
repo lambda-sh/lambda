@@ -4,9 +4,9 @@
 #include <bits/stdint-uintn.h>
 #include <vector>
 
-#include "core/memory/Pointers.h"
-#include "core/renderer/Buffer.h"
-#include "core/renderer/VertexArray.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/Buffer.h"
+#include "Lambda/core/renderer/VertexArray.h"
 
 namespace lambda {
 namespace platform {

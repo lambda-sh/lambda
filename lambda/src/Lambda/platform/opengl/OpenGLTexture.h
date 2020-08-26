@@ -10,7 +10,7 @@
 #include <bits/stdint-uintn.h>
 #include <string>
 
-#include "core/renderer/Texture.h"
+#include "Lambda/core/renderer/Texture.h"
 
 namespace lambda {
 namespace platform {

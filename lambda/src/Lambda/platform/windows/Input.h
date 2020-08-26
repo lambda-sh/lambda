@@ -5,7 +5,7 @@
 
 #include <utility>
 
-#include "core/input/Input.h"
+#include "Lambda/core/input/Input.h"
 
 namespace lambda {
 namespace platform {

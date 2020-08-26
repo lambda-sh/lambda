@@ -7,10 +7,10 @@
 
 #include <string>
 
-#include "core/Core.h"
-#include "core/events/ApplicationEvent.h"
-#include "core/events/Event.h"
-#include "core/memory/Pointers.h"
+#include "Lambda/core/Core.h"
+#include "Lambda/core/events/ApplicationEvent.h"
+#include "Lambda/core/events/Event.h"
+#include "Lambda/core/memory/Pointers.h"
 
 namespace lambda {
 namespace core {

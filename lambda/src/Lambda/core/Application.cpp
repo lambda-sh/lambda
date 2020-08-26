@@ -1,18 +1,18 @@
-#include "core/Application.h"
+#include "Lambda/core/Application.h"
 
 #include <functional>
 
-#include "core/Window.h"
-#include "core/events/ApplicationEvent.h"
-#include "core/events/Event.h"
-#include "core/input/Input.h"
-#include "core/layers/Layer.h"
-#include "core/memory/Pointers.h"
-#include "core/renderer/Renderer.h"
-#include "core/util/Assert.h"
-#include "core/util/Log.h"
-#include "core/util/Reverse.h"
-#include "core/util/Time.h"
+#include "Lambda/core/Window.h"
+#include "Lambda/core/events/ApplicationEvent.h"
+#include "Lambda/core/events/Event.h"
+#include "Lambda/core/input/Input.h"
+#include "Lambda/core/layers/Layer.h"
+#include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/Renderer.h"
+#include "Lambda/core/util/Assert.h"
+#include "Lambda/core/util/Log.h"
+#include "Lambda/core/util/Reverse.h"
+#include "Lambda/core/util/Time.h"
 
 namespace lambda {
 namespace core {

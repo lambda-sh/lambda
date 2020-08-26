@@ -7,7 +7,7 @@
 
 #include <glm/glm.hpp>
 
-#include "core/renderer/VertexArray.h"
+#include "Lambda/core/renderer/VertexArray.h"
 
 namespace lambda {
 namespace core {

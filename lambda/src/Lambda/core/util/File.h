@@ -5,8 +5,8 @@
 #include <vector>
 #include <mutex>
 
-#include "core/Core.h"
-#include "core/memory/Pointers.h"
+#include "Lambda/core/Core.h"
+#include "Lambda/core/memory/Pointers.h"
 
 namespace lambda {
 namespace core {

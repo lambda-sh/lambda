@@ -1,9 +1,9 @@
-#include "platform/opengl/OpenGLVertexArray.h"
+#include "Lambda/platform/opengl/OpenGLVertexArray.h"
 
 #include <glad/glad.h>
 
-#include "core/util/Assert.h"
-#include "core/renderer/Buffer.h"
+#include "Lambda/core/util/Assert.h"
+#include "Lambda/core/renderer/Buffer.h"
 
 namespace lambda {
 namespace platform {

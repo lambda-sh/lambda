@@ -3,7 +3,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include "core/renderer/GraphicsContext.h"
+#include "Lambda/core/renderer/GraphicsContext.h"
 
 namespace lambda {
 namespace platform {
