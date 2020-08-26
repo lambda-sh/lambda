@@ -105,6 +105,7 @@ look at a simple program that hooks into lambda and does exactly that:
 
 ```c++
 #include <Lambda.h>
+#include "core/Entrypoint.h"
 
 // Gives us access to CreateShared<Class T>(...);
 // The engine rarely does work with raw pointers and unless you have good reason
