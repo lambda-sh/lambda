@@ -1,12 +1,13 @@
-#include <thread>
-
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
-#include <Lambda.h>
+#include <Lambda/Lambda.h>
+#include <Lambda/core/Entrypoint.h>
 
 #include "ext/matrix_transform.hpp"
-#include "platform/opengl/OpenGLShader.h"
+#include "Lambda/platform/opengl/OpenGLShader.h"
+
+#include "Sandbox2D.h"
 
 using lambda::core::Application;
 using lambda::core::OrthographicCameraController;
@@ -210,7 +211,8 @@ class ExampleLayer : public Layer {
 class Sandbox : public Application {
  public:
   Sandbox() {
-    PushLayer(lambda::core::memory::CreateShared<ExampleLayer>());
+    // PushLayer(lambda::core::memory::CreateShared<ExampleLayer>());
+    PushLayer(lambda::core::memory::CreateShared<Sandbox2D>());
   }
   ~Sandbox() {}
 };
@@ -219,5 +221,5 @@ class Sandbox : public Application {
 }  // namespace sandbox
 }  // namespace tools
 
-Unique<Application> lambda::core::CreateApplication() {
+lambda::core::memory::Unique<Application> lambda::core::CreateApplication() {
   return memory::CreateUnique<tools::sandbox::Sandbox>(); }

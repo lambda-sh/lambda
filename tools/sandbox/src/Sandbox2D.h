@@ -6,10 +6,27 @@
 namespace tools {
 namespace sandbox {
 
-// 2D Rendering exmaple layer.
+// 2D Rendering example layer.
 class Sandbox2D : public lambda::core::layers::Layer {
  public:
-  Sandbox2D() {}
+  void OnAttach() override;
+  void OnDetach() override;
+  void OnImGuiRender() override;
+  void OnUpdate(lambda::core::util::TimeStep) override;
+  void OnEvent(lambda::core::memory::Shared<lambda::core::events::Event> event)
+      override;
+ private:
+  lambda::core::OrthographicCameraController camera_controller_{
+      1280.0f / 720.0f};
+  glm::vec4 shader_color_ = {0.8f, 0.3f, 0.2f, 1.0f};
+
+  lambda::core::memory::Shared<lambda::core::renderer::Shader> shader_;
+  lambda::core::memory::Shared<lambda::core::renderer::VertexArray>
+      vertex_array_;
+  lambda::core::memory::Shared<lambda::core::renderer::VertexBuffer>
+      vertex_buffer_;
+  lambda::core::memory::Shared<lambda::core::renderer::IndexBuffer>
+      index_buffer_;
 };
 
 }  // namespace sandbox
