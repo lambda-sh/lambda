@@ -22,6 +22,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(OpenGL_GL_PREFERENCE "GLVND")
+
 # ----------------------------------- LAMBDA -----------------------------------
 
 project(lambda)
@@ -29,15 +30,15 @@ project(lambda)
 file(
     GLOB_RECURSE
     LAMBDA_SRC
-    ${CMAKE_SOURCE_DIR}/lambda/src/*.h
-    ${CMAKE_SOURCE_DIR}/lambda/src/*.cpp
+    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.h
+    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.cpp
 )
 
 add_library(lambda STATIC ${LAMBDA_SRC})
 
 set_target_properties(
     lambda
-    PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/lambda/src/Engine.h
+    PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/Lambda.h
 )
 
 target_include_directories(
@@ -113,6 +114,7 @@ if (${WITH_TOOL} STREQUAL "sandbox")
       ${CMAKE_SOURCE_DIR}/tools/sandbox/src/*.h
       ${CMAKE_SOURCE_DIR}/tools/sandbox/src/*.cpp
   )
+
   add_executable(sandbox ${APP_SRC})
 
   file(
@@ -134,7 +136,8 @@ if (${WITH_TOOL} STREQUAL "sandbox")
           PRIVATE LAMBDA_PLATFORM_LINUX
       )
   endif()
+  target_link_libraries(sandbox PRIVATE lambda)
 endif()
-target_link_libraries(sandbox PRIVATE lambda)
+
 # Load resources necessary for the executable to launch (Shaders, images, etc)
 # file(COPY ${CMAKE_BINARY_DIR}/res DESTINATION ${CMAKE_BINARY_DIR}/bin/res)
