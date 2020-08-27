@@ -11,7 +11,6 @@
 
 using lambda::core::renderer::BufferLayout;
 using lambda::core::renderer::IndexBuffer;
-using lambda::core::renderer::Renderer;
 using lambda::core::renderer::ShaderDataType;
 using lambda::core::renderer::VertexArray;
 using lambda::core::renderer::VertexBuffer;
@@ -22,7 +21,7 @@ namespace tools {
 namespace sandbox {
 
 void Sandbox2D::OnAttach() {
-  Renderer::Init();
+  renderer::Renderer2D::Init();
 
   float vertices[3 * 3] = {
     -0.5f, -0.5f, 0.0f,
@@ -58,7 +57,7 @@ void Sandbox2D::OnUpdate(lambda::core::util::TimeStep delta) {
   renderer::RenderCommand::SetClearColor({ 0.1f, 0.1f, 0.1f, 1.0f });
   renderer::RenderCommand::Clear();
 
-  renderer::Renderer::BeginScene(camera_controller_.GetOrthographicCamera());
+  renderer::Renderer2D::BeginScene(camera_controller_.GetOrthographicCamera());
 
   std::dynamic_pointer_cast<lambda::platform::opengl::OpenGLShader>(
       shader_)->Bind();
@@ -67,6 +66,11 @@ void Sandbox2D::OnUpdate(lambda::core::util::TimeStep delta) {
 
   renderer::Renderer::Submit(
       vertex_array_, shader_, glm::scale(glm::mat4(1.0f), glm::vec3(1.5f)));
+
+  renderer::Renderer2D::DrawQuad(
+      {0.0f, 0.0f}, {1.0f, 1.0f}, {0.8f, 0.2f, 0.3f, 1.0f});
+
+  renderer::Renderer2D::EndScene();
 }
 
 void Sandbox2D::OnImGuiRender() {

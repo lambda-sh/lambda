@@ -41,6 +41,7 @@
 #include "Lambda/core/renderer/OrthographicCamera.h"
 #include "Lambda/core/renderer/RenderCommand.h"
 #include "Lambda/core/renderer/Renderer.h"
+#include "Lambda/core/renderer/Renderer2D.h"
 #include "Lambda/core/renderer/Shader.h"
 #include "Lambda/core/renderer/Texture.h"
 #include "Lambda/core/renderer/VertexArray.h"
