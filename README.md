@@ -138,7 +138,7 @@ class HelloLayer : Layer {
     // Hook into Lambdas update loop!
     void OnUpdate(TimeStep delta) override {
       LAMBDA_CLIENT_LOG(
-          "{} seconds since last update." delta<double>.InSeconds());
+          "{} seconds since last update.", delta.InSeconds<double>());
     }
 
     // Hook into Lambda's event system!
