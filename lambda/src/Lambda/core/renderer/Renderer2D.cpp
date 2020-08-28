@@ -1,8 +1,11 @@
 #include "Lambda/core/renderer/Renderer2D.h"
 
 #include "Lambda/core/memory/Pointers.h"
+#include "Lambda/core/renderer/RenderCommand.h"
 #include "Lambda/core/renderer/Shader.h"
 #include "Lambda/core/renderer/VertexArray.h"
+#include "Lambda/core/util/Assert.h"
+#include "Lambda/platform/opengl/OpenGLShader.h"
 
 namespace lambda {
 namespace core {
@@ -10,19 +13,25 @@ namespace renderer {
 
 namespace {
 
+namespace memory = ::lambda::core::memory;
+namespace opengl = ::lambda::platform::opengl;
+
+/// @brief Internal storage for the 2D rendering API. It is not yet finalized.
 struct Renderer2DStorage {
-  core::memory::Shared<VertexArray> QuadVertexArray;
-  core::memory::Shared<Shader> FlatColorShader;
+  memory::Shared<VertexArray> QuadVertexArray;
+  memory::Shared<Shader> FlatColorShader;
 };
 
-static core::memory::Shared<Renderer2DStorage> kRendererStorage;
+/// @brief A static instance of the renderers storage.
+static memory::Unique<Renderer2DStorage> kRendererStorage;
 
 }  // namespace
 
 
-/// This is currently dependent on opengl
+/// @todo (C3NZ): This is currently dependent on opengl but implemented within
+/// the engines abstraction layer.
 void Renderer2D::Init() {
-  kRendererStorage.reset(new Renderer2DStorage());
+  kRendererStorage = memory::CreateUnique<Renderer2DStorage>();
 
   float vertices[3 * 3] = {
     -0.5f, -0.5f, 0.0f,
@@ -31,7 +40,7 @@ void Renderer2D::Init() {
 
   kRendererStorage->QuadVertexArray = VertexArray::Create();
 
-  core::memory::Shared<VertexBuffer> vertex_buffer = VertexBuffer::Create(
+  memory::Shared<VertexBuffer> vertex_buffer = VertexBuffer::Create(
       vertices, sizeof(vertices));
 
   BufferLayout layout_init_list = {{ ShaderDataType::Float3, "a_Position" }};
@@ -41,29 +50,60 @@ void Renderer2D::Init() {
   kRendererStorage->QuadVertexArray->AddVertexBuffer(vertex_buffer);
 
   unsigned int indices[3] = { 0, 1, 2 };
-  core::memory::Shared<IndexBuffer> index_buffer = IndexBuffer::Create(
+  memory::Shared<IndexBuffer> index_buffer = IndexBuffer::Create(
       indices, 3);
 
   kRendererStorage->QuadVertexArray->SetIndexBuffer(index_buffer);
-  kRendererStorage->FlatColorShader = core::renderer::Shader::Create(
+  kRendererStorage->FlatColorShader = Shader::Create(
       "assets/shaders/FlatColor.glsl");
 }
 
-void Renderer2D::Shutdown() {}
+/// This will completely reset all of the memory owned by the the renderers
+/// storage system.
+/// In the future, this should be handled by our memory allocator system.
+void Renderer2D::Shutdown() {
+  kRendererStorage->QuadVertexArray.reset();
+  kRendererStorage->FlatColorShader.reset();
+  kRendererStorage.reset();
+}
 
-void Renderer2D::BeginScene(const OrthographicCamera& camera) {}
+/// @todo (C3NZ): This needs to be altered to not be dependent on OpenGL code
+/// and instead be implemented within the platform API.
+void Renderer2D::BeginScene(const OrthographicCamera& camera) {
+  auto gl_shader = std::dynamic_pointer_cast<
+      opengl::OpenGLShader>(kRendererStorage->FlatColorShader);
+
+  gl_shader->Bind();
+  gl_shader->UploadUniformMat4(
+      "u_ViewProjection", camera.GetViewProjectionMatrix());
+  gl_shader->UploadUniformMat4("u_Transform", glm::mat4(1.0f));
+}
 
 void Renderer2D::EndScene() {}
 
+/// Used for drawing quads that are on the surface of the screen.
+/// Automatically forwards your arguments into the other DrawQuad overload with
+/// position being modified to be a vec3 with a z of 0.
 void Renderer2D::DrawQuad(
     const glm::vec2& position,
     const glm::vec2& size,
-    const glm::vec4& color) {}
+    const glm::vec4& color) {
+  DrawQuad({position.x, position.y, 0.0f}, size, color);
+}
 
 void Renderer2D::DrawQuad(
     const glm::vec3& position,
     const glm::vec2& size,
-    const glm::vec4& color) {}
+    const glm::vec4& color) {
+  auto gl_shader = std::dynamic_pointer_cast<
+      opengl::OpenGLShader>(kRendererStorage->FlatColorShader);
+
+  gl_shader->Bind();
+  gl_shader->UploadUniformFloat4("u_Color", color);
+
+  kRendererStorage->QuadVertexArray->Bind();
+  RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);
+}
 
 }  // namespace renderer
 }  // namespace core

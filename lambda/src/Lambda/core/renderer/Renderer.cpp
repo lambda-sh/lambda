@@ -2,18 +2,26 @@
 
 #include <glm/glm.hpp>
 
-#include "Lambda/core/renderer/RenderCommand.h"
 #include "Lambda/core/renderer/OrthographicCamera.h"
+#include "Lambda/core/renderer/RenderCommand.h"
+#include "Lambda/core/renderer/Renderer2D.h"
 #include "Lambda/platform/opengl/OpenGLShader.h"
 
 namespace lambda {
 namespace core {
 namespace renderer {
 
+namespace {
+
+namespace opengl = ::lambda::platform::opengl;
+
+}
+
 Renderer::SceneData* Renderer::scene_data_ = new Renderer::SceneData;
 
 void Renderer::Init() {
   RenderCommand::Init();
+  Renderer2D::Init();
 }
 
 void Renderer::BeginScene(const OrthographicCamera& camera) {
@@ -35,12 +43,11 @@ void Renderer::Submit(
 
   /// @todo (C3NZ): This is a temporary cast to an opengl specific shader and
   /// should be replaced when the rendering api becomes more mature.
-  const auto& cast = std::dynamic_pointer_cast<platform::opengl::OpenGLShader>
-      (shader);
+  auto gl_shader = std::dynamic_pointer_cast<opengl::OpenGLShader>(shader);
 
-  cast->UploadUniformMat4(
+  gl_shader->UploadUniformMat4(
       "u_ViewProjection", scene_data_->ViewProjectionMatrix);
-  cast->UploadUniformMat4("u_Transform", transform);
+  gl_shader->UploadUniformMat4("u_Transform", transform);
 
   vertex_array->Bind();
   RenderCommand::DrawIndexed(vertex_array);

@@ -33,8 +33,6 @@ class Renderer2D {
       const glm::vec4& color);
 
   /// @brief Draw a quad given it's position, size, and color.
-  ///
-  /// position is a vec3 and the z in position is it's depth on the screen.
   static void DrawQuad(
       const glm::vec3& position,
       const glm::vec2& size,
