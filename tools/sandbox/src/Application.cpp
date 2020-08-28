@@ -39,8 +39,6 @@ class ExampleLayer : public Layer {
       Layer("Example"),
       camera_(1280.0f / 720.0f, true),
       square_position_(0.0f) {
-    Renderer::Init();
-
     float vertices[3 * 7] = {
       -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
        0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
