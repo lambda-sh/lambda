@@ -27,6 +27,17 @@ class Shader {
   /// @brief Unbinds the shader from the GPU.
   virtual void Unbind() const = 0;
 
+  /// @brief Sets a 4x4 matrix within the shader.
+  ///
+  /// @todo This shouldn't rely on glm.
+  virtual void SetMat4(const std::string& name, const glm::mat4& matrix) = 0;
+
+  /// @brief Sets a vector of floats within the shader.
+  virtual void SetFloat3(const std::string& name, const glm::vec3& vector) = 0;
+
+  /// @brief Sets a vector of floats within the shader.
+  virtual void SetFloat4(const std::string& name, const glm::vec4& vector) = 0;
+
   /// @brief Get the name of the shader.
   const std::string& GetName() { return name_; }
 

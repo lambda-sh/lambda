@@ -73,10 +73,10 @@ void Renderer2D::BeginScene(const OrthographicCamera& camera) {
   auto gl_shader = std::dynamic_pointer_cast<
       opengl::OpenGLShader>(kRendererStorage->FlatColorShader);
 
-  gl_shader->Bind();
-  gl_shader->UploadUniformMat4(
+  kRendererStorage->FlatColorShader->Bind();
+  kRendererStorage->FlatColorShader->SetMat4(
       "u_ViewProjection", camera.GetViewProjectionMatrix());
-  gl_shader->UploadUniformMat4("u_Transform", glm::mat4(1.0f));
+  kRendererStorage->FlatColorShader->SetMat4("u_Transform", glm::mat4(1.0f));
 }
 
 void Renderer2D::EndScene() {}
