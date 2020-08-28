@@ -14,6 +14,12 @@ namespace lambda {
 namespace platform {
 namespace opengl {
 
+namespace {
+
+/// @brief Internal OpenGL tool used for obtaining the shader type directly
+/// from a string
+///
+/// Is not used externally.
 static GLenum ShaderTypeFromString(const std::string& shader_type) {
   if (shader_type == "vertex") {
     return GL_VERTEX_SHADER;
@@ -23,6 +29,9 @@ static GLenum ShaderTypeFromString(const std::string& shader_type) {
     return GL_INVALID_ENUM;
   }
 }
+
+}
+
 
 OpenGLShader::OpenGLShader(const std::string& path) {
   std::string shader_source = ReadFile(path);
@@ -198,6 +207,18 @@ void OpenGLShader::Bind() const {
 
 void OpenGLShader::Unbind() const {
   glUseProgram(0);
+}
+
+void OpenGLShader::SetMat4(const std::string& name, const glm::mat4& matrix) {
+  UploadUniformMat4(name, matrix);
+}
+
+void OpenGLShader::SetFloat3(const std::string& name, const glm::vec3& vector) {
+  UploadUniformFloat3(name, vector);
+}
+
+void OpenGLShader::SetFloat4(const std::string& name, const glm::vec4& vector) {
+  UploadUniformFloat4(name, vector);
 }
 
 void OpenGLShader::UploadUniformInt(
