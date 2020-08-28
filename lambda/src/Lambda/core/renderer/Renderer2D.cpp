@@ -70,10 +70,8 @@ void Renderer2D::Shutdown() {
 /// @todo (C3NZ): This needs to be altered to not be dependent on OpenGL code
 /// and instead be implemented within the platform API.
 void Renderer2D::BeginScene(const OrthographicCamera& camera) {
-  auto gl_shader = std::dynamic_pointer_cast<
-      opengl::OpenGLShader>(kRendererStorage->FlatColorShader);
-
   kRendererStorage->FlatColorShader->Bind();
+
   kRendererStorage->FlatColorShader->SetMat4(
       "u_ViewProjection", camera.GetViewProjectionMatrix());
   kRendererStorage->FlatColorShader->SetMat4("u_Transform", glm::mat4(1.0f));
@@ -95,11 +93,8 @@ void Renderer2D::DrawQuad(
     const glm::vec3& position,
     const glm::vec2& size,
     const glm::vec4& color) {
-  auto gl_shader = std::dynamic_pointer_cast<
-      opengl::OpenGLShader>(kRendererStorage->FlatColorShader);
-
-  gl_shader->Bind();
-  gl_shader->UploadUniformFloat4("u_Color", color);
+  kRendererStorage->FlatColorShader->Bind();
+  kRendererStorage->FlatColorShader->SetFloat4("u_Color", color);
 
   kRendererStorage->QuadVertexArray->Bind();
   RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);

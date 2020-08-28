@@ -32,7 +32,6 @@ Sandbox2D::Sandbox2D() :
   lambda::core::layers::Layer("Sandbox2D"),
   camera_controller_(1280.0f / 720.0f) {}
 
-
 void Sandbox2D::OnAttach() {}
 
 void Sandbox2D::OnDetach() {}
