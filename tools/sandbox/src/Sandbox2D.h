@@ -9,6 +9,8 @@ namespace sandbox {
 // 2D Rendering example layer.
 class Sandbox2D : public lambda::core::layers::Layer {
  public:
+  Sandbox2D();
+  virtual ~Sandbox2D() = default;;
   void OnAttach() override;
   void OnDetach() override;
   void OnImGuiRender() override;
@@ -16,8 +18,7 @@ class Sandbox2D : public lambda::core::layers::Layer {
   void OnEvent(lambda::core::memory::Shared<lambda::core::events::Event> event)
       override;
  private:
-  lambda::core::OrthographicCameraController camera_controller_{
-      1280.0f / 720.0f};
+  lambda::core::OrthographicCameraController camera_controller_;
   glm::vec4 shader_color_ = {0.8f, 0.3f, 0.2f, 1.0f};
 
   lambda::core::memory::Shared<lambda::core::renderer::Shader> shader_;
