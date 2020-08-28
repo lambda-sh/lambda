@@ -28,6 +28,9 @@ Application::Application() {
   window_ = Window::Create();
   window_->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 
+  // After the window is setup, initialize the renderer!
+  renderer::Renderer::Init();
+
   imgui_layer_ = memory::CreateShared<imgui::ImGuiLayer>();
   PushLayer(imgui_layer_);
 }
