@@ -1,5 +1,7 @@
 #include "Lambda/core/renderer/Renderer2D.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/RenderCommand.h"
 #include "Lambda/core/renderer/Shader.h"
@@ -26,7 +28,6 @@ struct Renderer2DStorage {
 static memory::Unique<Renderer2DStorage> kRendererStorage;
 
 }  // namespace
-
 
 /// @todo (C3NZ): This is currently dependent on opengl but implemented within
 /// the engines abstraction layer.
@@ -74,7 +75,6 @@ void Renderer2D::BeginScene(const OrthographicCamera& camera) {
 
   kRendererStorage->FlatColorShader->SetMat4(
       "u_ViewProjection", camera.GetViewProjectionMatrix());
-  kRendererStorage->FlatColorShader->SetMat4("u_Transform", glm::mat4(1.0f));
 }
 
 void Renderer2D::EndScene() {}
@@ -95,6 +95,13 @@ void Renderer2D::DrawQuad(
     const glm::vec4& color) {
   kRendererStorage->FlatColorShader->Bind();
   kRendererStorage->FlatColorShader->SetFloat4("u_Color", color);
+
+  // Translation, times rotation, times scale. (Must be in that order,
+  // since matrix multiplication has an effect on the output.)
+  // This allows the size to be set externally.
+  glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(
+      glm::mat4(1.0f), {size.x, size.y, 1.0f});
+  kRendererStorage->FlatColorShader->SetMat4("u_Transform", transform);
 
   kRendererStorage->QuadVertexArray->Bind();
   RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);
