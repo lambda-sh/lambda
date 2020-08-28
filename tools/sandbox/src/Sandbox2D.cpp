@@ -45,7 +45,9 @@ void Sandbox2D::OnUpdate(lambda::core::util::TimeStep delta) {
   renderer::Renderer2D::BeginScene(camera_controller_.GetOrthographicCamera());
 
   renderer::Renderer2D::DrawQuad(
-      {0.0f, 0.0f}, {1.0f, 1.0f}, {0.8f, 0.2f, 0.3f, 1.0f});
+      {-1.0f, 0.0f}, {0.8f, 0.8f}, {0.8f, 0.2f, 0.3f, 1.0f});
+  renderer::Renderer2D::DrawQuad(
+      {0.5f, -0.5f}, {0.5f, 0.75f}, { 0.2f, 0.3f, 0.8f, 1.0f});
 
   renderer::Renderer2D::EndScene();
 }
