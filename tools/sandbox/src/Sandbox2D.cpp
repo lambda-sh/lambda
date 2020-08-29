@@ -9,13 +9,6 @@
 /// use of platform specific graphic APIs.
 #include "Lambda/platform/opengl/OpenGLShader.h"
 
-using lambda::core::renderer::BufferLayout;
-using lambda::core::renderer::IndexBuffer;
-using lambda::core::renderer::ShaderDataType;
-using lambda::core::renderer::VertexArray;
-using lambda::core::renderer::VertexBuffer;
-
-
 namespace tools {
 namespace sandbox {
 
@@ -46,6 +39,7 @@ void Sandbox2D::OnUpdate(lambda::core::util::TimeStep delta) {
 
   renderer::Renderer2D::DrawQuad(
       {-1.0f, 0.0f}, {0.8f, 0.8f}, {0.8f, 0.2f, 0.3f, 1.0f});
+
   renderer::Renderer2D::DrawQuad(
       {0.5f, -0.5f}, {0.5f, 0.75f}, { 0.2f, 0.3f, 0.8f, 1.0f});
 
