@@ -34,10 +34,12 @@ static memory::Unique<Renderer2DStorage> kRendererStorage;
 void Renderer2D::Init() {
   kRendererStorage = memory::CreateUnique<Renderer2DStorage>();
 
-  float vertices[3 * 3] = {
+  float vertices[4 * 3] = {
     -0.5f, -0.5f, 0.0f,
      0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0};
+     0.5f,  0.5f, 0.0f,
+    -0.5f,  0.5f, 0.0f
+  };
 
   kRendererStorage->QuadVertexArray = VertexArray::Create();
 
@@ -50,9 +52,9 @@ void Renderer2D::Init() {
 
   kRendererStorage->QuadVertexArray->AddVertexBuffer(vertex_buffer);
 
-  unsigned int indices[3] = { 0, 1, 2 };
+  uint32_t indices[6] = { 0, 1, 2, 2, 3, 0 };
   memory::Shared<IndexBuffer> index_buffer = IndexBuffer::Create(
-      indices, 3);
+      indices, sizeof(indices) / sizeof(uint32_t));
 
   kRendererStorage->QuadVertexArray->SetIndexBuffer(index_buffer);
   kRendererStorage->FlatColorShader = Shader::Create(
