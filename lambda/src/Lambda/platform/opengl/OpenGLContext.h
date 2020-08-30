@@ -1,4 +1,4 @@
-/// @file OpenGLContext
+/// @file OpenGLContext.h
 /// @brief The OpenGL graphics context implementation.
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLCONTEXT_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLCONTEXT_H_
