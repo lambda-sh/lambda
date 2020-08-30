@@ -1,4 +1,4 @@
-/// @file engine/src/core/renderer/Shader.h
+/// @file OpenGLShader.h
 /// @brief Shader API to be used with the renderer.
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLSHADER_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLSHADER_H_

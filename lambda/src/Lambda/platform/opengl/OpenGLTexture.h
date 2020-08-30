@@ -1,4 +1,3 @@
-
 /// @file OpenGLTexture.h
 /// @brief The OpenGL Texture API.
 ///

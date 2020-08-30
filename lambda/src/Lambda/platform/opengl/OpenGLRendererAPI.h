@@ -1,4 +1,4 @@
-/// @file engine/src/platform/opengl/OpenGLRendererAPI.h
+/// @file OpenGLRendererAPI.h
 /// @brief The OpenGL rendering implementation.
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLRENDERERAPI_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLRENDERERAPI_H_

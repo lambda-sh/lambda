@@ -1,3 +1,5 @@
+/// @file OpenGLVertexArray.h
+/// @brief OpenGL implementations of lambda vertex arrays.
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLVERTEXARRAY_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLVERTEXARRAY_H_
 

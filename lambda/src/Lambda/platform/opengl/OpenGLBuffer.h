@@ -1,4 +1,4 @@
-/// @file OpenGLBuffer
+/// @file OpenGLBuffer.h
 /// @brief Contains all opengl buffer implementations.
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLBUFFER_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLBUFFER_H_
