@@ -1,9 +1,8 @@
-/**
- * @file OpenGLTexture.h
- * @brief The OpenGL Texture API.
- *
- * Currently only supports 2D textures.
- */
+
+/// @file OpenGLTexture.h
+/// @brief The OpenGL Texture API.
+///
+/// Currently only supports 2D textures.
 #ifndef LAMBDA_PLATFORM_OPENGL_OPENGLTEXTURE_H_
 #define LAMBDA_PLATFORM_OPENGL_OPENGLTEXTURE_H_
 
@@ -16,14 +15,19 @@ namespace lambda {
 namespace platform {
 namespace opengl {
 
+/// @brief THe opengl 2D texture implementation.
 class OpenGLTexture2D : public core::renderer::Texture2D {
  public:
   OpenGLTexture2D(const std::string& path);
   virtual ~OpenGLTexture2D();
 
-  inline uint32_t GetWidth() const override { return width_; }
-  inline uint32_t GetHeight() const override { return height_; }
+  /// @brief Get the width of the texture.
+  uint32_t GetWidth() const override { return width_; }
 
+  /// @brief Get the height of the texture.
+  uint32_t GetHeight() const override { return height_; }
+
+  /// @brief Bind the texture to a texture slot. (Default is 0)
   void Bind(uint32_t slot = 0) const override;
 
  private:
@@ -38,24 +42,3 @@ class OpenGLTexture2D : public core::renderer::Texture2D {
 }  // namespace lambda
 
 #endif  // LAMBDA_PLATFORM_OPENGL_OPENGLTEXTURE_H_
-
-/**
- * @class lambda::platform::opengl::OpenGLTexture2D
- * @brief The opengl 2D texture implementation.
- *
- */
-
-/**
- * @function lambda::platform::opengl::OpenGLTexture2D::GetWidth
- * @brief Get the width of the texure.
- */
-
-/**
- * @function lambda::platform::opengl::OpenGLTexture2D::GetHeight
- * @brief Get the height of the texure.
- */
-
-/**
- * @function lambda::platform::opengl::OpenGLTexture2D::Bind
- * @brief Bind the texture to the engine.
- */
