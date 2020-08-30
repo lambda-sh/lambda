@@ -1,3 +1,5 @@
+/// @file OpenGLBuffer
+/// @brief Contains all opengl buffer implementations.
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLBUFFER_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLBUFFER_H_
 
@@ -9,37 +11,31 @@ namespace lambda {
 namespace platform {
 namespace opengl {
 
-
 // ----------------------------- VERTEX BUFFER IMPL ----------------------------
 
-/**
- * The OpenGL VertexBuffer  implementation based off the generic
- * VertexBuffer base class provided by the engines renderer.
- */
+
+/// @brief The OpenGL VertexBuffer implementation based off the generic
+/// VertexBuffer base class provided by the engines renderer.
 class OpenGLVertexBuffer : public core::renderer::VertexBuffer {
  public:
   OpenGLVertexBuffer(float* vertices, uint32_t size);
   ~OpenGLVertexBuffer();
 
-  /**
-   * Create and bind the vertex buffer on the GPU. Will set the renderer_ID_.
-   */
+
+  /// @brief Create and bind the vertex buffer on the GPU. Will set
+  /// the renderer_ID_.
   void Bind() const override;
 
-  /**
-   * Unbind and delete the vertex buffer on GPU using the renderer_ID_
-   * associated with it.
-   */
+
+  /// @brief Unbind and delete the vertex buffer on GPU using the renderer_ID_
+  /// associated with it.
   void Unbind() const override;
 
-  /**
-   * Get the BufferLayout associated with the current VertexBuffer.
-   */
+
+  /// @brief Get the BufferLayout associated with the current VertexBuffer.
   const core::renderer::BufferLayout& GetLayout() const override { return layout_; };
 
-  /**
-   * Set the BufferLayout associated with the current VertexBuffer.
-   */
+  /// @brief Set the BufferLayout associated with the current VertexBuffer.
   void SetLayout(const core::renderer::BufferLayout& layout) override
     { layout_ = layout; };
 

@@ -28,11 +28,10 @@ void OpenGLVertexBuffer::Unbind() const {
 
 // ----------------------------- INDEX BUFFER IMPL ----------------------------
 
-/**
- * Constructs an Index buffer given an array of indices and total count. The
- * instantiation of the index buffer will cause the engine to to assert an error
- * if the count is > 0.
- */
+
+/// Constructs an Index buffer given an array of indices and total count. The
+/// instantiation of the index buffer will cause the engine to to assert an
+/// error if the count is > 0.
 OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t* indices, uint32_t count)
     : count_(count) {
   LAMBDA_CORE_ASSERT(
@@ -59,7 +58,6 @@ void OpenGLIndexBuffer::Bind() const {
 void OpenGLIndexBuffer::Unbind() const {
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
-
 
 }  // namespace renderer
 }  // namespace platform

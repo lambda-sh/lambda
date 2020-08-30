@@ -1,3 +1,5 @@
+/// @file OpenGLContext
+/// @brief The OpenGL graphics context implementation.
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLCONTEXT_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLCONTEXT_H_
 
@@ -9,6 +11,7 @@ namespace lambda {
 namespace platform {
 namespace opengl {
 
+/// @brief The graphics context for
 class OpenGLContext : public core::renderer::GraphicsContext {
  public:
   explicit OpenGLContext(GLFWwindow* window_handle);
