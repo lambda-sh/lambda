@@ -3,7 +3,9 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERER2D_H_
 #define LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERER2D_H_
 
+#include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/OrthographicCamera.h"
+#include "Lambda/core/renderer/Texture.h"
 
 namespace lambda {
 namespace core {
@@ -37,6 +39,18 @@ class Renderer2D {
       const glm::vec3& position,
       const glm::vec2& size,
       const glm::vec4& color);
+
+  /// @brief Draw a quad given it's position, size, and Texture.
+  static void DrawQuad(
+      const glm::vec2& position,
+      const glm::vec2& size,
+      core::memory::Shared<Texture2D> texture);
+
+  /// @brief Draw a quad given it's position, size, and Texture.
+  static void DrawQuad(
+      const glm::vec3& position,
+      const glm::vec2& size,
+      core::memory::Shared<Texture2D> texture);
 };
 
 }  // namespace renderer

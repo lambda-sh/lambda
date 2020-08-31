@@ -33,9 +33,21 @@ class OpenGLShader : public core::renderer::Shader {
 
   void Bind() const override;
   void Unbind() const override;
-  void SetMat4(const std::string& name, const glm::mat4& matrix) override;
+
+  void SetBool(const std::string& name, bool value) override;
+
+  void SetFloat(const std::string& name, float value) override;
+  void SetFloat2(const std::string& name, const glm::vec2& vector) override;
   void SetFloat3(const std::string& name, const glm::vec3& vector) override;
   void SetFloat4(const std::string& name, const glm::vec4& vector) override;
+
+  void SetInt(const std::string& name, int value) override;
+  void SetInt2(const std::string& name, const glm::vec2& vector) override;
+  void SetInt3(const std::string& name, const glm::vec3& vector) override;
+  void SetInt4(const std::string& name, const glm::vec4& vector) override;
+
+  void SetMat3(const std::string& name, const glm::mat3& matrix) override;
+  void SetMat4(const std::string& name, const glm::mat4& matrix) override;
 
   // ---------------------------- OPENGL SPECIFIC ------------------------------
 

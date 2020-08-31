@@ -17,6 +17,9 @@ namespace core {
 namespace renderer {
 
 /// @brief A generic Shader API.
+///
+/// @todo This class shouldn't rely on glm for mathematics, as this ties the
+/// abstract shader API to opengl specific vector mathematics.
 class Shader {
  public:
   virtual ~Shader() = default;
@@ -27,16 +30,38 @@ class Shader {
   /// @brief Unbinds the shader from the GPU.
   virtual void Unbind() const = 0;
 
-  /// @brief Sets a 4x4 matrix within the shader.
-  ///
-  /// @todo This shouldn't rely on glm.
-  virtual void SetMat4(const std::string& name, const glm::mat4& matrix) = 0;
+  /// @brief Set a boolean within the shader.
+  virtual void SetBool(const std::string& name, bool value) = 0;
 
-  /// @brief Sets a vector of floats within the shader.
+  /// @brief Sets a float within the shader.
+  virtual void SetFloat(const std::string& name, float value) = 0;
+
+  /// @brief Sets a vector of 2 floats within the shader.
+  virtual void SetFloat2(const std::string& name, const glm::vec2& vector) = 0;
+
+  /// @brief Sets a vector of 3 floats within the shader.
   virtual void SetFloat3(const std::string& name, const glm::vec3& vector) = 0;
 
-  /// @brief Sets a vector of floats within the shader.
+  /// @brief Sets a vector of 3 floats within the shader.
   virtual void SetFloat4(const std::string& name, const glm::vec4& vector) = 0;
+
+  /// @brief Sets an integer within the shader.
+  virtual void SetInt(const std::string& name, int value) = 0;
+
+  /// @brief Sets a vector of 2 Integers within the shader.
+  virtual void SetInt2(const std::string& name, const glm::vec2& vector) = 0;
+
+  /// @brief Sets a vector of 3 Integers within the shader.
+  virtual void SetInt3(const std::string& name, const glm::vec3& vector) = 0;
+
+  /// @brief Sets a vector of 4 Integers within the shader.
+  virtual void SetInt4(const std::string& name, const glm::vec4& vector) = 0;
+
+  /// @brief Sets a 3x3 matrix within the shader.
+  virtual void SetMat3(const std::string& name, const glm::mat3& matrix) = 0;
+
+  /// @brief Sets a 4x4 matrix within the shader.
+  virtual void SetMat4(const std::string& name, const glm::mat4& matrix) = 0;
 
   /// @brief Get the name of the shader.
   const std::string& GetName() { return name_; }
