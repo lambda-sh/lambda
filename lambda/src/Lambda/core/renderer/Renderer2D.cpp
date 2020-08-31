@@ -22,6 +22,7 @@ namespace opengl = ::lambda::platform::opengl;
 struct Renderer2DStorage {
   memory::Shared<VertexArray> QuadVertexArray;
   memory::Shared<Shader> FlatColorShader;
+  memory::Shared<Shader> TextureShader;
 };
 
 /// @brief A static instance of the renderers storage.
@@ -59,14 +60,21 @@ void Renderer2D::Init() {
   kRendererStorage->QuadVertexArray->SetIndexBuffer(index_buffer);
   kRendererStorage->FlatColorShader = Shader::Create(
       "assets/shaders/FlatColor.glsl");
+
+  kRendererStorage->TextureShader = Shader::Create(
+      "assets/shaders/TextureShader.glsl");
+  kRendererStorage->TextureShader->Bind();
+  kRendererStorage->TextureShader->SetInt("u_Texture", 0);
 }
 
 /// This will completely reset all of the memory owned by the the renderers
-/// storage system.
-/// In the future, this should be handled by our memory allocator system.
+/// storage system. In the future, the memory allocator should ensure that
+/// resources are freed once the renderers storage has been released.
 void Renderer2D::Shutdown() {
   kRendererStorage->QuadVertexArray.reset();
   kRendererStorage->FlatColorShader.reset();
+  kRendererStorage->TextureShader.reset();
+
   kRendererStorage.reset();
 }
 
@@ -76,6 +84,8 @@ void Renderer2D::BeginScene(const OrthographicCamera& camera) {
   kRendererStorage->FlatColorShader->Bind();
 
   kRendererStorage->FlatColorShader->SetMat4(
+      "u_ViewProjection", camera.GetViewProjectionMatrix());
+  kRendererStorage->TextureShader->SetMat4(
       "u_ViewProjection", camera.GetViewProjectionMatrix());
 }
 
@@ -103,6 +113,31 @@ void Renderer2D::DrawQuad(
   // This allows the size to be set externally.
   glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(
       glm::mat4(1.0f), {size.x, size.y, 1.0f});
+  kRendererStorage->FlatColorShader->SetMat4("u_Transform", transform);
+
+  kRendererStorage->QuadVertexArray->Bind();
+  RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);
+}
+
+void Renderer2D::DrawQuad(
+    const glm::vec2& position,
+    const glm::vec2& size,
+    core::memory::Shared<Texture2D> texture) {
+  DrawQuad({position.x, position.y, 0.0f}, size, texture);
+}
+
+void Renderer2D::DrawQuad(
+    const glm::vec3& position,
+    const glm::vec2& size,
+    core::memory::Shared<Texture2D> texture) {
+  kRendererStorage->FlatColorShader->Bind();
+
+  // Translation, times rotation, times scale. (Must be in that order,
+  // since matrix multiplication has an effect on the output.)
+  // This allows the size to be set externally.
+  glm::mat4 transform = glm::translate(
+      glm::mat4(1.0f), position) * glm::scale(
+          glm::mat4(1.0f), {size.x, size.y, 1.0f});
   kRendererStorage->FlatColorShader->SetMat4("u_Transform", transform);
 
   kRendererStorage->QuadVertexArray->Bind();
