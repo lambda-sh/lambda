@@ -10,20 +10,25 @@ namespace sandbox {
 class Sandbox2D : public lambda::core::layers::Layer {
  public:
   Sandbox2D();
-  virtual ~Sandbox2D() = default;;
+  ~Sandbox2D() = default;
   void OnAttach() override;
   void OnDetach() override;
   void OnImGuiRender() override;
   void OnUpdate(lambda::core::util::TimeStep) override;
   void OnEvent(lambda::core::memory::Shared<lambda::core::events::Event> event)
       override;
+
  private:
   lambda::core::OrthographicCameraController camera_controller_;
   glm::vec4 shader_color_ = {0.8f, 0.3f, 0.2f, 1.0f};
 
+  lambda::core::memory::Shared<lambda::core::renderer::Texture2D>
+      checkerboard_texture_;
+
   lambda::core::memory::Shared<lambda::core::renderer::Shader> shader_;
   lambda::core::memory::Shared<lambda::core::renderer::VertexArray>
       vertex_array_;
+
   lambda::core::memory::Shared<lambda::core::renderer::VertexBuffer>
       vertex_buffer_;
   lambda::core::memory::Shared<lambda::core::renderer::IndexBuffer>

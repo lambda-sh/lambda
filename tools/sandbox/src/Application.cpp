@@ -208,7 +208,7 @@ class ExampleLayer : public Layer {
 
 class Sandbox : public Application {
  public:
-  Sandbox() {
+  Sandbox() : Application() {
     // PushLayer(lambda::core::memory::CreateShared<ExampleLayer>());
     PushLayer(lambda::core::memory::CreateShared<Sandbox2D>());
   }
