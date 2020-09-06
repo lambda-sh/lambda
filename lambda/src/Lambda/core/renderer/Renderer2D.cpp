@@ -35,11 +35,11 @@ static memory::Unique<Renderer2DStorage> kRendererStorage;
 void Renderer2D::Init() {
   kRendererStorage = memory::CreateUnique<Renderer2DStorage>();
 
-  float vertices[4 * 3] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.5f,  0.5f, 0.0f,
-    -0.5f,  0.5f, 0.0f
+  float vertices[5 * 4] = {
+    -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
+     0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+     0.5f,  0.5f, 0.0f, 1.0f, 1.0f,
+    -0.5f,  0.5f, 0.0f, 0.0f, 1.0f
   };
 
   kRendererStorage->QuadVertexArray = VertexArray::Create();
@@ -47,7 +47,10 @@ void Renderer2D::Init() {
   memory::Shared<VertexBuffer> vertex_buffer = VertexBuffer::Create(
       vertices, sizeof(vertices));
 
-  BufferLayout layout_init_list = {{ ShaderDataType::Float3, "a_Position" }};
+  BufferLayout layout_init_list = {
+    { ShaderDataType::Float3, "a_Position" },
+    { ShaderDataType::Float2, "a_TexCoord" }};
+
   BufferLayout layout(layout_init_list);
   vertex_buffer->SetLayout(layout);
 
@@ -62,7 +65,7 @@ void Renderer2D::Init() {
       "assets/shaders/FlatColor.glsl");
 
   kRendererStorage->TextureShader = Shader::Create(
-      "assets/shaders/TextureShader.glsl");
+      "assets/shaders/Texture.glsl");
   kRendererStorage->TextureShader->Bind();
   kRendererStorage->TextureShader->SetInt("u_Texture", 0);
 }
@@ -85,6 +88,9 @@ void Renderer2D::BeginScene(const OrthographicCamera& camera) {
 
   kRendererStorage->FlatColorShader->SetMat4(
       "u_ViewProjection", camera.GetViewProjectionMatrix());
+
+  kRendererStorage->TextureShader->Bind();
+
   kRendererStorage->TextureShader->SetMat4(
       "u_ViewProjection", camera.GetViewProjectionMatrix());
 }
@@ -111,8 +117,9 @@ void Renderer2D::DrawQuad(
   // Translation, times rotation, times scale. (Must be in that order,
   // since matrix multiplication has an effect on the output.)
   // This allows the size to be set externally.
-  glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(
-      glm::mat4(1.0f), {size.x, size.y, 1.0f});
+  glm::mat4 transform = glm::translate(
+      glm::mat4(1.0f), position) * glm::scale(
+          glm::mat4(1.0f), {size.x, size.y, 1.0f});
   kRendererStorage->FlatColorShader->SetMat4("u_Transform", transform);
 
   kRendererStorage->QuadVertexArray->Bind();
@@ -130,7 +137,7 @@ void Renderer2D::DrawQuad(
     const glm::vec3& position,
     const glm::vec2& size,
     core::memory::Shared<Texture2D> texture) {
-  kRendererStorage->FlatColorShader->Bind();
+  kRendererStorage->TextureShader->Bind();
 
   // Translation, times rotation, times scale. (Must be in that order,
   // since matrix multiplication has an effect on the output.)
@@ -138,7 +145,9 @@ void Renderer2D::DrawQuad(
   glm::mat4 transform = glm::translate(
       glm::mat4(1.0f), position) * glm::scale(
           glm::mat4(1.0f), {size.x, size.y, 1.0f});
-  kRendererStorage->FlatColorShader->SetMat4("u_Transform", transform);
+  kRendererStorage->TextureShader->SetMat4("u_Transform", transform);
+
+  texture->Bind();
 
   kRendererStorage->QuadVertexArray->Bind();
   RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);

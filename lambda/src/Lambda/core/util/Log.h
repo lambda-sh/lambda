@@ -41,27 +41,30 @@ class Log {
 /// @def LAMBDA_CORE_TRACE
 /// @brief Log tracing information within the engine.
 #define LAMBDA_CORE_TRACE(...) \
-    SPDLOG_LOGGER_TRACE(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
+    SPDLOG_LOGGER_TRACE( \
+        ::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CORE_INFO
 /// @brief Log informational information within the engine.
 #define LAMBDA_CORE_INFO(...)  \
-    SPDLOG_LOGGER_INFO(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
+    SPDLOG_LOGGER_INFO(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CORE_WARN
 /// @brief Log warning information within the engine.
 #define LAMBDA_CORE_WARN(...)  \
-    SPDLOG_LOGGER_WARN(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
+    SPDLOG_LOGGER_WARN(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CORE_ERROR
 /// @brief Log error information within the engine.
 #define LAMBDA_CORE_ERROR(...) \
-    SPDLOG_LOGGER_ERROR(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
+    SPDLOG_LOGGER_ERROR( \
+        ::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CORE_ERROR
 /// @brief Log fatal information within the engine.
 #define LAMBDA_CORE_FATAL(...) \
-    SPDLOG_LOGGER_FATAL(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
+    SPDLOG_LOGGER_FATAL( \
+        ::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CLIENT_TRACE
 /// @brief Log tracing information within the application.
@@ -72,7 +75,7 @@ class Log {
 /// @def LAMBDA_CLIENT_INFO
 /// @brief Log informational information within the application.
 #define LAMBDA_CLIENT_INFO(...)  \
-    SPDLOG_LOGGER_INFO( \
+    SPDLOG_LOGGER_INFO(\
         ::lambda::core::util::Log::GetClientLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CLIENT_WARN
