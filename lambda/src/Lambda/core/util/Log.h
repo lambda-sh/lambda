@@ -41,51 +41,56 @@ class Log {
 /// @def LAMBDA_CORE_TRACE
 /// @brief Log tracing information within the engine.
 #define LAMBDA_CORE_TRACE(...) \
-    ::lambda::core::util::Log::GetCoreLogger()->trace(__VA_ARGS__)
+    SPDLOG_LOGGER_TRACE(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
 
 /// @def LAMBDA_CORE_INFO
 /// @brief Log informational information within the engine.
 #define LAMBDA_CORE_INFO(...)  \
-    ::lambda::core::util::Log::GetCoreLogger()->info(__VA_ARGS__)
+    SPDLOG_LOGGER_INFO(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
 
 /// @def LAMBDA_CORE_WARN
 /// @brief Log warning information within the engine.
 #define LAMBDA_CORE_WARN(...)  \
-    ::lambda::core::util::Log::GetCoreLogger()->warn(__VA_ARGS__)
+    SPDLOG_LOGGER_WARN(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
 
 /// @def LAMBDA_CORE_ERROR
 /// @brief Log error information within the engine.
 #define LAMBDA_CORE_ERROR(...) \
-    ::lambda::core::util::Log::GetCoreLogger()->error(__VA_ARGS__)
+    SPDLOG_LOGGER_ERROR(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
 
 /// @def LAMBDA_CORE_ERROR
 /// @brief Log fatal information within the engine.
 #define LAMBDA_CORE_FATAL(...) \
-    ::lambda::core::util::Log::GetCoreLogger()->fatal(__VA_ARGS__)
+    SPDLOG_LOGGER_FATAL(::lambda::core::util::Log::GetCoreLogger(), __VA_ARGS__)
 
 /// @def LAMBDA_CLIENT_TRACE
 /// @brief Log tracing information within the application.
 #define LAMBDA_CLIENT_TRACE(...) \
-    ::lambda::core::util::Log::GetClientLogger()->trace(__VA_ARGS__)
+    SPDLOG_LOGGER_TRACE( \
+        ::lambda::core::util::Log::GetClientLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CLIENT_INFO
 /// @brief Log informational information within the application.
 #define LAMBDA_CLIENT_INFO(...)  \
-    ::lambda::core::util::Log::GetClientLogger()->info(__VA_ARGS__)
+    SPDLOG_LOGGER_INFO( \
+        ::lambda::core::util::Log::GetClientLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CLIENT_WARN
 /// @brief Log warning information within the application.
 #define LAMBDA_CLIENT_WARN(...)  \
-    ::lambda::core::util::Log::GetClientLogger()->warn(__VA_ARGS__)
+    SPDLOG_LOGGER_WARN( \
+        ::lambda::core::util::Log::GetClientLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CLIENT_ERROR
 /// @brief Log error information within the application.
 #define LAMBDA_CLIENT_ERROR(...) \
-    ::lambda::core::util::Log::GetClientLogger()->error(__VA_ARGS__)
+    SPDLOG_LOGGER_ERROR( \
+        ::lambda::core::util::Log::GetClientLogger(), __VA_ARGS__);
 
 /// @def LAMBDA_CLIENT_FATAL
 /// @brief Log fatal information within the application.
 #define LAMBDA_CLIENT_FATAL(...) \
-    ::lambda::core::util::Log::GetClientLogger()->fatal(__VA_ARGS__)
+    SPDLOG_LOGGER_FATAL( \
+        ::lambda::core::util::Log::GetClientLogger(), __VA_ARGS__);
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_UTIL_LOG_H_

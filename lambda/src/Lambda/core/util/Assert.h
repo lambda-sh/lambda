@@ -12,29 +12,35 @@
 #include "Lambda/core/Core.h"
 #include "Lambda/core/util/Log.h"
 
-/// @def LAMBDA_CLIENT_ASSERT(x, ...)
+/// @def LAMBDA_CLIENT_ASSERT(assertion, message, ...)
 /// @brief When assertions are enabled, the client is allowed to use asserts
 /// in their code to halt their application whenever the condition being
 /// asserted is false.
 
-/// @def LAMBDA_CORE_ASSERT(x, ...)
+/// @def LAMBDA_CORE_ASSERT(assertion, message, ...)
 /// @brief When assertions are enabled, the engine is allowed to use asserts
 /// in its core to halt the application whenever the condition being asserted
 /// is false.
 
 #if LAMBDA_ENABLE_ASSERTS
-  #define LAMBDA_CLIENT_ASSERT(x, ...) { \
-      if (!(x)) { \
-          LAMBDA_CLIENT_ERROR("Assertion Failed: {0},", __VA_ARGS__); \
+  #define LAMBDA_CLIENT_ASSERT(assertion, message, ...) { \
+      if (!(assertion)) { \
+          LAMBDA_CLIENT_ERROR( \
+              "Assertion Failed for {}: "#message, \
+              #assertion, \
+              ##__VA_ARGS__); \
           LAMBDA_DEBUG_BREAK(); }}
 
-  #define LAMBDA_CORE_ASSERT(x, ...) { \
-      if (!(x)) { \
-          LAMBDA_CORE_ERROR("Assertion Failed: {0},", __VA_ARGS__); \
+  #define LAMBDA_CORE_ASSERT(assertion, message, ...) { \
+      if (!(assertion)) { \
+          LAMBDA_CORE_ERROR( \
+              "Assertion failed for the condition [{}]: "#message, \
+              #assertion, \
+              ##__VA_ARGS__); \
           LAMBDA_DEBUG_BREAK(); }}
 #else
-  #define LAMBDA_CLIENT_ASSERT(x, ...)
-  #define LAMBDA_CORE_ASSERT(x, ...)
+  #define LAMBDA_CLIENT_ASSERT(assertion, message, ...)
+  #define LAMBDA_CORE_ASSERT(assertion, message, ...)
 #endif  // LAMBDA_ENABLE_ASSERTS
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_UTIL_ASSERT_H_
