@@ -31,10 +31,10 @@ class Shader {
   virtual void Unbind() const = 0;
 
   /// @brief Set a boolean within the shader.
-  virtual void SetBool(const std::string& name, bool value) = 0;
+  virtual void SetBool(const std::string& name, const bool& value) = 0;
 
   /// @brief Sets a float within the shader.
-  virtual void SetFloat(const std::string& name, float value) = 0;
+  virtual void SetFloat(const std::string& name, const float& value) = 0;
 
   /// @brief Sets a vector of 2 floats within the shader.
   virtual void SetFloat2(const std::string& name, const glm::vec2& vector) = 0;
@@ -46,7 +46,7 @@ class Shader {
   virtual void SetFloat4(const std::string& name, const glm::vec4& vector) = 0;
 
   /// @brief Sets an integer within the shader.
-  virtual void SetInt(const std::string& name, int value) = 0;
+  virtual void SetInt(const std::string& name, const int& value) = 0;
 
   /// @brief Sets a vector of 2 Integers within the shader.
   virtual void SetInt2(const std::string& name, const glm::vec2& vector) = 0;
