@@ -1,4 +1,4 @@
-// Basic texture shader.
+// Shader for loading in textures.
 
 #type vertex
 #version 330 core
