@@ -16,8 +16,8 @@ OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
   // textures.
   stbi_set_flip_vertically_on_load(1);
   stbi_uc* data = stbi_load(path_.c_str(), &width, &height, &channels, 0);
-  LAMBDA_CORE_TRACE("Attempting to load: {0}", path_);
-  LAMBDA_CORE_ASSERT(data, "Failed to load the image: {0}", path_);
+  LAMBDA_CORE_TRACE("Attempting to load: {}", path_);
+  LAMBDA_CORE_ASSERT(data, "Failed to load the image: {}", path_);
   width_ = width;
   height_ = height;
 

@@ -34,25 +34,25 @@ class OpenGLShader : public core::renderer::Shader {
   void Bind() const override;
   void Unbind() const override;
 
-  void SetBool(const std::string& name, bool value) override;
+  void SetBool(const std::string& name, const bool& value) override;
 
-  void SetFloat(const std::string& name, float value) override;
-  void SetFloat2(const std::string& name, const glm::vec2& vector) override;
-  void SetFloat3(const std::string& name, const glm::vec3& vector) override;
-  void SetFloat4(const std::string& name, const glm::vec4& vector) override;
+  void SetFloat(const std::string& name, const float& value) override;
+  void SetFloat2(const std::string& name, const glm::vec2& values) override;
+  void SetFloat3(const std::string& name, const glm::vec3& values) override;
+  void SetFloat4(const std::string& name, const glm::vec4& values) override;
 
-  void SetInt(const std::string& name, int value) override;
-  void SetInt2(const std::string& name, const glm::vec2& vector) override;
-  void SetInt3(const std::string& name, const glm::vec3& vector) override;
-  void SetInt4(const std::string& name, const glm::vec4& vector) override;
+  void SetInt(const std::string& name, const int& value) override;
+  void SetInt2(const std::string& name, const glm::vec2& values) override;
+  void SetInt3(const std::string& name, const glm::vec3& values) override;
+  void SetInt4(const std::string& name, const glm::vec4& values) override;
 
-  void SetMat3(const std::string& name, const glm::mat3& matrix) override;
-  void SetMat4(const std::string& name, const glm::mat4& matrix) override;
+  void SetMat3(const std::string& name, const glm::mat3& values) override;
+  void SetMat4(const std::string& name, const glm::mat4& values) override;
 
   // ---------------------------- OPENGL SPECIFIC ------------------------------
 
-  /// @brief Upload an integer into the shader.
-  void UploadUniformInt(const std::string& name, const int& value);
+  /// @brief Upload a bool into the shader.
+  void UploadUniformBool(const std::string& name, const bool& value);
 
   /// @brief Upload a float into the shader.
   void UploadUniformFloat(const std::string& name, const float& value);
@@ -64,13 +64,26 @@ class OpenGLShader : public core::renderer::Shader {
   void UploadUniformFloat3(const std::string& name, const glm::vec3& values);
 
   /// @brief Allows the uploading of uniform float 4s into the shader.
-  void UploadUniformFloat4(const std::string& name, const glm::vec4& matrix);
+  void UploadUniformFloat4(const std::string& name, const glm::vec4& values);
+
+  /// @brief Upload an integer into the shader.
+  void UploadUniformInt(const std::string& name, const int& value);
+
+  /// @brief Upload a uniform 2 integers into the shader.
+  void UploadUniformInt2(const std::string& name, const glm::vec2& values);
+
+  /// @brief Upload a uniform 3 integers into the shader.
+  void UploadUniformInt3(const std::string& name, const glm::vec3& values);
+
+  /// @brief Upload a uniform 4 integers into the shader.
+  void UploadUniformInt4(const std::string& name, const glm::vec4& values);
 
   /// @brief Upload a uniform of Matrix 3s into the shader.
   void UploadUniformMat3(const std::string& name, const glm::mat3& matrix);
 
   /// @brief Upload a uniform of Matrix 4s into the shader.
   void UploadUniformMat4(const std::string& name, const glm::mat4& matrix);
+
  private:
   std::string ReadFile(const std::string& path);
   std::unordered_map<GLenum, std::string> PreProcess(
