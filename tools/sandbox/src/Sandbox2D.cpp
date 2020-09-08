@@ -47,7 +47,7 @@ void Sandbox2D::OnUpdate(lambda::core::util::TimeStep delta) {
       {0.5f, -0.5f}, {0.5f, 0.75f}, { 0.2f, 0.3f, 0.8f, 1.0f});
 
   renderer::Renderer2D::DrawQuad(
-      {0.2f, 0.5f}, {0.5f, 0.5f}, checkerboard_texture_);
+      {0.0f, 0.0f}, {10.0f, 10.0f}, checkerboard_texture_);
 
   renderer::Renderer2D::EndScene();
 }
