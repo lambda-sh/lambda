@@ -17,14 +17,14 @@ using Unique = std::unique_ptr<T>;
 template<typename T>
 using Shared = std::shared_ptr<T>;
 
-template<typename T, class... Args>
-Unique<T> CreateUnique(Args&&... args) {
-  return std::make_unique<T>(args...);
+template<typename T, typename... Args>
+constexpr Unique<T> CreateUnique(Args&&... args) {
+  return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
-template<typename T, class... Args>
-Shared<T> CreateShared(Args&&... args) {
-  return std::make_shared<T>(args...);
+template<typename T, typename... Args>
+constexpr Shared<T> CreateShared(Args&&... args) {
+  return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 }  // namespace memory
