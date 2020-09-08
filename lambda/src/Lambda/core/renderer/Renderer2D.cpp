@@ -21,7 +21,6 @@ namespace opengl = ::lambda::platform::opengl;
 /// @brief Internal storage for the 2D rendering API. It is not yet finalized.
 struct Renderer2DStorage {
   memory::Shared<VertexArray> QuadVertexArray;
-  memory::Shared<Shader> FlatColorShader;
   memory::Shared<Shader> TextureShader;
 };
 
@@ -61,8 +60,6 @@ void Renderer2D::Init() {
       indices, sizeof(indices) / sizeof(uint32_t));
 
   kRendererStorage->QuadVertexArray->SetIndexBuffer(index_buffer);
-  kRendererStorage->FlatColorShader = Shader::Create(
-      "assets/shaders/FlatColor.glsl");
 
   kRendererStorage->TextureShader = Shader::Create(
       "assets/shaders/Texture.glsl");
@@ -75,7 +72,6 @@ void Renderer2D::Init() {
 /// resources are freed once the renderers storage has been released.
 void Renderer2D::Shutdown() {
   kRendererStorage->QuadVertexArray.reset();
-  kRendererStorage->FlatColorShader.reset();
   kRendererStorage->TextureShader.reset();
 
   kRendererStorage.reset();
@@ -84,11 +80,6 @@ void Renderer2D::Shutdown() {
 /// @todo (C3NZ): This needs to be altered to not be dependent on OpenGL code
 /// and instead be implemented within the platform API.
 void Renderer2D::BeginScene(const OrthographicCamera& camera) {
-  kRendererStorage->FlatColorShader->Bind();
-
-  kRendererStorage->FlatColorShader->SetMat4(
-      "u_ViewProjection", camera.GetViewProjectionMatrix());
-
   kRendererStorage->TextureShader->Bind();
 
   kRendererStorage->TextureShader->SetMat4(
@@ -111,33 +102,8 @@ void Renderer2D::DrawQuad(
     const glm::vec3& position,
     const glm::vec2& size,
     const glm::vec4& color) {
-  kRendererStorage->FlatColorShader->Bind();
-  kRendererStorage->FlatColorShader->SetFloat4("u_Color", color);
-
-  // Translation, times rotation, times scale. (Must be in that order,
-  // since matrix multiplication has an effect on the output.)
-  // This allows the size to be set externally.
-  glm::mat4 transform = glm::translate(
-      glm::mat4(1.0f), position) * glm::scale(
-          glm::mat4(1.0f), {size.x, size.y, 1.0f});
-  kRendererStorage->FlatColorShader->SetMat4("u_Transform", transform);
-
-  kRendererStorage->QuadVertexArray->Bind();
-  RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);
-}
-
-void Renderer2D::DrawQuad(
-    const glm::vec2& position,
-    const glm::vec2& size,
-    core::memory::Shared<Texture2D> texture) {
-  DrawQuad({position.x, position.y, 0.0f}, size, texture);
-}
-
-void Renderer2D::DrawQuad(
-    const glm::vec3& position,
-    const glm::vec2& size,
-    core::memory::Shared<Texture2D> texture) {
   kRendererStorage->TextureShader->Bind();
+  kRendererStorage->TextureShader->SetFloat4("u_Color", color);
 
   // Translation, times rotation, times scale. (Must be in that order,
   // since matrix multiplication has an effect on the output.)
@@ -147,7 +113,34 @@ void Renderer2D::DrawQuad(
           glm::mat4(1.0f), {size.x, size.y, 1.0f});
   kRendererStorage->TextureShader->SetMat4("u_Transform", transform);
 
+  kRendererStorage->QuadVertexArray->Bind();
+  RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);
+}
+
+void Renderer2D::DrawQuad(
+    const glm::vec2& position,
+    const glm::vec2& size,
+    memory::Shared<Texture2D> texture) {
+  DrawQuad({position.x, position.y, 0.0f}, size, texture);
+}
+
+void Renderer2D::DrawQuad(
+    const glm::vec3& position,
+    const glm::vec2& size,
+    memory::Shared<Texture2D> texture) {
+  kRendererStorage->TextureShader->Bind();
+  kRendererStorage->TextureShader->SetFloat4("u_Color", glm::vec4(1.0f));
+
   texture->Bind();
+
+  // Translation, times rotation, times scale. (Must be in that order,
+  // since matrix multiplication has an effect on the output.)
+  // This allows the size to be set externally.
+  glm::mat4 transform = glm::translate(
+      glm::mat4(1.0f), position) * glm::scale(
+          glm::mat4(1.0f), {size.x, size.y, 1.0f});
+  kRendererStorage->TextureShader->SetMat4("u_Transform", transform);
+
 
   kRendererStorage->QuadVertexArray->Bind();
   RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);

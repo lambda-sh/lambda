@@ -35,7 +35,8 @@ OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
   }
 
   LAMBDA_CORE_ASSERT(
-      size_format && type_format, "Pixel format for {0} not supported.",
+      size_format && type_format,
+      "Pixel format for {0} not supported.",
       path_);
 
   // Create the texture and specify some meta information about it.
@@ -45,6 +46,12 @@ OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
   // Set the upscaling and downscaling functions to be linear.
   glTextureParameteri(renderer_ID_, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTextureParameteri(renderer_ID_, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+  // Sets the wrap parameter for texture coordinates if the texture is being
+  // scaled to larger sizes.
+  glTextureParameteri(renderer_ID_, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTextureParameteri(renderer_ID_, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
   glTextureSubImage2D(
       renderer_ID_,
       0,
