@@ -22,6 +22,7 @@ namespace opengl = ::lambda::platform::opengl;
 struct Renderer2DStorage {
   memory::Shared<VertexArray> QuadVertexArray;
   memory::Shared<Shader> TextureShader;
+  memory::Shared<Texture2D> WhiteTexture;
 };
 
 /// @brief A static instance of the renderers storage.
@@ -61,6 +62,13 @@ void Renderer2D::Init() {
 
   kRendererStorage->QuadVertexArray->SetIndexBuffer(index_buffer);
 
+  /// Create a simple and small white texture.
+  kRendererStorage->WhiteTexture = Texture2D::Create(1, 1);
+  uint32_t white_texture_data = 0xffffffff;
+  kRendererStorage->WhiteTexture->SetData(
+      &white_texture_data, sizeof(uint32_t));
+
+  // Create and bind our basic shader.
   kRendererStorage->TextureShader = Shader::Create(
       "assets/shaders/Texture.glsl");
   kRendererStorage->TextureShader->Bind();
@@ -102,8 +110,8 @@ void Renderer2D::DrawQuad(
     const glm::vec3& position,
     const glm::vec2& size,
     const glm::vec4& color) {
-  kRendererStorage->TextureShader->Bind();
   kRendererStorage->TextureShader->SetFloat4("u_Color", color);
+  kRendererStorage->WhiteTexture->Bind();
 
   // Translation, times rotation, times scale. (Must be in that order,
   // since matrix multiplication has an effect on the output.)
@@ -113,8 +121,10 @@ void Renderer2D::DrawQuad(
           glm::mat4(1.0f), {size.x, size.y, 1.0f});
   kRendererStorage->TextureShader->SetMat4("u_Transform", transform);
 
+  // Bind vertices, draw them, and then unbind the texture.
   kRendererStorage->QuadVertexArray->Bind();
   RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);
+  kRendererStorage->WhiteTexture->Unbind();
 }
 
 void Renderer2D::DrawQuad(
@@ -128,9 +138,7 @@ void Renderer2D::DrawQuad(
     const glm::vec3& position,
     const glm::vec2& size,
     memory::Shared<Texture2D> texture) {
-  kRendererStorage->TextureShader->Bind();
   kRendererStorage->TextureShader->SetFloat4("u_Color", glm::vec4(1.0f));
-
   texture->Bind();
 
   // Translation, times rotation, times scale. (Must be in that order,
@@ -141,9 +149,10 @@ void Renderer2D::DrawQuad(
           glm::mat4(1.0f), {size.x, size.y, 1.0f});
   kRendererStorage->TextureShader->SetMat4("u_Transform", transform);
 
-
+  // Bind vertices, draw them, and then unbind the texture.
   kRendererStorage->QuadVertexArray->Bind();
   RenderCommand::DrawIndexed(kRendererStorage->QuadVertexArray);
+  texture->Unbind();
 }
 
 }  // namespace renderer
