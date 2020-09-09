@@ -9,6 +9,26 @@ namespace lambda {
 namespace platform {
 namespace opengl {
 
+OpenGLTexture2D::OpenGLTexture2D(
+    uint32_t width, uint32_t height) :
+        width_(width),
+        height_(height),
+        size_format_(GL_RGBA8),
+        type_format_(GL_RGBA) {
+  // Create the texture and specify some meta information about it.
+  glCreateTextures(GL_TEXTURE_2D, 1, &renderer_ID_);
+  glTextureStorage2D(renderer_ID_, 1, size_format_, width_, height_);
+
+  // Set the upscaling and downscaling functions to be linear.
+  glTextureParameteri(renderer_ID_, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTextureParameteri(renderer_ID_, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+  // Sets the wrap parameter for texture coordinates if the texture is being
+  // scaled to larger sizes.
+  glTextureParameteri(renderer_ID_, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTextureParameteri(renderer_ID_, GL_TEXTURE_WRAP_T, GL_REPEAT);
+}
+
 OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
   int width, height, channels;
 
@@ -23,7 +43,7 @@ OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
 
   // Pixel size and type. Needed for allocating the correct amount of
   // memory with OpenGL.
-  int size_format = 0, type_format = 0;
+  GLenum size_format = 0, type_format = 0;
   switch(channels) {
     case 4:
       size_format = GL_RGBA8;
@@ -39,9 +59,12 @@ OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
       "Pixel format for {0} not supported.",
       path_);
 
+  size_format_ = size_format;
+  type_format_ = type_format;
+
   // Create the texture and specify some meta information about it.
   glCreateTextures(GL_TEXTURE_2D, 1, &renderer_ID_);
-  glTextureStorage2D(renderer_ID_, 1, size_format, width_, height_);
+  glTextureStorage2D(renderer_ID_, 1, size_format_, width_, height_);
 
   // Set the upscaling and downscaling functions to be linear.
   glTextureParameteri(renderer_ID_, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -59,7 +82,7 @@ OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
       0,
       width_,
       height_,
-      type_format,
+      type_format_,
       GL_UNSIGNED_BYTE,
       data);
 
@@ -69,9 +92,34 @@ OpenGLTexture2D::OpenGLTexture2D(const std::string& path) : path_(path) {
 
 OpenGLTexture2D::~OpenGLTexture2D() {}
 
+void OpenGLTexture2D::SetData(void* data, uint32_t size) {
+  uint32_t bytes_per_pixel = type_format_ == GL_RGBA ? 4 : 3;
+  LAMBDA_CORE_ASSERT(
+      size == width_ * height_ * bytes_per_pixel,
+      "The size of the data doesn't match the size specified for the texture.");
+  LAMBDA_CORE_ASSERT(data, "No data provided for setting the texture.");
+
+  glTextureSubImage2D(
+      renderer_ID_,
+      0,
+      0,
+      0,
+      width_,
+      height_,
+      type_format_,
+      GL_UNSIGNED_BYTE,
+      data);
+}
+
 // Default slot is always 0.
 void OpenGLTexture2D::Bind(uint32_t slot) const {
   glBindTextureUnit(slot, renderer_ID_);
+}
+
+// @todo Does this need to unbind the texture from it's slot or just unbind the
+//
+void OpenGLTexture2D::Unbind() const {
+  glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 }  // namespace opengl
