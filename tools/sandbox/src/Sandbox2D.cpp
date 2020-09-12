@@ -33,6 +33,8 @@ void Sandbox2D::OnAttach() {
 void Sandbox2D::OnDetach() {}
 
 void Sandbox2D::OnUpdate(lambda::core::util::TimeStep delta) {
+  lambda::profiler::Timer timer("Sandbox2D::OnUpdate");
+
   camera_controller_.OnUpdate(delta);
 
   renderer::RenderCommand::SetClearColor({ 0.1f, 0.1f, 0.1f, 1.0f });
