@@ -46,4 +46,8 @@
 #include "Lambda/core/renderer/Texture.h"
 #include "Lambda/core/renderer/VertexArray.h"
 
+// ---------------------------------- MEMORY -----------------------------------
+
+#include "Lambda/profiler/Timer.h"
+
 #endif  // LAMBDA_SRC_LAMBDA_H_
