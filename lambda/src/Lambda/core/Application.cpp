@@ -13,6 +13,7 @@
 #include "Lambda/core/util/Log.h"
 #include "Lambda/core/util/Reverse.h"
 #include "Lambda/core/util/Time.h"
+#include "Lambda/profiler/Profiler.h"
 
 namespace lambda {
 namespace core {
@@ -23,6 +24,7 @@ memory::Unique<Application> Application::kApplication_ = nullptr;
 /// and there isn't another application instance already running.
 Application::Application() {
   LAMBDA_CORE_ASSERT(!kApplication_, "Application already exists.");
+  LAMBDA_PROFILER_BEGIN_SESSION("Application", "Application.json");
   kApplication_.reset(this);
 
   window_ = Window::Create();
@@ -39,9 +41,11 @@ Application::Application() {
 /// destroyed, so that it's destructor is not called again.
 Application::~Application() {
   kApplication_.release();
+  LAMBDA_PROFILER_END_SESSION();
 }
 
 void Application::Run() {
+  LAMBDA_PROFILER_MEASURE_FUNCTION();
   while (running_) {
     util::Time current_frame_time;
     util::TimeStep time_step(last_frame_time_, current_frame_time);
@@ -64,6 +68,7 @@ void Application::Run() {
 }
 
 void Application::OnEvent(memory::Shared<events::Event> event) {
+  LAMBDA_PROFILER_MEASURE_FUNCTION();
   events::EventDispatcher dispatcher(event);
   dispatcher.Dispatch<events::WindowCloseEvent>(
       BIND_EVENT_FN(Application::OnWindowClosed));
@@ -80,11 +85,13 @@ void Application::OnEvent(memory::Shared<events::Event> event) {
 }
 
 void Application::PushLayer(memory::Shared<layers::Layer> layer) {
+  LAMBDA_PROFILER_MEASURE_FUNCTION();
   layer_stack_.PushLayer(layer);
   layer->OnAttach();
 }
 
 void Application::PushOverlay(memory::Shared<layers::Layer> layer) {
+  LAMBDA_PROFILER_MEASURE_FUNCTION();
   layer_stack_.PushOverlay(layer);
   layer->OnAttach();
 }

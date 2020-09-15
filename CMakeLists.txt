@@ -77,6 +77,7 @@ elseif (UNIX)
         PRIVATE LAMBDA_PLATFORM_LINUX
         PRIVATE LAMBDA_BUILD_DLL
         PRIVATE LAMBDA_DEBUG
+        PRIVATE LAMBDA_INCLUDE_PROFILER
     )
 endif()
 
@@ -127,13 +128,17 @@ if (${WITH_TOOL} STREQUAL "sandbox")
       message (STATUS ">>> Setting windows compile definitions for sandbox.")
       target_compile_definitions(
           sandbox
-          PRIVATE LAMBDA_PLATFORM_WINDOWS
+          PUBLIC LAMBDA_DEBUG
+          PUBLIC LAMBDA_PLATFORM_WINDOWS
+          PUBLIC LAMBDA_WITH_PROFILING
       )
   elseif (UNIX)
       message (STATUS ">>> Setting linux compile definitions for sandbox.")
       target_compile_definitions(
           sandbox
-          PRIVATE LAMBDA_PLATFORM_LINUX
+          PUBLIC LAMBDA_DEBUG
+          PUBLIC LAMBDA_PLATFORM_LINUX
+          PUBLIC LAMBDA_INCLUDE_PROFILER
       )
   endif()
   target_link_libraries(sandbox PRIVATE lambda)

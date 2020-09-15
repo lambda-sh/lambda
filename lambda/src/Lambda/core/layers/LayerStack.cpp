@@ -11,7 +11,17 @@ namespace layers {
 
 LayerStack::LayerStack() {}
 
-LayerStack::~LayerStack() {}
+/// Does one final detach on all of the layers when being closed out. This is
+/// for allowing all of the layers attached to the application to gracefully
+/// detach one more time before the application completes its shutdown.
+///
+/// @todo Should layers be gracefully handled or should it be up to the user to
+/// remove the layers before shutdown?
+LayerStack::~LayerStack() {
+  for (auto layer : layers_) {
+    layer->OnDetach();
+  }
+}
 
 void LayerStack::PushLayer(memory::Shared<Layer> layer) {
   layers_.emplace(layers_.begin() + layer_insert_location_, layer);
