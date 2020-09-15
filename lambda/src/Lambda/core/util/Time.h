@@ -28,8 +28,6 @@ typedef std::chrono::duration<int64_t, std::micro> Microseconds;
 typedef std::chrono::duration<int64_t, std::milli> Milliseconds;
 typedef std::chrono::duration<int64_t, std::deci> Seconds;
 
-// Forward declarations of both Time and DurationTo.
-
 class Time;
 
 template<FloatType T, typename Ratio>
@@ -44,9 +42,6 @@ class Time {
  public:
   /// @brief Create a new Time instance set to now.
   Time() noexcept : time_(Clock::now()) {}
-
-  /// @brief Create a new Time instance as a copy from another time instance.
-  Time(Time& t) noexcept : time_(t.GetTime()) {}
 
   /// @brief Create a time instance from another clocks time point.
   explicit Time(const TimePoint& t) noexcept : time_(t) {}
