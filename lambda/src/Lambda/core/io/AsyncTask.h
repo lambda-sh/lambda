@@ -1,7 +1,6 @@
 /// @file AsyncTask.h
 /// @brief A convenient wrapper for callback functions being dispatched into the
 /// event loop
-/// TODO(C3NZ): Add documentation for this file.
 #ifndef LAMBDA_SRC_LAMBDA_CORE_IO_ASYNCTASK_H_
 #define LAMBDA_SRC_LAMBDA_CORE_IO_ASYNCTASK_H_
 

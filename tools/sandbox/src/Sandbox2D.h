@@ -22,6 +22,9 @@ class Sandbox2D : public lambda::core::layers::Layer {
   lambda::core::OrthographicCameraController camera_controller_;
   glm::vec4 shader_color_ = {0.8f, 0.3f, 0.2f, 1.0f};
 
+  bool quad_size_increasing_ = true;
+  glm::vec2 quad_size_ = { 0.0, 0.0 };
+
   lambda::core::memory::Shared<lambda::core::renderer::Texture2D>
       checkerboard_texture_;
 

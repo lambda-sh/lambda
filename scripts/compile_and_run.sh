@@ -47,7 +47,8 @@ make -j $LAMBDA_cores
 # Go to the output binary and run it.
 pushd "builds/$LAMBDA_build/bin"
 ./"$LAMBDA_tool"
-popd  # "$1/bin"
+popd  # "builds/$LAMDA_build/bin"
+
 popd  # ROOT_DIR
 
 LAMBDA_INFO "$LAMBDA_tool and engine have been shutdown."
