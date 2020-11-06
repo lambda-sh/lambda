@@ -51,6 +51,25 @@ void Sandbox2D::OnUpdate(lambda::core::util::TimeStep delta) {
   renderer::Renderer2D::DrawQuad(
       {0.0f, 0.0f}, {10.0f, 10.0f}, checkerboard_texture_);
 
+
+  renderer::Renderer2D::DrawQuad(
+      {10.0f, 10.0f}, quad_size_, checkerboard_texture_);
+
+  // Clamp size so that 0.0f <= x >= 10
+  if (quad_size_.x >= 10.0f) {
+    quad_size_increasing_ = false;
+  } else if (quad_size_.x <= 0.0f) {
+    quad_size_increasing_ = true;
+  }
+
+  float scaling_factor = 0.009;
+
+  if (quad_size_increasing_) {
+    quad_size_ += scaling_factor;
+  } else {
+    quad_size_ -= scaling_factor;
+  }
+
   renderer::Renderer2D::EndScene();
 }
 
