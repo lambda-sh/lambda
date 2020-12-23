@@ -38,7 +38,7 @@ else
     LAMBDA_FATAL "You need to pass a build type in order to compile a tool."
 fi
 
-LAMBDA_INFO "Compiling the engine with make -j 8."
+LAMBDA_INFO "Compiling the engine with make -j $LAMBDA_cores."
 make -j $LAMBDA_cores
 
 # ------------------------- RUN THE REQUESTED TOOL ----------------------------
