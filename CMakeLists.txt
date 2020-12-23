@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.0.0)
 
 if (${DISTRIBUTION_BUILD})
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/builds/Dist/lib)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/builds/Dist/lib)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/builds/Dist/bin)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/bin)
 elseif (${CMAKE_BUILD_TYPE} STREQUAL "Release" OR ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
-        ${CMAKE_BINARY_DIR}/builds/${CMAKE_BUILD_TYPE}/lib)
+        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY
-        ${CMAKE_BINARY_DIR}/builds/${CMAKE_BUILD_TYPE}/lib)
+        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
-        ${CMAKE_BINARY_DIR}/builds/${CMAKE_BUILD_TYPE}/bin)
+        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
 endif()
 
 # ----------------------------------- SETTINGS ---------------------------------
@@ -31,15 +31,16 @@ file(
     GLOB_RECURSE
     LAMBDA_SRC
     ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.h
-    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.cpp
-)
+    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.cpp)
 
 add_library(lambda STATIC ${LAMBDA_SRC})
 
 set_target_properties(
     lambda
-    PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/Lambda.h
-)
+    PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/Lambda.h)
+
+set_target_properties(lambda PROPERTIES PREFIX "")
+set_target_properties(lambda PROPERTIES OUTPUT_NAME "lambda")
 
 target_include_directories(
     lambda
@@ -51,8 +52,7 @@ target_include_directories(
     PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/imgui
     PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/stb_image/src
     PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/readerwriterqueue
-    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/concurrentqueue
-)
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/concurrentqueue)
 
 if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for the lambda.")
@@ -63,7 +63,7 @@ if (WIN32)
         PRIVATE LAMBDA_PLATFORM_WINDOWS
         PRIVATE LAMBDA_BUILD_DLL
         PRIVATE LAMBDA_DEBUG
-    )
+        PRIVATE LAMBDA_INCLUDE_PROFILER)
 
     # Use a Multi threaded specific and DLL specific runtime for windows.
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
@@ -77,8 +77,7 @@ elseif (UNIX)
         PRIVATE LAMBDA_PLATFORM_LINUX
         PRIVATE LAMBDA_BUILD_DLL
         PRIVATE LAMBDA_DEBUG
-        PRIVATE LAMBDA_INCLUDE_PROFILER
-    )
+        PRIVATE LAMBDA_INCLUDE_PROFILER)
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
@@ -113,8 +112,7 @@ if (${WITH_TOOL} STREQUAL "sandbox")
       GLOB_RECURSE
       APP_SRC
       ${CMAKE_SOURCE_DIR}/tools/sandbox/src/*.h
-      ${CMAKE_SOURCE_DIR}/tools/sandbox/src/*.cpp
-  )
+      ${CMAKE_SOURCE_DIR}/tools/sandbox/src/*.cpp)
 
   add_executable(sandbox ${APP_SRC})
 
@@ -130,18 +128,18 @@ if (${WITH_TOOL} STREQUAL "sandbox")
           sandbox
           PUBLIC LAMBDA_DEBUG
           PUBLIC LAMBDA_PLATFORM_WINDOWS
-          PUBLIC LAMBDA_WITH_PROFILING
-      )
+          PUBLIC LAMBDA_WITH_PROFILING)
   elseif (UNIX)
       message (STATUS ">>> Setting linux compile definitions for sandbox.")
       target_compile_definitions(
           sandbox
           PUBLIC LAMBDA_DEBUG
           PUBLIC LAMBDA_PLATFORM_LINUX
-          PUBLIC LAMBDA_INCLUDE_PROFILER
-      )
+          PUBLIC LAMBDA_INCLUDE_PROFILER)
   endif()
+
   target_link_libraries(sandbox PRIVATE lambda)
+
 endif()
 
 # Load resources necessary for the executable to launch (Shaders, images, etc)
