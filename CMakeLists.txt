@@ -95,8 +95,6 @@ elseif(APPLE)
         "-framework OpenGL"
         "-framework IOKit"
         "-framework CoreVideo")
-
-    -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
