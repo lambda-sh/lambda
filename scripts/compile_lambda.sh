@@ -48,9 +48,9 @@ LAMBDA_ASSERT_LAST_COMMAND_OK \
 
 # ----------------------------------- BUILD ------------------------------------
 
-if [ $LAMBDA_os = "Linux" ] || [ $LAMBDA_os = "Macos" ]; then
+if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
     make -j "$LAMBDA_cores"
-elif [ $LAMBDA_os = "Windows" ]; then
+elif [ "$LAMBDA_os" = "Windows" ]; then
     MSBuild.exe "lambda.sln" //t:Rebuild //p:Configuration=$LAMBDA_build
 fi
 
