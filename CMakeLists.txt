@@ -91,6 +91,7 @@ elseif(APPLE)
 
     target_link_libraries(
         glfw
+        "-framework Foundation"
         "-framework Cocoa"
         "-framework OpenGL"
         "-framework IOKit"
