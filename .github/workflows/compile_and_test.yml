@@ -43,7 +43,7 @@ jobs:
 
       - name: Obtain Randr for glfw on Ubuntu.
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get install libxrandr-dev libxinerama-dev
+        run: sudo apt-get install xorg-dev
 
       - name: Add msbuild to PATH
         if: ${{ matrix.os == 'windows-latest' }}
