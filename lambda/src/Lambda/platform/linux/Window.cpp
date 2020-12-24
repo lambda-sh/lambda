@@ -81,7 +81,7 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
   context_->Init();
 
   glfwSetWindowUserPointer(window_, &properties_);
-  SetVerticalSync(true);
+  SetVerticalSync(false);
 
   glfwSetWindowSizeCallback(
       window_,
