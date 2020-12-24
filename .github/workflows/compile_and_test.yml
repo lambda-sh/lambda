@@ -41,6 +41,10 @@ jobs:
       - name: Run the projects setup.
         run: ./scripts/setup.sh --within-ci true
 
+      - name: Obtain Randr for glfw on Ubuntu.
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get install xrandr-dev
+
       - name: Add msbuild to PATH
         if: ${{ matrix.os == 'windows-latest' }}
         uses: microsoft/setup-msbuild@v1.0.2
