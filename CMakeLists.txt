@@ -89,7 +89,7 @@ elseif(APPLE)
         PRIVATE LAMBDA_DEBUG
         PRIVATE LAMBDA_INCLUDE_PROFILER)
 
-    target_link_options(
+    target_link_libraries(
         lambda
         "-framework Cocoa"
         "-framework OpenGL"
