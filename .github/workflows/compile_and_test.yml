@@ -19,14 +19,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
-        cpp-compiler: [ g++-10 ]
-        c-compiler: [ gcc-10 ]
         include:
           - os: ubuntu-latest
+            c-compiler: gcc-10
+            cpp-compiler: g++-10
             target: Linux
 
           - os: macos-latest
+            c-compiler: clang
+            cpp-compiler: clang++
             target: Macos
 
           - os: windows-latest
