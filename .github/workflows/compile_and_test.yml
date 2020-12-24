@@ -26,8 +26,8 @@ jobs:
             target: Linux
 
           - os: macos-latest
-            c-compiler: clang
-            cpp-compiler: clang++
+            c-compiler: gcc-9
+            cpp-compiler: g++-9
             target: Macos
 
           - os: windows-latest
