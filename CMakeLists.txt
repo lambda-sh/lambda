@@ -88,14 +88,6 @@ elseif(APPLE)
         PRIVATE LAMBDA_BUILD_DLL
         PRIVATE LAMBDA_DEBUG
         PRIVATE LAMBDA_INCLUDE_PROFILER)
-
-    target_link_libraries(
-        lambda
-        "-framework Cocoa"
-        "-framework OpenGL"
-        "-framework IOKit"
-        "-framework CoreFoundation"
-        "-framework CoreVideo")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
@@ -110,7 +102,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/glm)
 target_link_libraries(lambda glm)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/glfw)
-target_link_libraries(lambda glfw)
+target_link_libraries(lambda glfw ${GLFW_LIBRARIES})
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/imgui)
 target_link_libraries(lambda imgui)
