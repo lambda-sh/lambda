@@ -93,7 +93,9 @@ elseif(APPLE)
         lambda
         "-framework Cocoa"
         "-framework OpenGL"
-        "-framework IOKit")
+        "-framework IOKit"
+        "-framework CoreFoundation"
+        "-framework CoreVideo")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
