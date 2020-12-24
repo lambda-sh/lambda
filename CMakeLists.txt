@@ -88,14 +88,6 @@ elseif(APPLE)
         PRIVATE LAMBDA_BUILD_DLL
         PRIVATE LAMBDA_DEBUG
         PRIVATE LAMBDA_INCLUDE_PROFILER)
-
-    target_link_libraries(
-        glfw
-        "-framework Foundation"
-        "-framework Cocoa"
-        "-framework OpenGL"
-        "-framework IOKit"
-        "-framework CoreVideo")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
