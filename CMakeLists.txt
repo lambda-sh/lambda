@@ -19,7 +19,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(OpenGL_GL_PREFERENCE "GLVND")
 
@@ -30,8 +30,7 @@ project(lambda)
 file(
     GLOB_RECURSE
     LAMBDA_SRC
-    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.h
-    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.cpp)
+    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.h ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.cpp)
 
 add_library(lambda STATIC ${LAMBDA_SRC})
 
@@ -95,7 +94,8 @@ elseif(APPLE)
         "-framework AppKit"
         "-framework CoreData"
         "-framework Foundation")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+
+    set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
