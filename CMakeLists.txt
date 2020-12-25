@@ -95,7 +95,7 @@ elseif(APPLE)
         "-framework CoreData"
         "-framework Foundation")
 
-    set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
+    set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libstdc++")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
