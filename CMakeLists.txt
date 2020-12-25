@@ -88,6 +88,14 @@ elseif(APPLE)
         PRIVATE LAMBDA_BUILD_DLL
         PRIVATE LAMBDA_DEBUG
         PRIVATE LAMBDA_INCLUDE_PROFILER)
+
+    target_link_libraries(
+        lambda
+        "-framework Cocoa"
+        "-framework AppKit"
+        "-framework CoreData"
+        "-framework Foundation")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -x objective-c")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
