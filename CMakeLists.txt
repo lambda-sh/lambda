@@ -94,8 +94,7 @@ elseif(APPLE)
         "-framework AppKit"
         "-framework CoreData"
         "-framework Foundation")
-
-    set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libstdc++")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
