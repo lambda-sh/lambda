@@ -6,10 +6,10 @@
 #define LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
 
 #include <chrono>
-#include <concepts>
 #include <ratio>
 
 #include "Lambda/core/util/Assert.h"
+#include "Lambda/core/util/Concepts.h"
 
 namespace lambda {
 namespace core {
