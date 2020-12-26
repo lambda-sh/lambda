@@ -15,7 +15,10 @@ namespace lambda {
 namespace core {
 namespace util {
 
-
+/// @todo (C3NZ): There needs to be a way to support concepts as more than just
+/// macros on MacOS. This may work for now, but is definitely a bad practice
+/// that needs to be fixed by either building lambda with g++ on macos or by
+/// adding concept support in Clang.
 #ifndef LAMBDA_PLATFORM_MACOS
   template<class T>
   concept FloatType = std::is_floating_point<T>::value;
