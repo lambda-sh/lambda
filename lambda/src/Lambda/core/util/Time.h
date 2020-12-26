@@ -6,7 +6,6 @@
 #define LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
 
 #include <chrono>
-#include <type_traits>
 #include <ratio>
 
 #include "Lambda/core/util/Assert.h"
@@ -16,8 +15,13 @@ namespace lambda {
 namespace core {
 namespace util {
 
-template<class T>
-concept FloatType = std::is_floating_point<T>::value;
+
+#ifndef LAMBDA_PLATFORM_MACOS
+  template<class T>
+  concept FloatType = std::is_floating_point<T>::value;
+#else
+  typedef typename FloatType;
+#endif
 
 // Clock & Time typedefs
 typedef std::chrono::steady_clock Clock;
