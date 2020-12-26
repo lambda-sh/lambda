@@ -20,7 +20,7 @@ namespace util {
   template<class T>
   concept FloatType = std::is_floating_point<T>::value;
 #else
-  typedef typename FloatType;
+  #define FloatType typename
 #endif
 
 // Clock & Time typedefs
