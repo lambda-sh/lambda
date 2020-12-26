@@ -5,7 +5,6 @@
 #ifndef LAMBDA_PLATFORM_OPENGL_OPENGLTEXTURE_H_
 #define LAMBDA_PLATFORM_OPENGL_OPENGLTEXTURE_H_
 
-#include <bits/stdint-uintn.h>
 #include <glad/glad.h>
 #include <string>
 

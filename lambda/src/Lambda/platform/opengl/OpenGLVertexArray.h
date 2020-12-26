@@ -3,7 +3,6 @@
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLVERTEXARRAY_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLVERTEXARRAY_H_
 
-#include <bits/stdint-uintn.h>
 #include <vector>
 
 #include "Lambda/core/memory/Pointers.h"
