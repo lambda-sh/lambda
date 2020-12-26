@@ -66,7 +66,7 @@ if (WIN32)
     # Use a Multi threaded specific and DLL specific runtime for windows.
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
-elseif (UNIX)
+elseif (UNIX AND NOT APPLE)
     message (STATUS ">>> Setting linux compile definitions for the lambda.")
     target_compile_definitions(
         lambda
