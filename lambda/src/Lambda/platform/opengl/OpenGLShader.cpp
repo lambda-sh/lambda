@@ -1,5 +1,6 @@
 #include "Lambda/platform/opengl/OpenGLShader.h"
 
+#include <array>
 #include <string>
 #include <vector>
 #include <fstream>
