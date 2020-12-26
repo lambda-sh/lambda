@@ -91,10 +91,7 @@ elseif(APPLE)
     target_link_libraries(
         lambda
         "-framework Cocoa"
-        "-framework IOKit"
-        )
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libstdc++ -lc++abi")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+        "-framework IOKit")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
