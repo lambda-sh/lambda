@@ -15,7 +15,7 @@ namespace util {
 template<class Container>
 concept Iterable = std::ranges::bidirectional_range<Container>;
 #else
-  #define Iterable typename;
+  #define Iterable typename
 #endif  // LAMBDA_PLATFORM_MACOS
 
 /// @brief A clean container for iterating through any container that implements
