@@ -4,7 +4,6 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_IO_ASYNCTASK_H_
 #define LAMBDA_SRC_LAMBDA_CORE_IO_ASYNCTASK_H_
 
-#include <bits/stdint-uintn.h>
 #include <functional>
 
 #include "Lambda/core/memory/Pointers.h"
