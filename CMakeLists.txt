@@ -12,7 +12,6 @@ elseif (${CMAKE_BUILD_TYPE} STREQUAL "Release" OR ${CMAKE_BUILD_TYPE} STREQUAL "
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
         ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
 endif()
-
 # ----------------------------------- SETTINGS ---------------------------------
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -83,6 +82,7 @@ elseif(APPLE)
         lambda
         PUBLIC GLFW_INCLUDE_NONE
         PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD
+        PRIVATE LAMBDA_PLATFORM_MACOS
         PRIVATE LAMBDA_PLATFORM_LINUX
         PRIVATE LAMBDA_BUILD_DLL
         PRIVATE LAMBDA_DEBUG
