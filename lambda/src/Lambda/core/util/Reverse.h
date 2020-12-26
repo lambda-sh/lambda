@@ -3,21 +3,24 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_UTIL_REVERSE_H_
 #define LAMBDA_SRC_LAMBDA_CORE_UTIL_REVERSE_H_
 
-#include <ranges>
+#ifndef LAMBDA_PLATFORM_MACOS
+  #include <ranges>
+#endif  // LAMBDA_PLATFORM_MACOS
 
 namespace lambda {
 namespace core {
 namespace util {
-namespace internal {
 
+#ifndef LAMBDA_PLATFORM_MACOS
 template<class Container>
 concept Iterable = std::ranges::bidirectional_range<Container>;
-
-}  // namespace internal
+#else
+  #define Iterable typename;
+#endif  // LAMBDA_PLATFORM_MACOS
 
 /// @brief A clean container for iterating through any container that implements
 /// rbegin and rend.
-template<internal::Iterable Container>
+template<Iterable Container>
 class Reverse {
  public:
   explicit Reverse(Container& container) : container_(container) {}
