@@ -77,7 +77,7 @@ elseif (UNIX)
         PRIVATE LAMBDA_DEBUG
         PRIVATE LAMBDA_INCLUDE_PROFILER)
 elseif(APPLE)
-    message (STATUS ">>> Setting linux compile definitions for the lambda.")
+    message (STATUS ">>> Setting macos compile definitions for the lambda.")
     target_compile_definitions(
         lambda
         PUBLIC GLFW_INCLUDE_NONE
