@@ -3,8 +3,6 @@
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLBUFFER_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLBUFFER_H_
 
-#include <bits/stdint-uintn.h>
-
 #include "Lambda/core/renderer/Buffer.h"
 
 namespace lambda {
