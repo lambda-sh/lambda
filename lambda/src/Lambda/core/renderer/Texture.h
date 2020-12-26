@@ -3,7 +3,6 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_RENDERER_TEXTURE_H_
 #define LAMBDA_SRC_LAMBDA_CORE_RENDERER_TEXTURE_H_
 
-#include <bits/stdint-uintn.h>
 #include <string>
 
 #include "Lambda/core/memory/Pointers.h"
