@@ -9,7 +9,6 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_RENDERER_BUFFER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_RENDERER_BUFFER_H_
 
-#include <bits/stdint-uintn.h>
 #include <ostream>
 #include <string>
 #include <vector>
