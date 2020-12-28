@@ -6,6 +6,9 @@
 #include "Lambda/core/util/Assert.h"
 #include "Lambda/platform/opengl/OpenGLBuffer.h"
 
+using lambda::platform::opengl::OpenGLVertexBuffer;
+using lambda::platform::opengl::OpenGLIndexBuffer;
+
 namespace lambda {
 namespace core {
 namespace renderer {
@@ -18,8 +21,7 @@ memory::Shared<VertexBuffer> VertexBuffer::Create(
           false, "There is no rendering API being used/available.");
       return nullptr;
     case RendererAPI::API::OpenGL:
-      return memory::CreateShared<platform::opengl::OpenGLVertexBuffer>(
-          vertices, size);
+      return memory::CreateShared<OpenGLVertexBuffer>(vertices, size);
     default:
       LAMBDA_CORE_ASSERT(
           false,
@@ -36,8 +38,7 @@ memory::Shared<IndexBuffer> IndexBuffer::Create(
           false, "There is no rendering API being used/available.");
       return nullptr;
     case RendererAPI::API::OpenGL:
-      return memory::CreateShared<platform::opengl::OpenGLIndexBuffer>(
-          indices, count);
+      return memory::CreateShared<OpenGLIndexBuffer>(indices, count);
     default:
       LAMBDA_CORE_ASSERT(
           false,
