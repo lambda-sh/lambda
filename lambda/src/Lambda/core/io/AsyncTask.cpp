@@ -2,6 +2,8 @@
 
 #include "Lambda/core/util/Time.h"
 
+using lambda::core::util::Time;
+
 namespace lambda {
 namespace core {
 namespace io {
@@ -32,8 +34,7 @@ AsyncStatus AsyncTask::GetStatus() {
 /// Resets the task to execute at a future time. Usually done through the event
 /// loop.
 void AsyncTask::RescheduleTask(
-    core::util::Time new_execution_time,
-    core::util::Time new_expiration_time) {
+    Time new_execution_time, Time new_expiration_time) {
   execute_at_ = new_execution_time;
   expires_at_ = new_expiration_time;
 }

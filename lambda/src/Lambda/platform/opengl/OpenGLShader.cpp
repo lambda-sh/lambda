@@ -33,7 +33,6 @@ static GLenum ShaderTypeFromString(const std::string& shader_type) {
 
 }
 
-
 OpenGLShader::OpenGLShader(const std::string& path) {
   std::string shader_source = ReadFile(path);
   std::unordered_map<GLenum, std::string> shader_source_map =
@@ -253,7 +252,6 @@ void OpenGLShader::SetMat3(const std::string& name, const glm::mat3& matrix) {
 void OpenGLShader::SetMat4(const std::string& name, const glm::mat4& matrix) {
   UploadUniformMat4(name, matrix);
 }
-
 
 // ----------------------------- OPENGL SPECIFIC -------------------------------
 
