@@ -1,7 +1,5 @@
-/**
- * @file Time.h
- * @brief Cross platform timing utility for the game engine.
- */
+/// @file Time.h
+/// @brief Cross platform timing utility for the game engine.
 #ifndef LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
 #define LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
 
