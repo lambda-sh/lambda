@@ -1,5 +1,7 @@
 #include "Lambda/core/io/EventLoop.h"
 
+using lambda::core::util::Time;
+
 namespace lambda {
 namespace core {
 namespace io {
@@ -51,9 +53,9 @@ void EventLoop::Run() {
 
     // Reschedule the callback if it should be repeated.
     if (next_task->ShouldRepeat()) {
-      core::util::Time next_execution_time, next_expiration_time;
+      Time next_execution_time, next_expiration_time;
 
-      next_execution_time = core::util::Time().AddMilliseconds(
+      next_execution_time = Time().AddMilliseconds(
           next_task->GetIntervalInMilliseconds());
       next_expiration_time = next_execution_time.AddMilliseconds(5000);
 
