@@ -47,29 +47,20 @@ bool Time::HasPassed() const {
   return DurationTo<float, std::milli>(Time(), *this) < 0;
 }
 
-/// @brief Effectively an alias for getting the current time.
 Time Time::Now() { return Time(); }
 
-/// @brief Create an instance of Time that is a specified amount of
-/// nanoseconds into the future.
 Time Time::NanosecondsFromNow(int64_t nanoseconds) {
   return Time().AddMilliseconds(nanoseconds);
 }
 
-/// @brief Create an instance of Time that is a specified amount of
-/// Microseconds into the future.
 Time Time::MicrosecondsFromNow(int64_t microseconds) {
   return Time().AddMilliseconds(microseconds);
 }
 
-/// @brief Create an instance of Time that is a specified amount of
-/// Milliseconds into the future.
 Time Time::MillisecondsFromNow(int64_t milliseconds) {
   return Time().AddMilliseconds(milliseconds);
 }
 
-/// @brief Create an instance of Time that is a specified amount of Seconds
-/// into the future.
 Time Time::SecondsFromNow(int64_t seconds) {
   return Time().AddSeconds(seconds);
 }
