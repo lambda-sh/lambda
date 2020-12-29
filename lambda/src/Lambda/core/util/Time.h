@@ -36,6 +36,7 @@ typedef std::chrono::duration<int64_t, std::deci> Seconds;
 
 class Time;
 
+/// @brief Convert two Time instances into a duration of float type T.
 template<FloatType T, typename Ratio>
 const T DurationTo(const Time& start, const Time& end);
 
@@ -53,72 +54,51 @@ class Time {
   explicit Time(const TimePoint& t) noexcept : time_(t) {}
 
   /// @brief Get the time in seconds.
-  const TimePoint InSeconds() const {
-    return std::chrono::time_point_cast<std::chrono::seconds>(time_); }
+  const TimePoint InSeconds() const;
 
   /// @brief Get the time in Milliseconds.
-  const TimePoint InMilliSeconds() const {
-    return std::chrono::time_point_cast<std::chrono::milliseconds>(time_); }
+  const TimePoint InMilliSeconds() const;
 
   /// @brief Get the time in Microseconds.
-  const TimePoint InMicroSeconds() const {
-    return std::chrono::time_point_cast<std::chrono::microseconds>(time_); }
-
-  /// @brief Get the raw Timepoint of the wrapper.
-  const TimePoint GetTime() const { return time_; }
+  const TimePoint InMicroSeconds() const;
 
   /// @brief Add milliseconds to the current time and return a new Time
   /// instance.
-  Time AddMilliseconds(int64_t milliseconds) {
-    return Time(time_ + Milliseconds(milliseconds));
-  }
+  Time AddMilliseconds(int64_t milliseconds) const;
 
   /// @brief Add seconds to the current time and return a new instance.
-  Time AddSeconds(int64_t seconds) {
-    return Time(time_ + Seconds(seconds));
-  }
+  Time AddSeconds(int64_t seconds) const;
 
   /// @brief Check if this time is after another time.
-  bool IsAfter(const Time& t) {
-    return DurationTo<float, std::milli>(t, *this) < 0;
-  }
+  bool IsAfter(const Time& other_time) const;
 
   /// @brief Check if the time is before another time.
-  bool IsBefore(const Time& t) {
-    return DurationTo<float, std::milli>(t, *this) > 0;
-  }
+  bool IsBefore(const Time& other_time) const;
 
   /// @brief Check if the time has passed the current time..
-  bool HasPassed() {
-    return DurationTo<float, std::milli>(Time(), *this) < 0;
-  }
+  bool HasPassed() const;
+
+  /// @brief Get the raw Timepoint from our Time abstraction.
+  inline const TimePoint GetTimePoint() const { return time_; }
 
   /// @brief Effectively an alias for getting the current time.
-  static Time Now() { return Time(); }
+  static Time Now();
 
   /// @brief Create an instance of Time that is a specified amount of
   /// nanoseconds into the future.
-  static Time NanosecondsFromNow(int64_t nanoseconds) {
-    return Time().AddMilliseconds(nanoseconds);
-  }
+  static Time NanosecondsFromNow(int64_t nanoseconds);
 
   /// @brief Create an instance of Time that is a specified amount of
   /// Microseconds into the future.
-  static Time MicrosecondsFromNow(int64_t microseconds) {
-    return Time().AddMilliseconds(microseconds);
-  }
+  static Time MicrosecondsFromNow(int64_t microseconds);
 
   /// @brief Create an instance of Time that is a specified amount of
   /// Milliseconds into the future.
-  static Time MillisecondsFromNow(int64_t milliseconds) {
-    return Time().AddMilliseconds(milliseconds);
-  }
+  static Time MillisecondsFromNow(int64_t milliseconds);
 
   /// @brief Create an instance of Time that is a specified amount of Seconds
   /// into the future.
-  static Time SecondsFromNow(int64_t seconds) {
-    return Time().AddSeconds(seconds);
-  }
+  static Time SecondsFromNow(int64_t seconds);
 
  private:
   TimePoint time_;
@@ -154,14 +134,6 @@ class TimeStep {
   Time stop_;
 };
 
-/// @brief Convert two Time instances into a duration of float type T.
-///
-/// FloatType T is either a double or float.
-template<FloatType T, typename Ratio>
-const T DurationTo(const Time& start, const Time& stop) {
-  std::chrono::duration<T, Ratio> d(stop.GetTime() - start.GetTime());
-  return d.count();
-}
 
 }  // namespace util
 }  // namespace core
