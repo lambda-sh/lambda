@@ -1,5 +1,5 @@
 <p align="center" style="text-align:center;">
-  ![Lambda header](./lambda/assets/logos/lambda_header.png)
+<img src="https://media.githubusercontent.com/media/lambda-sh/lambda/main/lambda/assets/logos/lambda_header.png" />
 </p>
 
 ## Description
