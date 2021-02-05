@@ -1,7 +1,7 @@
 ﻿{
 	"configurations": [
 		{
-			"name": "x64-Debug (default)",
+			"name": "x64-Debug - Sandbox",
 			"generator": "Ninja",
 			"configurationType": "Debug",
 			"inheritEnvironments": [ "msvc_x64_x64" ],
@@ -19,7 +19,7 @@
 			]
 		},
 		{
-			"name": "x64-Release",
+			"name": "x64-Release - Sandbox",
 			"generator": "Ninja",
 			"configurationType": "RelWithDebInfo",
 			"buildRoot": "${projectDir}\\out\\build\\${name}",
