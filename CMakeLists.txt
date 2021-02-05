@@ -2,6 +2,8 @@
 
 cmake_minimum_required(VERSION 3.0.0)
 
+option(LAMBDA_BUILD_WITH_SANDBOX "Sandbox for testing lambda" OFF)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -10,7 +12,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(OpenGL_GL_PREFERENCE "GLVND")
 
-set(LAMBDA_BUILD_WITH_TOOL "sandbox")
 
 # ----------------------------------- LAMBDA -----------------------------------
 
@@ -52,10 +53,6 @@ if (WIN32)
         PRIVATE LAMBDA_BUILD_DLL
         PRIVATE LAMBDA_DEBUG
         PRIVATE LAMBDA_INCLUDE_PROFILER)
-
-    # Use a Multi threaded specific and DLL specific runtime for windows.
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
 elseif (UNIX AND NOT APPLE)
     message (STATUS ">>> Setting linux compile definitions for the lambda.")
     target_compile_definitions(
@@ -109,8 +106,7 @@ target_link_libraries(lambda readerwriterqueue)
 
 # ----------------------------------- SANDBOX ----------------------------------
 
-if (${LAMBDA_BUILD_WITH_TOOL} STREQUAL "sandbox")
-  project(sandbox)
+if (${LAMBDA_BUILD_WITH_SANDBOX})
 
   file(
       GLOB_RECURSE
