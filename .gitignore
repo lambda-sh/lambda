@@ -1,3 +1,6 @@
+# Visual studio build config
+.vs
+
 # output folder created from ./scripts/compile_lambda.sh
 build
 
