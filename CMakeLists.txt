@@ -1,18 +1,6 @@
-cmake_minimum_required(VERSION 3.0.0)
-
-if (${DISTRIBUTION_BUILD})
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/lib)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Dist/bin)
-else()
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
-        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY
-        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
-        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
-endif()
 # ----------------------------------- SETTINGS ---------------------------------
+
+cmake_minimum_required(VERSION 3.0.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -136,7 +124,7 @@ if (${LAMBDA_BUILD_WITH_TOOL} STREQUAL "sandbox")
     COPY
     ${CMAKE_SOURCE_DIR}/tools/sandbox/assets
     DESTINATION
-    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+    ${CMAKE_BINARY_DIR})
 
   if (WIN32)
       message (STATUS ">>> Setting windows compile definitions for sandbox.")
