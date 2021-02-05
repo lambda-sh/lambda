@@ -10,7 +10,13 @@
 			"cmakeCommandArgs": "",
 			"buildCommandArgs": "",
 			"ctestCommandArgs": "",
-			"variables": []
+			"variables": [
+				{
+					"name": "LAMBDA_BUILD_WITH_SANDBOX",
+					"value": "True",
+					"type": "BOOL"
+				}
+			]
 		},
 		{
 			"name": "x64-Release",
