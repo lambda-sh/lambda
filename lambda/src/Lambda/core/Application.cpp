@@ -69,6 +69,7 @@ void Application::Run() {
 
 void Application::OnEvent(memory::Shared<events::Event> event) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
+
   events::EventDispatcher dispatcher(event);
   dispatcher.Dispatch<events::WindowCloseEvent>(
       BIND_EVENT_FN(Application::OnWindowClosed));
