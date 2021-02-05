@@ -31,13 +31,13 @@ if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
         -DCMAKE_BUILD_TYPE="$LAMBDA_build" \
         -DDISTRIBUTION_BUILD=False \
         -DENGINE_DEVELOPMENT_MODE=True \
-        -DWITH_TOOL="None"
+        -DLAMBDA_BUILD_WITH_TOOL="None"
 elif [ "$LAMBDA_build" = "Dist" ]; then
     LAMBDA_INFO "Compiling a distribution build for the engine."
     cmake .. \
         -DCMAKE_BUILD_TYPE="Release" \
         -DDISTRIBUTION_BUILD=True \
-        -DWITH_TOOL="None"
+        -DLAMBDA_BUILD_WITH_TOOL="None"
 else
     LAMBDA_FATAL "You need to pass a build type in order to compile a tool."
 fi
