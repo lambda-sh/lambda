@@ -10,8 +10,6 @@
 #include "Lambda/core/Application.h"
 #include "Lambda/core/util/Log.h"
 
-#ifdef LAMBDA_PLATFORM_LINUX
-
 using lambda::core::Application;
 using lambda::core::memory::Unique;
 
@@ -30,5 +28,4 @@ int main() {
   return 0;
 }
 
-#endif  // LAMBDA_PLATFORM_LINUX
 #endif  // LAMBDA_SRC_LAMBDA_CORE_ENTRYPOINT_H_

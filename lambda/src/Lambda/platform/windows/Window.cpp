@@ -10,7 +10,6 @@
 #include "Lambda/core/events/KeyEvent.h"
 #include "Lambda/core/events/MouseEvent.h"
 #include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/util/Assert.h"
 #include "Lambda/core/util/Log.h"
 #include "Lambda/platform/opengl/OpenGLContext.h"
@@ -21,7 +20,7 @@ namespace lambda {
 #ifdef LAMBDA_PLATFORM_WINDOWS
 
 // Will create a windows based implementation of the window handler.
-memory::Shared<Window> Window::Create(
+core::memory::Shared<core::Window> core::Window::Create(
     const core::WindowProperties& properties) {
   return memory::CreateShared<platform::windows::WindowImplementation>(
       properties);
@@ -75,7 +74,7 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
 
   if (!GLFWInitialized) {
     int success = glfwInit();
-    LAMBDA_CORE_ASSERT(success, "Could not initialize GLFW!");
+    LAMBDA_CORE_ASSERT(success, "Could not initialize GLFW!", "");
     glfwSetErrorCallback(GLFWErrorCallback);
     GLFWInitialized = true;
   }

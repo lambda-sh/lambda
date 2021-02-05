@@ -34,7 +34,7 @@ void EventLoop::Run() {
     // Still waiting to execute.
     if (task_status == AsyncStatus::Deferred) {
       bool has_space = event_queue_.enqueue(std::move(next_task));
-      LAMBDA_CORE_ASSERT(has_space, "The Event loop has run out of space")
+      LAMBDA_CORE_ASSERT(has_space, "The Event loop has run out of space with {} nodes", size_);
       continue;
     }
 
@@ -61,7 +61,7 @@ void EventLoop::Run() {
 
       next_task->RescheduleTask(next_execution_time, next_expiration_time);
       bool has_space = event_queue_.enqueue(std::move(next_task));
-      LAMBDA_CORE_ASSERT(has_space, "The Event loop has run out of space")
+      LAMBDA_CORE_ASSERT(has_space, "The Event loop has run out of space with {} nodes", size_);
     }
   }
 }
@@ -90,7 +90,7 @@ bool EventLoop::Dispatch(
 // Private dispatch for putting the task into the queue.
 bool EventLoop::Dispatch(UniqueAsyncTask task) {
   bool has_space = event_queue_.enqueue(std::move(task));
-  LAMBDA_CORE_ASSERT(has_space, "The Event loop has run out of space")
+  LAMBDA_CORE_ASSERT(has_space, "The Event loop has run out of space with {} nodes", size_);
   return has_space;
 }
 

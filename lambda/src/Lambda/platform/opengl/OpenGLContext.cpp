@@ -13,7 +13,7 @@ namespace opengl {
 
 OpenGLContext::OpenGLContext(GLFWwindow* window_handle)
     : window_handle_(window_handle) {
-  LAMBDA_CORE_ASSERT(window_handle_, "The window handle is null.");
+  LAMBDA_CORE_ASSERT(window_handle_, "The window handle is null.", "");
 }
 
 void OpenGLContext::Init() {
@@ -22,7 +22,7 @@ void OpenGLContext::Init() {
   // Initialize glad with glfw proc address.
   int status = gladLoadGLLoader(
       reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
-  LAMBDA_CORE_ASSERT(status, "Failed to initialize glad.");
+  LAMBDA_CORE_ASSERT(status, "Failed to initialize glad.", "");
 
   LAMBDA_CORE_INFO(
       "OpenGL Renderer: {0} - {1} - {2}",

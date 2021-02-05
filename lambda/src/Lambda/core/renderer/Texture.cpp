@@ -14,7 +14,7 @@ memory::Shared<Texture2D> Texture2D::Create(uint32_t width, uint32_t height) {
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
       LAMBDA_CORE_ASSERT(
-          false, "There is no rendering API being used/available");
+          false, "There is no rendering API being used/available", "");
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<platform::opengl::OpenGLTexture2D>(
@@ -22,7 +22,8 @@ memory::Shared<Texture2D> Texture2D::Create(uint32_t width, uint32_t height) {
     default:
       LAMBDA_CORE_ASSERT(
           false,
-          "The renderer has been set to a graphics API that isn't supported");
+          "The renderer has been set to a graphics API that isn't supported",
+          "");
       return nullptr;
   }
 }
@@ -31,14 +32,15 @@ memory::Shared<Texture2D> Texture2D::Create(const std::string& path) {
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
       LAMBDA_CORE_ASSERT(
-          false, "There is no rendering API being used/available.");
+          false, "There is no rendering API being used/available.", "");
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<platform::opengl::OpenGLTexture2D>(path);
     default:
       LAMBDA_CORE_ASSERT(
           false,
-          "The Renderer has been set to a graphics API that isn't supported.");
+          "The Renderer has been set to a graphics API that isn't supported.",
+          "");
       return nullptr;
   }
 }

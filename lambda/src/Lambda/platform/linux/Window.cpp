@@ -64,7 +64,7 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
 
   if (!GLFWInitialized) {
     int success = glfwInit();
-    LAMBDA_CORE_ASSERT(success, "Could not initialize GLFW!");
+    LAMBDA_CORE_ASSERT(success, "Could not initialize GLFW!", "");
     glfwSetErrorCallback(GLFWErrorCallback);
     GLFWInitialized = true;
   }

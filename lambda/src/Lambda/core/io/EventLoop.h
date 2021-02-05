@@ -28,7 +28,7 @@ namespace io {
 class EventLoop {
  public:
   explicit EventLoop(uint32_t size = 256)
-      : running_(true), event_queue_(size) {}
+      : running_(true), size_(size), event_queue_(size_) {}
 
   /// @brief Runs the event loop. This will block any thread it's running in and
   /// should not be used in the main thread.
@@ -49,14 +49,13 @@ class EventLoop {
       core::util::Time execute_at = core::util::Time(),
       core::util::Time expire_at = core::util::Time().AddSeconds(6));
 
- private:
+private:
+  bool running_;
+  uint32_t size_;
+  moodycamel::ConcurrentQueue<UniqueAsyncTask> event_queue_;
+
   /// @brief Private dispatch that is used after a task is created.
   bool Dispatch(UniqueAsyncTask task);
-
-  bool running_;
-  /// TODO(C3NZ): Investigate into the performance of std::atomic
-  // vs using a mutex.
-  moodycamel::ConcurrentQueue<UniqueAsyncTask> event_queue_;
 };
 
 }  // namespace io
