@@ -22,6 +22,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(OpenGL_GL_PREFERENCE "GLVND")
 
+set(LAMBDA_BUILD_WITH_TOOL "sandbox")
+
 # ----------------------------------- LAMBDA -----------------------------------
 
 project(lambda)
@@ -119,7 +121,7 @@ target_link_libraries(lambda readerwriterqueue)
 
 # ----------------------------------- SANDBOX ----------------------------------
 
-if (${WITH_TOOL} STREQUAL "sandbox")
+if (${LAMBDA_BUILD_WITH_TOOL} STREQUAL "sandbox")
   project(sandbox)
 
   file(
