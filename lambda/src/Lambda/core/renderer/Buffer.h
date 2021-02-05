@@ -51,7 +51,7 @@ static uint32_t ShaderDataTypeSize(ShaderDataType type) {
     case ShaderDataType::Int4: return 4 * 4;
     case ShaderDataType::Mat3: return 4 * 3 * 3;
     case ShaderDataType::Mat4: return 4 * 4 * 4;
-    default: LAMBDA_CORE_ASSERT(false, "Not a provided Shader type"); return 0;
+    default: LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
   }
 }
 
@@ -69,7 +69,7 @@ static uint32_t ShaderDataTypeComponentCount(ShaderDataType type) {
     case ShaderDataType::Int4: return 4;
     case ShaderDataType::Mat3: return 3 * 3;
     case ShaderDataType::Mat4: return 4 * 4;
-    default: LAMBDA_CORE_ASSERT(false, "Not a provided Shader type"); return 0;
+    default: LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
   }
 }
 

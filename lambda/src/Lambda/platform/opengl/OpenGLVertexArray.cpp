@@ -27,7 +27,7 @@ static GLenum ShaderDataTypeToOpenGLBaseType(
     case core::renderer::ShaderDataType::Int: return GL_INT ;
     case core::renderer::ShaderDataType::Mat3: return GL_FLOAT;
     case core::renderer::ShaderDataType::Mat4: return GL_FLOAT;
-    default: LAMBDA_CORE_ASSERT(false, "Unknown shader type."); return 0;
+    default: LAMBDA_CORE_ASSERT(false, "Unknown shader type.", ""); return 0;
   }
 }
 
@@ -55,7 +55,7 @@ void OpenGLVertexArray::AddVertexBuffer(
 
   uint32_t index = 0;
   const core::renderer::BufferLayout& layout = vertex_buffer->GetLayout();
-  LAMBDA_CORE_ASSERT(layout.HasElements(), "The vertex buffer doesn't have a layout.");
+  LAMBDA_CORE_ASSERT(layout.HasElements(), "The vertex buffer doesn't have a layout.", "");
 
   for (const core::renderer::BufferElement& element : layout) {
     glEnableVertexAttribArray(index);

@@ -23,6 +23,7 @@
 /// is false.
 
 #if LAMBDA_ENABLE_ASSERTS
+
   #define LAMBDA_CLIENT_ASSERT(assertion, message, ...) { \
       if (!(assertion)) { \
           LAMBDA_CLIENT_ERROR( \
@@ -34,7 +35,7 @@
   #define LAMBDA_CORE_ASSERT(assertion, message, ...) { \
       if (!(assertion)) { \
           LAMBDA_CORE_ERROR( \
-              "Assertion failed for the condition [{}]: "#message, \
+              "Assertion failed for {}: "#message, \
               #assertion, \
               ##__VA_ARGS__); \
           LAMBDA_DEBUG_BREAK(); }}

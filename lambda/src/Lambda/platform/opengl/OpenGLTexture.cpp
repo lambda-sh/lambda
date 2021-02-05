@@ -96,8 +96,9 @@ void OpenGLTexture2D::SetData(void* data, uint32_t size) {
   uint32_t bytes_per_pixel = type_format_ == GL_RGBA ? 4 : 3;
   LAMBDA_CORE_ASSERT(
       size == width_ * height_ * bytes_per_pixel,
-      "The size of the data doesn't match the size specified for the texture.");
-  LAMBDA_CORE_ASSERT(data, "No data provided for setting the texture.");
+      "The size of the data doesn't match the size specified for the texture.",
+      "");
+  LAMBDA_CORE_ASSERT(data, "No data provided for setting the texture.", "");
 
   glTextureSubImage2D(
       renderer_ID_,

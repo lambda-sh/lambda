@@ -21,14 +21,14 @@ memory::Shared<Shader> Shader::Create(const std::string& path) {
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
       LAMBDA_CORE_ASSERT(
-          false, "There is no rendering API being used/available.");
+          false, "There is no rendering API being used/available.", "");
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<platform::opengl::OpenGLShader>(path);
     default:
       LAMBDA_CORE_ASSERT(
           false,
-          "The Renderer has been set to a graphics API that isn't supported.");
+          "The Renderer has been set to a graphics API that isn't supported.", "");
       return nullptr;
   }
 }
@@ -40,7 +40,7 @@ memory::Shared<Shader> Shader::Create(
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
       LAMBDA_CORE_ASSERT(
-          false, "There is no rendering API being used/available.");
+          false, "There is no rendering API being used/available.", "");
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<platform::opengl::OpenGLShader>(
@@ -48,7 +48,8 @@ memory::Shared<Shader> Shader::Create(
     default:
       LAMBDA_CORE_ASSERT(
           false,
-          "The Renderer has been set to a graphics API that isn't supported.");
+          "The Renderer has been set to a graphics API that isn't supported.",
+          "");
       return nullptr;
   }
 }
@@ -57,7 +58,8 @@ void ShaderLibrary::Add(const memory::Shared<Shader>& shader) {
   const std::string& name = shader->GetName();
   LAMBDA_CORE_ASSERT(
       shader_mapping_.find(name) == shader_mapping_.end(),
-      "Shader is already stored within the engine.")
+      "Shader is already stored within the engine.",
+      "");
 
   shader_mapping_[name] = shader;
   LAMBDA_CORE_TRACE("Added the shader: {0}", name);
@@ -67,7 +69,8 @@ void ShaderLibrary::Add(
     const std::string& name, const memory::Shared<Shader>& shader) {
   LAMBDA_CORE_ASSERT(
       shader_mapping_.find(name) == shader_mapping_.end(),
-      "Shader is already stored within the engine.")
+      "Shader is already stored within the engine.",
+      "");
 
   shader_mapping_[name] = shader;
   LAMBDA_CORE_TRACE("Added the shader: {0}", name);
@@ -89,8 +92,9 @@ memory::Shared<Shader> ShaderLibrary::Load(
 
 memory::Shared<Shader> ShaderLibrary::Get(const std::string& name) {
   LAMBDA_CORE_ASSERT(
-    shader_mapping_.find(name) != shader_mapping_.end(),
-    "Failed to get the shader: {0}", name);
+      shader_mapping_.find(name) != shader_mapping_.end(),
+      "Failed to get the shader: {0}", 
+      name);
   return shader_mapping_[name];
 }
 

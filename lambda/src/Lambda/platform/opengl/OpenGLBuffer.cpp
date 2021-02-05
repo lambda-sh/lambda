@@ -36,7 +36,8 @@ OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t* indices, uint32_t count)
     : count_(count) {
   LAMBDA_CORE_ASSERT(
       count > 0,
-      "There must be more than 0 indices in order to create an index buffer");
+      "There must be more than 0 indices in order to create an index buffer",
+      "");
 
   glCreateBuffers(1, &renderer_ID_);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer_ID_);

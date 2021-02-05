@@ -31,7 +31,7 @@ static GLenum ShaderTypeFromString(const std::string& shader_type) {
   }
 }
 
-}
+}  // namespace
 
 OpenGLShader::OpenGLShader(const std::string& path) {
   std::string shader_source = ReadFile(path);
@@ -105,7 +105,7 @@ std::unordered_map<GLenum, std::string> OpenGLShader::PreProcess(
   while (position != std::string::npos) {
     // Find the end of type declaration.
     size_t end_of_line = shader_source.find_first_of("\r\n", position);
-    LAMBDA_CORE_ASSERT(end_of_line != std::string::npos, "Syntax error");
+    LAMBDA_CORE_ASSERT(end_of_line != std::string::npos, "Syntax error", "");
 
     // Read the shader type in and assert that it's a valid type.
     size_t shader_declaration_start = position + type_token_length + 1;
@@ -139,7 +139,7 @@ std::unordered_map<GLenum, std::string> OpenGLShader::PreProcess(
 
 void OpenGLShader::Compile(
     const std::unordered_map<GLenum, std::string>& shader_source_map) {
-  LAMBDA_CORE_ASSERT(shader_source_map.size() <= 3, "Too many shaders loaded")
+  LAMBDA_CORE_ASSERT(shader_source_map.size() <= 3, "Too many shaders loaded", "")
   GLuint program = glCreateProgram();
   std::array<GLuint, 3> gl_shader_ids;
 

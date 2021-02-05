@@ -18,14 +18,15 @@ memory::Shared<VertexBuffer> VertexBuffer::Create(
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
       LAMBDA_CORE_ASSERT(
-          false, "There is no rendering API being used/available.");
+          false, "There is no rendering API being used/available.", "");
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<OpenGLVertexBuffer>(vertices, size);
     default:
       LAMBDA_CORE_ASSERT(
           false,
-          "The Renderer has been set to a graphics API that isn't supported.");
+          "The Renderer has been set to a graphics API that isn't supported.",
+          "");
       return nullptr;
   }
 }
@@ -35,14 +36,14 @@ memory::Shared<IndexBuffer> IndexBuffer::Create(
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
       LAMBDA_CORE_ASSERT(
-          false, "There is no rendering API being used/available.");
+          false, "There is no rendering API being used/available.", "");
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<OpenGLIndexBuffer>(indices, count);
     default:
       LAMBDA_CORE_ASSERT(
           false,
-          "The Renderer has been set to a graphics API that isn't supported.");
+          "The Renderer has been set to a graphics API that isn't supported.", "");
       return nullptr;
   }
 }
