@@ -7,13 +7,14 @@ pushd $ROOT_DIR
 
 # -------------------- SETUP ARGUMENTS AND LAMBDA SHELL ------------------------
 
-source scripts/lambda.sh
+source lambda-sh/lambda.sh
 
 LAMBDA_PARSE_ARG tool sandbox "The tool to compile and run."
 LAMBDA_PARSE_ARG build Release "The type of build to produce."
 LAMBDA_PARSE_ARG cores 8 "The amount of cores to use for compiling."
 LAMBDA_PARSE_ARG c-compiler gcc "The compiler to use for C code."
 LAMBDA_PARSE_ARG cpp-compiler g++ "The compiler to use for C++ code."
+LAMBDA_PARSE_ARG clean false "Cleans the build directory"
 
 LAMBDA_COMPILE_ARGS $@
 
@@ -21,34 +22,43 @@ LAMBDA_COMPILE_ARGS $@
 
 export CC=$LAMBDA_c_compiler CXX=$LAMBDA_cpp_compiler
 
-if [ $LAMBDA_build = "Release" ] || [ $LAMBDA_build = "Debug" ]; then
+if [ "$LAMBDA_clean" = "true" ]; then
+    rm -r "$ROOT_DIR/build"
+fi
+
+mkdir -p build
+pushd build > /dev/null
+
+if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
     LAMBDA_INFO "Compiling a $LAMBDA_build build for the engine."
-    cmake \
+    cmake .. \
         -DCMAKE_BUILD_TYPE="$LAMBDA_build" \
         -DDISTRIBUTION_BUILD=False \
-        -DLAMBDA_BUILD_WITH_TOOL="$LAMBDA_tool" \
-        -DENGINE_DEVELOPMENT_MODE=True .
+        -DENGINE_DEVELOPMENT_MODE=True \
+        -DLAMBDA_BUILD_WITH_SANDBOX=True
 elif [ "$LAMBDA_build" = "Dist" ]; then
     LAMBDA_INFO "Compiling a distribution build for the engine."
-    cmake \
+    cmake .. \
         -DCMAKE_BUILD_TYPE="Release" \
-        -DLAMBDA_BUILD_WITH_TOOL="$LAMBDA_tool" \
-        -DDISTRIBUTION_BUILD=True .
+        -DDISTRIBUTION_BUILD=True \
+        -DLAMBDA_BUILD_WITH_SANDBOX=True
 else
     LAMBDA_FATAL "You need to pass a build type in order to compile a tool."
 fi
 
-LAMBDA_INFO "Compiling the engine with make -j $LAMBDA_cores."
-make -j $LAMBDA_cores
 
-# ------------------------- RUN THE REQUESTED TOOL ----------------------------
+LAMBDA_ASSERT_LAST_COMMAND_OK \
+    "Couldn't generate the cmake files necessary for compiling lambda."
 
+# ----------------------------------- BUILD ------------------------------------
 
-# Go to the output binary and run it.
-pushd "builds/$LAMBDA_build/bin"
-./"$LAMBDA_tool"
-popd  # "builds/$LAMDA_build/bin"
+if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
+    make -j "$LAMBDA_cores"
+elif [ "$LAMBDA_os" = "Windows" ]; then
+    MSBuild.exe "lambda.sln" //t:Rebuild //p:Configuration=$LAMBDA_build
+fi
 
+popd  # "build"
 popd  # ROOT_DIR
 
 LAMBDA_INFO "$LAMBDA_tool and engine have been shutdown."
