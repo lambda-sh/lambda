@@ -12,7 +12,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(OpenGL_GL_PREFERENCE "GLVND")
 
-
 # ----------------------------------- LAMBDA -----------------------------------
 
 project(lambda)
@@ -49,20 +48,20 @@ if (WIN32)
         lambda
         PUBLIC GLFW_INCLUDE_NONE
         PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD
-        PRIVATE LAMBDA_PLATFORM_WINDOWS
-        PRIVATE LAMBDA_BUILD_DLL
-        PRIVATE LAMBDA_DEBUG
-        PRIVATE LAMBDA_INCLUDE_PROFILER)
+        PUBLIC LAMBDA_PLATFORM_WINDOWS
+        PUBLIC LAMBDA_BUILD_DLL
+        PUBLIC LAMBDA_DEBUG
+        PUBLIC LAMBDA_INCLUDE_PROFILER)
 elseif (UNIX AND NOT APPLE)
     message (STATUS ">>> Setting linux compile definitions for the lambda.")
     target_compile_definitions(
         lambda
         PUBLIC GLFW_INCLUDE_NONE
         PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD
-        PRIVATE LAMBDA_PLATFORM_LINUX
-        PRIVATE LAMBDA_BUILD_DLL
-        PRIVATE LAMBDA_DEBUG
-        PRIVATE LAMBDA_INCLUDE_PROFILER)
+        PUBLIC LAMBDA_PLATFORM_LINUX
+        PUBLIC LAMBDA_BUILD_DLL
+        PUBLIC LAMBDA_DEBUG
+        PUBLIC LAMBDA_INCLUDE_PROFILER)
 elseif(APPLE)
     message (STATUS ">>> Setting macos compile definitions for the lambda.")
     target_compile_definitions(
@@ -128,7 +127,7 @@ if (${LAMBDA_BUILD_WITH_SANDBOX})
           sandbox
           PUBLIC LAMBDA_DEBUG
           PUBLIC LAMBDA_PLATFORM_WINDOWS
-          PUBLIC LAMBDA_WITH_PROFILING)
+          PUBLIC LAMBDA_INCLUDE_PROFILER)
   elseif (UNIX)
       message (STATUS ">>> Setting linux compile definitions for sandbox.")
       target_compile_definitions(
