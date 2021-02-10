@@ -13,17 +13,6 @@ namespace lambda {
 namespace core {
 namespace util {
 
-/// @todo (C3NZ): There needs to be a way to support concepts as more than just
-/// macros on MacOS. This may work for now, but is definitely a bad practice
-/// that needs to be fixed by either building lambda with g++ on macos or by
-/// adding concept support in Clang.
-#ifndef LAMBDA_PLATFORM_MACOS
-  template<class T>
-  concept FloatType = std::is_floating_point<T>::value;
-#else
-  #define FloatType typename
-#endif
-
 // Clock & Time typedefs
 typedef std::chrono::steady_clock Clock;
 typedef std::chrono::time_point<Clock> TimePoint;
@@ -33,12 +22,6 @@ typedef std::chrono::duration<int64_t, std::nano> Nanoseconds;
 typedef std::chrono::duration<int64_t, std::micro> Microseconds;
 typedef std::chrono::duration<int64_t, std::milli> Milliseconds;
 typedef std::chrono::duration<int64_t, std::deci> Seconds;
-
-class Time;
-
-/// @brief Convert two Time instances into a duration of float type T.
-template<FloatType T, typename Ratio>
-const T DurationTo(const Time& start, const Time& end);
 
 /// @brief A platform independent clock implementation that is monotonic and
 /// used.
@@ -104,28 +87,35 @@ class Time {
   TimePoint time_;
 };
 
+/// typename T is either a double or float.
+template<typename T, typename Ratio>
+const T DurationTo(const Time& start, const Time& stop) {
+  std::chrono::duration<T, Ratio> d(stop.GetTimePoint() - start.GetTimePoint());
+  return d.count();
+}
+
 /// @brief Measuring the delta between two different times.
 class TimeStep {
  public:
   TimeStep(Time start, Time stop) : start_(start), stop_(stop) {}
 
   /// @brief Get the timestep in seconds.
-  template<FloatType T>
+  template<typename T>
   const T InSeconds() const {
     return DurationTo<T, std::deci>(start_, stop_); }
 
   /// @brief Get the timestep in milliseconds.
-  template<FloatType T>
+  template<typename T>
   const T InMilliSeconds() const {
     return DurationTo<T, std::milli>(start_, stop_); }
 
   /// @brief Get the timestep in microseconds.
-  template<FloatType T>
+  template<typename T>
   const T InMicroSeconds() const {
     return DurationTo<T, std::micro>(start_, stop_); }
 
   /// @brief Get the timestep in nanoseconds.
-  template<FloatType T>
+  template<typename T>
   const T InNanoSeconds() const {
     return DurationTo<T, std::nano>(start_, stop_); }
 

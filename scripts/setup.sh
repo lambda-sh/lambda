@@ -10,6 +10,7 @@ pushd "$ROOT_DIR" > /dev/null
 # Load git submodules.
 git submodule update --init --recursive
 
+
 # ------------------------------- LAMBDA-SH SETUP ------------------------------
 
 source lambda-sh/lambda.sh
@@ -23,6 +24,11 @@ LAMBDA_COMPILE_ARGS $@
 if [ "$LAMBDA_within_ci" = true ]; then
     exit
 fi
+
+# ------------------------------ INSTALL LFS ASSETS ----------------------------
+
+git lfs install
+LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to initialize git lfs"
 
 # ------------------------------ PRE-COMMIT SETUP ------------------------------
 

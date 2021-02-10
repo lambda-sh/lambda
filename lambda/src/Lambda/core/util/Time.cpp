@@ -6,12 +6,6 @@ namespace lambda {
 namespace core {
 namespace util {
 
-/// FloatType T is either a double or float.
-template<FloatType T, typename Ratio>
-const T DurationTo(const Time& start, const Time& stop) {
-  std::chrono::duration<T, Ratio> d(stop.GetTimePoint() - start.GetTimePoint());
-  return d.count();
-}
 
 // ----------------------------------- TIME ------------------------------------
 
