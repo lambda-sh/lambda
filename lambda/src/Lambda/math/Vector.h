@@ -16,7 +16,7 @@ class Vector {
     : size_(size), elements_(elements) {}
   explicit Vector(std::vector<T> elements) : elements_(elements) {}
 
-  const std::vector<T>& const GetRawElements() { return elements_; }
+  const std::vector<T>& GetRawElements() { return elements_; }
 
  private:
   size_t size_;
