@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <vector>
 
-#include <lambda/core/memory/Pointers.h>
+#include <Lambda/core/memory/Pointers.h>
 
 namespace lambda {
 namespace math {
