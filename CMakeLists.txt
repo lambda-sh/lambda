@@ -2,7 +2,8 @@
 
 cmake_minimum_required(VERSION 3.0.0)
 
-option(LAMBDA_BUILD_WITH_SANDBOX "Sandbox for testing lambda" OFF)
+option(LAMBDA_TOOLS_BUILD_SANDBOX "Sandbox for testing lambda" OFF)
+option(LAMBDA_TOOLS_BUILD_MATH "Sandbox for testing math functions" OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -105,7 +106,7 @@ target_link_libraries(lambda readerwriterqueue)
 
 # ----------------------------------- SANDBOX ----------------------------------
 
-if (${LAMBDA_BUILD_WITH_SANDBOX})
+if (${LAMBDA_TOOLS_BUILD_SANDBOX})
 
   file(
       GLOB_RECURSE
@@ -136,9 +137,39 @@ if (${LAMBDA_BUILD_WITH_SANDBOX})
           PUBLIC LAMBDA_PLATFORM_LINUX
           PUBLIC LAMBDA_INCLUDE_PROFILER)
   endif()
-  target_link_libraries(sandbox PRIVATE lambda)
 
+  target_link_libraries(sandbox PRIVATE lambda)
 endif()
+
+if (${LAMBDA_TOOLS_BUILD_MATH})
+
+  file(
+      GLOB_RECURSE
+      APP_SRC
+      ${CMAKE_SOURCE_DIR}/tools/math/src/*.h
+      ${CMAKE_SOURCE_DIR}/tools/math/src/*.cpp)
+
+  add_executable(mathbox ${APP_SRC})
+
+  if (WIN32)
+      message (STATUS ">>> Setting windows compile definitions for sandbox.")
+      target_compile_definitions(
+          mathbox
+          PUBLIC LAMBDA_DEBUG
+          PUBLIC LAMBDA_PLATFORM_WINDOWS
+          PUBLIC LAMBDA_INCLUDE_PROFILER)
+  elseif (UNIX)
+      message (STATUS ">>> Setting linux compile definitions for sandbox.")
+      target_compile_definitions(
+          mathbox
+          PUBLIC LAMBDA_DEBUG
+          PUBLIC LAMBDA_PLATFORM_LINUX
+          PUBLIC LAMBDA_INCLUDE_PROFILER)
+  endif()
+
+  target_link_libraries(mathbox PRIVATE lambda)
+endif()
+
 
 # Load resources necessary for the executable to launch (Shaders, images, etc)
 # file(COPY ${CMAKE_BINARY_DIR}/res DESTINATION ${CMAKE_BINARY_DIR}/bin/res)
