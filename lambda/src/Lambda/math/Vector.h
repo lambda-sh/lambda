@@ -1,7 +1,6 @@
 #ifndef LAMBDA_SRC_LAMBDA_MATH_VECTOR_H_
 #define LAMBDA_SRC_LAMBDA_MATH_VECTOR_H_
 
-#include <stdint.h>
 #include <vector>
 
 #include <Lambda/core/memory/Pointers.h>
@@ -12,9 +11,10 @@ namespace math {
 template<class T>
 class Vector {
  public:
-  Vector(size_t size, std::vector<T> elements)
+  Vector(const size_t size, std::vector<T> elements)
     : size_(size), elements_(elements) {}
-  explicit Vector(std::vector<T> elements) : elements_(elements) {}
+  explicit Vector(std::vector<T> elements)
+    : size_(elements.size()), elements_(elements) {}
 
   const std::vector<T>& GetRawElements() { return elements_; }
 
