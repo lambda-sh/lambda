@@ -1,6 +1,7 @@
 #ifndef LAMBDA_SRC_LAMBDA_MATH_VECTOR_H_
 #define LAMBDA_SRC_LAMBDA_MATH_VECTOR_H_
 
+#include <array>
 #include <vector>
 
 #include <Lambda/core/memory/Pointers.h>
@@ -8,29 +9,42 @@
 
 namespace lambda::math {
 
-template<class T>
+/// @brief Implementation for Vectors of varying length.
+/// @tparam Type is the type of the element being stored within Container.
+/// @tparam Container The container to use for storing elements within.
+template<class Type = Real, class Container = std::vector<Type>>
 class Vector {
  public:
-  Vector(const size_t size, std::vector<T> elements)
-    : size_(size), elements_(elements) {}
-  explicit Vector(std::vector<T> elements)
-    : size_(elements.size()), elements_(elements) {}
+  Vector(const size_t size, Container elements)
+    : size_(size), elements_(std::move(elements)) {}
 
-  const std::vector<T>& GetRawElements() { return elements_; }
+  explicit Vector(Container elements)
+    : size_(elements.size()), elements_(std::move(elements)) {}
+
+  const Container& GetRawElements() { return elements_; }
 
   [[nodiscard]] size_t GetSize() const { return size_; }
 
- private:
+ protected:
   size_t size_;
-  std::vector<T> elements_;
+  Container elements_;
 };
 
-template<class T>
-class Vector3 {
+/// @brief Implementation for Vectors of length 3.
+class Vector3 : Vector<Real, std::array<Real, 3>> {
  public:
-  Vector3() : x_position_(0), y_position_(0), z_position_(0) {}
- private:
-  Real x_position_, y_position_, z_position_;
+  Vector3() : Vector(3, {0, 0, 0}) {}
+  Vector3(const Real x, const Real y, const Real z)
+    : Vector(3, {x, y, z}) {}
+
+  inline void SetX(const Real x) { elements_[0] = x; }
+  [[nodiscard]] inline Real GetX() const { return elements_[0]; }
+
+  inline void SetY(const Real y) { elements_[0] = y; }
+  [[nodiscard]] inline Real GetY() const { return elements_[1]; }
+
+  inline void SetZ(const Real z) { elements_[0] = z; }
+  [[nodiscard]] inline Real GetZ() const { return elements_[2]; }
 };
 
 }  // namespace lambda::math
