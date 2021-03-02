@@ -13,6 +13,8 @@ int TestMath() {
   for (auto value : values) {
     LAMBDA_CORE_INFO("Value in Vector: {0}", value);
   }
+
+  return 0;
 }
 
 Unique<Application> lambda::core::CreateApplication() {

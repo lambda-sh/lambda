@@ -11,9 +11,7 @@
 #include "Lambda/core/util/Assert.h"
 #include "Lambda/core/util/Log.h"
 
-namespace lambda {
-namespace platform {
-namespace opengl {
+namespace lambda::platform::opengl {
 
 namespace {
 
@@ -35,11 +33,11 @@ static GLenum ShaderTypeFromString(const std::string& shader_type) {
 
 OpenGLShader::OpenGLShader(const std::string& path) {
   std::string shader_source = ReadFile(path);
-  std::unordered_map<GLenum, std::string> shader_source_map =
+  const std::unordered_map<GLenum, std::string> shader_source_map =
       PreProcess(shader_source);
   Compile(shader_source_map);
 
-  unsigned long last_slash = path.find_last_of("/\\");
+  auto last_slash = path.find_last_of("/\\");
 
   // Remove the last slash if necessary.
   if (last_slash == std::string::npos) {
@@ -48,8 +46,8 @@ OpenGLShader::OpenGLShader(const std::string& path) {
     last_slash += 1;
   }
 
-  unsigned long last_extension = path.rfind('.');
-  unsigned long shader_name_length;
+  const auto last_extension = path.rfind('.');
+  unsigned long long shader_name_length;
 
   // Trim the extension if necessary.
   if (last_extension == std::string::npos) {
@@ -99,12 +97,12 @@ std::unordered_map<GLenum, std::string> OpenGLShader::PreProcess(
   std::unordered_map<GLenum, std::string> shader_source_map;
 
   const char* type_token = "#type";
-  size_t type_token_length = strlen(type_token);
+  const size_t type_token_length = strlen(type_token);
   size_t position = shader_source.find(type_token, 0);
 
   while (position != std::string::npos) {
     // Find the end of type declaration.
-    size_t end_of_line = shader_source.find_first_of("\r\n", position);
+    const size_t end_of_line = shader_source.find_first_of("\r\n", position);
     LAMBDA_CORE_ASSERT(end_of_line != std::string::npos, "Syntax error", "");
 
     // Read the shader type in and assert that it's a valid type.
@@ -141,7 +139,7 @@ void OpenGLShader::Compile(
     const std::unordered_map<GLenum, std::string>& shader_source_map) {
   LAMBDA_CORE_ASSERT(shader_source_map.size() <= 3, "Too many shaders loaded", "")
   GLuint program = glCreateProgram();
-  std::array<GLuint, 3> gl_shader_ids;
+  std::array<GLuint, 3> gl_shader_ids{};
 
   int shader_count = 0;
   for (auto& pair : shader_source_map) {
@@ -175,7 +173,7 @@ void OpenGLShader::Compile(
   }
 
   glLinkProgram(program);
-  int program_linked = GL_FALSE;
+  auto program_linked = GL_FALSE;
   glGetProgramiv(program, GL_LINK_STATUS, &program_linked);
 
   if (program_linked == GL_FALSE) {
@@ -187,14 +185,14 @@ void OpenGLShader::Compile(
 
     glDeleteProgram(program);
 
-    for (GLuint id : gl_shader_ids) {
+    for (auto id : gl_shader_ids) {
       glDeleteShader(id);
     }
 
     LAMBDA_CORE_ERROR("Linking failure: {0}", info_log.data());
   }
 
-  for (GLuint id : gl_shader_ids) {
+  for (auto id : gl_shader_ids) {
     glDetachShader(renderer_ID_, id);
   }
 
@@ -269,58 +267,56 @@ void OpenGLShader::UploadUniformFloat(
 
 void OpenGLShader::UploadUniformFloat2(
     const std::string& name, const glm::vec2& values) {
-  GLint location = glGetUniformLocation(renderer_ID_, name.c_str());
+  const GLint location = glGetUniformLocation(renderer_ID_, name.c_str());
   glUniform2f(location, values.x, values.y);
 }
 
 void OpenGLShader::UploadUniformFloat3(
     const std::string& name, const glm::vec3& values) {
-  GLint location = glGetUniformLocation(renderer_ID_, name.c_str());
+  const auto location = glGetUniformLocation(renderer_ID_, name.c_str());
   glUniform3f(location, values.x, values.y, values.z);
 }
 
 void OpenGLShader::UploadUniformFloat4(
     const std::string& name, const glm::vec4& values) {
-  GLint location = glGetUniformLocation(renderer_ID_, name.c_str());
+  const auto location = glGetUniformLocation(renderer_ID_, name.c_str());
   glUniform4f(location, values.x, values.y, values.z, values.a);
 }
 
 void OpenGLShader::UploadUniformInt(
     const std::string& name, const int& value) {
-  GLint location = glGetUniformLocation(renderer_ID_, name.c_str());
+  const auto location = glGetUniformLocation(renderer_ID_, name.c_str());
   glUniform1i(location, value);
 }
 
 void OpenGLShader::UploadUniformInt2(
     const std::string& name, const glm::vec2& values) {
-  GLint location = glGetUniformLocation(renderer_ID_, name.c_str());
+  const auto location  = glGetUniformLocation(renderer_ID_, name.c_str());
   glUniform2i(location, values.x, values.y);
 }
 
 void OpenGLShader::UploadUniformInt3(
     const std::string& name, const glm::vec3& values) {
-  GLint location = glGetUniformLocation(renderer_ID_, name.c_str());
+  const auto location = glGetUniformLocation(renderer_ID_, name.c_str());
   glUniform3i(location, values.x, values.y, values.z);
 }
 
 void OpenGLShader::UploadUniformInt4(
     const std::string& name, const glm::vec4& values) {
-  GLint location = glGetUniformLocation(renderer_ID_, name.c_str());
+  const auto location = glGetUniformLocation(renderer_ID_, name.c_str());
   glUniform4i(location, values.x, values.y, values.z, values.a);
 }
 
 void OpenGLShader::UploadUniformMat3(
     const std::string& name, const glm::mat3& matrix) {
-  uint32_t location = glGetUniformLocation(renderer_ID_, name.c_str());
+  const auto location = glGetUniformLocation(renderer_ID_, name.c_str());
   glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
 
 void OpenGLShader::UploadUniformMat4(
     const std::string& name, const glm::mat4& matrix) {
-  uint32_t location = glGetUniformLocation(renderer_ID_, name.c_str());
+  const auto location = glGetUniformLocation(renderer_ID_, name.c_str());
   glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
 
-}  // namespace opengl
-}  // namespace platform
-}  // namespace lambda
+}  // namespace lambda::platform::opengl
