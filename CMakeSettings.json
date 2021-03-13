@@ -47,7 +47,7 @@
       ]
     },
     {
-      "name": "x64-Debug - Math",
+      "name": "mvsc-x64-Debug - Math",
       "generator": "Ninja",
       "configurationType": "Debug",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
@@ -65,7 +65,7 @@
       ]
     },
     {
-      "name": "x64-Release - Math",
+      "name": "mvsc-x64-Release - Math",
       "generator": "Ninja",
       "configurationType": "Release",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
@@ -74,6 +74,24 @@
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "msvc_x64_x64" ],
+      "variables": [
+        {
+          "name": "LAMBDA_TOOLS_BUILD_MATH",
+          "value": "True",
+          "type": "BOOL"
+        }
+      ]
+    },
+    {
+      "name": "clang-x64-Debug - Math",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "clang_cl_x64_x64" ],
       "variables": [
         {
           "name": "LAMBDA_TOOLS_BUILD_MATH",

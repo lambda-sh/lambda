@@ -6,11 +6,9 @@ using lambda::core::memory::Unique;
 using lambda::core::memory::CreateUnique;
 
 int TestMath() {
-  lambda::math::Vector<float> v({ 3.0, 3.0 });
+  auto v = lambda::math::Vector3();
 
-  auto values = v.GetRawElements();
-
-  for (auto value : values) {
+  for (auto value : v.GetRawElements()) {
     LAMBDA_CORE_INFO("Value in Vector: {0}", value);
   }
 
