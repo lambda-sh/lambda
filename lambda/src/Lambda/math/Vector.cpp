@@ -1,6 +1,3 @@
-#include <Lambda/math/Vector.h>
+namespace lambda::math {
 
-namespace lambda {
-namespace math {
-}  // namespace math
-}  // namespace lambda
+}  // namespace lambda::math
