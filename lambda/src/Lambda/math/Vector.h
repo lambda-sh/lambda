@@ -35,12 +35,18 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
  public:
   Vector3() : Vector({0, 0, 0}) {}
 
+  /// @brief Set the x component of the current vector.
+  /// @param x
   inline void SetX(const Real x) { elements_[0] = x; }
   [[nodiscard]] inline Real GetX() const { return elements_[0]; }
 
+  /// @brief Set the y component of the current vector.
+  /// @param y
   inline void SetY(const Real y) { elements_[1] = y; }
   [[nodiscard]] inline Real GetY() const { return elements_[1]; }
 
+  /// @brief Set the z component of the current vector.
+  /// @param z
   inline void SetZ(const Real z) { elements_[2] = z; }
   [[nodiscard]] inline Real GetZ() const { return elements_[2]; }
 };
