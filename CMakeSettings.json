@@ -1,7 +1,7 @@
 ﻿{
   "configurations": [
     {
-      "name": "msvc-x64-Debug - Sandbox",
+      "name": "sandbox-msvc64-debug",
       "generator": "Ninja",
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64_x64" ],
@@ -29,9 +29,9 @@
       ]
     },
     {
-      "name": "msvc-x64-Release - Sandbox",
+      "name": "sandbox-msvc64-release",
       "generator": "Ninja",
-      "configurationType": "RelWithDebInfo",
+      "configurationType": "Release",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
@@ -47,7 +47,7 @@
       ]
     },
     {
-      "name": "msvc-x64-Debug - Math",
+      "name": "mathbox-msvc64-debug",
       "generator": "Ninja",
       "configurationType": "Debug",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
@@ -65,7 +65,7 @@
       ]
     },
     {
-      "name": "msvc-x64-Release - Math",
+      "name": "mathbox-msvc64-release",
       "generator": "Ninja",
       "configurationType": "Release",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
@@ -83,7 +83,7 @@
       ]
     },
     {
-      "name": "clang-x64-Debug - Math",
+      "name": "mathbox-clang64-debug",
       "generator": "Ninja",
       "configurationType": "Debug",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
@@ -101,7 +101,7 @@
       ]
     },
     {
-      "name": "clang-x64-Release - Math",
+      "name": "mathbox-clang64-release",
       "generator": "Ninja",
       "configurationType": "Release",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
@@ -119,7 +119,7 @@
       ]
     },
     {
-      "name": "clang-x64-Release - Sandbox",
+      "name": "sandbox-clang64-release",
       "generator": "Ninja",
       "configurationType": "Release",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
@@ -137,7 +137,7 @@
       ]
     },
     {
-      "name": "clang-x64-Debug - Sandbox",
+      "name": "sandbox-clang64-debug",
       "generator": "Ninja",
       "configurationType": "Debug",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
