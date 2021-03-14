@@ -1,4 +1,4 @@
-project(mathbox)
+project(sandbox)
 
 file(
     GLOB_RECURSE
@@ -6,22 +6,28 @@ file(
     src/*.h
     src/*.cpp)
 
-add_executable(mathbox ${APP_SRC})
+add_executable(sandbox ${APP_SRC})
+
+file(
+  COPY
+  assets
+  DESTINATION
+  ${CMAKE_BINARY_DIR})
 
 if (WIN32)
-    message (STATUS ">>> Setting windows compile definitions for Mathbox.")
+    message (STATUS ">>> Setting windows compile definitions for sandbox.")
     target_compile_definitions(
-        mathbox
+        sandbox
         PUBLIC LAMBDA_DEBUG
         PUBLIC LAMBDA_PLATFORM_WINDOWS
         PUBLIC LAMBDA_INCLUDE_PROFILER)
 elseif (UNIX)
-    message (STATUS ">>> Setting linux compile definitions for Mathbox.")
+    message (STATUS ">>> Setting linux compile definitions for sandbox.")
     target_compile_definitions(
-        mathbox
+        sandbox
         PUBLIC LAMBDA_DEBUG
         PUBLIC LAMBDA_PLATFORM_LINUX
         PUBLIC LAMBDA_INCLUDE_PROFILER)
 endif()
 
-target_link_libraries(mathbox PRIVATE lambda)
+target_link_libraries(sandbox PRIVATE lambda)
