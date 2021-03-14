@@ -12,7 +12,7 @@ file(
   COPY
   assets
   DESTINATION
-  ${CMAKE_BINARY_DIR})
+  ${CMAKE_BINARY_DIR}/tools/sandbox)
 
 if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for sandbox.")
