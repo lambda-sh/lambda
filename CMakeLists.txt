@@ -107,38 +107,7 @@ target_link_libraries(lambda readerwriterqueue)
 # ----------------------------------- SANDBOX ----------------------------------
 
 if (${LAMBDA_TOOLS_BUILD_SANDBOX})
-
-  file(
-      GLOB_RECURSE
-      APP_SRC
-      ${CMAKE_SOURCE_DIR}/tools/sandbox/src/*.h
-      ${CMAKE_SOURCE_DIR}/tools/sandbox/src/*.cpp)
-
-  add_executable(sandbox ${APP_SRC})
-
-  file(
-    COPY
-    ${CMAKE_SOURCE_DIR}/tools/sandbox/assets
-    DESTINATION
-    ${CMAKE_BINARY_DIR})
-
-  if (WIN32)
-      message (STATUS ">>> Setting windows compile definitions for sandbox.")
-      target_compile_definitions(
-          sandbox
-          PUBLIC LAMBDA_DEBUG
-          PUBLIC LAMBDA_PLATFORM_WINDOWS
-          PUBLIC LAMBDA_INCLUDE_PROFILER)
-  elseif (UNIX)
-      message (STATUS ">>> Setting linux compile definitions for sandbox.")
-      target_compile_definitions(
-          sandbox
-          PUBLIC LAMBDA_DEBUG
-          PUBLIC LAMBDA_PLATFORM_LINUX
-          PUBLIC LAMBDA_INCLUDE_PROFILER)
-  endif()
-
-  target_link_libraries(sandbox PRIVATE lambda)
+  add_subdirectory(${CMAKE_SOURCE_DIR}/tools/sandbox)
 endif()
 
 if (${LAMBDA_TOOLS_BUILD_MATH})
