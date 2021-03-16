@@ -4,7 +4,6 @@
 #include <array>
 #include <vector>
 
-#include <Lambda/core/memory/Pointers.h>
 #include <Lambda/math/Precision.h>
 
 namespace lambda::math {

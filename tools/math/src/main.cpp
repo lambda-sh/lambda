@@ -1,6 +1,8 @@
 #include <Lambda/Lambda.h>
 #include <Lambda/core/Entrypoint.h>
+#include <Lambda/math/Precision.h>
 #include <Lambda/math/Vector.h>
+#include <Lambda/math/shapes/Point.h>
 
 using lambda::core::memory::Unique;
 using lambda::core::memory::CreateUnique;
@@ -10,6 +12,14 @@ int TestMath() {
 
   for (auto value : v.GetRawElements()) {
     LAMBDA_CORE_INFO("Value in Vector: {0}", value);
+  }
+
+  lambda::math::shapes::Point2D<lambda::math::Real> graph[2000];
+
+  for (int i; i <= 2000; i += 1) {
+    lambda::math::Real x = (i - 1000) / 100;
+    graph[i].x = x;
+    graph[i].y = sin(x * 10) / (1.0 + x * x);
   }
 
   return 0;

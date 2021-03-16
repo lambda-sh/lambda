@@ -7,7 +7,7 @@ namespace lambda::math::shapes {
 
 /// @brief A container for a set of 2D points
 /// @tparam Precision The precision of the grid the points will use.
-template<typename Precision = Real>
+template<typename Precision = lambda::math::Real>
 struct Point2D {
   Precision x;
   Precision y;
@@ -15,7 +15,7 @@ struct Point2D {
 
 /// @brief A container for a set of 3D points
 /// @tparam Precision The precision of the grid the points will use.
-template<typename Precision = Real>
+template<typename Precision = lambda::math::Real>
 struct Point3D {
   Precision x;
   Precision y;
