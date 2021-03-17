@@ -20,7 +20,7 @@ namespace renderer {
 /// Implemented by platform specific APIs.
 class VertexArray {
  public:
-  virtual ~VertexArray() {}
+  virtual ~VertexArray() = default;
 
   /// @brief Bind the VertexArray to the GPU.
   virtual void Bind() const = 0;
