@@ -9,15 +9,16 @@
 namespace lambda::math::plot {
 
 /// @brief Graph config for specifying the
+template<class Precision = lambda::math::Real>
 struct GraphConfig {
   std::string Name;
-  int Minimum_X_;
-  int Maximum_X_;
-  int Minimum_Y_;
-  int Maximum_Y_;
+  Precision Minimum_X_;
+  Precision Maximum_X_;
+  Precision Minimum_Y_;
+  Precision Maximum_Y_;
 };
 
-template<class Points = lambda::math::shapes::Point2D<>>
+template<class Points = lambda::math::shapes::Point2D<lambda::math::Real>>
 class Graph {
  public:
   explicit Graph(std::vector<Points> points) : points_(points) {}
