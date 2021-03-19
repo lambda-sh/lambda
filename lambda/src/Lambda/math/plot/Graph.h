@@ -14,10 +14,15 @@ struct GraphConfig {
   std::string Name;
   Precision Min_x;
   Precision Max_x;
-  Precision Min_z;
+  Precision Min_y;
   Precision Max_y;
 };
 
+/// @brief The graph parameters.
+/// @tparam Precision The precision to use for the point system.
+/// @tparam Point The point system to use for the graph.
+/// @tparam Points The list of points to store the graph in (Must utilize
+/// the same type as Point in the storage system.)
 template<
   class Precision = lambda::math::Real,
   class Point = lambda::math::shapes::Point2D<Precision>,
@@ -31,7 +36,7 @@ class Graph2D {
   /// @brief Construct a graph from a configuration struct and the set of
   /// points to apply the config to.
   /// @param graph_config The configuration to use for the graph.
-  /// @param points The points to utilize for constructing the grahp.
+  /// @param points The points to utilize for constructing the graph.
   Graph2D(GraphConfig<> graph_config, Points points);
 
   /// @brief The x position that the graph should start from.
