@@ -18,7 +18,7 @@ struct GraphConfig {
   Precision Maximum_Y_;
 };
 
-template<class Points = lambda::math::shapes::Point2D<lambda::math::Real>>
+template<class Points = lambda::math::shapes::Point2D<>>
 class Graph {
  public:
   explicit Graph(std::vector<Points> points) : points_(points) {}
