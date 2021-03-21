@@ -16,7 +16,7 @@ int TestMath() {
 
   lambda::math::shapes::Point2D<lambda::math::Real> points[2000];
 
-  for (int i; i <= 2000; i += 1) {
+  for (int i = 0; i < 2000; i += 1) {
     lambda::math::Real x = (i - 1000) / 100;
     points[i].x = x;
     points[i].y = sin(x * 10) / (1.0 + x * x);

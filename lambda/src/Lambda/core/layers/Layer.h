@@ -4,14 +4,11 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_LAYERS_LAYER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_LAYERS_LAYER_H_
 
-#include "Lambda/core/Core.h"
 #include "Lambda/core/events/Event.h"
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/util/Time.h"
 
-namespace lambda {
-namespace core {
-namespace layers {
+namespace lambda::core::layers {
 
 /// @brief The lambda Layer abstraction. Primarily used for direct access into
 /// lambdas tick and event system.
@@ -41,8 +38,6 @@ class Layer {
   std::string debug_name_;
 };
 
-}  // namespace layers
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::layers
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_LAYERS_LAYER_H_
