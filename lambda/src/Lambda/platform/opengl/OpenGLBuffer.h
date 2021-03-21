@@ -31,7 +31,8 @@ class OpenGLVertexBuffer : public core::renderer::VertexBuffer {
 
 
   /// @brief Get the BufferLayout associated with the current VertexBuffer.
-  const core::renderer::BufferLayout& GetLayout() const override { return layout_; };
+  const core::renderer::BufferLayout& GetLayout() const
+    override { return layout_; };
 
   /// @brief Set the BufferLayout associated with the current VertexBuffer.
   void SetLayout(const core::renderer::BufferLayout& layout) override
