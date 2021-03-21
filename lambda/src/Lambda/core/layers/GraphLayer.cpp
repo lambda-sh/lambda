@@ -1,8 +1,12 @@
 #include <Lambda/core/layers/GraphLayer.h>
+#include <Lambda/core/renderer/Buffer.h>
 
 namespace lambda::core::layers {
 
-void GraphLayer2D::OnAttach() {}
+void GraphLayer2D::OnAttach() {
+  auto v = renderer::VertexBuffer::CreateFromPoints(graph_.GetPoints());
+  v->Bind();
+}
 
 void GraphLayer2D::OnDetach() {}
 

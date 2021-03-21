@@ -4,21 +4,24 @@
 #include <vector>
 
 #include <Lambda/core/layers/Layer.h>
+#include <Lambda/core/renderer/Buffer.h>
 #include <Lambda/math/shapes/Point.h>
+#include <Lambda/math/plot/Graph.h>
 
 namespace lambda::core::layers {
 
 class GraphLayer2D : public Layer {
  public:
-  GraphLayer2D() : Layer("Graph-Layer") {}
   explicit GraphLayer2D(
-    std::vector<lambda::math::shapes::Point2D<lambda::math::Real>> points)
-      : Layer("Graph-Layer") {}
+    math::plot::Graph2D<> graph)
+        : Layer("Graph-Layer"), graph_(std::move(graph)) {}
   void OnAttach() override;
   void OnDetach() override;
   void OnUpdate(util::TimeStep time_step) override;
   void OnEvent(memory::Shared<events::Event> event) override;
   void OnImGuiRender() override;
+ private:
+  math::plot::Graph2D<> graph_;
 };
 
 class GraphLayer3D : public Layer {
