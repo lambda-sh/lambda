@@ -3,9 +3,13 @@
 #include <Lambda/math/Precision.h>
 #include <Lambda/math/Vector.h>
 #include <Lambda/math/shapes/Point.h>
+#include <Lambda/math/plot/Graph.h>
 
 using lambda::core::memory::Unique;
 using lambda::core::memory::CreateUnique;
+
+using lambda::math::shapes::Point2D;
+using lambda::math::plot::Graph;
 
 int TestMath() {
   auto v = lambda::math::Vector3();
@@ -14,13 +18,21 @@ int TestMath() {
     LAMBDA_CORE_INFO("Value in Vector: {0}", value);
   }
 
-  lambda::math::shapes::Point2D<lambda::math::Real> points[2000];
+  std::vector<Point2D<>> points(2000);
+  std::fill(points.begin(), points.end(), Point2D<>());
 
-  for (int i = 0; i < 2000; i += 1) {
-    lambda::math::Real x = (i - 1000) / 100;
-    points[i].x = x;
-    points[i].y = sin(x * 10) / (1.0 + x * x);
+  int counter = 0;
+  for (auto& point : points) {
+    lambda::math::Real x = (counter - 1000) / 100;
+    point.x = x;
+    point.y = sin(x * 10) / (1.0 + x * x);
+    counter += 1;
   }
+
+  Graph graph(points);
+  graph = graph
+    .StartFrom(0)
+    .EndAt(100);
 
   return 0;
 }
