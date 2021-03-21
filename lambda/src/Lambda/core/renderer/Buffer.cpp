@@ -9,9 +9,7 @@
 using lambda::platform::opengl::OpenGLVertexBuffer;
 using lambda::platform::opengl::OpenGLIndexBuffer;
 
-namespace lambda {
-namespace core {
-namespace renderer {
+namespace lambda::core::renderer {
 
 memory::Shared<VertexBuffer> VertexBuffer::Create(
     float* vertices, uint32_t size) {
@@ -69,6 +67,4 @@ memory::Shared<IndexBuffer> IndexBuffer::Create(
   }
 }
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer
