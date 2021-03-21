@@ -1,6 +1,7 @@
 #ifndef LAMBDA_SRC_LAMBDA_CONCEPTS_NUMBER_H_
 #define LAMBDA_SRC_LAMBDA_CONCEPTS_NUMBER_H_
 
+#include <array>
 #include <concepts>
 #include <vector>
 
