@@ -1,7 +1,9 @@
 #ifndef LAMBDA_SRC_LAMBDA_CONCEPTS_POINT_H_
 #define LAMBDA_SRC_LAMBDA_CONCEPTS_POINT_H_
 
+#include <array>
 #include <concepts>
+#include <vector>
 
 #include <Lambda/concepts/Number.h>
 #include <Lambda/math/shapes/Point.h>
