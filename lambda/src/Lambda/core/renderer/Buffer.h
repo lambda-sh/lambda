@@ -13,9 +13,11 @@
 #include <string>
 #include <vector>
 
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Log.h"
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/core/util/Assert.h>
+#include <Lambda/core/util/Log.h>
+
+#include <Lambda/concepts/Point.h>
 
 namespace lambda {
 namespace core {
@@ -51,7 +53,9 @@ static uint32_t ShaderDataTypeSize(ShaderDataType type) {
     case ShaderDataType::Int4: return 4 * 4;
     case ShaderDataType::Mat3: return 4 * 3 * 3;
     case ShaderDataType::Mat4: return 4 * 4 * 4;
-    default: LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
+    default: {
+      LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
+    }
   }
 }
 
@@ -69,7 +73,9 @@ static uint32_t ShaderDataTypeComponentCount(ShaderDataType type) {
     case ShaderDataType::Int4: return 4;
     case ShaderDataType::Mat3: return 3 * 3;
     case ShaderDataType::Mat4: return 4 * 4;
-    default: LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
+    default: {
+      LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
+    }
   }
 }
 
@@ -173,6 +179,9 @@ class VertexBuffer {
   /// While this returns a platform independent vertex buffer, it is still
   /// bound to a platform specific implementation under the hood.
   static memory::Shared<VertexBuffer> Create(float* vertices, uint32_t size);
+
+  template<concepts::PointContainer Points>
+  static memory::Shared<VertexBuffer> CreateFromPoints(const Points& p);
 };
 
 /// @brief A general abstraction of an Index Buffer.
