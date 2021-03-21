@@ -9,7 +9,7 @@ using lambda::core::memory::Unique;
 using lambda::core::memory::CreateUnique;
 
 using lambda::math::shapes::Point2D;
-using lambda::math::plot::Graph;
+using lambda::math::plot::Graph2D;
 
 int TestMath() {
   auto v = lambda::math::Vector3();
@@ -29,7 +29,7 @@ int TestMath() {
     counter += 1;
   }
 
-  Graph graph(points);
+  Graph2D graph(std::move(points));
   graph = graph
     .StartFrom(0)
     .EndAt(100);
