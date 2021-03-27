@@ -1,9 +1,7 @@
-/**
- * @file Log.h
- * @brief The engines util utility.
- *
- * Can be used both in the engine and client application.
- */
+/// @file Log.h
+/// @brief The engines util utility.
+///
+/// Can be used both in the engine and client application.
 #ifndef LAMBDA_SRC_LAMBDA_CORE_UTIL_LOG_H_
 #define LAMBDA_SRC_LAMBDA_CORE_UTIL_LOG_H_
 
@@ -11,11 +9,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "Lambda/core/Core.h"
-
-namespace lambda {
-namespace core {
-namespace util {
+namespace lambda::core::util {
 
 /// @brief The engine wide logging API. Should primarily be used through the
 /// macros exposed at the bottom of the API.
@@ -34,9 +28,7 @@ class Log {
   static std::shared_ptr<spdlog::logger> kClientLogger;
 };
 
-}  // namespace util
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::util
 
 /// @def LAMBDA_CORE_TRACE
 /// @brief Log tracing information within the engine.
