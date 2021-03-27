@@ -1,9 +1,16 @@
-#include "Lambda/platform/opengl/OpenGLRendererAPI.h"
+#include <Lambda/platform/opengl/OpenGLRendererAPI.h>
+
 #include <glad/glad.h>
 
-namespace lambda {
-namespace platform {
-namespace opengl {
+#include <Lambda/core/memory/Pointers.h>
+
+namespace lambda::platform::opengl {
+
+namespace {
+
+using core::memory::Shared;
+
+}  // namespace
 
 void OpenGLRendererAPI::Init() {
   glEnable(GL_BLEND);
@@ -28,7 +35,7 @@ void OpenGLRendererAPI::Clear() {
 
 /// TODO(C3NZ): Update this to use the engines memory system.
 void OpenGLRendererAPI::DrawIndexed(
-    const std::shared_ptr<core::renderer::VertexArray>& vertex_array) {
+    core::memory::Shared<core::renderer::VertexArray> vertex_array) {
   glDrawElements(
       GL_TRIANGLES,
       vertex_array->GetIndexBuffer()->GetCount(),
@@ -36,7 +43,9 @@ void OpenGLRendererAPI::DrawIndexed(
       nullptr);
 }
 
+void OpenGLRendererAPI::DrawArrays(core::memory::Shared<core::renderer::VertexArray> vertex_array) {
+  glDrawArrays(GL_TRIANGLES, 0, vertex_array->GetVertexBuffers().size());
+}
 
-}  // namespace opengl
-}  // namespace platform
-}  // namespace lambda
+
+}  // namespace lambda::platform::opengl
