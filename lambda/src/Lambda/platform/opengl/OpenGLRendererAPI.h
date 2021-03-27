@@ -3,13 +3,11 @@
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLRENDERERAPI_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLRENDERERAPI_H_
 
-#include "Lambda/core/renderer/RendererAPI.h"
-#include "Lambda/core/renderer/VertexArray.h"
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/core/renderer/RendererAPI.h>
+#include <Lambda/core/renderer/VertexArray.h>
 
-namespace lambda {
-namespace platform {
-namespace opengl {
-
+namespace lambda::platform::opengl {
 
 /// @class OpenGLRendererAPI
 /// @brief The Rendering implementation for OpenGL.
@@ -21,13 +19,12 @@ class OpenGLRendererAPI : public core::renderer::RendererAPI {
       override;
   void Clear() override;
   void DrawIndexed(
-      const std::shared_ptr<core::renderer::VertexArray>& vertex_array) override;
+      core::memory::Shared<core::renderer::VertexArray> vertex_array) override;
 
+  void DrawArrays(
+      core::memory::Shared<core::renderer::VertexArray> vertex_array) override;
 };
 
-
-}  // namespace opengl
-}  // namespace platform
-}  // namespace lambda
+}  // namespace lambda::platform::opengl
 
 #endif  // LAMBDA_SRC_LAMBDA_PLATFORM_OPENGL_OPENGLRENDERERAPI_H_
