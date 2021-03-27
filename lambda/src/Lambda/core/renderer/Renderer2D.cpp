@@ -16,7 +16,6 @@ namespace renderer {
 namespace {
 
 namespace memory = ::lambda::core::memory;
-namespace opengl = ::lambda::platform::opengl;
 
 /// @brief Internal storage for the 2D rendering API. It is not yet finalized.
 struct Renderer2DStorage {
