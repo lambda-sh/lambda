@@ -19,9 +19,7 @@
 
 #include <Lambda/concepts/Point.h>
 
-namespace lambda {
-namespace core {
-namespace renderer {
+namespace lambda::core::renderer {
 
 /// @brief Data types supported by the shader.
 enum class ShaderDataType {
@@ -95,7 +93,7 @@ struct BufferElement {
           Size(ShaderDataTypeSize(type)),
           Offset(0),
           Components(ShaderDataTypeComponentCount(type)),
-          Normalized(normalized) { LAMBDA_CORE_TRACE(ToString()); }
+          Normalized(normalized) { LAMBDA_CORE_TRACE(ToString()) }
 
   std::string ToString() const {
     return
@@ -165,11 +163,13 @@ class VertexBuffer {
 
   /// @brief Binds a vertex buffer to the GPU.
   virtual void Bind() const = 0;
+
   /// @brief Unbinds a vertex buffer from the GPU. (Rarely needs to be used.)
   virtual void Unbind() const = 0;
 
   /// @brief Get the layout associated
   virtual const BufferLayout& GetLayout() const = 0;
+
   /// @brief Set the layout associated with the VertexBuffer.
   virtual void SetLayout(const BufferLayout&) = 0;
 
@@ -191,6 +191,7 @@ class IndexBuffer {
 
   /// @brief Binds the IndexBuffer to the GPU.
   virtual void Bind() const = 0;
+
   /// @brief Unbinds the IndexBuffer to the GPU.
   virtual void Unbind() const = 0;
 
@@ -205,8 +206,6 @@ class IndexBuffer {
   static memory::Shared<IndexBuffer> Create(uint32_t* indices, uint32_t count);
 };
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_RENDERER_BUFFER_H_
