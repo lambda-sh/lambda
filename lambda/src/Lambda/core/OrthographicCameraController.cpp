@@ -12,14 +12,14 @@
 namespace lambda::core {
 
 OrthographicCameraController::OrthographicCameraController(
-    float aspect_ratio, bool can_rotate) :
+    const float aspect_ratio, const bool can_rotate) :
         aspect_ratio_(aspect_ratio),
+        can_rotate_(can_rotate),
         camera_(
             -aspect_ratio_ * zoom_level_,
             aspect_ratio_ * zoom_level_,
             -zoom_level_,
-            zoom_level_),
-        can_rotate_(can_rotate) {}
+            zoom_level_) {}
 
 void OrthographicCameraController::OnUpdate(util::TimeStep delta) {
     const float delta_in_ms = delta.InMilliSeconds<float>();

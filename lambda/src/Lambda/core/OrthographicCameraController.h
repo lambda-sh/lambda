@@ -7,18 +7,17 @@
 #include "Lambda/core/renderer/OrthographicCamera.h"
 #include "Lambda/core/util/Time.h"
 
-namespace lambda {
-namespace core {
+namespace lambda::core {
 
 class OrthographicCameraController {
  public:
   explicit OrthographicCameraController(
-      float aspect_ratio, bool can_rotate = false);
+      const float aspect_ratio, const bool can_rotate = false);
 
   void OnUpdate(util::TimeStep delta);
   void OnEvent(memory::Shared<events::Event> event);
 
-  const renderer::OrthographicCamera& GetOrthographicCamera() {
+  const renderer::OrthographicCamera& GetOrthographicCamera() const {
       return camera_; }
  private:
   float aspect_ratio_;
@@ -35,8 +34,6 @@ class OrthographicCameraController {
   bool OnWindowResize(const events::WindowResizeEvent& event);
 };
 
-
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_ORTHOGRAPHICCAMERACONTROLLER_H_
