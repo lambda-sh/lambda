@@ -56,7 +56,7 @@ enum EventCategory {
 
 /// @brief Utility function used for binding functions to lambdas
 /// EventDispatcher.
-#define BIND_EVENT_FN(fn) std::bind(&fn, this, std::placeholders::_1)
+#define BIND_EVENT_HANDLER(fn) std::bind(&fn, this, std::placeholders::_1)
 
 // ----------------------------------- CLASSES ---------------------------------
 

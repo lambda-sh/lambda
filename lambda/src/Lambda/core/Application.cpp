@@ -28,7 +28,7 @@ Application::Application() {
   kApplication_.reset(this);
 
   window_ = Window::Create();
-  window_->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
+  window_->SetEventCallback(BIND_EVENT_HANDLER(Application::OnEvent));
 
   // After the window is setup, initialize the renderer!
   renderer::Renderer::Init();
@@ -72,10 +72,10 @@ void Application::OnEvent(memory::Shared<events::Event> event) {
 
   events::EventDispatcher dispatcher(event);
   dispatcher.Dispatch<events::WindowCloseEvent>(
-      BIND_EVENT_FN(Application::OnWindowClosed));
+      BIND_EVENT_HANDLER(Application::OnWindowClosed));
 
   dispatcher.Dispatch<events::WindowResizeEvent>(
-      BIND_EVENT_FN(Application::OnWindowResize));
+      BIND_EVENT_HANDLER(Application::OnWindowResize));
 
   for (memory::Shared<layers::Layer> layer : util::Reverse(layer_stack_)) {
     layer->OnEvent(event);

@@ -9,8 +9,7 @@
 #include "Lambda/core/renderer/OrthographicCamera.h"
 #include "Lambda/core/util/Time.h"
 
-namespace lambda {
-namespace core {
+namespace lambda::core {
 
 OrthographicCameraController::OrthographicCameraController(
     float aspect_ratio, bool can_rotate) :
@@ -23,7 +22,7 @@ OrthographicCameraController::OrthographicCameraController(
         can_rotate_(can_rotate) {}
 
 void OrthographicCameraController::OnUpdate(util::TimeStep delta) {
-    float delta_in_ms = delta.InMilliSeconds<float>();
+    const float delta_in_ms = delta.InMilliSeconds<float>();
     if (input::Input::IsKeyPressed(LAMBDA_KEY_W)) {
       camera_position_.y += camera_translation_speed_ * delta_in_ms;
     } else if (input::Input::IsKeyPressed(LAMBDA_KEY_S)) {
@@ -79,11 +78,10 @@ void OrthographicCameraController::OnEvent(
   events::EventDispatcher dispatcher(event);
 
   dispatcher.Dispatch<events::WindowResizeEvent>(
-      BIND_EVENT_FN(OrthographicCameraController::OnWindowResize));
+      BIND_EVENT_HANDLER(OrthographicCameraController::OnWindowResize));
 
   dispatcher.Dispatch<events::MouseScrolledEvent>(
-      BIND_EVENT_FN(OrthographicCameraController::OnMouseScrolled));
+      BIND_EVENT_HANDLER(OrthographicCameraController::OnMouseScrolled));
 }
 
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core
