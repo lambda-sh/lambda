@@ -5,7 +5,7 @@
 
 #include <glm/glm.hpp>
 
-#include "Lambda/core/renderer/VertexArray.h"
+#include <Lambda/core/renderer/VertexArray.h>
 #include <Lambda/core/memory/Pointers.h>
 
 namespace lambda::core::renderer {
