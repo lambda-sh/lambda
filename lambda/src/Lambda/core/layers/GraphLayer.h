@@ -1,40 +1,39 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_LAYERS_GRAPHLAYER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_LAYERS_GRAPHLAYER_H_
 
-#include <vector>
-
+#include <Lambda/concepts/Plot.h>
 #include <Lambda/core/layers/Layer.h>
 #include <Lambda/core/renderer/Buffer.h>
-#include <Lambda/math/shapes/Point.h>
-#include <Lambda/math/plot/Graph.h>
 
 namespace lambda::core::layers {
 
+template <concepts::Graph Plot>
 class GraphLayer2D : public Layer {
  public:
   explicit GraphLayer2D(
-    math::plot::Graph2D<> graph)
-        : Layer("Graph-Layer"), graph_(std::move(graph)) {}
+    Plot graph)
+        : Layer("Graph2D-Layer"), graph_(std::move(graph)) {}
+
+  explicit GraphLayer2D(Plot&& graph)
+      : Layer("Graph2D-Layer"), graph_(std::move(graph)) {}
+
   void OnAttach() override;
   void OnDetach() override;
   void OnUpdate(util::TimeStep time_step) override;
   void OnEvent(memory::Shared<events::Event> event) override;
   void OnImGuiRender() override;
  private:
-  math::plot::Graph2D<> graph_;
+  Plot graph_;
 };
 
+template<concepts::Graph Plot>
 class GraphLayer3D : public Layer {
  public:
-  GraphLayer3D() : Layer("Graph-Layer") {}
+  explicit GraphLayer3D(Plot graph)
+          : Layer("Graph3D-Layer"), graph_(std::move(graph)) {}
 
-  explicit GraphLayer3D(
-      std::vector<lambda::math::shapes::Point3D<>> points)
-          : Layer("Graph-Layer"), points_(points) {}
-
-  explicit GraphLayer3D(
-      std::vector<lambda::math::shapes::Point3D<>>&& points)
-          : Layer("Graph-Layer"), points_(std::move(points)) {}
+  explicit GraphLayer3D(Plot&& graph)
+          : Layer("Graph3D-Layer"), graph_(std::move(graph)) {}
 
   void OnAttach() override;
   void OnDetach() override;
@@ -42,7 +41,7 @@ class GraphLayer3D : public Layer {
   void OnEvent(memory::Shared<events::Event> event) override;
   void OnImGuiRender() override;
  private:
-  std::vector<lambda::math::shapes::Point3D<>> points_;
+  Plot graph_;
 };
 
 }  // namespace lambda::core::layers
