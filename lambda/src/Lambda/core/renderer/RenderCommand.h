@@ -40,6 +40,12 @@ class RenderCommand {
     renderer_API_->DrawArrays(vertex_array);
   }
 
+  static void DrawArrays(
+      memory::Shared<VertexArray> vertex_array,
+      const RendererAPI::Primitive primitive) {
+    renderer_API_->DrawArrays(vertex_array, primitive);
+  }
+
  private:
   static memory::Unique<RendererAPI> renderer_API_;
 };
