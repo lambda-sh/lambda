@@ -22,10 +22,13 @@ class RendererAPI {
     OpenGL = 1
   };
 
-  enum class MODE {
-    TRIANGLES = 0,
-    LINES = 1,
+  enum class Primitive {
+    Triangles = 0,
+    Lines = 1,
+    LineStrip = 2,
   };
+
+  virtual ~RendererAPI() = default;
 
   /// @brief Setup the API for rendering.
   virtual void Init() = 0;
@@ -43,7 +46,16 @@ class RendererAPI {
   /// @brief Handle drawing a vertex array.
   virtual void DrawIndexed(memory::Shared<VertexArray> vertex_array) = 0;
 
+  /// @brief Draw a vertex array given their underlying vertex buffer.
+  /// @param vertex_array The vertex Array to be drawn.
   virtual void DrawArrays(memory::Shared<VertexArray> vertex_array) = 0;
+
+  /// @brief Draw a vertex array given it's underlying vertex buffer and the
+  /// primitive type to render it as.
+  /// @param vertex_array The vertex array to be drawn.
+  /// @param primitive The primitive to use for rendering.
+  virtual void DrawArrays(
+    memory::Shared<VertexArray> vertex_array, const Primitive primitive) = 0;
 
   /// @brief Return the API that is being used. (Currently only supports opengl)
   static API GetAPI() { return API::OpenGL; }
