@@ -25,10 +25,10 @@ jobs:
             cpp-compiler: g++-10
             target: Linux
 
-          - os: macos-latest
-            c-compiler: gcc-10
-            cpp-compiler: g++-10
-            target: Macos
+#          - os: macos-latest
+#            c-compiler: gcc-10
+#            cpp-compiler: g++-10
+#            target: Macos
 
           - os: windows-latest
             cpp-compiler: cl
