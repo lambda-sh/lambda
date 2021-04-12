@@ -20,32 +20,6 @@ memory::Shared<VertexBuffer> VertexBuffer::Create(
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<OpenGLVertexBuffer>(vertices, size);
-    default:
-      LAMBDA_CORE_ASSERT(
-          false,
-          "The Renderer has been set to a graphics API that isn't supported.",
-          "");
-      return nullptr;
-  }
-}
-
-template<concepts::PointContainer Points>
-memory::Shared<VertexBuffer> VertexBuffer::CreateFromPoints(
-    const Points& vertices) {
-  switch (Renderer::GetAPI()) {
-    case RendererAPI::API::None:
-      LAMBDA_CORE_ASSERT(
-          false, "There is no rendering API being used/available.", "");
-      return nullptr;
-    case RendererAPI::API::OpenGL:
-      return memory::CreateShared<OpenGLVertexBuffer>(
-          &vertices.begin(), sizeof(vertices));
-    default:
-      LAMBDA_CORE_ASSERT(
-          false,
-          "The Renderer has been set to a graphics API that isn't supported.",
-          "");
-      return nullptr;
   }
 }
 
@@ -58,12 +32,6 @@ memory::Shared<IndexBuffer> IndexBuffer::Create(
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<OpenGLIndexBuffer>(indices, count);
-    default:
-      LAMBDA_CORE_ASSERT(
-          false,
-          "The Renderer has been set to a graphics API that isn't supported.",
-          "");
-      return nullptr;
   }
 }
 
