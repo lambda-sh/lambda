@@ -23,6 +23,10 @@ class OpenGLRendererAPI : public core::renderer::RendererAPI {
 
   void DrawArrays(
       core::memory::Shared<core::renderer::VertexArray> vertex_array) override;
+
+  void DrawArrays(
+    core::memory::Shared<core::renderer::VertexArray> vertex_array,
+    const Primitive primitive) override;
 };
 
 }  // namespace lambda::platform::opengl

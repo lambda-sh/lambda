@@ -9,7 +9,19 @@ namespace lambda::platform::opengl {
 namespace {
 
 using core::memory::Shared;
+using core::renderer::RendererAPI;
 
+constexpr auto GetOpenGLPrimitive(const RendererAPI::Primitive primitive) {
+  switch (primitive) {
+    case RendererAPI::Primitive::Lines:
+      return GL_LINES;
+    case RendererAPI::Primitive::Triangles:
+      return GL_TRIANGLES;
+    case RendererAPI::Primitive::LineStrip:
+      return GL_LINE_STRIP;
+  }
+  return 0;
+}
 }  // namespace
 
 void OpenGLRendererAPI::Init() {
@@ -35,7 +47,7 @@ void OpenGLRendererAPI::Clear() {
 
 /// TODO(C3NZ): Update this to use the engines memory system.
 void OpenGLRendererAPI::DrawIndexed(
-    core::memory::Shared<core::renderer::VertexArray> vertex_array) {
+    Shared<core::renderer::VertexArray> vertex_array) {
   glDrawElements(
       GL_TRIANGLES,
       vertex_array->GetIndexBuffer()->GetCount(),
@@ -47,5 +59,11 @@ void OpenGLRendererAPI::DrawArrays(core::memory::Shared<core::renderer::VertexAr
   glDrawArrays(GL_TRIANGLES, 0, vertex_array->GetVertexBuffers().size());
 }
 
+void OpenGLRendererAPI::DrawArrays(
+    Shared<core::renderer::VertexArray> vertex_array,
+    const Primitive primitive) {
+  LAMBDA_CORE_TRACE("Drawing vertex array with size of: {0}", vertex_array->GetVertexBuffers().size());
+  glDrawArrays(GetOpenGLPrimitive(primitive), 0, vertex_array->GetVertexBuffers().size());
+}
 
 }  // namespace lambda::platform::opengl
