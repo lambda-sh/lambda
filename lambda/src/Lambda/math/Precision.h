@@ -40,6 +40,6 @@ namespace lambda::math {
 
 #endif  // defined(LAMBDA_MATH_DOUBLE_PRECISION)
 
-#endif  // LAMBDA_SRC_LAMBDA_MATH_PRECISION_H_
-
 }  // namespace lambda::math
+
+#endif  // LAMBDA_SRC_LAMBDA_MATH_PRECISION_H_

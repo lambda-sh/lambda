@@ -4,14 +4,11 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_LAYERS_LAYER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_LAYERS_LAYER_H_
 
-#include "Lambda/core/Core.h"
 #include "Lambda/core/events/Event.h"
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/util/Time.h"
 
-namespace lambda {
-namespace core {
-namespace layers {
+namespace lambda::core::layers {
 
 /// @brief The lambda Layer abstraction. Primarily used for direct access into
 /// lambdas tick and event system.
@@ -21,18 +18,18 @@ namespace layers {
 class Layer {
  public:
   explicit Layer(const std::string& name = "Layer");
-  virtual ~Layer();
+  virtual ~Layer() = default;
 
   /// @brief What to do when a layer is attached to lambda.
-  virtual void OnAttach() {}
+  virtual void OnAttach() = 0;
   /// @brief What to do when a layer is detached from lambda.
-  virtual void OnDetach() {}
+  virtual void OnDetach() = 0;
   /// @brief What to do when lambda has an update for the layer.
-  virtual void OnUpdate(util::TimeStep time_step) {}
+  virtual void OnUpdate(util::TimeStep time_step) = 0;
   /// @brief What to do when lambda has an event for the layer.
-  virtual void OnEvent(memory::Shared<events::Event> event) {}
+  virtual void OnEvent(memory::Shared<events::Event> event) = 0;
   /// @brief What to do when lambda is rendering with ImGui.
-  virtual void OnImGuiRender() {}
+  virtual void OnImGuiRender() = 0;
 
   /// @brief Get the debug name of the layer. Might not be in production builds.
   const std::string& GetName() const { return debug_name_; }
@@ -41,8 +38,6 @@ class Layer {
   std::string debug_name_;
 };
 
-}  // namespace layers
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::layers
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_LAYERS_LAYER_H_

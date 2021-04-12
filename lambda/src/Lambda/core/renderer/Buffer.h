@@ -13,13 +13,13 @@
 #include <string>
 #include <vector>
 
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Log.h"
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/core/util/Assert.h>
+#include <Lambda/core/util/Log.h>
 
-namespace lambda {
-namespace core {
-namespace renderer {
+#include <Lambda/concepts/Point.h>
+
+namespace lambda::core::renderer {
 
 /// @brief Data types supported by the shader.
 enum class ShaderDataType {
@@ -51,7 +51,9 @@ static uint32_t ShaderDataTypeSize(ShaderDataType type) {
     case ShaderDataType::Int4: return 4 * 4;
     case ShaderDataType::Mat3: return 4 * 3 * 3;
     case ShaderDataType::Mat4: return 4 * 4 * 4;
-    default: LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
+    default: {
+      LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
+    }
   }
 }
 
@@ -69,7 +71,9 @@ static uint32_t ShaderDataTypeComponentCount(ShaderDataType type) {
     case ShaderDataType::Int4: return 4;
     case ShaderDataType::Mat3: return 3 * 3;
     case ShaderDataType::Mat4: return 4 * 4;
-    default: LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
+    default: {
+      LAMBDA_CORE_ASSERT(false, "Not a provided Shader type", ""); return 0;
+    }
   }
 }
 
@@ -89,7 +93,7 @@ struct BufferElement {
           Size(ShaderDataTypeSize(type)),
           Offset(0),
           Components(ShaderDataTypeComponentCount(type)),
-          Normalized(normalized) { LAMBDA_CORE_TRACE(ToString()); }
+          Normalized(normalized) { LAMBDA_CORE_TRACE(ToString()) }
 
   std::string ToString() const {
     return
@@ -159,11 +163,13 @@ class VertexBuffer {
 
   /// @brief Binds a vertex buffer to the GPU.
   virtual void Bind() const = 0;
+
   /// @brief Unbinds a vertex buffer from the GPU. (Rarely needs to be used.)
   virtual void Unbind() const = 0;
 
   /// @brief Get the layout associated
   virtual const BufferLayout& GetLayout() const = 0;
+
   /// @brief Set the layout associated with the VertexBuffer.
   virtual void SetLayout(const BufferLayout&) = 0;
 
@@ -178,10 +184,11 @@ class VertexBuffer {
 /// @brief A general abstraction of an Index Buffer.
 class IndexBuffer {
  public:
-  virtual ~IndexBuffer() {}
+  virtual ~IndexBuffer() = default;
 
   /// @brief Binds the IndexBuffer to the GPU.
   virtual void Bind() const = 0;
+
   /// @brief Unbinds the IndexBuffer to the GPU.
   virtual void Unbind() const = 0;
 
@@ -196,8 +203,6 @@ class IndexBuffer {
   static memory::Shared<IndexBuffer> Create(uint32_t* indices, uint32_t count);
 };
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_RENDERER_BUFFER_H_

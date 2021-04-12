@@ -44,13 +44,13 @@ class Renderer2D {
   static void DrawQuad(
       const glm::vec2& position,
       const glm::vec2& size,
-      core::memory::Shared<Texture2D> texture);
+      memory::Shared<Texture2D> texture);
 
   /// @brief Draw a quad given it's position, size, and Texture.
   static void DrawQuad(
       const glm::vec3& position,
       const glm::vec2& size,
-      core::memory::Shared<Texture2D> texture);
+      memory::Shared<Texture2D> texture);
 };
 
 }  // namespace renderer

@@ -10,13 +10,9 @@
 
 #include <concurrentqueue.h>
 
-#include "Lambda/core/io/AsyncTask.h"
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/util/Time.h"
-
-namespace lambda {
-namespace core {
-namespace io {
+#include <Lambda/core/io/AsyncTask.h>
+#include <Lambda/core/util/Time.h>
+namespace lambda::core::io {
 
 /// @brief Asynchronous Event Loop that allows the execution of code to happen
 /// in another thread. This is not recommended for production as of yet.
@@ -49,7 +45,7 @@ class EventLoop {
       core::util::Time execute_at = core::util::Time(),
       core::util::Time expire_at = core::util::Time().AddSeconds(6));
 
-private:
+ private:
   bool running_;
   uint32_t size_;
   moodycamel::ConcurrentQueue<UniqueAsyncTask> event_queue_;
@@ -58,8 +54,6 @@ private:
   bool Dispatch(UniqueAsyncTask task);
 };
 
-}  // namespace io
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::io
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_IO_EVENTLOOP_H_
