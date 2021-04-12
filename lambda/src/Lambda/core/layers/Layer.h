@@ -18,18 +18,18 @@ namespace lambda::core::layers {
 class Layer {
  public:
   explicit Layer(const std::string& name = "Layer");
-  virtual ~Layer();
+  virtual ~Layer() = default;
 
   /// @brief What to do when a layer is attached to lambda.
-  virtual void OnAttach() {}
+  virtual void OnAttach() = 0;
   /// @brief What to do when a layer is detached from lambda.
-  virtual void OnDetach() {}
+  virtual void OnDetach() = 0;
   /// @brief What to do when lambda has an update for the layer.
-  virtual void OnUpdate(util::TimeStep time_step) {}
+  virtual void OnUpdate(util::TimeStep time_step) = 0;
   /// @brief What to do when lambda has an event for the layer.
-  virtual void OnEvent(memory::Shared<events::Event> event) {}
+  virtual void OnEvent(memory::Shared<events::Event> event) = 0;
   /// @brief What to do when lambda is rendering with ImGui.
-  virtual void OnImGuiRender() {}
+  virtual void OnImGuiRender() = 0;
 
   /// @brief Get the debug name of the layer. Might not be in production builds.
   const std::string& GetName() const { return debug_name_; }
