@@ -179,15 +179,12 @@ class VertexBuffer {
   /// While this returns a platform independent vertex buffer, it is still
   /// bound to a platform specific implementation under the hood.
   static memory::Shared<VertexBuffer> Create(float* vertices, uint32_t size);
-
-  template<concepts::PointContainer Points>
-  static memory::Shared<VertexBuffer> CreateFromPoints(const Points& p);
 };
 
 /// @brief A general abstraction of an Index Buffer.
 class IndexBuffer {
  public:
-  virtual ~IndexBuffer() {}
+  virtual ~IndexBuffer() = default;
 
   /// @brief Binds the IndexBuffer to the GPU.
   virtual void Bind() const = 0;
