@@ -77,8 +77,7 @@ elseif(APPLE)
 
     target_link_libraries(
         lambda
-        "-framework Cocoa"
-        "-framework IOKit")
+        "-framework OpenGL")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
@@ -111,7 +110,7 @@ if (${LAMBDA_TOOLS_BUILD_SANDBOX})
 endif()
 
 if (${LAMBDA_TOOLS_BUILD_MATH})
-  add_subdirectory(${CMAKE_SOURCE_DIR}/tools/math)
+  add_subdirectory(${CMAKE_SOURCE_DIR}/tools/mathbox)
 endif()
 
 

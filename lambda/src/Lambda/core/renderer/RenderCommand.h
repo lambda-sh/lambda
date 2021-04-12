@@ -6,9 +6,7 @@
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/RendererAPI.h"
 
-namespace lambda {
-namespace core {
-namespace renderer {
+namespace lambda::core::renderer {
 
 /// @brief An interface for issuing commands to the current rendering API that
 /// is being used with lambda.
@@ -34,16 +32,24 @@ class RenderCommand {
   }
 
   /// @brief Issues a draw call to the rendering API.
-  static void DrawIndexed(const memory::Shared<VertexArray>& vertex_array) {
+  static void DrawIndexed(memory::Shared<VertexArray> vertex_array) {
     renderer_API_->DrawIndexed(vertex_array);
+  }
+
+  static void DrawArrays(memory::Shared<VertexArray> vertex_array) {
+    renderer_API_->DrawArrays(vertex_array);
+  }
+
+  static void DrawArrays(
+      memory::Shared<VertexArray> vertex_array,
+      const RendererAPI::Primitive primitive) {
+    renderer_API_->DrawArrays(vertex_array, primitive);
   }
 
  private:
   static memory::Unique<RendererAPI> renderer_API_;
 };
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERCOMMAND_H_

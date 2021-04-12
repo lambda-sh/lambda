@@ -1,19 +1,15 @@
-/**
- * @file Window.h
- * @brief The Abstract Window definition.
- */
+/// @file Window.h
+/// @brief The Abstract Window definition.
 #ifndef LAMBDA_SRC_LAMBDA_CORE_WINDOW_H_
 #define LAMBDA_SRC_LAMBDA_CORE_WINDOW_H_
 
 #include <string>
 
-#include "Lambda/core/Core.h"
 #include "Lambda/core/events/ApplicationEvent.h"
 #include "Lambda/core/events/Event.h"
 #include "Lambda/core/memory/Pointers.h"
 
-namespace lambda {
-namespace core {
+namespace lambda::core {
 
 struct WindowProperties {
   std::string Title;
@@ -21,35 +17,33 @@ struct WindowProperties {
   unsigned int Height;
 
   WindowProperties(
-      const std::string& title = "Game Engine",
-      unsigned int width = 1280,
-      unsigned int height = 720) :
-          Title(title), Width(width), Height(height) {}
+    std::string title = "Game Engine",
+    const unsigned int width = 1280,
+    const unsigned int height = 720)
+        : Title(std::move(title)), Width(width), Height(height) {}
 };
 
 class Window {
  public:
   typedef std::function<void(memory::Shared<events::Event>)>
       EventCallbackFunction;
-  virtual ~Window() {}
+  virtual ~Window() = default;
 
   virtual void OnUpdate() = 0;
 
-  virtual unsigned int GetWidth() const = 0;
-  virtual unsigned int GetHeight() const = 0;
+  [[nodiscard]] virtual unsigned int GetWidth() const = 0;
+  [[nodiscard]] virtual unsigned int GetHeight() const = 0;
 
   virtual void SetEventCallback(const EventCallbackFunction& callback) = 0;
   virtual void SetVerticalSync(bool enabled) = 0;
-  virtual bool HasVerticalSync() const = 0;
-  virtual void* GetNativeWindow() const = 0;
-
+  [[nodiscard]] virtual bool HasVerticalSync() const = 0;
+  [[nodiscard]] virtual void* GetNativeWindow() const = 0;
 
   static memory::Shared<Window> Create(
       const WindowProperties& properties = WindowProperties());
 };
 
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_WINDOW_H_
 

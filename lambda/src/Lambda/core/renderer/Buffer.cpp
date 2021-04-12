@@ -9,9 +9,7 @@
 using lambda::platform::opengl::OpenGLVertexBuffer;
 using lambda::platform::opengl::OpenGLIndexBuffer;
 
-namespace lambda {
-namespace core {
-namespace renderer {
+namespace lambda::core::renderer {
 
 memory::Shared<VertexBuffer> VertexBuffer::Create(
     float* vertices, uint32_t size) {
@@ -22,12 +20,6 @@ memory::Shared<VertexBuffer> VertexBuffer::Create(
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<OpenGLVertexBuffer>(vertices, size);
-    default:
-      LAMBDA_CORE_ASSERT(
-          false,
-          "The Renderer has been set to a graphics API that isn't supported.",
-          "");
-      return nullptr;
   }
 }
 
@@ -40,14 +32,7 @@ memory::Shared<IndexBuffer> IndexBuffer::Create(
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<OpenGLIndexBuffer>(indices, count);
-    default:
-      LAMBDA_CORE_ASSERT(
-          false,
-          "The Renderer has been set to a graphics API that isn't supported.", "");
-      return nullptr;
   }
 }
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer

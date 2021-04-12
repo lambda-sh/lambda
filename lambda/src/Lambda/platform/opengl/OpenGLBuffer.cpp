@@ -28,7 +28,6 @@ void OpenGLVertexBuffer::Unbind() const {
 
 // ----------------------------- INDEX BUFFER IMPL ----------------------------
 
-
 /// Constructs an Index buffer given an array of indices and total count. The
 /// instantiation of the index buffer will cause the engine to to assert an
 /// error if the count is > 0.

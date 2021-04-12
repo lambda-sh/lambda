@@ -9,21 +9,20 @@
 #include "Lambda/core/renderer/OrthographicCamera.h"
 #include "Lambda/core/util/Time.h"
 
-namespace lambda {
-namespace core {
+namespace lambda::core {
 
 OrthographicCameraController::OrthographicCameraController(
-    float aspect_ratio, bool can_rotate) :
+    const float aspect_ratio, const bool can_rotate) :
         aspect_ratio_(aspect_ratio),
+        can_rotate_(can_rotate),
         camera_(
             -aspect_ratio_ * zoom_level_,
             aspect_ratio_ * zoom_level_,
             -zoom_level_,
-            zoom_level_),
-        can_rotate_(can_rotate) {}
+            zoom_level_) {}
 
 void OrthographicCameraController::OnUpdate(util::TimeStep delta) {
-    float delta_in_ms = delta.InMilliSeconds<float>();
+    const float delta_in_ms = delta.InMilliSeconds<float>();
     if (input::Input::IsKeyPressed(LAMBDA_KEY_W)) {
       camera_position_.y += camera_translation_speed_ * delta_in_ms;
     } else if (input::Input::IsKeyPressed(LAMBDA_KEY_S)) {
@@ -79,11 +78,10 @@ void OrthographicCameraController::OnEvent(
   events::EventDispatcher dispatcher(event);
 
   dispatcher.Dispatch<events::WindowResizeEvent>(
-      BIND_EVENT_FN(OrthographicCameraController::OnWindowResize));
+      BIND_EVENT_HANDLER(OrthographicCameraController::OnWindowResize));
 
   dispatcher.Dispatch<events::MouseScrolledEvent>(
-      BIND_EVENT_FN(OrthographicCameraController::OnMouseScrolled));
+      BIND_EVENT_HANDLER(OrthographicCameraController::OnMouseScrolled));
 }
 
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core

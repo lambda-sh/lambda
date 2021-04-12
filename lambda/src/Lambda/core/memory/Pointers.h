@@ -6,9 +6,7 @@
 
 #include <memory>
 
-namespace lambda {
-namespace core {
-namespace memory {
+namespace lambda::core::memory {
 
 /// @brief
 template<typename T>
@@ -27,8 +25,6 @@ constexpr Shared<T> CreateShared(Args&&... args) {
   return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
-}  // namespace memory
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::memory
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_MEMORY_POINTERS_H_

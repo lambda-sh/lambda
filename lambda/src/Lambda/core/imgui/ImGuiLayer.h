@@ -23,7 +23,7 @@ namespace imgui {
 class ImGuiLayer : public layers::Layer {
  public:
   ImGuiLayer();
-  ~ImGuiLayer();
+  ~ImGuiLayer() override;
 
   /// @brief What to do when attached to lambda.
   void OnAttach() override;
@@ -32,11 +32,14 @@ class ImGuiLayer : public layers::Layer {
   /// @brief What to do when ImGui requests to render.
   void OnImGuiRender() override;
 
+  void OnUpdate(util::TimeStep time_step) override {}
+
   /// @brief Begin an ImGui rendering context.
   void Begin();
   /// @brief End an ImGui rendering context.
   void End();
 
+  void OnEvent(memory::Shared<events::Event> event) override {}
  private:
   float time_ = 0.0f;
   static bool show_demo_window_;
