@@ -6,6 +6,12 @@ file(
     src/*.h
     src/*.cpp)
 
+file(
+  COPY
+  assets
+  DESTINATION
+  ${CMAKE_BINARY_DIR}/tools/mathbox)
+
 add_executable(mathbox ${APP_SRC})
 
 if (WIN32)
