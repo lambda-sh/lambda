@@ -27,7 +27,7 @@ class Window {
  public:
   typedef std::function<void(memory::Shared<events::Event>)>
       EventCallbackFunction;
-  virtual ~Window() {}
+  virtual ~Window() = default;
 
   virtual void OnUpdate() = 0;
 
