@@ -77,8 +77,7 @@ elseif(APPLE)
 
     target_link_libraries(
         lambda
-        "-framework Cocoa"
-        "-framework IOKit")
+        "-framework OpenGL")
 endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
