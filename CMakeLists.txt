@@ -111,7 +111,7 @@ if (${LAMBDA_TOOLS_BUILD_SANDBOX})
 endif()
 
 if (${LAMBDA_TOOLS_BUILD_MATH})
-  add_subdirectory(${CMAKE_SOURCE_DIR}/tools/math)
+  add_subdirectory(${CMAKE_SOURCE_DIR}/tools/mathbox)
 endif()
 
 
