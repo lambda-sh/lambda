@@ -8,27 +8,25 @@
 
 #include <sstream>
 
-#include "Lambda/core/Core.h"
-#include "Lambda/core/events/Event.h"
+#include <Lambda/core/Core.h>
+#include <Lambda/core/events/Event.h>
 
-namespace lambda {
-namespace core {
-namespace events {
+namespace lambda::core::events {
 
 /// @brief An Event generated when the Window has resized.
 class WindowResizeEvent : public Event {
  public:
-  WindowResizeEvent(unsigned int width, unsigned int height)
+  WindowResizeEvent(const unsigned int width, const unsigned int height)
     : width_(width), height_(height) {}
 
   /// @brief Get the new width.
-  const unsigned int GetWidth() const { return width_; }
+  [[nodiscard]] unsigned int GetWidth() const { return width_; }
 
   /// @brief Get the new height.
-  const unsigned int GetHeight() const { return height_; }
+  [[nodiscard]] unsigned int GetHeight() const { return height_; }
 
   /// @brief Represents the resize event as a string.
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string << "WindowResizeEvent: " << width_ << ", " << height_;
     return event_string.str();
@@ -44,7 +42,7 @@ class WindowResizeEvent : public Event {
 /// @brief An Event generated when the Window has closed.
 class WindowCloseEvent: public Event {
  public:
-  WindowCloseEvent() {}
+  WindowCloseEvent() = default;
 
   EVENT_CLASS_TYPE(kWindowClose)
   EVENT_CLASS_CATEGORY(kEventCategoryApplication)
@@ -53,7 +51,7 @@ class WindowCloseEvent: public Event {
 /// @brief An Event generated when the app has ticked.
 class AppTickEvent : public Event {
  public:
-  AppTickEvent() {}
+  AppTickEvent() = default;
 
   EVENT_CLASS_TYPE(kAppTick)
   EVENT_CLASS_CATEGORY(kEventCategoryApplication)
@@ -62,7 +60,7 @@ class AppTickEvent : public Event {
 /// @brief An event generated when the app has updated.
 class AppUpdateEvent : public Event {
  public:
-  AppUpdateEvent() {}
+  AppUpdateEvent() = default;
 
   EVENT_CLASS_TYPE(kAppUpdate)
   EVENT_CLASS_CATEGORY(kEventCategoryApplication)
@@ -71,14 +69,12 @@ class AppUpdateEvent : public Event {
 /// @brief An event generated when the app has rendered.
 class AppRenderEvent : public Event {
  public:
-  AppRenderEvent() {}
+  AppRenderEvent() = default;
 
   EVENT_CLASS_TYPE(kAppRender)
   EVENT_CLASS_CATEGORY(kEventCategoryApplication)
 };
 
-}  // namespace events
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::events
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_EVENTS_APPLICATIONEVENT_H_

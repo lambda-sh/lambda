@@ -12,14 +12,10 @@
 #include <ostream>
 #include <string>
 
-#include <spdlog/fmt/ostr.h>
+#include <Lambda/core/Core.h>
+#include <Lambda/core/memory/Pointers.h>
 
-#include "Lambda/core/Core.h"
-#include "Lambda/core/memory/Pointers.h"
-
-namespace lambda {
-namespace core {
-namespace events {
+namespace lambda::core::events {
 
 // ----------------------- EVENT TYPES & CATEGORIES ---------------------------
 
@@ -65,20 +61,21 @@ enum EventCategory {
 class Event {
   friend class EventDispatcher;
  public:
-  virtual EventType GetEventType() const = 0;
-  virtual const char* GetName() const = 0;
-  virtual int GetCategoryFlags() const = 0;
-  virtual std::string ToString() const { return GetName(); }
+  virtual ~Event() = default;
+  [[nodiscard]] virtual EventType GetEventType() const = 0;
+  [[nodiscard]] virtual const char* GetName() const = 0;
+  [[nodiscard]] virtual int GetCategoryFlags() const = 0;
+  [[nodiscard]] std::string ToString() const { return GetName(); }
 
   /// @brief Checks if the Event has been handled.
-  bool HasBeenHandled() { return has_been_handled_; }
+  [[nodiscard]] bool HasBeenHandled() const { return has_been_handled_; }
 
   /// @brief Checks if the Event belongs to a specific category.
-  bool IsInCategory(EventCategory category) {
+  [[nodiscard]] bool IsInCategory(const EventCategory category) const {
       return GetCategoryFlags() & category; }
 
   /// @brief Support the use of << with Events.
-  std::ostream& operator<<(std::ostream& os) { return os << ToString(); }
+  std::ostream& operator<<(std::ostream& os) const { return os << ToString(); }
 
  protected:
   bool has_been_handled_ = false;
@@ -100,7 +97,7 @@ class EventDispatcher {
   bool Dispatch(EventFn<Event> func) {
     if (event_->GetEventType() == Event::GetStaticType()) {
       const Event& casted_event = dynamic_cast<const Event&>(*event_);
-      bool success = func(casted_event);
+      const bool success = func(casted_event);
       event_->SetHandled(success);
       return true;
     }
@@ -111,8 +108,6 @@ class EventDispatcher {
   memory::Shared<Event> event_;
 };
 
-}  // namespace events
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::events
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_EVENTS_EVENT_H_
