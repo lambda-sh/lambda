@@ -54,6 +54,8 @@ enum EventCategory {
 /// EventDispatcher.
 #define BIND_EVENT_HANDLER(fn) std::bind(&fn, this, std::placeholders::_1)
 
+
+
 // ----------------------------------- CLASSES ---------------------------------
 
 /// @brief The base Event class for events that are propagated throughout
@@ -65,7 +67,7 @@ class Event {
   [[nodiscard]] virtual EventType GetEventType() const = 0;
   [[nodiscard]] virtual const char* GetName() const = 0;
   [[nodiscard]] virtual int GetCategoryFlags() const = 0;
-  [[nodiscard]] std::string ToString() const { return GetName(); }
+  [[nodiscard]] virtual std::string ToString() const { return GetName(); }
 
   /// @brief Checks if the Event has been handled.
   [[nodiscard]] bool HasBeenHandled() const { return has_been_handled_; }
