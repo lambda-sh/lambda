@@ -1,15 +1,13 @@
-#include "Lambda/core/layers/LayerStack.h"
+#include <Lambda/core/layers/LayerStack.h>
 
 #include <vector>
 
-#include "Lambda/core/layers/Layer.h"
-#include "Lambda/core/memory/Pointers.h"
+#include <Lambda/core/layers/Layer.h>
+#include <Lambda/core/memory/Pointers.h>
 
-namespace lambda {
-namespace core {
-namespace layers {
+namespace lambda::core::layers {
 
-LayerStack::LayerStack() {}
+LayerStack::LayerStack() = default;
 
 /// Does one final detach on all of the layers when being closed out. This is
 /// for allowing all of the layers attached to the application to gracefully
@@ -18,7 +16,7 @@ LayerStack::LayerStack() {}
 /// @todo Should layers be gracefully handled or should it be up to the user to
 /// remove the layers before shutdown?
 LayerStack::~LayerStack() {
-  for (auto layer : layers_) {
+  for (const auto& layer : layers_) {
     layer->OnDetach();
   }
 }
@@ -35,9 +33,8 @@ void LayerStack::PushOverlay(memory::Shared<Layer> overlay) {
 /// Pop a layer off of the layer stack. Compares layers via Shared resources.
 /// TODO(C3NZ): Is this problematic since it's using a shared pointer?
 void LayerStack::PopLayer(memory::Shared<Layer> layer) {
-  auto it = std::find(layers_.begin(), layers_.end(), layer);
-
-  if (it != layers_.end()) {
+  if (const auto it = std::find(layers_.begin(), layers_.end(), layer);
+      it != layers_.end()) {
     layers_.erase(it);
     --layer_insert_location_;
   }
@@ -45,12 +42,10 @@ void LayerStack::PopLayer(memory::Shared<Layer> layer) {
 
 /// TODO(C3NZ): Is this problematic since it's using a shared pointer?
 void LayerStack::PopOverlay(memory::Shared<Layer> overlay) {
-  auto it = std::find(layers_.begin(), layers_.end(), overlay);
-  if (it != layers_.end()) {
+  if (auto it = std::find(layers_.begin(), layers_.end(), overlay);
+      it != layers_.end()) {
     layers_.erase(it);
   }
 }
 
-}  // namespace layers
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::layers
