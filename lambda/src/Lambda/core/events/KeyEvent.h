@@ -15,7 +15,7 @@ namespace lambda::core::events {
 /// @brief The Base Key Event used for other Key Events.
 class KeyEvent : public Event {
  public:
-  int GetKeyCode() const { return key_code_; }
+  [[nodiscard]] int GetKeyCode() const { return key_code_; }
 
   EVENT_CLASS_CATEGORY(kEventCategoryKeyboard | kEventCategoryInput)
 
@@ -27,12 +27,12 @@ class KeyEvent : public Event {
 
 /// @brief An Event generated whenever a key is pressed within an application
 /// that is running lambda.
-class KeyPressedEvent : public KeyEvent {
+class KeyPressedEvent final : public KeyEvent {
  public:
   KeyPressedEvent(int key_code, int repeat_count)
     : KeyEvent(key_code), repeat_count_(repeat_count) {}
 
-  int GetRepeatCount() const { return repeat_count_; }
+  [[nodiscard]] int GetRepeatCount() const { return repeat_count_; }
 
   [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
@@ -53,7 +53,7 @@ class KeyPressedEvent : public KeyEvent {
 
 /// @brief An Event generated whenever a key is released within an application
 /// that is running lambda.
-class KeyReleasedEvent : public KeyEvent {
+class KeyReleasedEvent final : public KeyEvent {
  public:
   explicit KeyReleasedEvent(const int key_code) : KeyEvent(key_code) {}
 
@@ -68,7 +68,7 @@ class KeyReleasedEvent : public KeyEvent {
 
 /// @brief An Event generated whenever a key is typed within an application that
 /// is running lambda. (Keys typed do not track any repeat counts.)
-class KeyTypedEvent : public KeyEvent {
+class KeyTypedEvent final : public KeyEvent {
  public:
   explicit KeyTypedEvent(const int key_code) : KeyEvent(key_code) {}
 
