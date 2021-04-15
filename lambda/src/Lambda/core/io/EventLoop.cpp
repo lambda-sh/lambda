@@ -1,10 +1,6 @@
-#include "Lambda/core/io/EventLoop.h"
+#include <Lambda/core/io/EventLoop.h>
 
-using lambda::core::util::Time;
-
-namespace lambda {
-namespace core {
-namespace io {
+namespace lambda::core::io {
 
 /// @todo (C3NZ): Investigate into the amount of time needed to sleep by the
 /// thread that this loop is running in.
@@ -16,14 +12,12 @@ void EventLoop::Run() {
     std::this_thread::sleep_for(core::util::Milliseconds(50));
 
     UniqueAsyncTask next_task;
-    bool has_next = event_queue_.try_dequeue(next_task);
-
-    if (!has_next) {
+    if (const bool has_next = event_queue_.try_dequeue(next_task); !has_next) {
       std::this_thread::sleep_for(core::util::Milliseconds(50));
       continue;
     }
 
-    AsyncStatus task_status = next_task->GetStatus();
+    const AsyncStatus task_status = next_task->GetStatus();
 
     // Callback has expired.
     if (task_status == AsyncStatus::Expired) {
@@ -33,16 +27,17 @@ void EventLoop::Run() {
 
     // Still waiting to execute.
     if (task_status == AsyncStatus::Deferred) {
-      bool has_space = event_queue_.enqueue(std::move(next_task));
-      LAMBDA_CORE_ASSERT(has_space, "The Event loop has run out of space with {} nodes", size_);
+      const bool has_space = event_queue_.enqueue(std::move(next_task));
+      LAMBDA_CORE_ASSERT(
+          has_space,
+          "The Event loop has run out of space with {} nodes",
+          size_);
       continue;
     }
 
-    // Callback is ready.
-    AsyncResult result = next_task->Execute();
-
     // Handle failure.
-    if (result == AsyncResult::Failure) {
+    if (const AsyncResult result = next_task->Execute();
+        result == AsyncResult::Failure) {
       LAMBDA_CORE_ERROR(
           "Task [{}] has failed to execute.",
           next_task->GetName());
@@ -50,50 +45,43 @@ void EventLoop::Run() {
     }
 
     LAMBDA_CORE_TRACE("Task [{0}] has completed.", next_task->GetName());
-
-    // Reschedule the callback if it should be repeated.
-    if (next_task->ShouldRepeat()) {
-      Time next_execution_time, next_expiration_time;
-
-      next_execution_time = Time().AddMilliseconds(
-          next_task->GetIntervalInMilliseconds());
-      next_expiration_time = next_execution_time.AddMilliseconds(5000);
-
-      next_task->RescheduleTask(next_execution_time, next_expiration_time);
-      bool has_space = event_queue_.enqueue(std::move(next_task));
-      LAMBDA_CORE_ASSERT(has_space, "The Event loop has run out of space with {} nodes", size_);
-    }
   }
 }
 
-bool EventLoop::SetTimeout(AsyncCallback callback, uint32_t milliseconds) {
+bool EventLoop::SetTimeout(
+    AsyncCallback callback, const uint32_t milliseconds) {
   UniqueAsyncTask task = memory::CreateUnique<AsyncTask>(
-      callback, milliseconds, false);
+      std::move(callback),
+      util::Time::Now(),
+      util::Time::MillisecondsFromNow(milliseconds));
   return Dispatch(std::move(task));
 }
 
-bool EventLoop::SetInterval(AsyncCallback callback, uint32_t milliseconds) {
+bool EventLoop::SetInterval(
+    AsyncCallback callback, const uint32_t milliseconds) {
   UniqueAsyncTask task = memory::CreateUnique<AsyncTask>(
-      callback, milliseconds, true);
+      std::move(callback),
+      util::Time::Now(),
+      util::Time::MillisecondsFromNow(milliseconds));
   return Dispatch(std::move(task));
 }
 
 bool EventLoop::Dispatch(
     AsyncCallback callback, util::Time execute_at, util::Time expire_at) {
   UniqueAsyncTask task = memory::CreateUnique<AsyncTask>(
-      callback, execute_at, expire_at);
+      std::move(callback), execute_at, expire_at);
   return Dispatch(std::move(task));
 }
 
-/// TODO(C3NZ): Do we need to use std::move since objects with well defined move
-// semantics are copyable into the queue?
-// Private dispatch for putting the task into the queue.
+/// TODO(C3NZ): Do we need to use std::move since objects with well
+/// defined move semantics are copyable into the queue?
+///
+/// Private dispatch for putting the task into the queue.
 bool EventLoop::Dispatch(UniqueAsyncTask task) {
-  bool has_space = event_queue_.enqueue(std::move(task));
-  LAMBDA_CORE_ASSERT(has_space, "The Event loop has run out of space with {} nodes", size_);
+  const bool has_space = event_queue_.enqueue(std::move(task));
+  LAMBDA_CORE_ASSERT(
+      has_space, "The Event loop has run out of space with {} nodes", size_);
   return has_space;
 }
 
-}  // namespace io
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::io
