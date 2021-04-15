@@ -1,21 +1,21 @@
 #if defined LAMBDA_PLATFORM_LINUX || defined LAMBDA_DEBUG
 
-#include "Lambda/platform/linux/Input.h"
+#include <Lambda/platform/linux/Input.h>
 
 #include <utility>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "Lambda/core/Application.h"
-#include "Lambda/core/input/Input.h"
+#include <Lambda/core/Application.h>
+#include <Lambda/core/input/Input.h>
 
 namespace lambda {
 
 #ifdef LAMBDA_PLATFORM_LINUX
 
-core::input::Input* core::input::Input::kInput_ =
-    new platform::linux::InputImplementation();
+core::memory::Unique<core::input::Input> core::input::Input::kInput_
+    = core::memory::CreateUnique<platform::linux::InputImplementation>();
 
 #endif  // LAMBDA_PLATFORM_LINUX
 

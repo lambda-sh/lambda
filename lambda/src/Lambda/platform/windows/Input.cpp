@@ -14,7 +14,8 @@ namespace lambda {
 
 #ifdef LAMBDA_PLATFORM_WINDOWS
 
-core::input::Input* core::input::Input::kInput_ = new platform::windows::InputImplementation();
+core::memory::Unique<core::input::Input> core::input::Input::kInput_
+    = core::memory::CreateUnique<platform::windows::InputImplementation>();
 
 #endif  // LAMBDA_PLATFORM_WINDOWS
 
