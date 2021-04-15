@@ -8,11 +8,9 @@
 
 #include <sstream>
 
-#include "Lambda/core/events/Event.h"
+#include <Lambda/core/events/Event.h>
 
-namespace lambda {
-namespace core {
-namespace events {
+namespace lambda::core::events {
 
 /// @brief The Base Key Event used for other Key Events.
 class KeyEvent : public Event {
@@ -24,7 +22,7 @@ class KeyEvent : public Event {
  protected:
   int key_code_;
 
-  explicit KeyEvent(int key_code) : key_code_(key_code) {}
+  explicit KeyEvent(const int key_code) : key_code_(key_code) {}
 };
 
 /// @brief An Event generated whenever a key is pressed within an application
@@ -36,7 +34,7 @@ class KeyPressedEvent : public KeyEvent {
 
   int GetRepeatCount() const { return repeat_count_; }
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string
         << "KeyPressedEvent: "
@@ -57,9 +55,9 @@ class KeyPressedEvent : public KeyEvent {
 /// that is running lambda.
 class KeyReleasedEvent : public KeyEvent {
  public:
-  explicit KeyReleasedEvent(int key_code) : KeyEvent(key_code) {}
+  explicit KeyReleasedEvent(const int key_code) : KeyEvent(key_code) {}
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string << "KeyReleasedEvent: " << key_code_;
     return event_string.str();
@@ -72,9 +70,9 @@ class KeyReleasedEvent : public KeyEvent {
 /// is running lambda. (Keys typed do not track any repeat counts.)
 class KeyTypedEvent : public KeyEvent {
  public:
-  explicit KeyTypedEvent(int key_code) : KeyEvent(key_code) {}
+  explicit KeyTypedEvent(const int key_code) : KeyEvent(key_code) {}
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string << "KeyTypedEvent: " << key_code_;
     return event_string.str();
@@ -83,8 +81,6 @@ class KeyTypedEvent : public KeyEvent {
   EVENT_CLASS_TYPE(kKeyTyped);
 };
 
-}  // namespace events
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::events
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_EVENTS_KEYEVENT_H_
