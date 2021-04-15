@@ -13,7 +13,6 @@ void EventLoop::Run() {
 
     UniqueAsyncTask next_task;
     if (const bool has_next = event_queue_.try_dequeue(next_task); !has_next) {
-      std::this_thread::sleep_for(core::util::Milliseconds(50));
       continue;
     }
 
