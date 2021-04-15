@@ -1,5 +1,7 @@
 #include <Lambda/core/io/EventLoop.h>
 
+#include <Lambda/core/util/Time.h>
+
 namespace lambda::core::io {
 
 /// @todo (C3NZ): Investigate into the amount of time needed to sleep by the
@@ -9,7 +11,7 @@ namespace lambda::core::io {
 /// be. Especially if this is running in another thread.
 void EventLoop::Run() {
   while (running_) {
-    std::this_thread::sleep_for(core::util::Milliseconds(50));
+    std::this_thread::sleep_for(util::Milliseconds(50));
 
     UniqueAsyncTask next_task;
     if (const bool has_next = event_queue_.try_dequeue(next_task); !has_next) {
