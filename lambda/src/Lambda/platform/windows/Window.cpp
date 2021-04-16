@@ -3,7 +3,6 @@
 #include "Lambda/platform/windows/Window.h"
 
 #include <GLFW/glfw3.h>
-
 #include "Lambda/core/Core.h"
 #include "Lambda/core/Window.h"
 #include "Lambda/core/events/ApplicationEvent.h"
@@ -21,9 +20,9 @@ namespace lambda {
 
 // Will create a windows based implementation of the window handler.
 core::memory::Shared<core::Window> core::Window::Create(
-    const core::WindowProperties& properties) {
+    WindowProperties properties) {
   return memory::CreateShared<platform::windows::WindowImplementation>(
-      properties);
+      std::move(properties));
 }
 
 #endif  // LAMBDA_PLATFORM_WINDOWS
@@ -51,8 +50,8 @@ static void GLFWErrorCallback(int error, const char* description) {
 static bool GLFWInitialized = false;
 
 WindowImplementation::WindowImplementation(
-    const core::WindowProperties& properties) {
-  Init(properties);
+    core::WindowProperties properties) {
+  Init(std::move(properties));
 }
 
 WindowImplementation::~WindowImplementation() {
@@ -61,7 +60,7 @@ WindowImplementation::~WindowImplementation() {
 
 // Initialize the windows given generic window properties to be applied to the
 // current window.
-void WindowImplementation::Init(const core::WindowProperties& properties) {
+void WindowImplementation::Init(core::WindowProperties properties) {
   properties_.Title = properties.Title;
   properties_.Width = properties.Width;
   properties_.Height = properties.Height;
