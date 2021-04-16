@@ -23,9 +23,9 @@ namespace lambda {
 
 // Will create a windows based implementation of the window handler.
 Shared<core::Window> core::Window::Create(
-    const core::WindowProperties& properties) {
+    core::WindowProperties properties) {
   return memory::CreateShared<platform::linux::WindowImplementation>(
-      properties);
+      std::move(properties));
 }
 
 #endif  // LAMBDA_PLATFORM_LINUX
@@ -41,8 +41,8 @@ static void GLFWErrorCallback(int error, const char* description) {
 static bool GLFWInitialized = false;
 
 WindowImplementation::WindowImplementation(
-    const core::WindowProperties& properties) {
-  Init(properties);
+    core::WindowProperties properties) {
+  Init(std::move(properties));
 }
 
 WindowImplementation::~WindowImplementation() {
@@ -51,7 +51,7 @@ WindowImplementation::~WindowImplementation() {
 
 // Initialize the windows given generic window properties to be applied to the
 // current window.
-void WindowImplementation::Init(const core::WindowProperties& properties) {
+void WindowImplementation::Init(core::WindowProperties properties) {
   properties_.Title = properties.Title;
   properties_.Width = properties.Width;
   properties_.Height = properties.Height;

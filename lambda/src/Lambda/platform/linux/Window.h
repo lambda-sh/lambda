@@ -1,16 +1,13 @@
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_LINUX_WINDOW_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_LINUX_WINDOW_H_
 
-#include "Lambda/core/events/ApplicationEvent.h"
 #if defined LAMBDA_PLATFORM_LINUX || defined LAMBDA_DEBUG
 
 #include <string>
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include "Lambda/core/Window.h"
-#include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/GraphicsContext.h"
 
 namespace lambda {
@@ -31,8 +28,8 @@ struct Properties {
 
 class WindowImplementation : public core::Window {
  public:
-  explicit WindowImplementation(const core::WindowProperties& properties);
-  virtual ~WindowImplementation();
+  explicit WindowImplementation(core::WindowProperties properties);
+  ~WindowImplementation() override;
 
   void OnUpdate() override;
 
@@ -54,8 +51,8 @@ class WindowImplementation : public core::Window {
   core::renderer::GraphicsContext* context_;
   internal::Properties properties_;
 
-  virtual void Init(const core::WindowProperties& properties);
-  virtual void Shutdown();
+  void Init(core::WindowProperties properties);
+  void Shutdown();
 };
 
 }  // namespace linux
