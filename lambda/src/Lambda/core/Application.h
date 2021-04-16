@@ -10,18 +10,16 @@
 
 #include <memory>
 
-#include "Lambda/core/Core.h"
-#include "Lambda/core/Window.h"
-#include "Lambda/core/events/ApplicationEvent.h"
-#include "Lambda/core/events/Event.h"
-#include "Lambda/core/imgui/ImGuiLayer.h"
-#include "Lambda/core/layers/Layer.h"
-#include "Lambda/core/layers/LayerStack.h"
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/util/Time.h"
+#include <Lambda/core/Window.h>
+#include <Lambda/core/events/ApplicationEvent.h>
+#include <Lambda/core/events/Event.h>
+#include <Lambda/core/imgui/ImGuiLayer.h>
+#include <Lambda/core/layers/Layer.h>
+#include <Lambda/core/layers/LayerStack.h>
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/core/util/Time.h>
 
-namespace lambda {
-namespace core {
+namespace lambda::core {
 
 /// @brief The mind, body, and soul of Lambda.
 ///
@@ -75,7 +73,6 @@ class Application {
 /// @brief Used for creating an instance of the game engine.
 memory::Unique<Application> CreateApplication();
 
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_APPLICATION_H_
