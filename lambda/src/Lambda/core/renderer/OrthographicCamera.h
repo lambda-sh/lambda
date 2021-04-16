@@ -7,9 +7,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace lambda {
-namespace core {
-namespace renderer {
+namespace lambda::core::renderer {
 
 /// @brief An orthographic camera implementation for the 2D engine.
 class OrthographicCamera {
@@ -48,7 +46,8 @@ class OrthographicCamera {
   /// TODO(C3NZ): Implement this to be platform independent. (Need it's own math
   // library?)
   const glm::mat4& GetViewProjectionMatrix() const {
-      return view_projection_matrix_; }
+    return view_projection_matrix_;
+  }
 
  private:
   glm::mat4 projection_matrix_;
@@ -61,8 +60,6 @@ class OrthographicCamera {
   void RecalculateViewMatrix();
 };
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_RENDERER_ORTHOGRAPHICCAMERA_H_
