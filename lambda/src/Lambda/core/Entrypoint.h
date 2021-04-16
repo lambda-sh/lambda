@@ -7,8 +7,8 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_ENTRYPOINT_H_
 #define LAMBDA_SRC_LAMBDA_CORE_ENTRYPOINT_H_
 
-#include "Lambda/core/Application.h"
-#include "Lambda/core/util/Log.h"
+#include <Lambda/core/Application.h>
+#include <Lambda/core/util/Log.h>
 
 using lambda::core::Application;
 using lambda::core::memory::Unique;
