@@ -12,7 +12,7 @@ namespace lambda::core {
 class OrthographicCameraController {
  public:
   explicit OrthographicCameraController(
-      const float aspect_ratio, const bool can_rotate = false);
+      float aspect_ratio, bool can_rotate = false);
 
   void OnUpdate(util::TimeStep delta);
   void OnEvent(memory::Shared<events::Event> event);
