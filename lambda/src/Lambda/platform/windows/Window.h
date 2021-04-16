@@ -5,7 +5,6 @@
 
 #include <string>
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include "Lambda/core/Window.h"
@@ -29,26 +28,26 @@ struct Properties {
 
 class WindowImplementation : public core::Window {
  public:
-  explicit WindowImplementation(const core::WindowProperties& properties);
-  virtual ~WindowImplementation();
+  explicit WindowImplementation(core::WindowProperties properties);
+  ~WindowImplementation() override;
 
   void OnUpdate() override;
 
-  inline unsigned int GetWidth() const override { return properties_.Width; }
-  inline unsigned int GetHeight() const override { return properties_.Height; }
+  unsigned int GetWidth() const override { return properties_.Width; }
+  unsigned int GetHeight() const override { return properties_.Height; }
   void SetVerticalSync(bool enabled) override;
   bool HasVerticalSync() const override;
 
-  inline void SetEventCallback(const EventCallbackFunction& callback) override
+  void SetEventCallback(const EventCallbackFunction& callback) override
       { properties_.EventCallback = callback; }
-  inline void* GetNativeWindow() const override { return window_; }
+  void* GetNativeWindow() const override { return window_; }
  private:
   GLFWwindow* window_;
   core::renderer::GraphicsContext* context_;
   internal::Properties properties_;
 
-  virtual void Init(const core::WindowProperties& properties);
-  virtual void Shutdown();
+  void Init(core::WindowProperties properties);
+  void Shutdown();
 };
 
 }  // namespace windows
