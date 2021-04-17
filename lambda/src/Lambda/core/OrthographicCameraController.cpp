@@ -22,7 +22,7 @@ OrthographicCameraController::OrthographicCameraController(
             zoom_level_) {}
 
 void OrthographicCameraController::OnUpdate(lib::TimeStep delta) {
-    const float delta_in_ms = delta.InMilliSeconds<float>();
+    const float delta_in_ms = delta.InMilliseconds<float>();
     if (input::Input::IsKeyPressed(LAMBDA_KEY_W)) {
       camera_position_.y += camera_translation_speed_ * delta_in_ms;
     } else if (input::Input::IsKeyPressed(LAMBDA_KEY_S)) {
