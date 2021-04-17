@@ -1,6 +1,6 @@
 #include <Lambda/core/io/EventLoop.h>
 
-#include <Lambda/core/util/Time.h>
+#include <Lambda/lib/Time.h>
 
 namespace lambda::core::io {
 
@@ -11,7 +11,7 @@ namespace lambda::core::io {
 /// be. Especially if this is running in another thread.
 void EventLoop::Run() {
   while (running_) {
-    std::this_thread::sleep_for(util::Milliseconds(50));
+    std::this_thread::sleep_for(lib::Milliseconds(50));
 
     UniqueAsyncTask next_task;
     if (const bool has_next = event_queue_.try_dequeue(next_task); !has_next) {
@@ -53,8 +53,8 @@ bool EventLoop::SetTimeout(
     AsyncCallback callback, const uint32_t milliseconds) {
   UniqueAsyncTask task = memory::CreateUnique<AsyncTask>(
       std::move(callback),
-      util::Time::Now(),
-      util::Time::MillisecondsFromNow(milliseconds));
+      lib::Time::Now(),
+      lib::Time::MillisecondsFromNow(milliseconds));
   return Dispatch(std::move(task));
 }
 
@@ -62,13 +62,13 @@ bool EventLoop::SetInterval(
     AsyncCallback callback, const uint32_t milliseconds) {
   UniqueAsyncTask task = memory::CreateUnique<AsyncTask>(
       std::move(callback),
-      util::Time::Now(),
-      util::Time::MillisecondsFromNow(milliseconds));
+      lib::Time::Now(),
+      lib::Time::MillisecondsFromNow(milliseconds));
   return Dispatch(std::move(task));
 }
 
 bool EventLoop::Dispatch(
-    AsyncCallback callback, util::Time execute_at, util::Time expire_at) {
+    AsyncCallback callback, lib::Time execute_at, lib::Time expire_at) {
   UniqueAsyncTask task = memory::CreateUnique<AsyncTask>(
       std::move(callback), execute_at, expire_at);
   return Dispatch(std::move(task));

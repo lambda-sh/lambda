@@ -3,7 +3,7 @@
 #include <glad/glad.h>
 #include <stb_image.h>
 
-#include "Lambda/core/util/Assert.h"
+#include "Lambda/lib/Assert.h"
 
 namespace lambda {
 namespace platform {

@@ -2,7 +2,7 @@
 
 #include <glad/glad.h>
 
-#include "Lambda/core/util/Assert.h"
+#include "Lambda/lib/Assert.h"
 #include "Lambda/core/renderer/Buffer.h"
 
 namespace lambda {

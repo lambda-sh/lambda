@@ -6,7 +6,7 @@
 
 #include <Lambda/core/events/Event.h>
 #include <Lambda/core/memory/Pointers.h>
-#include <Lambda/core/util/Time.h>
+#include <Lambda/lib/Time.h>
 
 namespace lambda::core::layers {
 
@@ -27,7 +27,7 @@ class Layer {
   virtual void OnDetach() = 0;
 
   /// @brief What to do when lambda has an update for the layer.
-  virtual void OnUpdate(util::TimeStep time_step) = 0;
+  virtual void OnUpdate(lib::TimeStep time_step) = 0;
 
   /// @brief What to do when lambda has an event for the layer.
   virtual void OnEvent(memory::Shared<events::Event> event) = 0;

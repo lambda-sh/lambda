@@ -4,7 +4,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "Lambda/core/util/Assert.h"
+#include "Lambda/lib/Assert.h"
 #include "Lambda/core/Core.h"
 
 namespace lambda {

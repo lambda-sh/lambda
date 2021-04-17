@@ -17,7 +17,7 @@
 #include <Lambda/core/layers/Layer.h>
 #include <Lambda/core/layers/LayerStack.h>
 #include <Lambda/core/memory/Pointers.h>
-#include <Lambda/core/util/Time.h>
+#include <Lambda/lib/Time.h>
 
 namespace lambda::core {
 
@@ -61,7 +61,7 @@ class Application {
   layers::LayerStack layer_stack_;
   memory::Shared<Window> window_;
   memory::Shared<imgui::ImGuiLayer> imgui_layer_;
-  util::Time last_frame_time_;
+  lib::Time last_frame_time_;
 
   static memory::Unique<Application> kApplication_;
 

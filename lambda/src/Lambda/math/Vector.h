@@ -30,10 +30,14 @@ class Vector {
     std::for_each(elements_.begin(), elements_.end(), lambda);
   }
 
-  Container Apply(std::function<Type(Type)> lambda) {
+  Vector Apply(std::function<Type(Type)> lambda) {
     Container new_elements(elements_.size());
     std::transform(elements_.begin(), elements_.end(), &new_elements, lambda);
-    return new_elements;
+    return Vector(std::move(new_elements));
+  }
+
+  Vector operator+(const Vector& other_vector) {
+    static_assert(GetSize() == other_vector.GetSize());
   }
 
  protected:
@@ -98,6 +102,12 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
     return elements_[2];
   }
 };
+
+
+template<typename Vector>
+static Vector Add(Vector first, Vector second) {
+  return first + second;
+}
 
 }  // namespace lambda::math
 

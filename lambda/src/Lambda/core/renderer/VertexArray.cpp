@@ -1,7 +1,7 @@
 #include "Lambda/core/renderer/VertexArray.h"
 
 #include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/util/Assert.h"
+#include "Lambda/lib/Assert.h"
 #include "Lambda/core/renderer/Renderer.h"
 
 #include "Lambda/platform/opengl/OpenGLVertexArray.h"
@@ -24,7 +24,8 @@ memory::Shared<VertexArray> VertexArray::Create() {
     default:
       LAMBDA_CORE_ASSERT(
           false,
-          "The Renderer has been set to a graphics API that isn't supported.", "");
+          "The Renderer has been set to a graphics API that isn't supported.",
+          "");
       return nullptr;
   }
 }
