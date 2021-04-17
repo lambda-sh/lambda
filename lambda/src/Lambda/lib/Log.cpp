@@ -1,4 +1,4 @@
-#include "Lambda/lib/Log.h"
+#include <Lambda/lib/Log.h>
 
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
