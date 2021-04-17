@@ -1,5 +1,5 @@
-/// @file engine/src/Engine.h
-/// @brief The entrypoint into the game engine source code.
+/// @file Lambda/src/Lambda.h
+/// @brief The lambda library all in one header. This
 ///
 /// This exposes all engine headers for use of any application.
 #ifndef LAMBDA_SRC_LAMBDA_LAMBDA_H_
@@ -19,7 +19,7 @@
 #include <Lambda/core/input/KeyCodes.h>
 #include <Lambda/core/input/MouseButtonCodes.h>
 
-// ------------------------------------ UTIL -----------------------------------
+// ------------------------------------ LIB ------------------------------------
 
 #include <Lambda/lib/Assert.h>
 #include <Lambda/lib/Log.h>
@@ -41,9 +41,14 @@
 #include <Lambda/core/renderer/OrthographicCamera.h>
 #include <Lambda/core/renderer/RenderCommand.h>
 #include <Lambda/core/renderer/Renderer.h>
+#include <Lambda/core/renderer/Renderer2D.h>
 #include <Lambda/core/renderer/Shader.h>
 #include <Lambda/core/renderer/Texture.h>
-#include <Lambda/core/renderer/VertexArray.h>
+#include <Lambda/core/renderer/VertexArray.h>J
+
+// --------------------------------- PROFILER ----------------------------------
+
+#include <Lambda/profiler/Profiler.h>
 
 // ----------------------------------- MATH ------------------------------------
 
