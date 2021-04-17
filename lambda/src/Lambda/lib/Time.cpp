@@ -1,11 +1,8 @@
-#include "Lambda/core/util/Time.h"
+#include "Lambda/lib/Time.h"
 
 #include <chrono>
 
-namespace lambda {
-namespace core {
-namespace util {
-
+namespace lambda::lib {
 
 // ----------------------------------- TIME ------------------------------------
 
@@ -59,6 +56,4 @@ Time Time::SecondsFromNow(int64_t seconds) {
   return Time().AddSeconds(seconds);
 }
 
-}  // namespace util
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::lib

@@ -1,17 +1,14 @@
 /// @file Time.h
 /// @brief Cross platform timing utility for the game engine.
-#ifndef LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
-#define LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
+#ifndef LAMBDA_SRC_LAMBDA_LIB_TIME_H_
+#define LAMBDA_SRC_LAMBDA_LIB_TIME_H_
 
 #include <chrono>
 #include <ratio>
 
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Concepts.h"
+#include "Lambda/lib/Assert.h"
 
-namespace lambda {
-namespace core {
-namespace util {
+namespace lambda::lib {
 
 // Clock & Time typedefs
 typedef std::chrono::steady_clock Clock;
@@ -125,8 +122,6 @@ class TimeStep {
 };
 
 
-}  // namespace util
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::lib
 
-#endif  // LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
+#endif  // LAMBDA_SRC_LAMBDA_LIB_TIME_H_
