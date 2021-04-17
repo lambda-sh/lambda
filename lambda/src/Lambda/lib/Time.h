@@ -6,7 +6,7 @@
 #include <chrono>
 #include <ratio>
 
-#include "Lambda/lib/Assert.h"
+#include <Lambda/lib/Assert.h>
 
 namespace lambda::lib {
 
