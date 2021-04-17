@@ -34,13 +34,13 @@ class Time {
   explicit Time(const TimePoint& t) noexcept : time_(t) {}
 
   /// @brief Get the time in seconds.
-  const TimePoint InSeconds() const;
+  TimePoint InSeconds() const;
 
   /// @brief Get the time in Milliseconds.
-  const TimePoint InMilliSeconds() const;
+  TimePoint InMilliseconds() const;
 
   /// @brief Get the time in Microseconds.
-  const TimePoint InMicroSeconds() const;
+  TimePoint InMicroseconds() const;
 
   /// @brief Add milliseconds to the current time and return a new Time
   /// instance.
@@ -59,7 +59,7 @@ class Time {
   bool HasPassed() const;
 
   /// @brief Get the raw Timepoint from our Time abstraction.
-  inline const TimePoint GetTimePoint() const { return time_; }
+  TimePoint GetTimePoint() const { return time_; }
 
   /// @brief Effectively an alias for getting the current time.
   static Time Now();
@@ -86,7 +86,7 @@ class Time {
 
 /// typename T is either a double or float.
 template<typename T, typename Ratio>
-const T DurationTo(const Time& start, const Time& stop) {
+T DurationTo(const Time& start, const Time& stop) {
   std::chrono::duration<T, Ratio> d(stop.GetTimePoint() - start.GetTimePoint());
   return d.count();
 }
@@ -94,27 +94,31 @@ const T DurationTo(const Time& start, const Time& stop) {
 /// @brief Measuring the delta between two different times.
 class TimeStep {
  public:
-  TimeStep(Time start, Time stop) : start_(start), stop_(stop) {}
+  TimeStep(const Time start, const Time stop) : start_(start), stop_(stop) {}
 
   /// @brief Get the timestep in seconds.
   template<typename T>
-  const T InSeconds() const {
-    return DurationTo<T, std::deci>(start_, stop_); }
+  T InSeconds() const {
+    return DurationTo<T, std::deci>(start_, stop_);
+  }
 
   /// @brief Get the timestep in milliseconds.
   template<typename T>
-  const T InMilliSeconds() const {
-    return DurationTo<T, std::milli>(start_, stop_); }
+  T InMilliseconds() const {
+    return DurationTo<T, std::milli>(start_, stop_);
+  }
 
   /// @brief Get the timestep in microseconds.
   template<typename T>
-  const T InMicroSeconds() const {
-    return DurationTo<T, std::micro>(start_, stop_); }
+  T InMicroseconds() const {
+    return DurationTo<T, std::micro>(start_, stop_);
+  }
 
   /// @brief Get the timestep in nanoseconds.
   template<typename T>
-  const T InNanoSeconds() const {
-    return DurationTo<T, std::nano>(start_, stop_); }
+  T InNanoseconds() const {
+    return DurationTo<T, std::nano>(start_, stop_);
+  }
 
  private:
   Time start_;
