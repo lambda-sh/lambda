@@ -9,10 +9,10 @@
 #include "Lambda/core/layers/Layer.h"
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/Renderer.h"
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Log.h"
-#include "Lambda/core/util/Reverse.h"
-#include "Lambda/core/util/Time.h"
+#include "Lambda/lib/Assert.h"
+#include "Lambda/lib/Log.h"
+#include "Lambda/lib/Reverse.h"
+#include "Lambda/lib/Time.h"
 #include "Lambda/profiler/Profiler.h"
 
 namespace lambda {
@@ -47,8 +47,8 @@ Application::~Application() {
 void Application::Run() {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
   while (running_) {
-    util::Time current_frame_time;
-    util::TimeStep time_step(last_frame_time_, current_frame_time);
+    lib::Time current_frame_time;
+    lib::TimeStep time_step(last_frame_time_, current_frame_time);
     last_frame_time_ = current_frame_time;
 
     if (!minimized_) {
@@ -77,7 +77,7 @@ void Application::OnEvent(memory::Shared<events::Event> event) {
   dispatcher.Dispatch<events::WindowResizeEvent>(
       BIND_EVENT_HANDLER(Application::OnWindowResize));
 
-  for (memory::Shared<layers::Layer> layer : util::Reverse(layer_stack_)) {
+  for (memory::Shared<layers::Layer> layer : lib::Reverse(layer_stack_)) {
     layer->OnEvent(event);
     if (event->HasBeenHandled()) {
       break;

@@ -11,7 +11,7 @@
 #include <concurrentqueue.h>
 
 #include <Lambda/core/io/AsyncTask.h>
-#include <Lambda/core/util/Time.h>
+#include <Lambda/lib/Time.h>
 
 namespace lambda::core::io {
 
@@ -43,8 +43,8 @@ class EventLoop {
   /// seconds of not being run.)
   bool Dispatch(
       AsyncCallback callback,
-      util::Time execute_at = util::Time(),
-      util::Time expire_at = util::Time().AddSeconds(5));
+      lib::Time execute_at = lib::Time(),
+      lib::Time expire_at = lib::Time().AddSeconds(5));
 
  private:
   bool running_;

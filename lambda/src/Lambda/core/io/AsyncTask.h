@@ -7,7 +7,7 @@
 #include <functional>
 
 #include <Lambda/core/memory/Pointers.h>
-#include <Lambda/core/util/Time.h>
+#include <Lambda/lib/Time.h>
 
 namespace lambda::core::io {
 
@@ -43,10 +43,10 @@ class AsyncTask {
   /// @brief Construct a task that should execute as soon as possible.
   AsyncTask(
       AsyncCallback callback,
-      const util::Time execute_at = util::Time(),
-      const util::Time expires_at = util::Time().AddSeconds(5)) :
+      const lib::Time execute_at = lib::Time(),
+      const lib::Time expires_at = lib::Time().AddSeconds(5)) :
           callback_(std::move(callback)),
-          scheduled_at_(util::Time()),
+          scheduled_at_(lib::Time()),
           execute_at_(execute_at),
           expires_at_(expires_at) {}
 
@@ -58,8 +58,8 @@ class AsyncTask {
 
   /// @brief Allows a task to be rescheduled with new times.
   void RescheduleTask(
-      util::Time new_execution_time,
-      util::Time new_expiration_time);
+      lib::Time new_execution_time,
+      lib::Time new_expiration_time);
 
   /// @brief Get the name of the task (Currently not implemented.)
   /// TODO(C3NZ): There should be overloads in the EventLoop that allow callback
@@ -75,7 +75,7 @@ class AsyncTask {
   std::string name_;
   AsyncCallback callback_;
   bool should_repeat_ = false;
-  util::Time scheduled_at_, execute_at_, executed_at_, expires_at_;
+  lib::Time scheduled_at_, execute_at_, executed_at_, expires_at_;
 };
 
 }  // namespace lambda::core::io

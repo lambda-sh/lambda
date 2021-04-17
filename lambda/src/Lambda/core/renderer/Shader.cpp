@@ -1,15 +1,12 @@
 #include "Lambda/core/renderer/Shader.h"
 
 #include <string>
-#include <vector>
-
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
-
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/Renderer.h"
 #include "Lambda/core/renderer/RendererAPI.h"
-#include "Lambda/core/util/Log.h"
+#include "Lambda/lib/Log.h"
 
 #include "Lambda/platform/opengl/OpenGLShader.h"
 
@@ -28,7 +25,8 @@ memory::Shared<Shader> Shader::Create(const std::string& path) {
     default:
       LAMBDA_CORE_ASSERT(
           false,
-          "The Renderer has been set to a graphics API that isn't supported.", "");
+          "The Renderer has been set to a graphics API that isn't supported.",
+          "");
       return nullptr;
   }
 }
@@ -93,7 +91,7 @@ memory::Shared<Shader> ShaderLibrary::Load(
 memory::Shared<Shader> ShaderLibrary::Get(const std::string& name) {
   LAMBDA_CORE_ASSERT(
       shader_mapping_.find(name) != shader_mapping_.end(),
-      "Failed to get the shader: {0}", 
+      "Failed to get the shader: {0}",
       name);
   return shader_mapping_[name];
 }

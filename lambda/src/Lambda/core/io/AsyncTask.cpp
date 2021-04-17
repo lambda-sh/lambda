@@ -1,6 +1,6 @@
 #include <Lambda/core/io/AsyncTask.h>
 
-#include <Lambda/core/util/Time.h>
+#include <Lambda/lib/Time.h>
 
 namespace lambda::core::io {
 
@@ -30,7 +30,7 @@ AsyncStatus AsyncTask::GetStatus() const {
 /// Resets the task to execute at a future time. Usually done through the event
 /// loop.
 void AsyncTask::RescheduleTask(
-    const util::Time new_execution_time, const util::Time new_expiration_time) {
+    const lib::Time new_execution_time, const lib::Time new_expiration_time) {
   execute_at_ = new_execution_time;
   expires_at_ = new_expiration_time;
 }

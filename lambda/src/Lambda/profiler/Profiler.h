@@ -5,20 +5,20 @@
 #include <fstream>
 #include <thread>
 
-#include "Lambda/core/util/Time.h"
+#include "Lambda/lib/Time.h"
 
 namespace lambda {
 namespace profiler {
 
 struct ProfileResult {
   std::string Name;
-  core::util::Time Start, Stop;
+  lib::Time Start, Stop;
   std::thread::id ThreadID;
 
   ProfileResult(
       std::string name,
-      core::util::Time start,
-      core::util::Time stop,
+      lib::Time start,
+      lib::Time stop,
       std::thread::id threadID) :
           Name(name),
           Start(start),
@@ -121,13 +121,13 @@ class Timer {
  private:
   bool stopped_;
   const char* name_;
-  core::util::Time start_;
+  lib::Time start_;
 
   /// @brief Compute the duration of a function (Called within the Timers
   /// destructor.)
   void Stop() {
-    core::util::Time end;
-    core::util::TimeStep duration(start_, end);
+    lib::Time end;
+    lib::TimeStep duration(start_, end);
 
     stopped_ = true;
 

@@ -8,8 +8,8 @@
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Log.h"
+#include "Lambda/lib/Assert.h"
+#include "Lambda/lib/Log.h"
 
 namespace lambda::platform::opengl {
 

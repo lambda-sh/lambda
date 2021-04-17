@@ -7,7 +7,7 @@
 #include "Lambda/core/input/KeyCodes.h"
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/OrthographicCamera.h"
-#include "Lambda/core/util/Time.h"
+#include "Lambda/lib/Time.h"
 
 namespace lambda::core {
 
@@ -21,7 +21,7 @@ OrthographicCameraController::OrthographicCameraController(
             -zoom_level_,
             zoom_level_) {}
 
-void OrthographicCameraController::OnUpdate(util::TimeStep delta) {
+void OrthographicCameraController::OnUpdate(lib::TimeStep delta) {
     const float delta_in_ms = delta.InMilliSeconds<float>();
     if (input::Input::IsKeyPressed(LAMBDA_KEY_W)) {
       camera_position_.y += camera_translation_speed_ * delta_in_ms;

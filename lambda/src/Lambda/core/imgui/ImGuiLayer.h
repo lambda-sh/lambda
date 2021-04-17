@@ -32,7 +32,7 @@ class ImGuiLayer : public layers::Layer {
   /// @brief What to do when ImGui requests to render.
   void OnImGuiRender() override;
 
-  void OnUpdate(util::TimeStep time_step) override {}
+  void OnUpdate(lib::TimeStep time_step) override {}
 
   /// @brief Begin an ImGui rendering context.
   void Begin();

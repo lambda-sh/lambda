@@ -6,8 +6,7 @@
 #include "Lambda/core/renderer/RenderCommand.h"
 #include "Lambda/core/renderer/Shader.h"
 #include "Lambda/core/renderer/VertexArray.h"
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/platform/opengl/OpenGLShader.h"
+#include "Lambda/lib/Assert.h"
 
 namespace lambda {
 namespace core {

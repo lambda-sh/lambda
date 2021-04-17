@@ -21,10 +21,10 @@
 
 // ------------------------------------ UTIL -----------------------------------
 
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Log.h"
-#include "Lambda/core/util/Reverse.h"
-#include "Lambda/core/util/Time.h"
+#include "Lambda/lib/Assert.h"
+#include "Lambda/lib/Log.h"
+#include "Lambda/lib/Reverse.h"
+#include "Lambda/lib/Time.h"
 
 // ------------------------------------- IO ------------------------------------
 
