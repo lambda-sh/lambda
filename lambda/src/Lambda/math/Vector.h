@@ -4,6 +4,7 @@
 #include <array>
 #include <vector>
 
+#include <Lambda/lib/Assert.h>
 #include <Lambda/math/Precision.h>
 
 namespace lambda::math {
@@ -15,8 +16,13 @@ template<class Type = Real, class Container = std::vector<Real>>
 class Vector {
  public:
   Vector() : elements_(Container()) {}
+
   explicit Vector(Container elements)
     : elements_(std::move(elements)) {}
+
+  explicit Vector(const Vector& vec) = default;
+  explicit Vector(const Vector&& vec) noexcept
+      : elements_(std::move(vec.elements_)) {}
 
   const Container& GetRawElements() {
     return elements_;
@@ -37,7 +43,33 @@ class Vector {
   }
 
   Vector operator+(const Vector& other_vector) {
-    static_assert(GetSize() == other_vector.GetSize());
+    LAMBDA_CORE_ASSERT(
+        GetSize() == other_vector.GetSize(),
+        "Vectors are not the same size",
+        "");
+    Container new_elements(GetSize());
+
+    std::transform(
+        elements_.begin(),
+        elements_.end(),
+        other_vector.elements_.begin(),
+        new_elements.begin(),
+        [](Type x, Type y) -> Type {
+          return x + y;
+        });
+
+    return Vector(new_elements);
+  }
+
+  void operator+=(const Vector& other_vector) {
+    std::transform(
+        elements_.begin(),
+        elements_.end(),
+        other_vector.elements_.begin(),
+        elements_.begin(),
+        [](Type x, Type y) {
+          return x + y;
+        });
   }
 
  protected:
@@ -48,7 +80,11 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
  public:
   Vector2() : Vector({0, 0}) {}
   Vector2(const Real x, const Real y) : Vector({x, y}) {}
+
   explicit Vector2(const std::array<Real, 2> elements) : Vector(elements) {}
+
+  explicit Vector2(const Vector2& vec) = default;
+
 
   /// @brief Set the x component of the current vector.
   void SetX(const Real x) {
