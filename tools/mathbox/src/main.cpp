@@ -27,6 +27,11 @@ class MathBox final : public Application {
       x += 1;
     }
 
+    lambda::math::Vector vec({0, 1});
+    lambda::math::Vector vec2({1, 1});
+    lambda::math::Vector vec3(vec + vec2);
+    LAMBDA_CORE_INFO("{}", vec3.GetRawElements()[0]);
+
     Graph2D graph(points);
     PushLayer(CreateShared<GraphLayer2D>(graph));
   }
