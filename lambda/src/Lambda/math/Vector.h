@@ -24,6 +24,9 @@ class Vector {
   explicit Vector(const Vector&& vec) noexcept
       : elements_(std::move(vec.elements_)) {}
 
+  Vector& operator=(const Vector& vec) = default;
+  Vector& operator=(Vector&& vec) = default;
+
   const Container& GetRawElements() {
     return elements_;
   }
@@ -78,26 +81,33 @@ class Vector {
 
 class Vector2 : public Vector<Real, std::array<Real, 2>> {
  public:
-  Vector2() : Vector({0, 0}) {}
-  Vector2(const Real x, const Real y) : Vector({x, y}) {}
+  Vector2() noexcept : Vector({0, 0}) {}
+  Vector2(const Real x, const Real y) noexcept : Vector({x, y}) {}
+
+  ~Vector2() = default;
 
   explicit Vector2(const std::array<Real, 2> elements) : Vector(elements) {}
 
   explicit Vector2(const Vector2& vec) = default;
 
+  explicit Vector2(Vector2&& vec) = default;
+
+  Vector2& operator=(const Vector2& vec) = default;
+  Vector2& operator=(Vector2&& vec) = default;
 
   /// @brief Set the x component of the current vector.
   void SetX(const Real x) {
     elements_[0] = x;
   }
+
   [[nodiscard]] Real GetX() const {
     return elements_[0];
-  }
+    }
 
   /// @brief Set the y component of the current vector.
   void SetY(const Real y) {
-    elements_[1] = y;
-  }
+      elements_[1] = y;
+    }
 
   [[nodiscard]] Real GetY() const {
     return elements_[1];
