@@ -86,11 +86,11 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
   ~Vector2() = default;
 
   explicit Vector2(const std::array<Real, 2> elements) : Vector(elements) {}
-  explicit Vector2(const Vector2& vec) = default;
+  explicit Vector2(const Vector2& vec) noexcept = default;
   explicit Vector2(Vector2&& vec) = default;
 
-  Vector2& operator=(const Vector2& vec) = default;
-  Vector2& operator=(Vector2&& vec) = default;
+  Vector2& operator=(const Vector2& vec) noexcept = default;
+  Vector2& operator=(Vector2&& vec) noexcept = default;
 
   /// @brief Set the x component of the current vector.
   void SetX(const Real x) {
@@ -108,6 +108,17 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
 
   [[nodiscard]] Real GetY() const {
     return elements_[1];
+  }
+
+  Vector2 operator+(const Vector2& other_vector) const {
+    return Vector2(
+      elements_[0] + other_vector.GetX(),
+      elements_[1] + other_vector.GetY());
+  }
+
+  void operator+=(const Vector2& other_vector) {
+    elements_[0] = elements_[0] + other_vector.GetX();
+    elements_[1] = elements_[1] + other_vector.GetY();
   }
 };
 
