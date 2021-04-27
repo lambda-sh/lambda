@@ -12,15 +12,15 @@ namespace lambda::math {
 /// @brief Implementation for Vectors of varying length.
 /// @tparam Type is the type of the element being stored within Container.
 /// @tparam Container The container to use for storing elements within.
-template<class Type = Real, class Container = std::vector<Real>>
+template<class Type = Real, class Container = std::vector<Type>>
 class Vector {
  public:
-  Vector() : elements_(Container()) {}
+  Vector() noexcept : elements_(Container()) {}
 
-  explicit Vector(Container elements)
+  explicit Vector(Container elements) noexcept
     : elements_(std::move(elements)) {}
 
-  explicit Vector(const Vector& vec) = default;
+  explicit Vector(const Vector& vec) noexcept = default;
   explicit Vector(const Vector&& vec) noexcept
       : elements_(std::move(vec.elements_)) {}
 
@@ -83,13 +83,10 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
  public:
   Vector2() noexcept : Vector({0, 0}) {}
   Vector2(const Real x, const Real y) noexcept : Vector({x, y}) {}
-
   ~Vector2() = default;
 
   explicit Vector2(const std::array<Real, 2> elements) : Vector(elements) {}
-
   explicit Vector2(const Vector2& vec) = default;
-
   explicit Vector2(Vector2&& vec) = default;
 
   Vector2& operator=(const Vector2& vec) = default;
@@ -148,7 +145,6 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
     return elements_[2];
   }
 };
-
 
 template<typename Vector>
 static Vector Add(Vector first, Vector second) {
