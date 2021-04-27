@@ -32,6 +32,11 @@ class MathBox final : public Application {
     lambda::math::Vector vec3(vec + vec2);
     LAMBDA_CORE_INFO("{}", vec3.GetRawElements()[0]);
 
+
+    lambda::math::Vector2 test = {0, 0};
+    lambda::math::Vector2 oof = {3, 1};
+    auto test_vec = test + oof;
+    LAMBDA_CORE_INFO("{}", test_vec.GetX());
     Graph2D graph(points);
     PushLayer(CreateShared<GraphLayer2D>(graph));
   }
