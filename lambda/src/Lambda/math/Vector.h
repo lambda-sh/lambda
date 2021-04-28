@@ -110,6 +110,10 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
     return elements_[1];
   }
 
+  [[nodiscard]] Real Length() const {
+    return REAL_SQRT(REAL_POW(elements_[0], 2) + REAL_POW(elements_[1], 2));
+  }
+
   Vector2 operator+(const Vector2& other_vector) const {
     return Vector2(
       elements_[0] + other_vector.GetX(),
@@ -127,8 +131,7 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
  public:
   Vector3() : Vector({0, 0, 0}) {}
   explicit Vector3(const std::array<Real, 3> elements) : Vector(elements) {}
-  Vector3(const Real x, const Real y) : Vector({x, y}) {}
-
+  Vector3(const Real x, const Real y) noexcept : Vector({x, y}) {}
 
   /// @brief Set the x component of the current vector.
   void SetX(const Real x) {
@@ -156,11 +159,6 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
     return elements_[2];
   }
 };
-
-template<typename Vector>
-static Vector Add(Vector first, Vector second) {
-  return first + second;
-}
 
 }  // namespace lambda::math
 
