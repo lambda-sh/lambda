@@ -57,3 +57,17 @@ jobs:
             --c-compiler ${{ matrix.c-compiler }} \
             --os ${{ matrix.target }} \
             --cores 2
+
+      - uses: actions/setup-ruby@v1
+      - name: Send Webhook Notification for build status.
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+          WEBHOOK_URL: ${{ secrets.LAMBDA_BUILD_WEBHOOK }}
+          HOOK_OS_NAME: ${{ runner.os }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          JOB_ID: ${{ github.job }}
+        run: |
+          git clone https://github.com/dhinakg/github-actions-discord-webhook.git webhook
+          bash webhook/send.sh $JOB_STATUS $WEBHOOK_URL
+        shell: bash
