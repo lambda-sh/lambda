@@ -9,6 +9,8 @@
 
 namespace lambda::math {
 
+// ----------------------------------- VECTOR ----------------------------------
+
 /// @brief Implementation for Vectors of varying length.
 /// @tparam Type is the type of the element being stored within Container.
 /// @tparam Container The container to use for storing elements within.
@@ -79,15 +81,18 @@ class Vector {
   Container elements_;
 };
 
+// ----------------------------------- VECTOR2 ---------------------------------
+
 class Vector2 : public Vector<Real, std::array<Real, 2>> {
  public:
   Vector2() noexcept : Vector({0, 0}) {}
   Vector2(const Real x, const Real y) noexcept : Vector({x, y}) {}
   ~Vector2() = default;
 
-  explicit Vector2(const std::array<Real, 2> elements) : Vector(elements) {}
+  explicit Vector2(const std::array<Real, 2> elements) noexcept
+      : Vector(elements) {}
   explicit Vector2(const Vector2& vec) noexcept = default;
-  explicit Vector2(Vector2&& vec) = default;
+  explicit Vector2(Vector2&& vec) noexcept = default;
 
   Vector2& operator=(const Vector2& vec) noexcept = default;
   Vector2& operator=(Vector2&& vec) noexcept = default;
@@ -114,12 +119,86 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
     return REAL_SQRT(REAL_POW(elements_[0], 2) + REAL_POW(elements_[1], 2));
   }
 
-
   void operator+=(const Vector2& other_vector) {
     elements_[0] = elements_[0] + other_vector.GetX();
     elements_[1] = elements_[1] + other_vector.GetY();
   }
+
+  void operator-=(const Vector2& other_vector) {
+    elements_[0] = elements_[0] - other_vector.GetX();
+    elements_[1] = elements_[1] - other_vector.GetY();
+  }
+
+  void operator*=(const Vector2& other_vector) {
+    elements_[0] = elements_[0] * other_vector.GetX();
+    elements_[1] = elements_[1] * other_vector.GetY();
+  }
+
+  void operator/=(const Vector2& other_vector) {
+    elements_[0] = elements_[0] / other_vector.GetX();
+    elements_[1] = elements_[1] / other_vector.GetY();
+  }
 };
+
+inline Vector2 operator+(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() + second_vector.GetX(),
+    first_vector.GetY() + second_vector.GetY());
+}
+
+inline Vector2 operator+(
+    const Vector2& first_vector, Real scalar) {
+  return Vector2(
+    first_vector.GetX() + scalar,
+    first_vector.GetY() + scalar);
+}
+
+inline Vector2 operator-(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() - second_vector.GetX(),
+    first_vector.GetY() - second_vector.GetY());
+}
+
+inline Vector2 operator-(
+    const Vector2& first_vector, Real scalar) {
+  return Vector2(
+    first_vector.GetX() - scalar,
+    first_vector.GetY() - scalar);
+}
+
+
+inline Vector2 operator*(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() * second_vector.GetX(),
+    first_vector.GetY() * second_vector.GetY());
+}
+
+inline Vector2 operator*(
+    const Vector2& first_vector, Real scalar) {
+  return Vector2(
+    first_vector.GetX() * scalar,
+    first_vector.GetY() * scalar);
+}
+
+inline Vector2 operator/(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() / second_vector.GetX(),
+    first_vector.GetY() / second_vector.GetY());
+}
+
+inline Vector2 operator/(
+    const Vector2& first_vector, Real scalar) {
+
+  return Vector2(
+    first_vector.GetX() / scalar,
+    first_vector.GetY() / scalar);
+}
+
+// ----------------------------------- VECTOR3 ---------------------------------
 
 /// @brief Implementation for Vectors of length 3.
 class Vector3 : public Vector<Real, std::array<Real, 3>> {
@@ -155,19 +234,6 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
   }
 };
 
-inline Vector2 operator+(
-    const Vector2& first_vector, const Vector2& second_vector) {
-  return Vector2(
-    first_vector.GetX() + second_vector.GetX(),
-    first_vector.GetY() + second_vector.GetY());
-}
-
-inline Vector2 operator-(
-    const Vector2& first_vector, const Vector2& second_vector) {
-  return Vector2(
-    first_vector.GetX() - second_vector.GetX(),
-    first_vector.GetY() - second_vector.GetY());
-}
 
 }  // namespace lambda::math
 
