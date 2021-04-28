@@ -114,11 +114,6 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
     return REAL_SQRT(REAL_POW(elements_[0], 2) + REAL_POW(elements_[1], 2));
   }
 
-  Vector2 operator+(const Vector2& other_vector) const {
-    return Vector2(
-      elements_[0] + other_vector.GetX(),
-      elements_[1] + other_vector.GetY());
-  }
 
   void operator+=(const Vector2& other_vector) {
     elements_[0] = elements_[0] + other_vector.GetX();
@@ -159,6 +154,20 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
     return elements_[2];
   }
 };
+
+inline Vector2 operator+(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() + second_vector.GetX(),
+    first_vector.GetY() + second_vector.GetY());
+}
+
+inline Vector2 operator-(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() - second_vector.GetX(),
+    first_vector.GetY() - second_vector.GetY());
+}
 
 }  // namespace lambda::math
 
