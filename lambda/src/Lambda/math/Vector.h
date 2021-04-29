@@ -168,7 +168,6 @@ inline Vector2 operator-(
     first_vector.GetY() - scalar);
 }
 
-
 inline Vector2 operator*(
     const Vector2& first_vector, const Vector2& second_vector) {
   return Vector2(
@@ -192,10 +191,27 @@ inline Vector2 operator/(
 
 inline Vector2 operator/(
     const Vector2& first_vector, Real scalar) {
-
   return Vector2(
     first_vector.GetX() / scalar,
     first_vector.GetY() / scalar);
+}
+
+inline Real DistanceBetween(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  const Vector2 displacement_vector = first_vector - second_vector;
+  return displacement_vector.Length();
+}
+
+inline Real PerimeterOf(std::vector<Vector2> vectors) {
+  Real perimeter = 0.0f;
+
+  for (size_t counter = 0; counter <= vectors.size() - 1; counter++) {
+    perimeter += DistanceBetween(
+        vectors[counter],
+        vectors[(counter + 1) % vectors.size()]);
+  }
+
+  return perimeter;
 }
 
 // ----------------------------------- VECTOR3 ---------------------------------
