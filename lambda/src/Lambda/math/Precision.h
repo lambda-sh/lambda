@@ -19,6 +19,7 @@ namespace lambda::math {
   #define REAL_ABS fabsf
   #define REAL_SIN sinf
   #define REAL_COS cosf
+  #define REAL_ATAN2 atan2f
   #define REAL_POW powf
   #define REAL_FMOD fmodf
 
@@ -33,6 +34,7 @@ namespace lambda::math {
   #define REAL_ABS fabs
   #define REAL_SIN sin
   #define REAL_COS cos
+  #define REAL_ATAN2 atan2f
   #define REAL_POW pow
   #define REAL_FMOD fmod
 
