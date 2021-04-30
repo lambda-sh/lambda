@@ -115,7 +115,7 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
     return elements_[1];
   }
 
-  [[nodiscard]] Real Length() const {
+  [[nodiscard]] Real GetLength() const {
     return REAL_SQRT(REAL_POW(elements_[0], 2) + REAL_POW(elements_[1], 2));
   }
 
@@ -196,12 +196,24 @@ inline Vector2 operator/(
     first_vector.GetY() / scalar);
 }
 
+inline Real LengthOf(const Vector2& vector) {
+  return REAL_SQRT(REAL_POW(vector.GetX(), 2) + REAL_POW(vector.GetY(), 2));
+}
+
+/// @brief The distance between two 2D vectors.
+/// @param first_vector The start vector.
+/// @param second_vector The end vector.
+/// @return THe distance between each vector.
 inline Real DistanceBetween(
     const Vector2& first_vector, const Vector2& second_vector) {
   const Vector2 displacement_vector = first_vector - second_vector;
-  return displacement_vector.Length();
+  return LengthOf(displacement_vector);
 }
 
+/// @brief Get the perimeter of a list of vectors.
+/// @param vectors The list of 2D vectors to find the coordinate of (Must be
+/// in order).
+/// @return The perimeter of connecting all vectors.
 inline Real PerimeterOf(std::vector<Vector2> vectors) {
   Real perimeter = 0.0f;
 
@@ -212,6 +224,26 @@ inline Real PerimeterOf(std::vector<Vector2> vectors) {
   }
 
   return perimeter;
+}
+
+/// @brief Converts a polar coordinate to a cartesian coordinate.
+/// @param polar_vector The polar coordinate that contains length & angle in
+/// radians as the vector components.
+/// @return A Cartesian coordinate vector that contains the x & y components.
+inline Vector2 PolarToCartesian(const Vector2& polar_vector) {
+  const Real length = polar_vector.GetX();
+  const Real angle = polar_vector.GetY();
+  return Vector2(length * REAL_COS(angle), length * REAL_SIN(angle));
+}
+
+/// @brief Converts a cartesian coordinate to a polar coordinate.
+/// @param cartesian_vector A vector containing x & y coordinates.
+/// @return A polar vector containing it's length & angle in radians.
+inline Vector2 CartesianToPolar(const Vector2& cartesian_vector) {
+  const Real length = LengthOf(cartesian_vector);
+  const Real angle = REAL_ATAN2(
+      cartesian_vector.GetY(), cartesian_vector.GetX());
+  return Vector2(length, angle);
 }
 
 // ----------------------------------- VECTOR3 ---------------------------------

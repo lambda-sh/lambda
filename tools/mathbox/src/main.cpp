@@ -37,6 +37,28 @@ class MathBox final : public Application {
     lambda::math::Vector2 oof = {3, 1};
     auto test_vec = test + oof;
     LAMBDA_CORE_INFO("{}", test_vec.GetX());
+    LAMBDA_CORE_INFO("{}", lambda::math::PerimeterOf(
+        {{1, 0}, {1, 1}, {0, 1}, {0, 0}}));
+
+    auto cartesian = lambda::math::PolarToCartesian(
+        {5.0, 37.0 * (REAL_PI / 180)});
+    LAMBDA_CORE_INFO(
+        "Cartesian coordinates of (5.0, 37.0) are: ({}, {})",
+        cartesian.GetX(),
+        cartesian.GetY());
+
+    auto polar = lambda::math::CartesianToPolar({1.0, 0.0});
+    LAMBDA_CORE_INFO(
+        "Polar coordinates of (1.0, 0.0) are: ({}, {})",
+        polar.GetX(),
+        polar.GetY());
+
+    auto polar2 = lambda::math::CartesianToPolar({-2, 3});
+    LAMBDA_CORE_INFO(
+        "Polar coordinates of (-2, 3) are: ({}, {})",
+        polar2.GetX(),
+        polar2.GetY());
+
     Graph2D graph(points);
     PushLayer(CreateShared<GraphLayer2D>(graph));
   }
