@@ -5,7 +5,6 @@
 
 namespace lambda::math {
 
-
 // ----------------------------------- VECTOR3 ---------------------------------
 
 /// @brief Implementation for Vectors of length 3.
