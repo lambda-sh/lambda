@@ -41,7 +41,7 @@ class MathBox final : public Application {
         {{1, 0}, {1, 1}, {0, 1}, {0, 0}}));
 
     auto cartesian = lambda::math::PolarToCartesian(
-        {5.0, 37.0 * (REAL_PI / 180)});
+        {5.0, lambda::math::DegreeToRadians(37.0)});
     LAMBDA_CORE_INFO(
         "Cartesian coordinates of (5.0, 37.0) are: ({}, {})",
         cartesian.GetX(),
