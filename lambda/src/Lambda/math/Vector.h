@@ -196,6 +196,9 @@ inline Vector2 operator/(
     first_vector.GetY() / scalar);
 }
 
+/// @brief Get the length of a 2D vector.
+/// @param vector Cartesian Coordinate vector.
+/// @return The length of the vector. (sqrt(a^2 + b^2))
 inline Real LengthOf(const Vector2& vector) {
   return REAL_SQRT(REAL_POW(vector.GetX(), 2) + REAL_POW(vector.GetY(), 2));
 }
