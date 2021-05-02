@@ -14,6 +14,8 @@ namespace lambda::math {
   #define REAL_MAX FLT_MAX
   #define REAL_EPSILON FLT_EPSILON
   #define REAL_PI 3.14159f
+  #define REAL_RADIAN_PER_DEGREE (REAL_PI / 180.0f)
+  #define REAL_DEGREE_PER_RADIAN (180.0f / REAL_PI)
 
   #define REAL_SQRT sqrtf
   #define REAL_ABS fabsf
@@ -29,6 +31,8 @@ namespace lambda::math {
   #define REAL_MAX DBL_MAX
   #define REAL_EPSILON DBL_EPSILON
   #define REAL_PI 3.14159265358979
+  #define REAL_RADIAN_PER_DEGREE (REAL_PI / 180.0f)
+  #define REAL_DEGREE_PER_RADIAN (180.0f / REAL_PI)
 
   #define REAL_SQRT sqrt
   #define REAL_ABS fabs
