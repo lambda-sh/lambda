@@ -246,6 +246,24 @@ inline Vector2 CartesianToPolar(const Vector2& cartesian_vector) {
   return Vector2(length, angle);
 }
 
+/// @brief Rotates a cartesian coordinate vector given an angle.
+/// @param cartesian_vector The vector to rotate.
+/// @param angle The angle to rotate the vector by (In radians)
+/// @return A cartesian vector that has been rotated.
+inline Vector2 RotateCartesian(const Vector2& cartesian_vector, Real angle) {
+  Vector2 polar = CartesianToPolar(cartesian_vector);
+  polar.SetY(polar.GetY() * angle);
+  return PolarToCartesian(polar);
+}
+
+/// @brief Rotates a polar coordinate vector given an angle.
+/// @param polar_vector The vector to rotate.
+/// @param angle The angle to rotate the vector by (In radians)
+/// @return A polar vector that has been rotated.
+inline Vector2 RotatePolar(const Vector2& polar_vector, Real angle) {
+  return Vector2(polar_vector.GetX(), polar_vector.GetY() * angle);
+}
+
 // ----------------------------------- VECTOR3 ---------------------------------
 
 /// @brief Implementation for Vectors of length 3.
