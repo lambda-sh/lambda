@@ -54,6 +54,7 @@
 
 #include <Lambda/math/Precision.h>
 #include <Lambda/math/Vector.h>
+#include <Lambda/math/Vector2.h>
 #include <Lambda/math/plot/Graph.h>
 #include <Lambda/math/shapes/Point.h>
 
