@@ -64,64 +64,6 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
   }
 };
 
-// ------------------------------- BINARY OPERATORS ----------------------------
-
-inline Vector2 operator+(
-    const Vector2& first_vector, const Vector2& second_vector) {
-  return Vector2(
-    first_vector.GetX() + second_vector.GetX(),
-    first_vector.GetY() + second_vector.GetY());
-}
-
-inline Vector2 operator+(
-    const Vector2& first_vector, Real scalar) {
-  return Vector2(
-    first_vector.GetX() + scalar,
-    first_vector.GetY() + scalar);
-}
-
-inline Vector2 operator-(
-    const Vector2& first_vector, const Vector2& second_vector) {
-  return Vector2(
-    first_vector.GetX() - second_vector.GetX(),
-    first_vector.GetY() - second_vector.GetY());
-}
-
-inline Vector2 operator-(
-    const Vector2& first_vector, Real scalar) {
-  return Vector2(
-    first_vector.GetX() - scalar,
-    first_vector.GetY() - scalar);
-}
-
-inline Vector2 operator*(
-    const Vector2& first_vector, const Vector2& second_vector) {
-  return Vector2(
-    first_vector.GetX() * second_vector.GetX(),
-    first_vector.GetY() * second_vector.GetY());
-}
-
-inline Vector2 operator*(
-    const Vector2& first_vector, Real scalar) {
-  return Vector2(
-    first_vector.GetX() * scalar,
-    first_vector.GetY() * scalar);
-}
-
-inline Vector2 operator/(
-    const Vector2& first_vector, const Vector2& second_vector) {
-  return Vector2(
-    first_vector.GetX() / second_vector.GetX(),
-    first_vector.GetY() / second_vector.GetY());
-}
-
-inline Vector2 operator/(
-    const Vector2& first_vector, Real scalar) {
-  return Vector2(
-    first_vector.GetX() / scalar,
-    first_vector.GetY() / scalar);
-}
-
 // ------------------------------- VECTOR2 FUNCTIONS ---------------------------
 
 /// @brief Get the length of a 2D vector.
@@ -193,6 +135,64 @@ inline Vector2 RotateCartesian(const Vector2& cartesian_vector, Real angle) {
 /// @return A polar vector that has been rotated.
 inline Vector2 RotatePolar(const Vector2& polar_vector, Real angle) {
   return Vector2(polar_vector.GetX(), polar_vector.GetY() + angle);
+}
+
+// ------------------------------- BINARY OPERATORS ----------------------------
+
+inline Vector2 operator+(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() + second_vector.GetX(),
+    first_vector.GetY() + second_vector.GetY());
+}
+
+inline Vector2 operator+(
+    const Vector2& first_vector, Real scalar) {
+  return Vector2(
+    first_vector.GetX() + scalar,
+    first_vector.GetY() + scalar);
+}
+
+inline Vector2 operator-(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() - second_vector.GetX(),
+    first_vector.GetY() - second_vector.GetY());
+}
+
+inline Vector2 operator-(
+    const Vector2& first_vector, Real scalar) {
+  return Vector2(
+    first_vector.GetX() - scalar,
+    first_vector.GetY() - scalar);
+}
+
+inline Vector2 operator*(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() * second_vector.GetX(),
+    first_vector.GetY() * second_vector.GetY());
+}
+
+inline Vector2 operator*(
+    const Vector2& first_vector, Real scalar) {
+  return Vector2(
+    first_vector.GetX() * scalar,
+    first_vector.GetY() * scalar);
+}
+
+inline Vector2 operator/(
+    const Vector2& first_vector, const Vector2& second_vector) {
+  return Vector2(
+    first_vector.GetX() / second_vector.GetX(),
+    first_vector.GetY() / second_vector.GetY());
+}
+
+inline Vector2 operator/(
+    const Vector2& first_vector, Real scalar) {
+  return Vector2(
+    first_vector.GetX() / scalar,
+    first_vector.GetY() / scalar);
 }
 
 }  // namespace lambda::math
