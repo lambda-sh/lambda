@@ -9,40 +9,64 @@ namespace lambda::math {
 #endif
 
 #ifdef LAMBDA_MATH_SINGLE_PRECISION
-  typedef float Real;
 
-  #define REAL_MAX FLT_MAX
-  #define REAL_EPSILON FLT_EPSILON
-  #define REAL_PI 3.14159f
-  #define REAL_RADIAN_PER_DEGREE (REAL_PI / 180.0f)
-  #define REAL_DEGREE_PER_RADIAN (180.0f / REAL_PI)
+typedef float Real;
 
-  #define REAL_SQRT sqrtf
-  #define REAL_ABS fabsf
-  #define REAL_SIN sinf
-  #define REAL_COS cosf
-  #define REAL_ATAN2 atan2f
-  #define REAL_POW powf
-  #define REAL_FMOD fmodf
+constexpr Real REAL_PI = 3.14159f;
+constexpr Real REAL_MAX = FLT_MAX;
+constexpr Real REAL_EPSILON = FLT_EPSILON;
+
+inline Real SquareRootOf(Real number) {
+  return sqrtf(number);
+}
+inline Real AbsoluteValueOf(Real number) {
+  return fabsf(number);
+}
+
+inline Real SineOf(const Real radians) {
+  return sinf(radians);
+}
+
+inline Real CosineOf(const Real radians) {
+  return cos(radians);
+}
+
+inline Real Atan2Of(const Real y, const Real x) {
+  return atan2f(y, x);
+}
+
+inline Real PowerOf(const Real number, const Real power) {
+  return powf(number, power);
+}
+
+inline Real ModulusOf(const Real x, const Real y) {
+  return fmodf(x, y);
+}
 
 #elif defined(LAMBDA_MATH_DOUBLE_PRECISION)
   typedef double Real;
 
-  #define REAL_MAX DBL_MAX
-  #define REAL_EPSILON DBL_EPSILON
-  #define REAL_PI 3.14159265358979
-  #define REAL_RADIAN_PER_DEGREE (REAL_PI / 180.0f)
-  #define REAL_DEGREE_PER_RADIAN (180.0f / REAL_PI)
+constexpr Real REAL_PI = 3.14159265358979;
+constexpr Real REAL_MAX = DBL_MAX;
+constexpr Real REAL_EPSILON = DBL_EPSILON;
 
-  #define REAL_SQRT sqrt
-  #define REAL_ABS fabs
-  #define REAL_SIN sin
-  #define REAL_COS cos
-  #define REAL_ATAN2 atan2f
-  #define REAL_POW pow
-  #define REAL_FMOD fmod
+constexpr auto REAL_SQRT = sqrt;
+constexpr auto REAL_ABS = fabs;
+constexpr auto REAL_SIN = sin;
+constexpr auto REAL_COS = cos;
+constexpr auto REAL_ATAN2 = atan2;
+constexpr auto REAL_POW = pow;
+constexpr auto REAL_FMOD = fmod;
 
 #endif  // defined(LAMBDA_MATH_DOUBLE_PRECISION)
+
+constexpr Real DegreeToRadians(const Real degrees) {
+  return degrees * (REAL_PI / 180.0f);
+}
+
+constexpr Real RadiansToDegree(const Real radians) {
+  return radians * (180.0f / REAL_PI);
+}
 
 }  // namespace lambda::math
 
