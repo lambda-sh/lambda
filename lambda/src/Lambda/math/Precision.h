@@ -14,9 +14,9 @@ namespace lambda::math {
 
 typedef float Real;
 
-const Real REAL_PI = 3.14159f;
-const Real REAL_MAX = FLT_MAX;
-const Real REAL_EPSILON = FLT_EPSILON;
+constexpr Real REAL_PI = 3.14159f;
+constexpr Real REAL_MAX = FLT_MAX;
+constexpr Real REAL_EPSILON = FLT_EPSILON;
 
 inline Real SquareRootOf(Real number) {
   return sqrtf(number);
