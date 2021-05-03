@@ -102,7 +102,7 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
   /// @brief Get the perimeter of a list of vectors.
   /// @param vectors A list of 2D vectors. Ordering may affect result.
   /// @return The perimeter of connecting all vectors.
-  static Real PerimeterOf(std::vector<Vector2> vectors) {
+  static Real PerimeterOf(const std::vector<Vector2>& vectors) {
     Real perimeter = 0.0f;
 
     for (size_t counter = 0; counter <= vectors.size() - 1; counter++) {
@@ -151,6 +151,20 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
   /// @return A polar vector that has been rotated.
   static Vector2 RotatePolarByAngle(const Vector2& polar_vector, Real angle) {
     return Vector2(polar_vector.GetX(), polar_vector.GetY() + angle);
+  }
+
+  /// @brief Sum of multiple vectors.
+  /// @param vectors The list of vectors to sum.
+  /// @return a vector pointing to the sum of all vectors.
+  static Vector2 SumOf(const std::vector<Vector2>& vectors) {
+    Real x = 0, y = 0;
+
+    for (const auto& vector : vectors) {
+      x += vector.GetX();
+      y += vector.GetY();
+    }
+
+    return Vector2(x, y);
   }
 };
 
