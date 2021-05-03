@@ -12,9 +12,9 @@ namespace lambda::math {
 
 typedef float Real;
 
-constexpr Real REAL_PI = 3.14159f;
-constexpr Real REAL_MAX = FLT_MAX;
-constexpr Real REAL_EPSILON = FLT_EPSILON;
+const Real REAL_PI = 3.14159f;
+const Real REAL_MAX = FLT_MAX;
+const Real REAL_EPSILON = FLT_EPSILON;
 
 inline Real SquareRootOf(Real number) {
   return sqrtf(number);
@@ -46,9 +46,9 @@ inline Real ModulusOf(const Real x, const Real y) {
 #elif defined(LAMBDA_MATH_DOUBLE_PRECISION)
   typedef double Real;
 
-constexpr Real REAL_PI = 3.14159265358979;
-constexpr Real REAL_MAX = DBL_MAX;
-constexpr Real REAL_EPSILON = DBL_EPSILON;
+const Real REAL_PI = 3.14159265358979;
+const Real REAL_MAX = DBL_MAX;
+const Real REAL_EPSILON = DBL_EPSILON;
 
 constexpr auto REAL_SQRT = sqrt;
 constexpr auto REAL_ABS = fabs;
