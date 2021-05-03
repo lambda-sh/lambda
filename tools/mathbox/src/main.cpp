@@ -13,6 +13,7 @@ using lambda::math::shapes::Point2D;
 using lambda::math::plot::Graph2D;
 
 using lambda::core::layers::GraphLayer2D;
+using lambda::math::Vector2;
 
 class MathBox final : public Application {
  public:
@@ -33,27 +34,27 @@ class MathBox final : public Application {
     LAMBDA_CORE_INFO("{}", vec3.GetRawElements()[0]);
 
 
-    lambda::math::Vector2 test = {0, 0};
-    lambda::math::Vector2 oof = {3, 1};
+    Vector2 test = {0, 0};
+    Vector2 oof = {3, 1};
     auto test_vec = test + oof;
     LAMBDA_CORE_INFO("{}", test_vec.GetX());
-    LAMBDA_CORE_INFO("{}", lambda::math::PerimeterOf(
+    LAMBDA_CORE_INFO("{}", Vector2::PerimeterOf(
         {{1, 0}, {1, 1}, {0, 1}, {0, 0}}));
 
-    auto cartesian = lambda::math::PolarToCartesian(
+    auto cartesian = Vector2::PolarToCartesian(
         {5.0, lambda::math::DegreeToRadians(37.0)});
     LAMBDA_CORE_INFO(
         "Cartesian coordinates of (5.0, 37.0) are: ({}, {})",
         cartesian.GetX(),
         cartesian.GetY());
 
-    auto polar = lambda::math::CartesianToPolar({1.0, 0.0});
+    auto polar = Vector2::CartesianToPolar({1.0, 0.0});
     LAMBDA_CORE_INFO(
         "Polar coordinates of (1.0, 0.0) are: ({}, {})",
         polar.GetX(),
         polar.GetY());
 
-    auto polar2 = lambda::math::CartesianToPolar({-2, 3});
+    auto polar2 = Vector2::CartesianToPolar({-2, 3});
     LAMBDA_CORE_INFO(
         "Polar coordinates of (-2, 3) are: ({}, {})",
         polar2.GetX(),
