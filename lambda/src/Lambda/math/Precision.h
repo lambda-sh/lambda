@@ -1,6 +1,8 @@
 #ifndef LAMBDA_SRC_LAMBDA_MATH_PRECISION_H_
 #define LAMBDA_SRC_LAMBDA_MATH_PRECISION_H_
 
+#include <cfloat>
+
 namespace lambda::math {
 
 #if !(defined(LAMBDA_MATH_SINGLE_PRECISION) || \
