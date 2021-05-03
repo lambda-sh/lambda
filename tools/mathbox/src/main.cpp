@@ -33,7 +33,6 @@ class MathBox final : public Application {
     lambda::math::Vector vec3(vec + vec2);
     LAMBDA_CORE_INFO("{}", vec3.GetRawElements()[0]);
 
-
     Vector2 test = {0, 0};
     Vector2 oof = {3, 1};
     auto test_vec = test + oof;
