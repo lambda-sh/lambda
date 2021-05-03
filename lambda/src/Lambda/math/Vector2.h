@@ -71,8 +71,8 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
   }
 
   void operator/=(const Vector2& other_vector) {
-    elements_[0] = elements_[0] / other_vector.GetX();
-    elements_[1] = elements_[1] / other_vector.GetY();
+    SetX(GetX() / other_vector.GetX());
+    SetX(GetX() / other_vector.GetY());
   }
 
   Vector2 operator/(const Vector2& other_vector) {
@@ -100,8 +100,7 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
   }
 
   /// @brief Get the perimeter of a list of vectors.
-  /// @param vectors The list of 2D vectors to find the coordinate of (Must be
-  /// in order).
+  /// @param vectors A list of 2D vectors. Ordering may affect result.
   /// @return The perimeter of connecting all vectors.
   static Real PerimeterOf(std::vector<Vector2> vectors) {
     Real perimeter = 0.0f;
