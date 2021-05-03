@@ -79,7 +79,6 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
     return Vector2(GetX() / other_vector.GetX(), GetY() / other_vector.GetY());
   }
 
-
   // ------------------------------- STATIC FUNCTIONS --------------------------
 
   /// @brief Get the length of a 2D vector.
@@ -168,7 +167,7 @@ class Vector2 : public Vector<Real, std::array<Real, 2>> {
   }
 };
 
-// ------------------------------- BINARY OPERATORS ----------------------------
+// ------------------------------- SCALAR OPERATORS ----------------------------
 
 inline Vector2 operator+(
     const Vector2& first_vector, Real scalar) {
