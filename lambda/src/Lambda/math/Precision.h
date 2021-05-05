@@ -19,7 +19,7 @@ constexpr Real REAL_MAX = FLT_MAX;
 constexpr Real REAL_EPSILON = FLT_EPSILON;
 
 inline Real SquareRootOf(Real number) {
-  return sqrtf(number);
+    return sqrtf(number);
 }
 inline Real AbsoluteValueOf(Real number) {
   return fabsf(number);

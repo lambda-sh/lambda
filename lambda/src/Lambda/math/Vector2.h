@@ -7,7 +7,7 @@ namespace lambda::math {
 
 // ----------------------------------- VECTOR2 ---------------------------------
 
-class Vector2 : public Vector<Real, std::array<Real, 2>> {
+class Vector2 final : public Vector<Real, std::array<Real, 2>> {
  public:
   Vector2() noexcept : Vector({0, 0}) {}
   Vector2(const Real x, const Real y) noexcept : Vector({x, y}) {}
@@ -195,6 +195,12 @@ inline Vector2 operator/(
   return Vector2(
     first_vector.GetX() / scalar,
     first_vector.GetY() / scalar);
+}
+
+template<typename Vector>
+Vector2 Vector2FromVector(Vector vec) {
+  std::array<Real, 2> arr = {vec.GetElements()};
+  return Vector2()
 }
 
 }  // namespace lambda::math
