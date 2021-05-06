@@ -1,15 +1,13 @@
-#include "Lambda/core/renderer/Renderer.h"
+#include <Lambda/core/renderer/Renderer.h>
 
 #include <glm/glm.hpp>
 
-#include "Lambda/core/renderer/OrthographicCamera.h"
-#include "Lambda/core/renderer/RenderCommand.h"
-#include "Lambda/core/renderer/Renderer2D.h"
-#include "Lambda/platform/opengl/OpenGLShader.h"
+#include <Lambda/core/renderer/OrthographicCamera.h>
+#include <Lambda/core/renderer/RenderCommand.h>
+#include <Lambda/core/renderer/Renderer2D.h>
+#include <Lambda/platform/opengl/OpenGLShader.h>
 
-namespace lambda {
-namespace core {
-namespace renderer {
+namespace lambda::core::renderer {
 
 namespace {
 
@@ -36,8 +34,8 @@ void Renderer::OnWindowResize(uint32_t width, uint32_t height) {
 
 /// Binds both the shader and vertex array before issuing a draw call.
 void Renderer::Submit(
-      core::memory::Shared<VertexArray> vertex_array,
-      core::memory::Shared<Shader> shader,
+      memory::Shared<VertexArray> vertex_array,
+      memory::Shared<Shader> shader,
       const glm::mat4& transform) {
   shader->Bind();
 
@@ -53,6 +51,4 @@ void Renderer::Submit(
   RenderCommand::DrawIndexed(vertex_array);
 }
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer
