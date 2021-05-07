@@ -1,6 +1,6 @@
 #include "Sandbox2D.h"
 
-#include <Lambda.h>
+#include <Lambda/Lambda.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -33,7 +33,7 @@ void Sandbox2D::OnAttach() {
 
 void Sandbox2D::OnDetach() {}
 
-void Sandbox2D::OnUpdate(lambda::core::util::TimeStep delta) {
+void Sandbox2D::OnUpdate(lambda::lib::TimeStep delta) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
   camera_controller_.OnUpdate(delta);
 
