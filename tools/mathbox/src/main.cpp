@@ -4,6 +4,7 @@
 #include <Lambda/math/shapes/Point.h>
 #include <Lambda/math/plot/Graph.h>
 #include <Lambda/core/layers/GraphLayer.h>
+#include <Lambda/profiler/Profiler.h>
 
 using lambda::core::memory::Unique;
 using lambda::core::memory::CreateUnique;
@@ -14,6 +15,27 @@ using lambda::math::plot::Graph2D;
 
 using lambda::core::layers::GraphLayer2D;
 using lambda::math::Vector2;
+
+class ProfileLayer final : public lambda::core::layers::Layer {
+ public:
+  ProfileLayer() : Layer("Profiling layer") {}
+  void OnUpdate(lambda::lib::TimeStep time_step) override {
+    LAMBDA_PROFILER_MEASURE_FUNCTION();
+    for (auto& vec : vectors_) {
+      vec += Vector2(10, 10);
+    }
+  }
+  void OnAttach() override {
+    LAMBDA_PROFILER_MEASURE_FUNCTION();
+    vectors_ = std::vector<Vector2>(20000);
+  };
+  void OnDetach() override {}
+  void OnEvent(
+    lambda::core::memory::Shared<lambda::core::events::Event> event) override {}
+  void OnImGuiRender() override {}
+ private:
+  std::vector<Vector2> vectors_;
+};
 
 class MathBox final : public Application {
  public:
@@ -60,6 +82,7 @@ class MathBox final : public Application {
         polar2.GetY());
 
     Graph2D graph(points);
+    PushLayer(CreateShared<ProfileLayer>());
     PushLayer(CreateShared<GraphLayer2D>(graph));
   }
   ~MathBox() {}
