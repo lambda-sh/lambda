@@ -199,8 +199,8 @@ inline Vector2 operator/(
 
 template<typename Vector>
 Vector2 Vector2FromVector(Vector vec) {
-  std::array<Real, 2> arr = {vec.GetElements()};
-  return Vector2()
+  std::array<Real, 2> arr = vec.GetElements();
+  return Vector2();
 }
 
 }  // namespace lambda::math

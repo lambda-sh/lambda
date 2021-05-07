@@ -42,6 +42,18 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
     return elements_[2];
   }
 
+  /// @brief Get the dot product of two vectors, (u * v)
+  /// @param first_vector Vector u
+  /// @param second_vector Vector v
+  /// @return The dot product. (u * v)
+  [[nodiscard]] static Real DotProductOf(
+      const Vector3& first_vector, const Vector3& second_vector) {
+    return (
+        first_vector.GetX() * second_vector.GetX() +
+        first_vector.GetY() * second_vector.GetY() +
+        first_vector.GetZ() * second_vector.GetZ());
+  }
+
   void operator+=(const Vector3& other_vector) {
     SetX(GetX() + other_vector.GetX());
     SetY(GetY() + other_vector.GetY());
