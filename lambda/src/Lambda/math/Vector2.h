@@ -75,7 +75,7 @@ class Vector2 final : public Vector<Real, std::array<Real, 2>> {
     SetX(GetX() / other_vector.GetY());
   }
 
-  Vector2 operator/(const Vector2& other_vector) {
+  Vector2 operator/(const Vector2& other_vector) const {
     return Vector2(GetX() / other_vector.GetX(), GetY() / other_vector.GetY());
   }
 

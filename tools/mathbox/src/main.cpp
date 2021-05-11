@@ -7,6 +7,7 @@
 #include <Lambda/profiler/Profiler.h>
 
 using lambda::core::memory::Unique;
+using lambda::core::memory::Shared;
 using lambda::core::memory::CreateUnique;
 using lambda::core::memory::CreateShared;
 
@@ -16,25 +17,60 @@ using lambda::math::plot::Graph2D;
 using lambda::core::layers::GraphLayer2D;
 using lambda::math::Vector2;
 
+using lambda::core::renderer::RenderCommand;
+using lambda::core::renderer::Renderer2D;
+
 class ProfileLayer final : public lambda::core::layers::Layer {
  public:
-  ProfileLayer() : Layer("Profiling layer") {}
+  ProfileLayer()
+      : Layer("Profiling layer"), camera_controller_(1280.0f / 720.0f, true) {}
+
   void OnUpdate(lambda::lib::TimeStep time_step) override {
     LAMBDA_PROFILER_MEASURE_FUNCTION();
-    for (auto& vec : vectors_) {
-      vec += Vector2(10, 10);
+    camera_controller_.OnUpdate(time_step);
+
+    RenderCommand::SetClearColor({ 0.1f, 0.1f, 0.1f, 1.0f });
+    RenderCommand::Clear();
+
+    Renderer2D::BeginScene(
+        camera_controller_.GetOrthographicCamera());
+
+
+    z += (0.2f * time_step.InMicroseconds<float>());
+
+    if (z > 1000) {
+      z = 0;
     }
+
+    for (Vector2& vec : vectors_) {
+      auto new_pos = vec.GetX() + z;
+      if (z == 0) {
+        new_pos = 0;
+      }
+
+      vec.SetX(new_pos);
+      vec.SetY(sin(new_pos));
+
+      lambda::core::renderer::Renderer2D::DrawQuad(
+          {vec.GetX(), vec.GetY()}, {0.5f, 0.5f}, {0.9f, 0.2f, 0.5f, 1.0f});
+    }
+    Renderer2D::EndScene();
   }
   void OnAttach() override {
     LAMBDA_PROFILER_MEASURE_FUNCTION();
-    vectors_ = std::vector<Vector2>(20000);
+    vectors_ = std::vector<Vector2>(200);
   };
   void OnDetach() override {}
-  void OnEvent(
-    lambda::core::memory::Shared<lambda::core::events::Event> event) override {}
+  void OnEvent(Shared<lambda::core::events::Event> event) override {
+    camera_controller_.OnEvent(event);
+  }
+
   void OnImGuiRender() override {}
+
  private:
+  lambda::core::OrthographicCameraController camera_controller_;
   std::vector<Vector2> vectors_;
+  float z = 0;
 };
 
 class MathBox final : public Application {
@@ -83,7 +119,7 @@ class MathBox final : public Application {
 
     Graph2D graph(points);
     PushLayer(CreateShared<ProfileLayer>());
-    PushLayer(CreateShared<GraphLayer2D>(graph));
+    // PushLayer(CreateShared<GraphLayer2D>(graph));
   }
   ~MathBox() {}
 };
