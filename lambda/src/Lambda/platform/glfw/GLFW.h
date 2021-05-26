@@ -2,7 +2,6 @@
 #define LAMBDA_SRC_LAMBDA_PLATFORM_GLFW_GLFW_H_
 
 #define GLFW_INCLUDE_NONE
-#define IMGUI_IMPL_OPENGL_LOADER_GLAD
 
 #include <GLFW/glfw3.h>
 
