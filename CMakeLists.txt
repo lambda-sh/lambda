@@ -47,8 +47,6 @@ if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for the lambda.")
     target_compile_definitions(
         lambda
-        PUBLIC GLFW_INCLUDE_NONE
-        PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD
         PUBLIC LAMBDA_PLATFORM_WINDOWS
         PUBLIC LAMBDA_BUILD_DLL
         PUBLIC LAMBDA_DEBUG
@@ -57,8 +55,6 @@ elseif (UNIX AND NOT APPLE)
     message (STATUS ">>> Setting linux compile definitions for the lambda.")
     target_compile_definitions(
         lambda
-        PUBLIC GLFW_INCLUDE_NONE
-        PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD
         PUBLIC LAMBDA_PLATFORM_LINUX
         PUBLIC LAMBDA_BUILD_DLL
         PUBLIC LAMBDA_DEBUG
@@ -67,8 +63,6 @@ elseif(APPLE)
     message (STATUS ">>> Setting macos compile definitions for the lambda.")
     target_compile_definitions(
         lambda
-        PUBLIC GLFW_INCLUDE_NONE
-        PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD
         PRIVATE LAMBDA_PLATFORM_MACOS
         PRIVATE LAMBDA_PLATFORM_LINUX
         PRIVATE LAMBDA_BUILD_DLL
