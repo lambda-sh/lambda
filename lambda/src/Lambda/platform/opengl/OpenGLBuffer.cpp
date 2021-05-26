@@ -1,6 +1,6 @@
 #include "Lambda/platform/opengl/OpenGLBuffer.h"
 
-#include <glad/glad.h>
+#include <Lambda/platform/glad/Glad.h>
 
 namespace lambda {
 namespace platform {

@@ -5,7 +5,8 @@
 #ifndef LAMBDA_PLATFORM_OPENGL_OPENGLTEXTURE_H_
 #define LAMBDA_PLATFORM_OPENGL_OPENGLTEXTURE_H_
 
-#include <glad/glad.h>
+#include <Lambda/platform/glad/Glad.h>
+
 #include <string>
 
 #include "Lambda/core/renderer/Texture.h"

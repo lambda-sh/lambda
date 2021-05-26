@@ -5,7 +5,7 @@
 #include <vector>
 #include <fstream>
 
-#include <glad/glad.h>
+#include <Lambda/platform/glad/Glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Lambda/lib/Assert.h"

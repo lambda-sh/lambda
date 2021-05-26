@@ -4,7 +4,8 @@
 
 #include <utility>
 
-#include <glad/glad.h>
+#include <Lambda/platform/glad/Glad.h>
+
 #include <GLFW/glfw3.h>
 
 #include "Lambda/core/Application.h"

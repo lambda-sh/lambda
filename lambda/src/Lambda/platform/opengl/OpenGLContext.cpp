@@ -1,7 +1,6 @@
 #include "Lambda/platform/opengl/OpenGLContext.h"
 
-
-#include <glad/glad.h>
+#include <Lambda/platform/glad/Glad.h>
 #include <GLFW/glfw3.h>
 
 #include "Lambda/lib/Assert.h"
@@ -19,10 +18,10 @@ OpenGLContext::OpenGLContext(GLFWwindow* window_handle)
 void OpenGLContext::Init() {
   glfwMakeContextCurrent(window_handle_);
 
-  // Initialize glad with glfw proc address.
   int status = gladLoadGLLoader(
       reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
-  LAMBDA_CORE_ASSERT(status, "Failed to initialize glad.", "");
+
+  LAMBDA_CORE_ASSERT(status, "Failed to initialize glad with status.", status);
 
   LAMBDA_CORE_INFO(
       "OpenGL Renderer: {0} - {1} - {2}",
