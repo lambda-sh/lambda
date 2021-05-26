@@ -9,10 +9,10 @@
 // different types of windows and rendering backends while also allowing imgui
 // to be completely stripped from the engine when compiled.
 
-#include "examples/imgui_impl_glfw.h"
-#include "examples/imgui_impl_glfw.cpp"
+#include <examples/imgui_impl_glfw.h>
+#include <examples/imgui_impl_glfw.cpp>
 
-#include "examples/imgui_impl_opengl3.h"
-#include "examples/imgui_impl_opengl3.cpp"
+#include <examples/imgui_impl_opengl3.h>
+#include <examples/imgui_impl_opengl3.cpp>
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_IMGUI_IMGUIBUILD_H_
