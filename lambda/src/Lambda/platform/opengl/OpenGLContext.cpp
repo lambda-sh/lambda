@@ -1,7 +1,7 @@
 #include <Lambda/platform/opengl/OpenGLContext.h>
 
 #include <Lambda/platform/glad/Glad.h>
-#include <GLFW/glfw3.h>
+#include <Lambda/platform/glfw/GLFW.h>
 
 #include <Lambda/lib/Assert.h>
 #include <Lambda/core/Core.h>
