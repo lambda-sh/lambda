@@ -26,10 +26,10 @@ struct Properties {
 
 }  // namespace internal
 
-class WindowImplementation : public core::Window {
+class Window : public core::Window {
  public:
-  explicit WindowImplementation(core::WindowProperties properties);
-  ~WindowImplementation() override;
+  explicit Window(core::WindowProperties properties);
+  ~Window() override;
 
   void OnUpdate() override;
 

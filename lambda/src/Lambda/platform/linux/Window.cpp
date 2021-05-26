@@ -1,18 +1,18 @@
 #if defined LAMBDA_PLATFORM_LINUX || defined LAMBDA_DEBUG
 
-#include "Lambda/platform/linux/Window.h"
+#include <Lambda/platform/linux/Window.h>
 
-#include <GLFW/glfw3.h>
+#include <Lambda/core/Core.h>
+#include <Lambda/core/Window.h>
+#include <Lambda/core/events/ApplicationEvent.h>
+#include <Lambda/core/events/KeyEvent.h>
+#include <Lambda/core/events/MouseEvent.h>
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/lib/Assert.h>
+#include <Lambda/lib/Log.h>
+#include <Lambda/platform/opengl/OpenGLContext.h>
 
-#include "Lambda/core/Core.h"
-#include "Lambda/core/Window.h"
-#include "Lambda/core/events/ApplicationEvent.h"
-#include "Lambda/core/events/KeyEvent.h"
-#include "Lambda/core/events/MouseEvent.h"
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/lib/Assert.h"
-#include "Lambda/lib/Log.h"
-#include "Lambda/platform/opengl/OpenGLContext.h"
+#include <Lambda/platform/glfw/GLFW.h>
 
 using lambda::core::memory::Shared;
 
@@ -20,17 +20,17 @@ namespace lambda {
 
 #ifdef LAMBDA_PLATFORM_LINUX
 
+/// @todo(C3NZ): Move this into a constexpr statement inside of window?
 // Will create a windows based implementation of the window handler.
 Shared<core::Window> core::Window::Create(
     core::WindowProperties properties) {
-  return memory::CreateShared<platform::linux::WindowImplementation>(
+  return memory::CreateShared<platform::linux::Window>(
       std::move(properties));
 }
 
 #endif  // LAMBDA_PLATFORM_LINUX
 
-namespace platform {
-namespace linux {
+namespace platform::linux {
 
 // Error callback for handling GLFW specific errors
 static void GLFWErrorCallback(int error, const char* description) {
@@ -39,18 +39,18 @@ static void GLFWErrorCallback(int error, const char* description) {
 
 static bool GLFWInitialized = false;
 
-WindowImplementation::WindowImplementation(
+Window::Window(
     core::WindowProperties properties) {
   Init(std::move(properties));
 }
 
-WindowImplementation::~WindowImplementation() {
+Window::~Window() {
   Shutdown();
 }
 
 // Initialize the windows given generic window properties to be applied to the
 // current window.
-void WindowImplementation::Init(core::WindowProperties properties) {
+void Window::Init(core::WindowProperties properties) {
   properties_.Title = properties.Title;
   properties_.Width = properties.Width;
   properties_.Height = properties.Height;
@@ -213,29 +213,28 @@ void WindowImplementation::Init(core::WindowProperties properties) {
 }
 
 // Shutdown the window.
-void WindowImplementation::Shutdown() {
+void Window::Shutdown() {
   glfwDestroyWindow(window_);
 }
 
 // Handling updates to the screen.
-void WindowImplementation::OnUpdate() {
+void Window::OnUpdate() {
   glfwPollEvents();
   context_->SwapBuffers();
 }
 
 // Setup the current window to use or not use Vertical sync.
-void WindowImplementation::SetVerticalSync(bool enabled) {
+void Window::SetVerticalSync(bool enabled) {
   glfwSwapInterval(enabled ? 1 : 0);
   properties_.VerticalSync = enabled;
 }
 
 // Check if the current window has VSync enabled.
-bool WindowImplementation::HasVerticalSync() const {
+bool Window::HasVerticalSync() const {
   return properties_.VerticalSync;
 }
 
-}  // namespace linux
-}  // namespace platform
+}  // namespace platform::linux
 }  // namespace lambda
 
 #endif  // LAMBDA_PLATFORM_LINUX
