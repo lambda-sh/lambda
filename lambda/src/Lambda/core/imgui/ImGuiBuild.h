@@ -9,6 +9,8 @@
 // different types of windows and rendering backends while also allowing imgui
 // to be completely stripped from the engine when compiled.
 
+#include <Lambda/platform/glad/Glad.h>
+
 #include <examples/imgui_impl_glfw.h>
 #include <examples/imgui_impl_glfw.cpp>
 
