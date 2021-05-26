@@ -69,7 +69,6 @@ elif [ "$LAMBDA_os" = "Windows" ]; then
     popd
 fi
 
-
 popd  # "build"
 popd  # ROOT_DIR
 
