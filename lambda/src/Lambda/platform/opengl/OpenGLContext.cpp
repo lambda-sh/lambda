@@ -1,14 +1,12 @@
-#include "Lambda/platform/opengl/OpenGLContext.h"
+#include <Lambda/platform/opengl/OpenGLContext.h>
 
 #include <Lambda/platform/glad/Glad.h>
 #include <GLFW/glfw3.h>
 
-#include "Lambda/lib/Assert.h"
-#include "Lambda/core/Core.h"
+#include <Lambda/lib/Assert.h>
+#include <Lambda/core/Core.h>
 
-namespace lambda {
-namespace platform {
-namespace opengl {
+namespace lambda::platform::opengl {
 
 OpenGLContext::OpenGLContext(GLFWwindow* window_handle)
     : window_handle_(window_handle) {
@@ -34,6 +32,4 @@ void OpenGLContext::SwapBuffers() {
   glfwSwapBuffers(window_handle_);
 }
 
-}  // namespace opengl
-}  // namespace platform
-}  // namespace lambda
+}  // namespace lambda:;platform::opengl
