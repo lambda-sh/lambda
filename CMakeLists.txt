@@ -1,6 +1,6 @@
 # ----------------------------------- SETTINGS ---------------------------------
 
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.20.0)
 
 option(LAMBDA_TOOLS_BUILD_SANDBOX "Sandbox for testing lambda" OFF)
 option(LAMBDA_TOOLS_BUILD_MATH "Sandbox for testing math functions" OFF)
