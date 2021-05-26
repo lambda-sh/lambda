@@ -51,6 +51,7 @@ LAMBDA_ASSERT_LAST_COMMAND_OK \
 
 if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
     ninja
+    LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to compile Lambda."
 
     # If using wsl2 & wslg, export latest opengl versions for mesa.
     if grep -q "WSL2" <<< "$(uname -srm)"; then
@@ -63,6 +64,7 @@ if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
     popd
 elif [ "$LAMBDA_os" = "Windows" ]; then
     MSBuild.exe "lambda.sln" //t:Rebuild //p:Configuration=$LAMBDA_build
+    LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to compile Lambda."
 
     pushd tools/sandbox
     ./sandbox
