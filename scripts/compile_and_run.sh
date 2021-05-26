@@ -30,13 +30,15 @@ if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
         -DCMAKE_BUILD_TYPE="$LAMBDA_build" \
         -DDISTRIBUTION_BUILD=False \
         -DENGINE_DEVELOPMENT_MODE=True \
-        -DLAMBDA_BUILD_WITH_SANDBOX=ON
+        -DLAMBDA_TOOLS_BUILD_SANDBOX=ON \
+        -G Ninja
 elif [ "$LAMBDA_build" = "Dist" ]; then
     LAMBDA_INFO "Compiling a distribution build for the engine."
     cmake .. \
         -DCMAKE_BUILD_TYPE="Release" \
         -DDISTRIBUTION_BUILD=True \
-        -DLAMBDA_BUILD_WITH_SANDBOX=ON
+        -DLAMBDA_TOOLS_BUILD_SANDBOX=ON \
+        -G Ninja
 else
     LAMBDA_FATAL "You need to pass a build type in order to compile a tool."
 fi
@@ -48,11 +50,18 @@ LAMBDA_ASSERT_LAST_COMMAND_OK \
 # ----------------------------------- BUILD ------------------------------------
 
 if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
-    make -j "$LAMBDA_cores"
+    # make -j "$LAMBDA_cores"
+    ninja
+
+    pushd tools/sandbox
     ./sandbox
+    popd
 elif [ "$LAMBDA_os" = "Windows" ]; then
     MSBuild.exe "lambda.sln" //t:Rebuild //p:Configuration=$LAMBDA_build
+
+    pushd tools/sandbox
     ./sandbox
+    popd
 fi
 
 
