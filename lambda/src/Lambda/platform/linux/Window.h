@@ -7,6 +7,7 @@
 
 #include <Lambda/core/Window.h>
 #include <Lambda/core/renderer/GraphicsContext.h>
+
 #include <Lambda/platform/glfw/GLFW.h>
 
 namespace lambda::platform::linux {
