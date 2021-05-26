@@ -50,8 +50,13 @@ LAMBDA_ASSERT_LAST_COMMAND_OK \
 # ----------------------------------- BUILD ------------------------------------
 
 if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
-    # make -j "$LAMBDA_cores"
     ninja
+
+    # If using wsl2 & wslg, export latest opengl versions for mesa.
+    if grep -q "WSL2" <<< "$(uname -srm)"; then
+        export MESA_GL_VERSION_OVERRIDE=4.5
+        export MESA_GLSL_VERSION_OVERRIDE=450
+    fi
 
     pushd tools/sandbox
     ./sandbox
