@@ -5,14 +5,12 @@
 
 #include <string>
 
-#include <GLFW/glfw3.h>
+#include <Lambda/core/Window.h>
+#include <Lambda/core/renderer/GraphicsContext.h>
 
-#include "Lambda/core/Window.h"
-#include "Lambda/core/renderer/GraphicsContext.h"
+#include <Lambda/platform/glfw/GLFW.h>
 
-namespace lambda {
-namespace platform {
-namespace windows {
+namespace lambda::platform::windows {
 
 namespace internal {
 
@@ -50,9 +48,7 @@ class Window : public core::Window {
   void Shutdown();
 };
 
-}  // namespace windows
-}  // namespace platform
-}  // namespace lambda
+}  // namespace lambda::platform::windows
 
 #endif  // LAMBDA_PLATFORM_WINDOWS
 #endif  // LAMBDA_SRC_LAMBDA_PLATFORM_WINDOWS_WINDOW_H_

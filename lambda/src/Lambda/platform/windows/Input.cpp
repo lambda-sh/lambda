@@ -1,15 +1,14 @@
 #if defined LAMBDA_PLATFORM_WINDOWS || defined LAMBDA_DEBUG
 
-#include "Lambda/platform/windows/Input.h"
+#include <Lambda/platform/windows/Input.h>
 
 #include <utility>
 
+#include <Lambda/core/Application.h>
+#include <Lambda/core/input/Input.h>
+
 #include <Lambda/platform/glad/Glad.h>
-
-#include <GLFW/glfw3.h>
-
-#include "Lambda/core/Application.h"
-#include "Lambda/core/input/Input.h"
+#include <Lambda/platform/glfw/GLFW.h>
 
 namespace lambda {
 
@@ -20,8 +19,7 @@ core::memory::Unique<core::input::Input> core::input::Input::kInput_
 
 #endif  // LAMBDA_PLATFORM_WINDOWS
 
-namespace platform {
-namespace windows {
+namespace platform::windows {
 
 
 bool InputImplementation::IsKeyPressedImpl(int key_code) {
@@ -60,8 +58,7 @@ bool InputImplementation::IsMouseButtonPressedImpl(int button) {
   return state == GLFW_PRESS;
 }
 
-}  // namespace windows
-}  // namespace platform
+}  // namespace platform::windows
 }  // namespace lambda
 
 #endif  // LAMBDA_PLATFORM_WINDOWS

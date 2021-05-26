@@ -1,20 +1,21 @@
 #if defined LAMBDA_PLATFORM_WINDOWS || defined LAMBDA_DEBUG
 
-#include "Lambda/platform/windows/Window.h"
+#include <Lambda/platform/windows/Window.h>
 
-#include <GLFW/glfw3.h>
-#include "Lambda/core/Core.h"
-#include "Lambda/core/Window.h"
-#include "Lambda/core/events/ApplicationEvent.h"
-#include "Lambda/core/events/KeyEvent.h"
-#include "Lambda/core/events/MouseEvent.h"
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/lib/Assert.h"
-#include "Lambda/lib/Log.h"
-#include "Lambda/platform/opengl/OpenGLContext.h"
+#include <Lambda/core/Core.h>
+#include <Lambda/core/Window.h>
+#include <Lambda/core/events/ApplicationEvent.h>
+#include <Lambda/core/events/KeyEvent.h>
+#include <Lambda/core/events/MouseEvent.h>
+#include <Lambda/core/memory/Pointers.h>
+
+#include <Lambda/lib/Assert.h>
+#include <Lambda/lib/Log.h>
+
+#include <Lambda/platform/glfw/GLFW.h>
+#include <Lambda/platform/opengl/OpenGLContext.h>
 
 namespace lambda {
-
 
 #ifdef LAMBDA_PLATFORM_WINDOWS
 
@@ -27,8 +28,7 @@ core::memory::Shared<core::Window> core::Window::Create(
 
 #endif  // LAMBDA_PLATFORM_WINDOWS
 
-namespace platform {
-namespace windows {
+namespace platform::windows {
 
 using core::events::KeyPressedEvent;
 using core::events::KeyReleasedEvent;
@@ -233,8 +233,7 @@ bool Window::HasVerticalSync() const {
   return properties_.VerticalSync;
 }
 
-}  // namespace windows
-}  // namespace platform
+}  // namespace platform::windows
 }  // namespace lambda
 
 #endif  // LAMBDA_PLATFORM_WINDOWS
