@@ -1,16 +1,13 @@
-#include "Lambda/core/imgui/ImGuiLayer.h"
+#include <Lambda/core/imgui/ImGuiLayer.h>
+
+#include <Lambda/core/Application.h>
+#include <Lambda/core/events/Event.h>
+#include <Lambda/core/imgui/ImGuiBuild.h>
 
 #include <Lambda/platform/glad/Glad.h>
+#include <Lambda/platform/glfw/GLFW.h>
 
-#include <GLFW/glfw3.h>
-
-#include "Lambda/core/Application.h"
-#include "Lambda/core/events/Event.h"
-#include "Lambda/core/imgui/ImGuiBuild.h"
-
-namespace lambda {
-namespace core {
-namespace imgui {
+namespace lambda::core::imgui {
 
 bool ImGuiLayer::show_demo_window_ = true;
 
@@ -83,6 +80,4 @@ void ImGuiLayer::OnImGuiRender() {
   ImGui::ShowDemoWindow(&show_demo_window_);
 }
 
-}  // namespace imgui
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::imgui

@@ -7,16 +7,14 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_IMGUI_IMGUILAYER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_IMGUI_IMGUILAYER_H_
 
-#include "Lambda/core/Core.h"
-#include "Lambda/core/events/ApplicationEvent.h"
-#include "Lambda/core/events/Event.h"
-#include "Lambda/core/events/KeyEvent.h"
-#include "Lambda/core/events/MouseEvent.h"
-#include "Lambda/core/layers/Layer.h"
+#include <Lambda/core/Core.h>
+#include <Lambda/core/events/ApplicationEvent.h>
+#include <Lambda/core/events/Event.h>
+#include <Lambda/core/events/KeyEvent.h>
+#include <Lambda/core/events/MouseEvent.h>
+#include <Lambda/core/layers/Layer.h>
 
-namespace lambda {
-namespace core {
-namespace imgui {
+namespace lambda::core::imgui {
 
 /// @brief The base ImGui layer used for rendering all other ImGui
 /// components.
@@ -45,8 +43,6 @@ class ImGuiLayer : public layers::Layer {
   static bool show_demo_window_;
 };
 
-}  // namespace imgui
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::imgui
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_IMGUI_IMGUILAYER_H_
