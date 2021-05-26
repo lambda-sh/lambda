@@ -6,7 +6,7 @@
 #include <string>
 #include <unordered_map>
 
-#include <glad/glad.h>
+#include <Lambda/platform/glad/Glad.h>
 #include <glm/glm.hpp>
 
 #include "Lambda/core/renderer/Shader.h"

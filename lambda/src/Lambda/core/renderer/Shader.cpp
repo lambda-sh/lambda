@@ -1,14 +1,16 @@
 #include "Lambda/core/renderer/Shader.h"
 
 #include <string>
-#include <glad/glad.h>
+
 #include <glm/gtc/type_ptr.hpp>
+
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/Renderer.h"
 #include "Lambda/core/renderer/RendererAPI.h"
 #include "Lambda/lib/Log.h"
 
 #include "Lambda/platform/opengl/OpenGLShader.h"
+#include <Lambda/platform/glad/Glad.h>
 
 namespace lambda {
 namespace core {
