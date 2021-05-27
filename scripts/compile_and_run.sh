@@ -70,7 +70,7 @@ elif [ "$LAMBDA_os" = "Windows" ]; then
     popd > /dev/null
 fi
 
-popd > /dev/null # "build"
+popd > /dev/null  # "build"
 popd > /dev/null  # ROOT_DIR
 
 LAMBDA_INFO "$LAMBDA_tool and engine have been shutdown."
