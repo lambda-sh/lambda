@@ -38,7 +38,7 @@ set(LAMBDA_ENGINE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/lambda/src")
 # complete.
 target_include_directories(
     lambda
-    PRIVATE "${LAMBDA_ENGINE_INCLUDE_DIR}"
+    PRIVATE ${LAMBDA_ENGINE_INCLUDE_DIR}
     PRIVATE ${CMAKE_SOURCE_DIR}/lambda/vendor/spdlog/include
     PRIVATE ${CMAKE_SOURCE_DIR}/lambda/vendor/glad/include
     PRIVATE ${CMAKE_SOURCE_DIR}/lambda/vendor/glfw/include
