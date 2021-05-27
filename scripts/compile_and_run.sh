@@ -57,17 +57,17 @@ if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
         export MESA_GLSL_VERSION_OVERRIDE=450
     fi
 
-    pushd tools/sandbox > /dev/null
-    ./sandbox
-    popd > /dev/null
 elif [ "$LAMBDA_os" = "Windows" ]; then
     MSBuild.exe "lambda.sln" //t:Rebuild //p:Configuration=$LAMBDA_build
     LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to compile Lambda."
 
-    pushd tools/sandbox > /dev/null
-    ./sandbox
-    popd > /dev/null
 fi
+
+# ------------------------------------ RUN -------------------------------------
+
+pushd tools/sandbox > /dev/null
+./sandbox
+popd > /dev/null
 
 popd > /dev/null  # "build"
 popd > /dev/null  # ROOT_DIR
