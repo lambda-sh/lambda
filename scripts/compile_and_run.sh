@@ -60,7 +60,6 @@ if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
 elif [ "$LAMBDA_os" = "Windows" ]; then
     MSBuild.exe "lambda.sln" //t:Rebuild //p:Configuration=$LAMBDA_build
     LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to compile Lambda."
-
 fi
 
 # ------------------------------------ RUN -------------------------------------
