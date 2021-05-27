@@ -29,7 +29,6 @@ if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
     cmake .. \
         -DCMAKE_BUILD_TYPE="$LAMBDA_build" \
         -DDISTRIBUTION_BUILD=False \
-        -DENGINE_DEVELOPMENT_MODE=True \
         -DLAMBDA_TOOLS_BUILD_SANDBOX=ON \
         -G Ninja
 elif [ "$LAMBDA_build" = "Dist" ]; then
