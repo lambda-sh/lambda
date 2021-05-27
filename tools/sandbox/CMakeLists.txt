@@ -30,4 +30,5 @@ elseif (UNIX)
         PUBLIC LAMBDA_INCLUDE_PROFILER)
 endif()
 
+target_include_directories(sandbox PRIVATE "${LAMBDA_ENGINE_INCLUDE_DIR}")
 target_link_libraries(sandbox PRIVATE lambda)
