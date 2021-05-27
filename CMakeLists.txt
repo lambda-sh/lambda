@@ -20,7 +20,8 @@ project(lambda)
 file(
     GLOB_RECURSE
     LAMBDA_SRC
-    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.h ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.cpp)
+    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.h 
+    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.cpp)
 
 add_library(lambda STATIC ${LAMBDA_SRC})
 
@@ -31,17 +32,21 @@ set_target_properties(
 set_target_properties(lambda PROPERTIES PREFIX "")
 set_target_properties(lambda PROPERTIES OUTPUT_NAME "lambda")
 
+set(LAMBDA_ENGINE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/lambda/src")
+
+# todo(C3NZ): Make all include directories private once lambdas API is 
+# complete.
 target_include_directories(
     lambda
-    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/src
-    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/spdlog/include
-    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/glad/include
-    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/glm/glm
-    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/glfw/include
+    PRIVATE "${LAMBDA_ENGINE_INCLUDE_DIR}"
+    PRIVATE ${CMAKE_SOURCE_DIR}/lambda/vendor/spdlog/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/lambda/vendor/glad/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/lambda/vendor/glfw/include
+    PRIVATE ${CMAKE_SOURCE_DIR}/lambda/vendor/stb_image/src
+    PRIVATE ${CMAKE_SOURCE_DIR}/lambda/vendor/readerwriterqueue
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/concurrentqueue
     PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/imgui
-    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/stb_image/src
-    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/readerwriterqueue
-    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/concurrentqueue)
+    PUBLIC ${CMAKE_SOURCE_DIR}/lambda/vendor/glm/glm)
 
 if (WIN32)
     message (STATUS ">>> Setting windows compile definitions for the lambda.")
@@ -106,7 +111,3 @@ endif()
 if (${LAMBDA_TOOLS_BUILD_MATH})
   add_subdirectory(${CMAKE_SOURCE_DIR}/tools/mathbox)
 endif()
-
-
-# Load resources necessary for the executable to launch (Shaders, images, etc)
-# file(COPY ${CMAKE_BINARY_DIR}/res DESTINATION ${CMAKE_BINARY_DIR}/bin/res)
