@@ -3,7 +3,7 @@
 # Compile and run one of the tools that the engine comes provided with in the
 # tools folder. This has been built and tested with bash 5.0.18
 ROOT_DIR="$(git rev-parse --show-toplevel)"
-pushd $ROOT_DIR
+pushd $ROOT_DIR > /dev/null
 
 # -------------------- SETUP ARGUMENTS AND LAMBDA SHELL ------------------------
 
@@ -43,7 +43,6 @@ else
     LAMBDA_FATAL "You need to pass a build type in order to compile a tool."
 fi
 
-
 LAMBDA_ASSERT_LAST_COMMAND_OK \
     "Couldn't generate the cmake files necessary for compiling lambda."
 
@@ -59,19 +58,19 @@ if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
         export MESA_GLSL_VERSION_OVERRIDE=450
     fi
 
-    pushd tools/sandbox
+    pushd tools/sandbox > /dev/null
     ./sandbox
-    popd
+    popd > /dev/null
 elif [ "$LAMBDA_os" = "Windows" ]; then
     MSBuild.exe "lambda.sln" //t:Rebuild //p:Configuration=$LAMBDA_build
     LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to compile Lambda."
 
-    pushd tools/sandbox
+    pushd tools/sandbox > /dev/null
     ./sandbox
-    popd
+    popd > /dev/null
 fi
 
-popd  # "build"
-popd  # ROOT_DIR
+popd > /dev/null # "build"
+popd > /dev/null  # ROOT_DIR
 
 LAMBDA_INFO "$LAMBDA_tool and engine have been shutdown."
