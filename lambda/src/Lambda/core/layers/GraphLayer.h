@@ -50,7 +50,7 @@ class GraphLayer2D : public Layer {
     renderer::Renderer2D::EndScene();
   };
 
-  void OnEvent(memory::Shared<events::Event> event) override {
+  void OnEvent(const events::Event* event) override {
     camera_controller_.OnEvent(event);
   }
 
