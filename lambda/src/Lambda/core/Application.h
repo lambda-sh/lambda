@@ -31,16 +31,16 @@ class Application {
   virtual ~Application();
 
   /// @brief The primary responder to Event.
-  void OnEvent(memory::Shared<events::Event> event);
+  void OnEvent(memory::Unique<events::Event> event);
 
   /// @brief Push a layer into the application.
   ///
   /// This and PushOverlay take ownership of the layers afterwards.
-  void PushLayer(memory::Shared<layers::Layer> layer);
+  void PushLayer(memory::Unique<layers::Layer> layer);
 
   /// @brief Push an overlay into the application. This gives it higher
   /// precedence over other layers and overlays in the stack.
-  void PushOverlay(memory::Shared<layers::Layer> layer);
+  void PushOverlay(memory::Unique<layers::Layer> layer);
 
   /// @brief The main application loop. Manages the applications lifecycle,
   /// memory, updating, and pretty much anything else needed for an application
@@ -60,7 +60,7 @@ class Application {
 
   layers::LayerStack layer_stack_;
   memory::Shared<Window> window_;
-  memory::Shared<imgui::ImGuiLayer> imgui_layer_;
+  memory::Unique<imgui::ImGuiLayer> imgui_layer_;
   lib::Time last_frame_time_;
 
   static memory::Unique<Application> kApplication_;

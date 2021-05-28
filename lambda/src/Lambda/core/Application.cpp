@@ -33,8 +33,8 @@ Application::Application() {
   // After the window is setup, initialize the renderer!
   renderer::Renderer::Init();
 
-  imgui_layer_ = memory::CreateShared<imgui::ImGuiLayer>();
-  PushLayer(imgui_layer_);
+  imgui_layer_ = memory::CreateUnique<imgui::ImGuiLayer>();
+  imgui_layer_->OnAttach();
 }
 
 /// The application must tell the single to release itself once it's being
@@ -51,14 +51,18 @@ void Application::Run() {
     lib::TimeStep time_step(last_frame_time_, current_frame_time);
     last_frame_time_ = current_frame_time;
 
+    // Update layers if not minimized
     if (!minimized_) {
-      for (memory::Shared<layers::Layer> layer : layer_stack_) {
+      imgui_layer_->OnUpdate(time_step);
+
+      for (auto& layer : layer_stack_) {
         layer->OnUpdate(time_step);
       }
     }
 
     imgui_layer_->Begin();
-    for (memory::Shared<layers::Layer> layer : layer_stack_) {
+    imgui_layer_->OnImGuiRender();
+    for (auto& layer : layer_stack_) {
       layer->OnImGuiRender();
     }
     imgui_layer_->End();
@@ -67,34 +71,33 @@ void Application::Run() {
   }
 }
 
-void Application::OnEvent(memory::Shared<events::Event> event) {
+void Application::OnEvent(memory::Unique<events::Event> event) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
 
-  events::EventDispatcher dispatcher(event);
-  dispatcher.Dispatch<events::WindowCloseEvent>(
-      BIND_EVENT_HANDLER(Application::OnWindowClosed));
+  events::EventDispatcher::Dispatch<events::WindowCloseEvent>(
+      BIND_EVENT_HANDLER(Application::OnWindowClosed), event.get());
 
-  dispatcher.Dispatch<events::WindowResizeEvent>(
-      BIND_EVENT_HANDLER(Application::OnWindowResize));
+  events::EventDispatcher::Dispatch<events::WindowResizeEvent>(
+      BIND_EVENT_HANDLER(Application::OnWindowResize), event.get());
 
-  for (memory::Shared<layers::Layer> layer : lib::Reverse(layer_stack_)) {
-    layer->OnEvent(event);
+  for (auto& layer : lib::Reverse(layer_stack_)) {
+    layer->OnEvent(event.get());
     if (event->HasBeenHandled()) {
       break;
     }
   }
 }
 
-void Application::PushLayer(memory::Shared<layers::Layer> layer) {
+void Application::PushLayer(memory::Unique<layers::Layer> layer) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
-  layer_stack_.PushLayer(layer);
   layer->OnAttach();
+  layer_stack_.PushLayer(std::move(layer));
 }
 
-void Application::PushOverlay(memory::Shared<layers::Layer> layer) {
+void Application::PushOverlay(memory::Unique<layers::Layer> layer) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
-  layer_stack_.PushOverlay(layer);
   layer->OnAttach();
+  layer_stack_.PushOverlay(std::move(layer));
 }
 
 bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
