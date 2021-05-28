@@ -54,8 +54,6 @@ enum EventCategory {
 /// EventDispatcher.
 #define BIND_EVENT_HANDLER(fn) std::bind(&fn, this, std::placeholders::_1)
 
-
-
 // ----------------------------------- CLASSES ---------------------------------
 
 /// @brief The base Event class for events that are propagated throughout
@@ -91,23 +89,19 @@ class EventDispatcher {
   using EventFn = const std::function<bool(const T&)>;
 
  public:
-  explicit EventDispatcher(memory::Shared<Event> event) : event_(event) {}
-
   /// @brief Dispatch an event to be handled if it matches the Event associated
   /// with the handler function being passed in.
-  template<class Event>
-  bool Dispatch(EventFn<Event> func) {
-    if (event_->GetEventType() == Event::GetStaticType()) {
-      const Event& casted_event = dynamic_cast<const Event&>(*event_);
+  template<class DesiredEvent>
+  static bool Dispatch(EventFn<DesiredEvent> func, Event* const event) {
+    if (event->GetEventType() == DesiredEvent::GetStaticType()) {
+      const DesiredEvent& casted_event = dynamic_cast<
+          const DesiredEvent&>(*event);
       const bool success = func(casted_event);
-      event_->SetHandled(success);
+      event->SetHandled(success);
       return true;
     }
     return false;
   }
-
- private:
-  memory::Shared<Event> event_;
 };
 
 }  // namespace lambda::core::events
