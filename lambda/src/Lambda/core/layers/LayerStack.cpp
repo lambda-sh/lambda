@@ -16,35 +16,44 @@ LayerStack::LayerStack() = default;
 /// @todo Should layers be gracefully handled or should it be up to the user to
 /// remove the layers before shutdown?
 LayerStack::~LayerStack() {
-  for (const auto& layer : layers_) {
+  for (auto& layer : layers_) {
     layer->OnDetach();
   }
 }
 
-void LayerStack::PushLayer(memory::Shared<Layer> layer) {
-  layers_.emplace(layers_.begin() + layer_insert_location_, layer);
+void LayerStack::PushLayer(memory::Unique<Layer> layer) {
+  layers_.emplace(layers_.begin() + layer_insert_location_, std::move(layer));
   ++layer_insert_location_;
 }
 
-void LayerStack::PushOverlay(memory::Shared<Layer> overlay) {
-  layers_.emplace_back(overlay);
+void LayerStack::PushOverlay(memory::Unique<Layer> overlay) {
+  layers_.emplace_back(std::move(overlay));
 }
 
-/// Pop a layer off of the layer stack. Compares layers via Shared resources.
-/// TODO(C3NZ): Is this problematic since it's using a shared pointer?
-void LayerStack::PopLayer(memory::Shared<Layer> layer) {
-  if (const auto it = std::find(layers_.begin(), layers_.end(), layer);
-      it != layers_.end()) {
-    layers_.erase(it);
+void LayerStack::RemoveLayer(std::string_view layer_name) {
+  const auto result = std::find_if(
+      layers_.begin(), 
+      layers_.end(), 
+      [&](auto& layer) {
+        return layer_name == layer->GetName();
+      });
+
+  [[likely]] if (result != layers_.end()) {
+    layers_.erase(result);
     --layer_insert_location_;
   }
 }
 
-/// TODO(C3NZ): Is this problematic since it's using a shared pointer?
-void LayerStack::PopOverlay(memory::Shared<Layer> overlay) {
-  if (auto it = std::find(layers_.begin(), layers_.end(), overlay);
-      it != layers_.end()) {
-    layers_.erase(it);
+void LayerStack::RemoveOverlay(std::string_view overlay_name) {
+  const auto result = std::find_if(
+      layers_.begin(), 
+      layers_.end(), 
+      [&](auto& layer) {
+        return overlay_name == layer->GetName();
+      });
+
+  [[likely]] if (result != layers_.end()) {
+    layers_.erase(result);
   }
 }
 

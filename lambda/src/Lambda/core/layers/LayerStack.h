@@ -17,7 +17,7 @@ namespace lambda::core::layers {
 /// Application primarily uses this internally to allow developers to use lambda
 /// as the manager for any layers that they create.
 class LayerStack {
-  typedef std::vector<memory::Shared<Layer>> LayerContainer;
+  typedef std::vector<memory::Unique<Layer>> LayerContainer;
   typedef LayerContainer::iterator Iterator;
   typedef LayerContainer::reverse_iterator ReverseIterator;
 
@@ -26,16 +26,16 @@ class LayerStack {
   ~LayerStack();
 
   /// @brief Push a layer into the layer stack.
-  void PushLayer(memory::Shared<Layer> layer);
+  void PushLayer(memory::Unique<Layer> layer);
 
   /// @brief Push an overlay into the layer stack.
-  void PushOverlay(memory::Shared<Layer> overlay);
+  void PushOverlay(memory::Unique<Layer> overlay);
 
   /// @brief Pop a layer out of the layer stack.
-  void PopLayer(memory::Shared<Layer> layer);
+  void RemoveLayer(std::string_view layer_name);
 
   /// @brief Pop an overlay out of the layer stack.
-  void PopOverlay(memory::Shared<Layer> overlay);
+  void RemoveOverlay(std::string_view overlay_name);
 
   Iterator begin() {
     return layers_.begin();
