@@ -11,6 +11,8 @@
 
 #include <Lambda/platform/glad/Glad.h>
 
+#define IMGUI_IMPL_OPENGL_LOADER_GLAD
+
 #include <examples/imgui_impl_glfw.h>
 #include <examples/imgui_impl_glfw.cpp>
 
