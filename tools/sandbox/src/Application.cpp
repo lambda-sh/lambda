@@ -185,7 +185,7 @@ class ExampleLayer : public Layer {
     ImGui::End();
   }
 
-  void OnEvent(Shared<Event> event) override {
+  void OnEvent(Event* const event) override {
     camera_.OnEvent(event);
   }
 
@@ -210,7 +210,7 @@ class Sandbox : public Application {
  public:
   Sandbox() : Application() {
     // PushLayer(lambda::core::memory::CreateShared<ExampleLayer>());
-    PushLayer(lambda::core::memory::CreateShared<Sandbox2D>());
+    PushLayer(lambda::core::memory::CreateUnique<Sandbox2D>());
   }
   ~Sandbox() {}
 };

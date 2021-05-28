@@ -15,8 +15,7 @@ class Sandbox2D : public lambda::core::layers::Layer {
   void OnDetach() override;
   void OnImGuiRender() override;
   void OnUpdate(lambda::lib::TimeStep) override;
-  void OnEvent(lambda::core::memory::Shared<lambda::core::events::Event> event)
-      override;
+  void OnEvent(lambda::core::events::Event* const event) override;
 
  private:
   lambda::core::OrthographicCameraController camera_controller_;

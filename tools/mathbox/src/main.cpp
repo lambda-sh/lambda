@@ -118,7 +118,7 @@ class MathBox final : public Application {
         polar2.GetY());
 
     Graph2D graph(points);
-    PushLayer(CreateShared<ProfileLayer>());
+    PushLayer(CreateUnique<ProfileLayer>());
     // PushLayer(CreateShared<GraphLayer2D>(graph));
   }
   ~MathBox() {}
