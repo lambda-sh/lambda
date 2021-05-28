@@ -80,8 +80,7 @@ void Sandbox2D::OnImGuiRender() {
   ImGui::End();
 }
 
-void Sandbox2D::OnEvent(
-    lambda::core::memory::Shared<lambda::core::events::Event> event) {
+void Sandbox2D::OnEvent(lambda::core::events::Event* const event) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
   camera_controller_.OnEvent(event);
 }
