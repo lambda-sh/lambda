@@ -40,7 +40,7 @@ enum EventCategory {
 
 // ------------------------------------- MACROS --------------------------------
 
-/// @brief Utility macro to make events compatible with lambdas EventDispatcher.
+/// @brief Utility macro to make events compatible with lambdas Dispatcher.
 #define EVENT_CLASS_TYPE(type) \
     static EventType GetStaticType() { return EventType::type; } \
     EventType GetEventType() const override { return GetStaticType(); } \
@@ -51,7 +51,7 @@ enum EventCategory {
     int GetCategoryFlags() const override { return category; }
 
 /// @brief Utility function used for binding functions to lambdas
-/// EventDispatcher.
+/// Dispatcher.
 #define BIND_EVENT_HANDLER(fn) std::bind(&fn, this, std::placeholders::_1)
 
 // ----------------------------------- CLASSES ---------------------------------
@@ -59,7 +59,7 @@ enum EventCategory {
 /// @brief The base Event class for events that are propagated throughout
 /// lambda.
 class Event {
-  friend class EventDispatcher;
+  friend class Dispatcher;
  public:
   virtual ~Event() = default;
   [[nodiscard]] virtual EventType GetEventType() const = 0;
@@ -84,15 +84,15 @@ class Event {
 
 /// @brief The primary way of allowing the application and layers in lambda
 /// the capability of handling events propagated throughout the application.
-class EventDispatcher {
+class Dispatcher {
   template<typename T>
   using EventFn = const std::function<bool(const T&)>;
 
  public:
-  /// @brief Dispatch an event to be handled if it matches the Event associated
+  /// @brief HandleWhen an event to be handled if it matches the Event associated
   /// with the handler function being passed in.
   template<class DesiredEvent>
-  static bool Dispatch(EventFn<DesiredEvent> func, Event* const event) {
+  static bool HandleWhen(EventFn<DesiredEvent> func, Event* const event) {
     if (event->GetEventType() == DesiredEvent::GetStaticType()) {
       const DesiredEvent& casted_event = dynamic_cast<
           const DesiredEvent&>(*event);

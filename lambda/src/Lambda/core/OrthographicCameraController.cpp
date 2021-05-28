@@ -76,10 +76,10 @@ bool OrthographicCameraController::OnWindowResize(
 void OrthographicCameraController::OnEvent(
     events::Event* const event) {
 
-  events::EventDispatcher::Dispatch<events::WindowResizeEvent>(
+  events::Dispatcher::HandleWhen<events::WindowResizeEvent>(
       BIND_EVENT_HANDLER(OrthographicCameraController::OnWindowResize), event);
 
-  events::EventDispatcher::Dispatch<events::MouseScrolledEvent>(
+  events::Dispatcher::HandleWhen<events::MouseScrolledEvent>(
       BIND_EVENT_HANDLER(OrthographicCameraController::OnMouseScrolled), event);
 }
 
