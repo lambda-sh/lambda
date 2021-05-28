@@ -74,14 +74,13 @@ bool OrthographicCameraController::OnWindowResize(
 }
 
 void OrthographicCameraController::OnEvent(
-    memory::Shared<events::Event> event) {
-  events::EventDispatcher dispatcher(event);
+    events::Event* const event) {
 
-  dispatcher.Dispatch<events::WindowResizeEvent>(
-      BIND_EVENT_HANDLER(OrthographicCameraController::OnWindowResize));
+  events::EventDispatcher::Dispatch<events::WindowResizeEvent>(
+      BIND_EVENT_HANDLER(OrthographicCameraController::OnWindowResize), event);
 
-  dispatcher.Dispatch<events::MouseScrolledEvent>(
-      BIND_EVENT_HANDLER(OrthographicCameraController::OnMouseScrolled));
+  events::EventDispatcher::Dispatch<events::MouseScrolledEvent>(
+      BIND_EVENT_HANDLER(OrthographicCameraController::OnMouseScrolled), event);
 }
 
 }  // namespace lambda::core
