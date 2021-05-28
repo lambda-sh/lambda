@@ -30,7 +30,7 @@ class Layer {
   virtual void OnUpdate(lib::TimeStep time_step) = 0;
 
   /// @brief What to do when lambda has an event for the layer.
-  virtual void OnEvent(memory::Shared<events::Event> event) = 0;
+  virtual void OnEvent(events::Event* const event) = 0;
 
   /// @brief What to do when lambda is rendering with ImGui.
   virtual void OnImGuiRender() = 0;
