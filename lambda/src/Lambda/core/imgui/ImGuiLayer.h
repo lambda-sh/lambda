@@ -37,7 +37,7 @@ class ImGuiLayer : public layers::Layer {
   /// @brief End an ImGui rendering context.
   void End();
 
-  void OnEvent(memory::Shared<events::Event> event) override {}
+  void OnEvent(events::Event* const event) override {}
  private:
   float time_ = 0.0f;
   static bool show_demo_window_;
