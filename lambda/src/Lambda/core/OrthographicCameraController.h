@@ -15,7 +15,7 @@ class OrthographicCameraController {
       float aspect_ratio, bool can_rotate = false);
 
   void OnUpdate(lib::TimeStep delta);
-  void OnEvent(memory::Shared<events::Event> event);
+  void OnEvent(events::Event* const event);
 
   const renderer::OrthographicCamera& GetOrthographicCamera() const {
       return camera_; }
