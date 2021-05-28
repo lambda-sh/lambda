@@ -61,7 +61,7 @@ class ProfileLayer final : public lambda::core::layers::Layer {
     vectors_ = std::vector<Vector2>(200);
   };
   void OnDetach() override {}
-  void OnEvent(Shared<lambda::core::events::Event> event) override {
+  void OnEvent(lambda::core::events::Event* const event) override {
     camera_controller_.OnEvent(event);
   }
 
