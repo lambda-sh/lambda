@@ -209,7 +209,7 @@ experimenting with it's potential.
 `scripts` - bash scripts used for automating tedious tasks. (Like compiling and
 running tools)
 
-## Getting started <a name"get_started"></a>
+## Getting started <a name="get_started"></a>
 
 There are two components that are required to know for getting started with 
 Lambda.
@@ -280,7 +280,7 @@ for testing features and benchmarking.
 
 ## Planned additions <a name="plans"></a>
 
-- [] c++20 concepts for all template parameters. This will limit template 
+- [ ] c++20 concepts for all template parameters. This will limit template 
 parameter usage within lambda to an explicitly defined set of types that can 
 be built on top of eachother. For example, `lambda::concepts` currently provides
 the concept:
@@ -293,19 +293,19 @@ the concept:
   `MaybeContainer` fits the `concept` of being either a `std::array` or 
   `std::vector` of numbers. Implementation can be found within the tool 
   `mathbox` and is also currently used throughout `lambda/src/Lambda/math`.
-- [] A better memory model that's consistent across all APIs and STL 
+- [ ] A better memory model that's consistent across all APIs and STL 
 compatible. Currently the `memory` module just wraps smart pointers and there 
 are parts of the API that create some extraneous references to shared pointers. 
 While it currently doesn't impact lambda too much, the ideal goal is to 
 have an allocator built into Lambda.
-- [] Github action pipelines for creating downloadable builds from releases.
-- [] An extensively featured declarative math library.
-- [] Extensive support for 2D graphics. 3D will most likely come a bit after.
-- [] A functional UI component system for building extensible & consistent 
+- [ ] Github action pipelines for creating downloadable builds from releases.
+- [ ] An extensively featured declarative math library.
+- [ ] Extensive support for 2D graphics. 3D will most likely come a bit after.
+- [ ] A functional UI component system for building extensible & consistent 
 user interfaces that are native towards every system. Currently, 
 lambda provides `imgui` support with opengl which provides a lot of 
 functionality, but requires also learning about how imguis API work.
-- [] Test & benchmarking setup. Might make a profiling layer that can be 
+- [ ] Test & benchmarking setup. Might make a profiling layer that can be 
 included into applications for debugging the internals of the Application 
 while it's running.
 
