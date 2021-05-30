@@ -75,10 +75,10 @@ void Application::OnEvent(memory::Unique<events::Event> event) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
 
   events::Dispatcher::HandleWhen<events::WindowCloseEvent>(
-      BIND_EVENT_HANDLER(Application::OnWindowClosed), event.get());
+      events::Bind(&Application::OnWindowClosed, this), event.get());
 
   events::Dispatcher::HandleWhen<events::WindowResizeEvent>(
-      BIND_EVENT_HANDLER(Application::OnWindowResize), event.get());
+      events::Bind(&Application::OnWindowResize, this), event.get());
 
   for (auto& layer : lib::Reverse(layer_stack_)) {
     layer->OnEvent(event.get());

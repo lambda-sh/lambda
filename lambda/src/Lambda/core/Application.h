@@ -47,19 +47,19 @@ class Application {
   /// to be run.
   void Run();
 
-  /// @brief Get the window.
-  const Window& GetWindow() const { return *window_.get(); }
+  /// @brief Get a const pointer to the window.
+  const Window* const GetWindow() const { return window_.get(); }
 
   /// @brief Get a reference to the singleton application. (There will always
   /// be ONE application per lambda engine instance.)
-  static Application& GetApplication() { return *kApplication_; }
+  static const Application& GetApplication() { return *kApplication_; }
 
  private:
   bool running_ = true;
   bool minimized_ = false;
 
   layers::LayerStack layer_stack_;
-  memory::Shared<Window> window_;
+  memory::Unique<Window> window_;
   memory::Unique<imgui::ImGuiLayer> imgui_layer_;
   lib::Time last_frame_time_;
 
