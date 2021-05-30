@@ -14,18 +14,18 @@
 
 #include <Lambda/platform/glfw/GLFW.h>
 
-using lambda::core::memory::Shared;
-
 namespace lambda {
 
 #ifdef LAMBDA_PLATFORM_LINUX
 
+namespace {
+  using lambda::core::memory::Unique;
+}  // namespace
+
 /// @todo(C3NZ): Move this into a constexpr statement inside of window?
 // Will create a windows based implementation of the window handler.
-Shared<core::Window> core::Window::Create(
-    core::WindowProperties properties) {
-  return memory::CreateShared<platform::linux::Window>(
-      std::move(properties));
+Unique<core::Window> core::Window::Create(core::WindowProperties properties) {
+  return memory::CreateUnique<platform::linux::Window>(std::move(properties));
 }
 
 #endif  // LAMBDA_PLATFORM_LINUX
