@@ -28,7 +28,7 @@ Application::Application() {
   kApplication_.reset(this);
 
   window_ = Window::Create();
-  window_->SetEventCallback(BIND_EVENT_HANDLER(Application::OnEvent));
+  window_->SetEventCallback(events::Bind(&Application::OnEvent, this));
 
   // After the window is setup, initialize the renderer!
   renderer::Renderer::Init();
