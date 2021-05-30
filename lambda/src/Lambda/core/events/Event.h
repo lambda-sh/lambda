@@ -54,6 +54,12 @@ enum EventCategory {
 /// Dispatcher.
 #define BIND_EVENT_HANDLER(fn) std::bind(&fn, this, std::placeholders::_1)
 
+/// @brief New Constexpr implementation for binding event listeners to
+template<typename FunctionAddress, typename ClassPointer>
+constexpr auto Bind(FunctionAddress function, ClassPointer* pointer) {
+  return std::bind(function, pointer, std::placeholders::_1);
+}
+
 // ----------------------------------- CLASSES ---------------------------------
 
 /// @brief The base Event class for events that are propagated throughout
@@ -89,8 +95,8 @@ class Dispatcher {
   using EventFn = const std::function<bool(const T&)>;
 
  public:
-  /// @brief HandleWhen an event to be handled if it matches the Event associated
-  /// with the handler function being passed in.
+  /// @brief HandleWhen an event to be handled if it matches the Event
+  /// associated with the handler function being passed in.
   template<class DesiredEvent>
   static bool HandleWhen(EventFn<DesiredEvent> func, Event* const event) {
     if (event->GetEventType() == DesiredEvent::GetStaticType()) {
