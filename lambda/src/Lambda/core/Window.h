@@ -58,7 +58,7 @@ class Window {
 
   /// @brief Create a platform specific window. (Needs to be specified with
   /// compiler flags.)
-  static memory::Shared<Window> Create(
+  static memory::Unique<Window> Create(
       WindowProperties properties = WindowProperties());
 };
 
