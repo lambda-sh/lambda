@@ -19,10 +19,16 @@ namespace lambda {
 
 #ifdef LAMBDA_PLATFORM_WINDOWS
 
+namespace {
+
+using lambda::core::memory::Unique;
+
+}  // namespace
+
 // Will create a windows based implementation of the window handler.
-core::memory::Shared<core::Window> core::Window::Create(
+core::memory::Unique<core::Window> core::Window::Create(
     WindowProperties properties) {
-  return memory::CreateShared<platform::windows::Window>(
+  return core::memory::CreateUnique<platform::windows::Window>(
       std::move(properties));
 }
 
