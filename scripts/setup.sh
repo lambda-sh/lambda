@@ -7,9 +7,7 @@ pushd "$ROOT_DIR" > /dev/null
 
 # ------------------------------ UPDATE SUBMODULES -----------------------------
 
-# Load git submodules.
 git submodule update --init --recursive
-
 
 # ------------------------------- LAMBDA-SH SETUP ------------------------------
 
