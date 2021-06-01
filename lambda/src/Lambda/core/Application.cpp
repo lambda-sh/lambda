@@ -2,21 +2,20 @@
 
 #include <functional>
 
-#include "Lambda/core/Window.h"
-#include "Lambda/core/events/ApplicationEvent.h"
-#include "Lambda/core/events/Event.h"
-#include "Lambda/core/input/Input.h"
-#include "Lambda/core/layers/Layer.h"
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/renderer/Renderer.h"
-#include "Lambda/lib/Assert.h"
-#include "Lambda/lib/Log.h"
-#include "Lambda/lib/Reverse.h"
-#include "Lambda/lib/Time.h"
-#include "Lambda/profiler/Profiler.h"
+#include <Lambda/core/Window.h>
+#include <Lambda/core/events/ApplicationEvent.h>
+#include <Lambda/core/events/Event.h>
+#include <Lambda/core/input/Input.h>
+#include <Lambda/core/layers/Layer.h>
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/core/renderer/Renderer.h>
+#include <Lambda/lib/Assert.h>
+#include <Lambda/lib/Log.h>
+#include <Lambda/lib/Reverse.h>
+#include <Lambda/lib/Time.h>
+#include <Lambda/profiler/Profiler.h>
 
-namespace lambda {
-namespace core {
+namespace lambda::core {
 
 memory::Unique<Application> Application::kApplication_ = nullptr;
 
@@ -33,6 +32,7 @@ Application::Application() {
   // After the window is setup, initialize the renderer!
   renderer::Renderer::Init();
 
+  /// @todo The ImGUI layer should not be owned by the application.
   imgui_layer_ = memory::CreateUnique<imgui::ImGuiLayer>();
   imgui_layer_->OnAttach();
 }
@@ -120,5 +120,4 @@ bool Application::OnWindowResize(const events::WindowResizeEvent& event) {
 }
 
 
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core
