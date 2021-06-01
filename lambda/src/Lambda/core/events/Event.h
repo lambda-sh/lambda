@@ -22,20 +22,19 @@ namespace lambda::core::events {
 /// @brief Event types natively supported by lambda.
 enum class EventType {
   None = 0,
-  kWindowClose, kWindowResize, kWindowFocus, kWindowLostFocus, kWindowMoved,
-  kAppTick, kAppUpdate, kAppRender,
-  kKeyPressed, kKeyReleased, kKeyTyped,
-  kMouseButtonPressed, kMouseButtonReleased, kMouseMoved, kMouseScrolled
+  WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
+  AppTick, AppUpdate, AppRender,
+  KeyPressed, KeyReleased, KeyTyped,
+  MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
 };
 
-/// @brief Event categories natively supported by lambda.
-enum EventCategory {
+enum class EventCategory : int {
   None = 0,
-  kEventCategoryApplication = BIT(0),
-  kEventCategoryInput = BIT(1),
-  kEventCategoryKeyboard = BIT(2),
-  kEventCategoryMouse = BIT(3),
-  kEventCategoryMouseButton = BIT(4)
+  Application = BIT(0),
+  Input = BIT(1),
+  Keyboard = BIT(2),
+  Mouse = BIT(3),
+  MouseButton = BIT(4)
 };
 
 // ------------------------------------- MACROS --------------------------------
@@ -46,17 +45,13 @@ enum EventCategory {
     EventType GetEventType() const override { return GetStaticType(); } \
     const char* GetName() const override { return #type; }
 
-/// @brief Utility macro to make events compatible with lambdas EventDispacher.
-#define EVENT_CLASS_CATEGORY(category) \
-    int GetCategoryFlags() const override { return category; }
-
 /// @brief Utility function used for binding functions to lambdas
 /// Dispatcher.
 #define BIND_EVENT_HANDLER(fn) std::bind(&fn, this, std::placeholders::_1)
 
 /// @brief New Constexpr implementation for binding event listeners to
 template<typename FunctionAddress, typename ClassPointer>
-constexpr auto Bind(FunctionAddress function, ClassPointer* pointer) {
+inline constexpr auto Bind(FunctionAddress function, ClassPointer* pointer) {
   return std::bind(function, pointer, std::placeholders::_1);
 }
 
@@ -77,15 +72,16 @@ class Event {
   [[nodiscard]] bool HasBeenHandled() const { return has_been_handled_; }
 
   /// @brief Checks if the Event belongs to a specific category.
-  [[nodiscard]] bool IsInCategory(const EventCategory category) const {
-      return GetCategoryFlags() & category; }
+  [[nodiscard]] bool IsInCategory(EventCategory category) const {
+    return GetCategoryFlags() & static_cast<int>(category);
+  }
 
   /// @brief Support the use of << with Events.
   std::ostream& operator<<(std::ostream& os) const { return os << ToString(); }
 
  protected:
   bool has_been_handled_ = false;
-  void SetHandled(const bool success) { has_been_handled_ = success; }
+  void SetHandled(bool success) { has_been_handled_ = success; }
 };
 
 /// @brief The primary way of allowing the application and layers in lambda
