@@ -24,8 +24,12 @@ class MouseMovedEvent : public Event {
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kMouseMoved)
-  EVENT_CLASS_CATEGORY(kEventCategoryMouse | kEventCategoryInput)
+  EVENT_CLASS_TYPE(MouseMoved)
+  [[nodiscard]] int GetCategoryFlags() const override {
+    return static_cast<int>(EventCategory::Mouse)
+        | static_cast<int>(EventCategory::Input);
+  }
+
  private:
   float mouse_x_, mouse_y_;
 };
@@ -50,8 +54,13 @@ class MouseScrolledEvent : public Event {
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kMouseScrolled)
-  EVENT_CLASS_CATEGORY(kEventCategoryMouse | kEventCategoryInput)
+  EVENT_CLASS_TYPE(MouseScrolled)
+
+  [[nodiscard]] int GetCategoryFlags() const override {
+    return static_cast<int>(EventCategory::Mouse)
+        |static_cast<int>(EventCategory::Input);
+  }
+
  private:
   float x_offset_, y_offset_;
 };
@@ -61,10 +70,13 @@ class MouseButtonEvent : public Event {
  public:
   [[nodiscard]] int GetMouseButton() const { return button_; }
 
-  EVENT_CLASS_CATEGORY(kEventCategoryMouse | kEventCategoryInput)
+  [[nodiscard]] int GetCategoryFlags() const override {
+    return static_cast<int>(
+        EventCategory::Mouse) | static_cast<int>(EventCategory::Input);
+  }
 
  protected:
-  explicit MouseButtonEvent(const int button) : button_(button) {}
+  explicit MouseButtonEvent(int button) : button_(button) {}
   int button_;
 };
 
@@ -80,7 +92,7 @@ class MouseButtonPressedEvent final : public MouseButtonEvent {
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kMouseButtonPressed)
+  EVENT_CLASS_TYPE(MouseButtonPressed)
 };
 
 /// @brief An event generated whenever a Mouse button is released within an
@@ -96,7 +108,7 @@ class MouseButtonReleasedEvent final : public MouseButtonEvent {
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kMouseButtonReleased)
+  EVENT_CLASS_TYPE(MouseButtonReleased)
 };
 
 }  // namespace lambda::core::events
