@@ -10,7 +10,7 @@ std::shared_ptr<spdlog::logger> Log::kClientLogger;
 
 void Log::Init() {
   spdlog::set_pattern("%^[%T]-[%n]-[%s]: %v%$");
-  kCoreLogger = spdlog::stdout_color_mt("Engine");
+  kCoreLogger = spdlog::stdout_color_mt("Lambda");
   kCoreLogger->set_level(spdlog::level::trace);
 
   kClientLogger = spdlog::stdout_color_mt("App");
