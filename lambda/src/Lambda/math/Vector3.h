@@ -110,7 +110,7 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
       GetZ() / other_vector.GetZ());
   }
 
-  friend Vector3 operator*(const Vector3& vector, Real scalar) const {
+  friend Vector3 operator*(const Vector3& vector, Real scalar) {
     return Vector3(
       vector.GetX() * scalar,
       vector.GetY() * scalar,
