@@ -17,8 +17,6 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
   Vector3(const Real x, const Real y, const Real z) noexcept
       : Vector({x, y, z}) {}
 
-
-
   /// @brief Set the x component of the current vector.
   void SetX(const Real x) {
     elements_[0] = x;
