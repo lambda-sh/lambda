@@ -2,8 +2,6 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-option(LAMBDA_TOOLS_BUILD_SANDBOX "Sandbox for testing lambda" OFF)
-option(LAMBDA_TOOLS_BUILD_MATH "Sandbox for testing math functions" OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -17,10 +15,14 @@ set(OpenGL_GL_PREFERENCE "GLVND")
 
 project(lambda)
 
+option(LAMBDA_TOOLS_BUILD_SANDBOX "Sandbox for testing lambda" OFF)
+option(LAMBDA_TOOLS_BUILD_MATH "Sandbox for testing math functions" OFF)
+option(LAMBDA_ENGINE_BUILD_TESTS "Build tests for lambda" OFF)
+
 file(
     GLOB_RECURSE
     LAMBDA_SRC
-    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.h 
+    ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.h
     ${CMAKE_SOURCE_DIR}/lambda/src/Lambda/*.cpp)
 
 add_library(lambda STATIC ${LAMBDA_SRC})
@@ -32,9 +34,14 @@ set_target_properties(
 set_target_properties(lambda PROPERTIES PREFIX "")
 set_target_properties(lambda PROPERTIES OUTPUT_NAME "lambda")
 
+# Directory to include Lambda src.
 set(LAMBDA_ENGINE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/lambda/src")
 
-# todo(C3NZ): Make all include directories private once lambdas API is 
+# Root directory to provide sub directories a reliable absolute path
+set(LAMBDA_ENGINE_ROOT_DIR "${CMAKE_SOURCE_DIR}")
+
+
+# todo(C3NZ): Make all include directories private once lambdas API is
 # complete.
 target_include_directories(
     lambda
@@ -103,6 +110,12 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/readerwriterqueue)
 target_link_libraries(lambda readerwriterqueue)
 
 # ----------------------------------- SANDBOX ----------------------------------
+
+# Update how tests are implemented.
+if (${LAMBDA_ENGINE_BUILD_TESTS})
+    add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/vendor/googletest)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/tests)
+endif()
 
 if (${LAMBDA_TOOLS_BUILD_SANDBOX})
   add_subdirectory(${CMAKE_SOURCE_DIR}/tools/sandbox)
