@@ -2,13 +2,14 @@
 #define LAMBDA_SRC_LAMBDA_MATH_PRECISION_H_
 
 #include <cfloat>
+#include <cmath>
 
 namespace lambda::math {
 
 #if !(defined(LAMBDA_MATH_SINGLE_PRECISION) || \
     defined(LAMBDA_MATH_DOUBLE_PRECISION))
   #define LAMBDA_MATH_SINGLE_PRECISION
-#endif
+#endif  // LAMBDA_MATH_SINGLE_PRECISION || LAMBDA_MATH_DOUBLE_PRECISION
 
 #ifdef LAMBDA_MATH_SINGLE_PRECISION
 
@@ -18,30 +19,30 @@ constexpr Real REAL_PI = 3.14159f;
 constexpr Real REAL_MAX = FLT_MAX;
 constexpr Real REAL_EPSILON = FLT_EPSILON;
 
-inline Real SquareRootOf(Real number) {
+inline Real SquareRootOf(Real number) noexcept {
     return sqrtf(number);
 }
-inline Real AbsoluteValueOf(Real number) {
+inline Real AbsoluteValueOf(Real number) noexcept {
   return fabsf(number);
 }
 
-inline Real SineOf(const Real radians) {
+inline Real SineOf(const Real radians) noexcept {
   return sinf(radians);
 }
 
-inline Real CosineOf(const Real radians) {
+inline Real CosineOf(const Real radians) noexcept {
   return cos(radians);
 }
 
-inline Real Atan2Of(const Real y, const Real x) {
+inline Real Atan2Of(const Real y, const Real x) noexcept {
   return atan2f(y, x);
 }
 
-inline Real PowerOf(const Real number, const Real power) {
+inline Real PowerOf(const Real number, const Real power) noexcept {
   return powf(number, power);
 }
 
-inline Real ModulusOf(const Real x, const Real y) {
+inline Real ModulusOf(const Real x, const Real y) noexcept {
   return fmodf(x, y);
 }
 
