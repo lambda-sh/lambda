@@ -58,9 +58,9 @@ fi
 
 pushd lambda/tests > /dev/null
 ./lambda_tests
-popd > /dev/null
+popd > /dev/null  # lambda/tests
 
-popd > /dev/null  # "build"
+popd > /dev/null  # build
 popd > /dev/null  # ROOT_DIR
 
 LAMBDA_INFO "$LAMBDA_tool and engine have been shutdown."

@@ -22,6 +22,8 @@ constexpr Real REAL_EPSILON = FLT_EPSILON;
 inline Real SquareRootOf(Real number) noexcept {
     return sqrtf(number);
 }
+
+/// @brief Returns the absolute value of a number.
 inline Real AbsoluteValueOf(Real number) noexcept {
   return fabsf(number);
 }

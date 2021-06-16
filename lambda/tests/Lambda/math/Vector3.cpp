@@ -25,3 +25,20 @@ TEST(Vector3, InitializationFromFloats) {
   ASSERT_EQ(vec.GetY(), 2.0f);
   ASSERT_EQ(vec.GetZ(), 3.0f);
 }
+
+TEST(Vector3, Addition) {
+  lambda::math::Vector3 vec = {1.0, 2.0, 3.0};
+  lambda::math::Vector3 other_vec = {3.0, 2.0, 1.0};
+  auto result = vec + other_vec;
+
+  ASSERT_FLOAT_EQ(result.GetX(), 4.0f);
+  ASSERT_FLOAT_EQ(result.GetY(), 4.0f);
+  ASSERT_FLOAT_EQ(result.GetZ(), 4.0f);
+
+  // Addition is transitive
+  result = other_vec + vec;
+
+  ASSERT_FLOAT_EQ(result.GetX(), 4.0f);
+  ASSERT_FLOAT_EQ(result.GetY(), 4.0f);
+  ASSERT_FLOAT_EQ(result.GetZ(), 4.0f);
+}
