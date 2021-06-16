@@ -67,10 +67,25 @@ TEST(Vector3, Multiplication) {
   ASSERT_FLOAT_EQ(result.GetY(), 4.0f);
   ASSERT_FLOAT_EQ(result.GetZ(), 3.0f);
 
-  // Addition is transitive
   result = other_vec * vec;
 
   ASSERT_FLOAT_EQ(result.GetX(), 3.0f);
   ASSERT_FLOAT_EQ(result.GetY(), 4.0f);
   ASSERT_FLOAT_EQ(result.GetZ(), 3.0f);
+}
+
+TEST(Vector3, Division) {
+  lambda::math::Vector3 vec = {1.0, 2.0, 3.0};
+  lambda::math::Vector3 other_vec = {3.0, 2.0, 1.0};
+  auto result = vec / other_vec;
+
+  ASSERT_FLOAT_EQ(result.GetX(), 1.0f/3.0f);
+  ASSERT_FLOAT_EQ(result.GetY(), 1.0f);
+  ASSERT_FLOAT_EQ(result.GetZ(), 3.0f);
+
+  result = other_vec / vec;
+
+  ASSERT_FLOAT_EQ(result.GetX(), 3.0f);
+  ASSERT_FLOAT_EQ(result.GetY(), 4.0f);
+  ASSERT_FLOAT_EQ(result.GetZ(), 1.0f / 3.0f);
 }
