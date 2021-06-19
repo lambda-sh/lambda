@@ -86,6 +86,6 @@ TEST(Vector3, Division) {
   result = other_vec / vec;
 
   ASSERT_FLOAT_EQ(result.GetX(), 3.0f);
-  ASSERT_FLOAT_EQ(result.GetY(), 4.0f);
+  ASSERT_FLOAT_EQ(result.GetY(), 1.0f);
   ASSERT_FLOAT_EQ(result.GetZ(), 1.0f / 3.0f);
 }
