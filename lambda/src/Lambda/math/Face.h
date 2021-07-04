@@ -41,6 +41,18 @@ class Face {
   Vector3 face_;
 };
 
+/// @brief Converts a face of 3D vectors into a 2D vectors.
+///
+/// Returns the face vectors in the order that a face is constructed. (Top,
+/// left right.)
+inline std::array<Vector2, 3> ToVector2(const Face& face) {
+  return {
+    ToVector2(face.GetTop()),
+    ToVector2(face.GetLeft()),
+    ToVector2(face.GetRight()),
+  };
+}
+
 }  // namespace lambda::math
 
 #endif  // LAMBDA_SRC_LAMBDA_MATH_FACE_H_
