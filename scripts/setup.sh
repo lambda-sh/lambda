@@ -28,6 +28,9 @@ fi
 git lfs install
 LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to initialize git lfs"
 
+git lfs pull
+LAMBDA_ASSERT_LAST_COMMAND_OK "Couldn't pull LFS assets"
+
 # ------------------------------ PRE-COMMIT SETUP ------------------------------
 
 if command -v pre-commit > /dev/null; then
