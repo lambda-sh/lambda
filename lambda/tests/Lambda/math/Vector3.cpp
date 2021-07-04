@@ -79,7 +79,7 @@ TEST(Vector3, Division) {
   lambda::math::Vector3 other_vec = {3.0, 2.0, 1.0};
   auto result = vec / other_vec;
 
-  ASSERT_FLOAT_EQ(result.GetX(), 1.0f/3.0f);
+  ASSERT_FLOAT_EQ(result.GetX(), 1.0f / 3.0f);
   ASSERT_FLOAT_EQ(result.GetY(), 1.0f);
   ASSERT_FLOAT_EQ(result.GetZ(), 3.0f);
 
@@ -88,4 +88,17 @@ TEST(Vector3, Division) {
   ASSERT_FLOAT_EQ(result.GetX(), 3.0f);
   ASSERT_FLOAT_EQ(result.GetY(), 1.0f);
   ASSERT_FLOAT_EQ(result.GetZ(), 1.0f / 3.0f);
+}
+
+TEST(Vector3, DotProductOf) {
+  lambda::math::Vector3 first_vector = {1, 2, 3};
+  lambda::math::Vector3 second_vector = {3, 2, 1};
+  auto result = lambda::math::DotProductOf(first_vector, second_vector);
+  ASSERT_FLOAT_EQ(result, 10.0f);
+
+  // Assert order doesn't matter
+  first_vector = {3, 2, 1};
+  second_vector = {1, 2, 3};
+  result = lambda::math::DotProductOf(first_vector, second_vector);
+  ASSERT_FLOAT_EQ(result, 10.0f);
 }
