@@ -2,6 +2,7 @@
 #define LAMBDA_SRC_LAMBDA_MATH_VECTOR3_H_
 
 #include <Lambda/math/Vector.h>
+#include <Lambda/math/Vector2.h>
 
 namespace lambda::math {
 
@@ -21,6 +22,7 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
   void SetX(const Real x) {
     elements_[0] = x;
   }
+
   [[nodiscard]] Real GetX() const {
     return elements_[0];
   }
@@ -44,17 +46,6 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
     return elements_[2];
   }
 
-  /// @brief Get the dot product of two vectors, (u * v)
-  /// @param first_vector Vector u
-  /// @param second_vector Vector v
-  /// @return The dot product. (u * v)
-  [[nodiscard]] static Real DotProductOf(
-      const Vector3& first_vector, const Vector3& second_vector) {
-    return (
-        first_vector.GetX() * second_vector.GetX() +
-        first_vector.GetY() * second_vector.GetY() +
-        first_vector.GetZ() * second_vector.GetZ());
-  }
 
   void operator+=(const Vector3& other_vector) {
     SetX(GetX() + other_vector.GetX());
@@ -115,6 +106,39 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
       vector.GetZ() * scalar);
   }
 };
+//
+/// @brief Get the dot product of two vectors, (u * v)
+/// @param first_vector Vector u
+/// @param second_vector Vector v
+/// @return The dot product. (u * v)
+[[nodiscard]] inline Real DotProductOf(
+    const Vector3& first_vector, const Vector3& second_vector) {
+  return (
+      first_vector.GetX() * second_vector.GetX() +
+      first_vector.GetY() * second_vector.GetY() +
+      first_vector.GetZ() * second_vector.GetZ());
+}
+
+/// @brief Returns the cross product of two vectors
+[[nodiscard]] inline Vector3 CrossProductOf(
+    const Vector3& u, const Vector3& v) {
+  Real x = u.GetY() * v.GetZ() - u.GetZ() * v.GetY();
+  Real y = u.GetZ() * v.GetX() - u.GetX() * v.GetZ();
+  Real z = u.GetX() * v.GetY() - u.GetY() * v.GetX();
+  return Vector3(x, y, z);
+}
+
+/// @brief Decomposes a component from a vector.
+inline Real ComponentFrom(const Vector3& vector, const Vector3& direction) {
+  return DotProductOf(vector, direction) / 3;
+}
+
+/// @brief Convert a Vector3 into a Vector 2 by decomposing it's x & y
+/// components.
+inline Vector2 ToVector2(const Vector3& vector) {
+  return Vector2(
+      ComponentFrom(vector, {1, 0, 0}), ComponentFrom(vector, {0, 1, 0}));
+}
 
 }  // namespace lambda::math
 
