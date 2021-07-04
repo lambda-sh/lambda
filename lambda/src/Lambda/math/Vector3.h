@@ -106,7 +106,7 @@ class Vector3 : public Vector<Real, std::array<Real, 3>> {
       vector.GetZ() * scalar);
   }
 };
-//
+
 /// @brief Get the dot product of two vectors, (u * v)
 /// @param first_vector Vector u
 /// @param second_vector Vector v
