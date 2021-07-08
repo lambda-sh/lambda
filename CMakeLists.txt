@@ -16,7 +16,7 @@ set(OpenGL_GL_PREFERENCE "GLVND")
 project(lambda)
 
 option(LAMBDA_TOOLS_BUILD_SANDBOX "Sandbox for testing lambda" OFF)
-option(LAMBDA_TOOLS_BUILD_MATH "Sandbox for testing math functions" OFF)
+option(LAMBDA_TOOLS_BUILD_MATHBOX "Sandbox for testing math functions" OFF)
 option(LAMBDA_ENGINE_BUILD_TESTS "Build tests for lambda" OFF)
 
 file(
@@ -121,6 +121,6 @@ if (${LAMBDA_TOOLS_BUILD_SANDBOX})
   add_subdirectory(${CMAKE_SOURCE_DIR}/tools/sandbox)
 endif()
 
-if (${LAMBDA_TOOLS_BUILD_MATH})
+if (${LAMBDA_TOOLS_BUILD_MATHBOX})
   add_subdirectory(${CMAKE_SOURCE_DIR}/tools/mathbox)
 endif()

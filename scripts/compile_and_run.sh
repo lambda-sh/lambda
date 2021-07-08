@@ -14,6 +14,7 @@ LAMBDA_PARSE_ARG cores 8 "The amount of cores to use for compiling."
 LAMBDA_PARSE_ARG c-compiler gcc "The compiler to use for C code."
 LAMBDA_PARSE_ARG cpp-compiler g++ "The compiler to use for C++ code."
 LAMBDA_PARSE_ARG os "Linux" "The operating system to build for."
+LAMBDA_PARSE_ARG tool "sandbox" "The Tool to run. (Uses folder names)"
 
 LAMBDA_COMPILE_ARGS $@
 
@@ -30,6 +31,7 @@ if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
         -DCMAKE_BUILD_TYPE="$LAMBDA_build" \
         -DDISTRIBUTION_BUILD=False \
         -DLAMBDA_TOOLS_BUILD_SANDBOX=ON \
+        -DLAMBDA_TOOLS_BUILD_MATHBOX=ON \
         -G Ninja
 elif [ "$LAMBDA_build" = "Dist" ]; then
     LAMBDA_INFO "Compiling a distribution build for the engine."
@@ -37,6 +39,7 @@ elif [ "$LAMBDA_build" = "Dist" ]; then
         -DCMAKE_BUILD_TYPE="Release" \
         -DDISTRIBUTION_BUILD=True \
         -DLAMBDA_TOOLS_BUILD_SANDBOX=ON \
+        -DLAMBDA_TOOLS_BUILD_MATHBOX=ON \
         -G Ninja
 else
     LAMBDA_FATAL "You need to pass a build type in order to compile a tool."
@@ -64,8 +67,9 @@ fi
 
 # ------------------------------------ RUN -------------------------------------
 
-pushd tools/sandbox > /dev/null
-./sandbox
+pushd "tools/$LAMBDA_tool" > /dev/null
+LAMBDA_ASSERT_LAST_COMMAND_OK "Couldn't access the tools directory."
+./"$LAMBDA_tool"
 popd > /dev/null
 
 popd > /dev/null  # "build"
