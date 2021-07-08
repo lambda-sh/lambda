@@ -65,11 +65,11 @@ constexpr auto REAL_FMOD = fmod;
 
 #endif  // defined(LAMBDA_MATH_DOUBLE_PRECISION)
 
-constexpr Real DegreeToRadians(const Real degrees) {
+constexpr Real DegreeToRadians(const Real degrees) noexcept {
   return degrees * (REAL_PI / 180.0f);
 }
 
-constexpr Real RadiansToDegree(const Real radians) {
+constexpr Real RadiansToDegree(const Real radians) noexcept {
   return radians * (180.0f / REAL_PI);
 }
 

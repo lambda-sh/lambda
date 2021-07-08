@@ -26,28 +26,28 @@ class Vector {
   explicit Vector(const Vector&& vec) noexcept
       : elements_(std::move(vec.elements_)) {}
 
-  Vector& operator=(const Vector& vec) = default;
-  Vector& operator=(Vector&& vec) = default;
+  Vector& operator=(const Vector& vec) noexcept = default;
+  Vector& operator=(Vector&& vec) noexcept = default;
 
-  const Container& GetRawElements() {
+  const Container& GetRawElements() noexcept {
     return elements_;
   }
 
-  [[nodiscard]] size_t GetSize() const {
+  [[nodiscard]] size_t GetSize() const noexcept {
     return elements_.size();
   }
 
-  void ApplyInPlace(std::function<Type(Type)> lambda) {
+  void ApplyInPlace(std::function<Type(Type)> lambda) noexcept {
     std::for_each(elements_.begin(), elements_.end(), lambda);
   }
 
-  Vector Apply(std::function<Type(Type)> lambda) {
+  Vector Apply(std::function<Type(Type)> lambda) noexcept {
     Container new_elements(elements_.size());
     std::transform(elements_.begin(), elements_.end(), &new_elements, lambda);
     return Vector(std::move(new_elements));
   }
 
-  Vector operator+(const Vector& other_vector) {
+  Vector operator+(const Vector& other_vector) noexcept {
     LAMBDA_CORE_ASSERT(
         GetSize() == other_vector.GetSize(),
         "Vectors are not the same size",
@@ -66,7 +66,7 @@ class Vector {
     return Vector(new_elements);
   }
 
-  void operator+=(const Vector& other_vector) {
+  void operator+=(const Vector& other_vector) noexcept {
     std::transform(
         elements_.begin(),
         elements_.end(),

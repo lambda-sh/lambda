@@ -7,7 +7,7 @@ namespace lambda::math {
 
 // ----------------------------------- VECTOR2 ---------------------------------
 class Vector2;
-Real LengthOf(const Vector2& vector);
+Real LengthOf(const Vector2& vector) noexcept;
 
 class Vector2 final : public Vector<Real, std::array<Real, 2>> {
  public:
@@ -24,60 +24,60 @@ class Vector2 final : public Vector<Real, std::array<Real, 2>> {
   Vector2& operator=(Vector2&& vec) noexcept = default;
 
   /// @brief Set the x component of the current vector.
-  void SetX(const Real x) {
+  void SetX(const Real x) noexcept {
     elements_[0] = x;
   }
 
-  [[nodiscard]] Real GetX() const {
+  [[nodiscard]] Real GetX() const noexcept {
     return elements_[0];
   }
 
   /// @brief Set the y component of the current vector.
-  void SetY(const Real y) {
+  void SetY(const Real y) noexcept {
       elements_[1] = y;
     }
 
-  [[nodiscard]] Real GetY() const {
+  [[nodiscard]] Real GetY() const noexcept {
     return elements_[1];
   }
 
-  [[nodiscard]] Real GetLength() const {
+  [[nodiscard]] Real GetLength() const noexcept {
     return LengthOf(*this);
   }
 
-  void operator+=(const Vector2& other_vector) {
+  void operator+=(const Vector2& other_vector) noexcept {
     SetX(GetX() + other_vector.GetX());
     SetX(GetY() + other_vector.GetY());
   }
 
-  Vector2 operator+(const Vector2& other_vector) const {
+  Vector2 operator+(const Vector2& other_vector) const noexcept {
     return Vector2(GetX() + other_vector.GetX(), GetY() + other_vector.GetY());
   }
 
-  void operator-=(const Vector2& other_vector) {
+  void operator-=(const Vector2& other_vector) noexcept {
     SetX(GetX() - other_vector.GetX());
     SetY(GetY() - other_vector.GetY());
   }
 
-  Vector2 operator-(const Vector2& other_vector) const {
+  Vector2 operator-(const Vector2& other_vector) const noexcept {
     return Vector2(GetX() - other_vector.GetX(), GetY() - other_vector.GetY());
   }
 
-  void operator*=(const Vector2& other_vector) {
+  void operator*=(const Vector2& other_vector) noexcept {
     SetX(GetX() * other_vector.GetX());
     SetY(GetY() * other_vector.GetY());
   }
 
-  Vector2 operator*(const Vector2& other_vector) const {
+  Vector2 operator*(const Vector2& other_vector) const noexcept {
     return Vector2(GetX() * other_vector.GetX(), GetY() * other_vector.GetY());
   }
 
-  void operator/=(const Vector2& other_vector) {
+  void operator/=(const Vector2& other_vector) noexcept {
     SetX(GetX() / other_vector.GetX());
     SetX(GetX() / other_vector.GetY());
   }
 
-  Vector2 operator/(const Vector2& other_vector) const {
+  Vector2 operator/(const Vector2& other_vector) const noexcept {
     return Vector2(GetX() / other_vector.GetX(), GetY() / other_vector.GetY());
   }
 };
@@ -85,35 +85,35 @@ class Vector2 final : public Vector<Real, std::array<Real, 2>> {
 // ------------------------------- SCALAR OPERATORS ----------------------------
 
 inline Vector2 operator+(
-    const Vector2& first_vector, Real scalar) {
+    const Vector2& first_vector, Real scalar) noexcept {
   return Vector2(
     first_vector.GetX() + scalar,
     first_vector.GetY() + scalar);
 }
 
 inline Vector2 operator-(
-    const Vector2& first_vector, Real scalar) {
+    const Vector2& first_vector, Real scalar) noexcept {
   return Vector2(
     first_vector.GetX() - scalar,
     first_vector.GetY() - scalar);
 }
 
 inline Vector2 operator*(
-    const Vector2& first_vector, Real scalar) {
+    const Vector2& first_vector, Real scalar) noexcept {
   return Vector2(
     first_vector.GetX() * scalar,
     first_vector.GetY() * scalar);
 }
 
 inline Vector2 operator/(
-    const Vector2& first_vector, Real scalar) {
+    const Vector2& first_vector, Real scalar) noexcept {
   return Vector2(
     first_vector.GetX() / scalar,
     first_vector.GetY() / scalar);
 }
 
 template<typename Vector>
-Vector2 Vector2FromVector(Vector vec) {
+Vector2 Vector2FromVector(Vector vec) noexcept {
   std::array<Real, 2> arr = vec.GetElements();
   return Vector2();
 }
@@ -121,7 +121,7 @@ Vector2 Vector2FromVector(Vector vec) {
 /// @brief Get the length of a 2D vector.
 /// @param vector Cartesian Coordinate vector.
 /// @return The length of the vector. (sqrt(x^2 + y^2))
-inline Real LengthOf(const Vector2& vector) {
+inline Real LengthOf(const Vector2& vector) noexcept {
   return SquareRootOf(PowerOf(vector.GetX(), 2) + PowerOf(vector.GetY(), 2));
 }
 
@@ -130,7 +130,7 @@ inline Real LengthOf(const Vector2& vector) {
 /// @param second_vector The end vector.
 /// @return THe distance between each vector.
 inline Real DistanceBetween(
-    const Vector2& first_vector, const Vector2& second_vector) {
+    const Vector2& first_vector, const Vector2& second_vector) noexcept {
   const Vector2 displacement_vector = first_vector - second_vector;
   return LengthOf(displacement_vector);
 }
@@ -154,7 +154,7 @@ inline Real PerimeterOf(const std::vector<Vector2>& vectors) {
 /// @param polar_vector The polar coordinate that contains length & angle in
 /// radians as the vector components.
 /// @return A Cartesian coordinate vector that contains the x & y components.
-inline Vector2 PolarToCartesian(const Vector2& polar_vector) {
+inline Vector2 PolarToCartesian(const Vector2& polar_vector) noexcept {
   const Real length = polar_vector.GetX();
   const Real angle = polar_vector.GetY();
   return Vector2(length * CosineOf(angle), length * SineOf(angle));
@@ -163,7 +163,7 @@ inline Vector2 PolarToCartesian(const Vector2& polar_vector) {
 /// @brief Converts a cartesian coordinate to a polar coordinate.
 /// @param cartesian_vector A vector containing x & y coordinates.
 /// @return A polar vector containing it's length & angle in radians.
-inline Vector2 CartesianToPolar(const Vector2& cartesian_vector) {
+inline Vector2 CartesianToPolar(const Vector2& cartesian_vector) noexcept {
   const Real length = LengthOf(cartesian_vector);
   const Real angle = Atan2Of(
       cartesian_vector.GetY(), cartesian_vector.GetX());
@@ -175,7 +175,7 @@ inline Vector2 CartesianToPolar(const Vector2& cartesian_vector) {
 /// @param angle The angle to rotate the vector by (In radians)
 /// @return A cartesian vector that has been rotated.
 inline Vector2 RotateCartesianByAngle(
-    const Vector2& cartesian_vector, Real angle) {
+    const Vector2& cartesian_vector, Real angle) noexcept {
   Vector2 polar = CartesianToPolar(cartesian_vector);
   polar.SetY(polar.GetY() + angle);
   return PolarToCartesian(polar);
@@ -185,14 +185,15 @@ inline Vector2 RotateCartesianByAngle(
 /// @param polar_vector The vector to rotate.
 /// @param angle The angle to rotate the vector by (In radians)
 /// @return A polar vector that has been rotated.
-inline Vector2 RotatePolarByAngle(const Vector2& polar_vector, Real angle) {
+inline Vector2 RotatePolarByAngle(
+    const Vector2& polar_vector, Real angle) noexcept {
   return Vector2(polar_vector.GetX(), polar_vector.GetY() + angle);
 }
 
 /// @brief Sum of multiple vectors.
 /// @param vectors The list of vectors to sum.
 /// @return a vector pointing to the sum of all vectors.
-inline Vector2 SumOf(const std::vector<Vector2>& vectors) {
+inline Vector2 SumOf(const std::vector<Vector2>& vectors) noexcept {
   Real x = 0, y = 0;
 
   for (const auto& vector : vectors) {

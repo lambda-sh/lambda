@@ -137,7 +137,7 @@ std::unordered_map<GLenum, std::string> OpenGLShader::PreProcess(
 
 void OpenGLShader::Compile(
     const std::unordered_map<GLenum, std::string>& shader_source_map) {
-  LAMBDA_CORE_ASSERT(shader_source_map.size() <= 3, "Too many shaders loaded", "")
+  LAMBDA_CORE_ASSERT(shader_source_map.size() <= 3, "Too many shaders loaded")
   GLuint program = glCreateProgram();
   std::array<GLuint, 3> gl_shader_ids{};
 

@@ -140,6 +140,14 @@ inline Vector2 ToVector2(const Vector3& vector) {
       ComponentFrom(vector, {1, 0, 0}), ComponentFrom(vector, {0, 1, 0}));
 }
 
+inline Vector3 ScaleBy(const Vector3& vector, Real scalar) {
+  return vector * scalar;
+}
+
+inline Vector3 UnitVectorFor(const Vector3& vector) {
+  return ScaleBy(vector, 1.0/ 3.0f);
+}
+
 }  // namespace lambda::math
 
 #endif  //  LAMBDA_SRC_LAMBDA_MATH_VECTOR3_H_
