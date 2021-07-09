@@ -46,76 +46,84 @@ class Vector2 final : public Vector<Real, std::array<Real, 2>> {
   }
 
   void operator+=(const Vector2& other_vector) noexcept {
-    SetX(GetX() + other_vector.GetX());
-    SetX(GetY() + other_vector.GetY());
+    elements_[0] += other_vector.elements_[0];
+    elements_[1] += other_vector.elements_[1];
   }
 
   Vector2 operator+(const Vector2& other_vector) const noexcept {
-    return Vector2(GetX() + other_vector.GetX(), GetY() + other_vector.GetY());
+    return Vector2(
+        elements_[0] + other_vector.elements_[0],
+        elements_[1] + other_vector.elements_[1]);
   }
 
   void operator-=(const Vector2& other_vector) noexcept {
-    SetX(GetX() - other_vector.GetX());
-    SetY(GetY() - other_vector.GetY());
+    elements_[0] -= other_vector.elements_[0];
+    elements_[1] -= other_vector.elements_[1];
   }
 
   Vector2 operator-(const Vector2& other_vector) const noexcept {
-    return Vector2(GetX() - other_vector.GetX(), GetY() - other_vector.GetY());
+    return Vector2(
+        elements_[0] - other_vector.elements_[0],
+        elements_[1] - other_vector.elements_[1]);
   }
 
   void operator*=(const Vector2& other_vector) noexcept {
-    SetX(GetX() * other_vector.GetX());
-    SetY(GetY() * other_vector.GetY());
+    elements_[0] *= other_vector.elements_[0];
+    elements_[1] *= other_vector.elements_[1];
   }
 
   Vector2 operator*(const Vector2& other_vector) const noexcept {
-    return Vector2(GetX() * other_vector.GetX(), GetY() * other_vector.GetY());
+    return Vector2(
+        elements_[0] * other_vector.elements_[0],
+        elements_[1] * other_vector.elements_[1]);
   }
 
   void operator/=(const Vector2& other_vector) noexcept {
-    SetX(GetX() / other_vector.GetX());
-    SetX(GetX() / other_vector.GetY());
+    elements_[0] /= other_vector.elements_[0];
+    elements_[1] /= other_vector.elements_[1];
   }
 
   Vector2 operator/(const Vector2& other_vector) const noexcept {
-    return Vector2(GetX() / other_vector.GetX(), GetY() / other_vector.GetY());
+    return Vector2(
+        elements_[0] / other_vector.elements_[0],
+        elements_[1] / other_vector.elements_[1]);
+  }
+
+  friend Vector2 operator+(
+      const Vector2& first_vector, Real scalar) noexcept {
+    return Vector2(
+      first_vector.GetX() + scalar,
+      first_vector.GetY() + scalar);
+  }
+
+  friend Vector2 operator-(
+      const Vector2& first_vector, Real scalar) noexcept {
+    return Vector2(
+      first_vector.GetX() - scalar,
+      first_vector.GetY() - scalar);
+  }
+
+  friend Vector2 operator*(
+      const Vector2& first_vector, Real scalar) noexcept {
+    return Vector2(
+      first_vector.GetX() * scalar,
+      first_vector.GetY() * scalar);
+  }
+
+  friend Vector2 operator/(
+      const Vector2& first_vector, Real scalar) noexcept {
+    return Vector2(
+      first_vector.GetX() / scalar,
+      first_vector.GetY() / scalar);
   }
 };
 
 // ------------------------------- SCALAR OPERATORS ----------------------------
 
-inline Vector2 operator+(
-    const Vector2& first_vector, Real scalar) noexcept {
-  return Vector2(
-    first_vector.GetX() + scalar,
-    first_vector.GetY() + scalar);
-}
-
-inline Vector2 operator-(
-    const Vector2& first_vector, Real scalar) noexcept {
-  return Vector2(
-    first_vector.GetX() - scalar,
-    first_vector.GetY() - scalar);
-}
-
-inline Vector2 operator*(
-    const Vector2& first_vector, Real scalar) noexcept {
-  return Vector2(
-    first_vector.GetX() * scalar,
-    first_vector.GetY() * scalar);
-}
-
-inline Vector2 operator/(
-    const Vector2& first_vector, Real scalar) noexcept {
-  return Vector2(
-    first_vector.GetX() / scalar,
-    first_vector.GetY() / scalar);
-}
-
 template<typename Vector>
 Vector2 Vector2FromVector(Vector vec) noexcept {
   std::array<Real, 2> arr = vec.GetElements();
-  return Vector2();
+  return Vector2(arr);
 }
 
 /// @brief Get the length of a 2D vector.
