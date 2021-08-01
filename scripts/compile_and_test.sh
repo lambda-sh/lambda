@@ -35,7 +35,7 @@ lambda_args_add \
     --description \
         "The operating system being built for. (MacOS, Windows, Linux)"
 
-lambda_args_compile "$@"
+lambda_args_compile $@
 
 # -------------------- COMPILE THE ENGINE AND ALL TOOLS ------------------------
 
