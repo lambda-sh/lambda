@@ -20,6 +20,10 @@ on:
   schedule:
     - cron: '39 6 * * 2'
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   analyze:
     name: Analyze
