@@ -61,7 +61,6 @@ if (WIN32)
         lambda
         PUBLIC LAMBDA_PLATFORM_WINDOWS
         PUBLIC LAMBDA_BUILD_DLL
-        PUBLIC LAMBDA_DEBUG
         PUBLIC LAMBDA_INCLUDE_PROFILER)
 elseif (UNIX AND NOT APPLE)
     message (STATUS ">>> Setting linux compile definitions for the lambda.")
@@ -69,17 +68,15 @@ elseif (UNIX AND NOT APPLE)
         lambda
         PUBLIC LAMBDA_PLATFORM_LINUX
         PUBLIC LAMBDA_BUILD_DLL
-        PUBLIC LAMBDA_DEBUG
         PUBLIC LAMBDA_INCLUDE_PROFILER)
 elseif(APPLE)
     message (STATUS ">>> Setting macos compile definitions for the lambda.")
     target_compile_definitions(
         lambda
-        PRIVATE LAMBDA_PLATFORM_MACOS
-        PRIVATE LAMBDA_PLATFORM_LINUX
-        PRIVATE LAMBDA_BUILD_DLL
-        PRIVATE LAMBDA_DEBUG
-        PRIVATE LAMBDA_INCLUDE_PROFILER)
+        PUBLIC LAMBDA_PLATFORM_MACOS
+        PUBLIC LAMBDA_PLATFORM_LINUX
+        PUBLIC LAMBDA_BUILD_DLL
+        PUBLIC LAMBDA_INCLUDE_PROFILER)
 
     target_link_libraries(
         lambda
