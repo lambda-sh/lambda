@@ -33,7 +33,7 @@ class GraphLayer2D : public Layer {
   void OnDetach() override {
   }
 
-  void OnUpdate(util::TimeStep time_step) override {
+  void OnUpdate(lib::TimeStep time_step) override {
     camera_controller_.OnUpdate(time_step);
 
     renderer::RenderCommand::SetClearColor({ 0.1f, 0.1f, 0.1f, 1.0f });
@@ -50,7 +50,7 @@ class GraphLayer2D : public Layer {
     renderer::Renderer2D::EndScene();
   };
 
-  void OnEvent(memory::Shared<events::Event> event) override {
+  void OnEvent(events::Event* const event) override {
     camera_controller_.OnEvent(event);
   }
 

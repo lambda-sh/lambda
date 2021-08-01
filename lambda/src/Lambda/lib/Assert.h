@@ -6,11 +6,11 @@
 /// This should most likely not be deployed into any game extending
 /// this engine. LAMBDA_ENABLE_ASSERTS enables and disables assertions for both
 /// the client and the engine at compile time.
-#ifndef LAMBDA_SRC_LAMBDA_CORE_UTIL_ASSERT_H_
-#define LAMBDA_SRC_LAMBDA_CORE_UTIL_ASSERT_H_
+#ifndef LAMBDA_SRC_LAMBDA_LIB_ASSERT_H_
+#define LAMBDA_SRC_LAMBDA_LIB_ASSERT_H_
 
-#include "Lambda/core/Core.h"
-#include "Lambda/core/util/Log.h"
+#include <Lambda/core/Core.h>
+#include <Lambda/lib/Log.h>
 
 /// @def LAMBDA_CLIENT_ASSERT(assertion, message, ...)
 /// @brief When assertions are enabled, the client is allowed to use asserts
@@ -44,4 +44,4 @@
   #define LAMBDA_CORE_ASSERT(assertion, message, ...)
 #endif  // LAMBDA_ENABLE_ASSERTS
 
-#endif  // LAMBDA_SRC_LAMBDA_CORE_UTIL_ASSERT_H_
+#endif  // LAMBDA_SRC_LAMBDA_LIB_ASSERT_H_

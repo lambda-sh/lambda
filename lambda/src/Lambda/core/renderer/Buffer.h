@@ -14,8 +14,8 @@
 #include <vector>
 
 #include <Lambda/core/memory/Pointers.h>
-#include <Lambda/core/util/Assert.h>
-#include <Lambda/core/util/Log.h>
+#include <Lambda/lib/Assert.h>
+#include <Lambda/lib/Log.h>
 
 #include <Lambda/concepts/Point.h>
 

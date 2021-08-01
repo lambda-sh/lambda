@@ -1,18 +1,13 @@
-#include "Lambda/core/renderer/VertexArray.h"
+#include <Lambda/core/renderer/VertexArray.h>
 
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/renderer/Renderer.h"
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/core/renderer/Renderer.h>
+#include <Lambda/lib/Assert.h>
+#include <Lambda/platform/opengl/OpenGLVertexArray.h>
 
-#include "Lambda/platform/opengl/OpenGLVertexArray.h"
+namespace lambda::core::renderer {
 
-namespace lambda {
-namespace core {
-namespace renderer {
-
-/**
- * Only supports Vertex buffers that are available through the rendering API.
- */
+/// Only supports Vertex buffers that are available through the rendering API.
 memory::Shared<VertexArray> VertexArray::Create() {
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
@@ -21,14 +16,7 @@ memory::Shared<VertexArray> VertexArray::Create() {
       return nullptr;
     case RendererAPI::API::OpenGL:
       return memory::CreateShared<platform::opengl::OpenGLVertexArray>();
-    default:
-      LAMBDA_CORE_ASSERT(
-          false,
-          "The Renderer has been set to a graphics API that isn't supported.", "");
-      return nullptr;
   }
 }
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer

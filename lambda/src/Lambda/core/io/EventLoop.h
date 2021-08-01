@@ -11,7 +11,8 @@
 #include <concurrentqueue.h>
 
 #include <Lambda/core/io/AsyncTask.h>
-#include <Lambda/core/util/Time.h>
+#include <Lambda/lib/Time.h>
+
 namespace lambda::core::io {
 
 /// @brief Asynchronous Event Loop that allows the execution of code to happen
@@ -23,7 +24,7 @@ namespace lambda::core::io {
 /// of it, as that has the potential for major issues.
 class EventLoop {
  public:
-  explicit EventLoop(uint32_t size = 256)
+  explicit EventLoop(const uint32_t size = 256)
       : running_(true), size_(size), event_queue_(size_) {}
 
   /// @brief Runs the event loop. This will block any thread it's running in and
@@ -42,8 +43,8 @@ class EventLoop {
   /// seconds of not being run.)
   bool Dispatch(
       AsyncCallback callback,
-      core::util::Time execute_at = core::util::Time(),
-      core::util::Time expire_at = core::util::Time().AddSeconds(6));
+      lib::Time execute_at = lib::Time(),
+      lib::Time expire_at = lib::Time().AddSeconds(5));
 
  private:
   bool running_;

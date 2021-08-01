@@ -5,11 +5,11 @@
 #include <vector>
 #include <fstream>
 
-#include <glad/glad.h>
+#include <Lambda/platform/glad/Glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Log.h"
+#include "Lambda/lib/Assert.h"
+#include "Lambda/lib/Log.h"
 
 namespace lambda::platform::opengl {
 
@@ -137,7 +137,7 @@ std::unordered_map<GLenum, std::string> OpenGLShader::PreProcess(
 
 void OpenGLShader::Compile(
     const std::unordered_map<GLenum, std::string>& shader_source_map) {
-  LAMBDA_CORE_ASSERT(shader_source_map.size() <= 3, "Too many shaders loaded", "")
+  LAMBDA_CORE_ASSERT(shader_source_map.size() <= 3, "Too many shaders loaded")
   GLuint program = glCreateProgram();
   std::array<GLuint, 3> gl_shader_ids{};
 

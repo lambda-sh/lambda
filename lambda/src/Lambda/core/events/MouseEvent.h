@@ -5,29 +5,31 @@
 
 #include <sstream>
 
-#include "Lambda/core/events/Event.h"
+#include <Lambda/core/events/Event.h>
 
-namespace lambda {
-namespace core {
-namespace events {
+namespace lambda::core::events {
 
 /// @brief An event generated whenever a mouse is moved within an application
 /// that is running lambda.
 class MouseMovedEvent : public Event {
  public:
-  MouseMovedEvent(float x, float y) : mouse_x_(x), mouse_y_(y) {}
+  MouseMovedEvent(const float x, const float y) : mouse_x_(x), mouse_y_(y) {}
 
-  float GetX() const { return mouse_x_; }
-  float GetY() const { return mouse_y_; }
+  [[nodiscard]] float GetX() const { return mouse_x_; }
+  [[nodiscard]] float GetY() const { return mouse_y_; }
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string << "MouseMovedEvent: " << GetX() << ", " << GetY();
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kMouseMoved)
-  EVENT_CLASS_CATEGORY(kEventCategoryMouse | kEventCategoryInput)
+  EVENT_CLASS_TYPE(MouseMoved)
+  [[nodiscard]] int GetCategoryFlags() const override {
+    return static_cast<int>(EventCategory::Mouse)
+        | static_cast<int>(EventCategory::Input);
+  }
+
  private:
   float mouse_x_, mouse_y_;
 };
@@ -36,13 +38,13 @@ class MouseMovedEvent : public Event {
 /// that is running lambda.
 class MouseScrolledEvent : public Event {
  public:
-  MouseScrolledEvent(float x_offset, float y_offset)
+  MouseScrolledEvent(const float x_offset, const float y_offset)
       : x_offset_(x_offset), y_offset_(y_offset) {}
 
-  float GetXOffset() const { return x_offset_; }
-  float GetYOffset() const { return y_offset_; }
+  [[nodiscard]] float GetXOffset() const { return x_offset_; }
+  [[nodiscard]] float GetYOffset() const { return y_offset_; }
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string
         << "MouseScrolledEvent: "
@@ -52,8 +54,13 @@ class MouseScrolledEvent : public Event {
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kMouseScrolled)
-  EVENT_CLASS_CATEGORY(kEventCategoryMouse | kEventCategoryInput)
+  EVENT_CLASS_TYPE(MouseScrolled)
+
+  [[nodiscard]] int GetCategoryFlags() const override {
+    return static_cast<int>(EventCategory::Mouse)
+        |static_cast<int>(EventCategory::Input);
+  }
+
  private:
   float x_offset_, y_offset_;
 };
@@ -61,9 +68,12 @@ class MouseScrolledEvent : public Event {
 /// @brief The base event class for all events mouse button related.
 class MouseButtonEvent : public Event {
  public:
-  int GetMouseButton() const { return button_; }
+  [[nodiscard]] int GetMouseButton() const { return button_; }
 
-  EVENT_CLASS_CATEGORY(kEventCategoryMouse | kEventCategoryInput)
+  [[nodiscard]] int GetCategoryFlags() const override {
+    return static_cast<int>(
+        EventCategory::Mouse) | static_cast<int>(EventCategory::Input);
+  }
 
  protected:
   explicit MouseButtonEvent(int button) : button_(button) {}
@@ -72,36 +82,35 @@ class MouseButtonEvent : public Event {
 
 /// @brief An event generated whenever a Mouse button is pressed within an
 /// application that is running lambda.
-class MouseButtonPressedEvent : public MouseButtonEvent {
+class MouseButtonPressedEvent final : public MouseButtonEvent {
  public:
   explicit MouseButtonPressedEvent(int button) : MouseButtonEvent(button) {}
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string << "MouseButtonPressedEvent: " << button_;
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kMouseButtonPressed)
+  EVENT_CLASS_TYPE(MouseButtonPressed)
 };
 
 /// @brief An event generated whenever a Mouse button is released within an
 /// application that is running lambda.
-class MouseButtonReleasedEvent : public MouseButtonEvent {
+class MouseButtonReleasedEvent final : public MouseButtonEvent {
  public:
-  explicit MouseButtonReleasedEvent(int button) : MouseButtonEvent(button) {}
+  explicit MouseButtonReleasedEvent(const int button)
+      : MouseButtonEvent(button) {}
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string << "MouseButtonReleasedEvent: " << button_;
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kMouseButtonReleased)
+  EVENT_CLASS_TYPE(MouseButtonReleased)
 };
 
-}  // namespace events
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::events
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_EVENTS_MOUSEEVENT_H_

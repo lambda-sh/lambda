@@ -7,8 +7,8 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_ENTRYPOINT_H_
 #define LAMBDA_SRC_LAMBDA_CORE_ENTRYPOINT_H_
 
-#include "Lambda/core/Application.h"
-#include "Lambda/core/util/Log.h"
+#include <Lambda/core/Application.h>
+#include <Lambda/lib/Log.h>
 
 using lambda::core::Application;
 using lambda::core::memory::Unique;
@@ -17,7 +17,7 @@ using lambda::core::memory::Unique;
 extern Unique<Application> lambda::core::CreateApplication();
 
 int main() {
-  lambda::core::util::Log::Init();
+  lambda::lib::Log::Init();
   LAMBDA_CORE_WARN("Initialized core log");
   LAMBDA_CLIENT_INFO("Initialized client log");
 

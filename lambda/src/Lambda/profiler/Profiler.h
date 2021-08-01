@@ -5,20 +5,19 @@
 #include <fstream>
 #include <thread>
 
-#include "Lambda/core/util/Time.h"
+#include <Lambda/lib/Time.h>
 
-namespace lambda {
-namespace profiler {
+namespace lambda::profiler {
 
 struct ProfileResult {
   std::string Name;
-  core::util::Time Start, Stop;
+  lib::Time Start, Stop;
   std::thread::id ThreadID;
 
   ProfileResult(
       std::string name,
-      core::util::Time start,
-      core::util::Time stop,
+      lib::Time start,
+      lib::Time stop,
       std::thread::id threadID) :
           Name(name),
           Start(start),
@@ -77,9 +76,9 @@ class Profiler {
     std::replace(name.begin(), name.end(), '"', '\'');
 
     uint64_t start_time =
-        result.Start.InMicroSeconds().time_since_epoch().count();
+        result.Start.InMicroseconds().time_since_epoch().count();
     uint64_t end_time =
-        result.Stop.InMicroSeconds().time_since_epoch().count();
+        result.Stop.InMicroseconds().time_since_epoch().count();
 
     output_stream_
         << "{"
@@ -121,13 +120,13 @@ class Timer {
  private:
   bool stopped_;
   const char* name_;
-  core::util::Time start_;
+  lib::Time start_;
 
   /// @brief Compute the duration of a function (Called within the Timers
   /// destructor.)
   void Stop() {
-    core::util::Time end;
-    core::util::TimeStep duration(start_, end);
+    lib::Time end;
+    lib::TimeStep duration(start_, end);
 
     stopped_ = true;
 
@@ -135,7 +134,7 @@ class Timer {
         { name_, start_, end, std::this_thread::get_id() });
 
     LAMBDA_CORE_INFO(
-        "Duration of {0}: {1} ms", name_, duration.InMilliSeconds<float>());
+        "Duration of {0}: {1} ms", name_, duration.InMilliseconds<float>());
   }
 };
 
@@ -166,7 +165,6 @@ class Timer {
   #define LAMBDA_PROFILER_END_SESSION();
 #endif
 
-}  // namespace profiler
-}  // namespace lambda
+}  // namespace lambda::profiler
 
 #endif  // LAMBDA_SRC_LAMBDA_PROFILER_PROFILER_H_

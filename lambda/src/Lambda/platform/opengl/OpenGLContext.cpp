@@ -1,15 +1,12 @@
-#include "Lambda/platform/opengl/OpenGLContext.h"
+#include <Lambda/platform/opengl/OpenGLContext.h>
 
+#include <Lambda/platform/glad/Glad.h>
+#include <Lambda/platform/glfw/GLFW.h>
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <Lambda/lib/Assert.h>
+#include <Lambda/core/Core.h>
 
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/Core.h"
-
-namespace lambda {
-namespace platform {
-namespace opengl {
+namespace lambda::platform::opengl {
 
 OpenGLContext::OpenGLContext(GLFWwindow* window_handle)
     : window_handle_(window_handle) {
@@ -19,10 +16,10 @@ OpenGLContext::OpenGLContext(GLFWwindow* window_handle)
 void OpenGLContext::Init() {
   glfwMakeContextCurrent(window_handle_);
 
-  // Initialize glad with glfw proc address.
   int status = gladLoadGLLoader(
       reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
-  LAMBDA_CORE_ASSERT(status, "Failed to initialize glad.", "");
+
+  LAMBDA_CORE_ASSERT(status, "Failed to initialize glad with status.", status);
 
   LAMBDA_CORE_INFO(
       "OpenGL Renderer: {0} - {1} - {2}",
@@ -35,6 +32,4 @@ void OpenGLContext::SwapBuffers() {
   glfwSwapBuffers(window_handle_);
 }
 
-}  // namespace opengl
-}  // namespace platform
-}  // namespace lambda
+}  // namespace lambda:;platform::opengl

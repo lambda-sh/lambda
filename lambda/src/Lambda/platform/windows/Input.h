@@ -5,11 +5,9 @@
 
 #include <utility>
 
-#include "Lambda/core/input/Input.h"
+#include <Lambda/core/input/Input.h>
 
-namespace lambda {
-namespace platform {
-namespace windows {
+namespace lambda::platform::windows {
 
 /// @brief The windows input implementation.
 /// TODO(C3NZ): Rename this to WindowsInput to create a class system for all
@@ -24,9 +22,7 @@ class InputImplementation : public core::input::Input {
   bool IsMouseButtonPressedImpl(int button) override;
 };
 
-}  // namespace windows
-}  // namespace platform
-}  // namespace lambda
+}  // namespace lambda::platform::windows
 
 #endif  // LAMBDA_PLATFORM_WINDOWS
 #endif  // LAMBDA_SRC_LAMBDA_PLATFORM_WINDOWS_INPUT_H_

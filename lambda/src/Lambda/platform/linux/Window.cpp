@@ -1,37 +1,36 @@
 #if defined LAMBDA_PLATFORM_LINUX || defined LAMBDA_DEBUG
 
-#include "Lambda/platform/linux/Window.h"
+#include <Lambda/platform/linux/Window.h>
 
-#include <GLFW/glfw3.h>
+#include <Lambda/core/Core.h>
+#include <Lambda/core/Window.h>
+#include <Lambda/core/events/ApplicationEvent.h>
+#include <Lambda/core/events/KeyEvent.h>
+#include <Lambda/core/events/MouseEvent.h>
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/lib/Assert.h>
+#include <Lambda/lib/Log.h>
+#include <Lambda/platform/opengl/OpenGLContext.h>
 
-#include "Lambda/core/Core.h"
-#include "Lambda/core/Window.h"
-#include "Lambda/core/events/ApplicationEvent.h"
-#include "Lambda/core/events/KeyEvent.h"
-#include "Lambda/core/events/MouseEvent.h"
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Log.h"
-#include "Lambda/platform/opengl/OpenGLContext.h"
-
-using lambda::core::memory::Shared;
+#include <Lambda/platform/glfw/GLFW.h>
 
 namespace lambda {
 
 #ifdef LAMBDA_PLATFORM_LINUX
 
+namespace {
+  using lambda::core::memory::Unique;
+}  // namespace
+
+/// @todo(C3NZ): Move this into a constexpr statement inside of window?
 // Will create a windows based implementation of the window handler.
-Shared<core::Window> core::Window::Create(
-    const core::WindowProperties& properties) {
-  return memory::CreateShared<platform::linux::WindowImplementation>(
-      properties);
+Unique<core::Window> core::Window::Create(core::WindowProperties properties) {
+  return memory::CreateUnique<platform::linux::Window>(std::move(properties));
 }
 
 #endif  // LAMBDA_PLATFORM_LINUX
 
-namespace platform {
-namespace linux {
+namespace platform::linux {
 
 // Error callback for handling GLFW specific errors
 static void GLFWErrorCallback(int error, const char* description) {
@@ -40,18 +39,18 @@ static void GLFWErrorCallback(int error, const char* description) {
 
 static bool GLFWInitialized = false;
 
-WindowImplementation::WindowImplementation(
-    const core::WindowProperties& properties) {
-  Init(properties);
+Window::Window(
+    core::WindowProperties properties) {
+  Init(std::move(properties));
 }
 
-WindowImplementation::~WindowImplementation() {
+Window::~Window() {
   Shutdown();
 }
 
 // Initialize the windows given generic window properties to be applied to the
 // current window.
-void WindowImplementation::Init(const core::WindowProperties& properties) {
+void Window::Init(core::WindowProperties properties) {
   properties_.Title = properties.Title;
   properties_.Width = properties.Width;
   properties_.Height = properties.Height;
@@ -90,14 +89,14 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        core::memory::Shared<core::events::WindowResizeEvent> event =
-            core::memory::CreateShared<core::events::WindowResizeEvent>(
+        core::memory::Unique<core::events::WindowResizeEvent> event =
+            core::memory::CreateUnique<core::events::WindowResizeEvent>(
                 new_width, new_height);
 
         properties->Width = new_width;
         properties->Height = new_height;
 
-        properties->EventCallback(event);
+        properties->EventCallback(std::move(event));
       });
 
   glfwSetWindowCloseCallback(
@@ -107,9 +106,9 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-        core::memory::Shared<core::events::WindowCloseEvent> event =
-            core::memory::CreateShared<core::events::WindowCloseEvent>();
-        properties->EventCallback(event);
+        core::memory::Unique<core::events::WindowCloseEvent> event =
+            core::memory::CreateUnique<core::events::WindowCloseEvent>();
+        properties->EventCallback(std::move(event));
       });
 
   glfwSetKeyCallback(
@@ -122,25 +121,25 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
         switch (action) {
           case GLFW_PRESS:
           {
-            core::memory::Shared<core::events::KeyPressedEvent> event =
-                core::memory::CreateShared<core::events::KeyPressedEvent>(
+            core::memory::Unique<core::events::KeyPressedEvent> event =
+                core::memory::CreateUnique<core::events::KeyPressedEvent>(
                     key, 0);
-            properties->EventCallback(event);
+            properties->EventCallback(std::move(event));
             break;
           }
           case GLFW_RELEASE:
           {
-            core::memory::Shared<core::events::KeyReleasedEvent> event =
-                core::memory::CreateShared<core::events::KeyReleasedEvent>(key);
-            properties->EventCallback(event);
+            core::memory::Unique<core::events::KeyReleasedEvent> event =
+                core::memory::CreateUnique<core::events::KeyReleasedEvent>(key);
+            properties->EventCallback(std::move(event));
             break;
           }
           case GLFW_REPEAT:
           {
-            core::memory::Shared<core::events::KeyPressedEvent> event =
-                core::memory::CreateShared<core::events::KeyPressedEvent>(
+            core::memory::Unique<core::events::KeyPressedEvent> event =
+                core::memory::CreateUnique<core::events::KeyPressedEvent>(
                     key, 1);
-            properties->EventCallback(event);
+            properties->EventCallback(std::move(event));
             break;
           }
         }
@@ -153,10 +152,10 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-            core::memory::Shared<core::events::KeyTypedEvent> event =
-                core::memory::CreateShared<core::events::KeyTypedEvent>(
+            core::memory::Unique<core::events::KeyTypedEvent> event =
+                core::memory::CreateUnique<core::events::KeyTypedEvent>(
                     character);
-            properties->EventCallback(event);
+            properties->EventCallback(std::move(event));
         });
 
   glfwSetMouseButtonCallback(
@@ -169,18 +168,18 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
         switch (action) {
           case GLFW_PRESS:
           {
-            core::memory::Shared<core::events::MouseButtonPressedEvent> event =
-                core::memory::CreateShared<
+            core::memory::Unique<core::events::MouseButtonPressedEvent> event =
+                core::memory::CreateUnique<
                 core::events::MouseButtonPressedEvent>(button);
-            properties->EventCallback(event);
+            properties->EventCallback(std::move(event));
             break;
           }
           case GLFW_RELEASE:
           {
-            core::memory::Shared<core::events::MouseButtonReleasedEvent> event =
-                core::memory::CreateShared<
+            core::memory::Unique<core::events::MouseButtonReleasedEvent> event =
+                core::memory::CreateUnique<
                     core::events::MouseButtonReleasedEvent>(button);
-            properties->EventCallback(event);
+            properties->EventCallback(std::move(event));
             break;
           }
         }
@@ -193,10 +192,10 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-            core::memory::Shared<core::events::MouseScrolledEvent> event =
-            core::memory::CreateShared<core::events::MouseScrolledEvent>(
+            core::memory::Unique<core::events::MouseScrolledEvent> event =
+            core::memory::CreateUnique<core::events::MouseScrolledEvent>(
                 static_cast<float>(x_offset), static_cast<float>(y_offset));
-        properties->EventCallback(event);
+        properties->EventCallback(std::move(event));
       });
 
   glfwSetCursorPosCallback(
@@ -206,37 +205,36 @@ void WindowImplementation::Init(const core::WindowProperties& properties) {
             static_cast<internal::Properties*>(
                 glfwGetWindowUserPointer(window));
 
-            core::memory::Shared<core::events::MouseMovedEvent> event =
-            core::memory::CreateShared<core::events::MouseMovedEvent>(
+            core::memory::Unique<core::events::MouseMovedEvent> event =
+            core::memory::CreateUnique<core::events::MouseMovedEvent>(
                 static_cast<float>(x_position), static_cast<float>(y_position));
-        properties->EventCallback(event);
+        properties->EventCallback(std::move(event));
       });
 }
 
 // Shutdown the window.
-void WindowImplementation::Shutdown() {
+void Window::Shutdown() {
   glfwDestroyWindow(window_);
 }
 
 // Handling updates to the screen.
-void WindowImplementation::OnUpdate() {
+void Window::OnUpdate() {
   glfwPollEvents();
   context_->SwapBuffers();
 }
 
 // Setup the current window to use or not use Vertical sync.
-void WindowImplementation::SetVerticalSync(bool enabled) {
+void Window::SetVerticalSync(bool enabled) {
   glfwSwapInterval(enabled ? 1 : 0);
   properties_.VerticalSync = enabled;
 }
 
 // Check if the current window has VSync enabled.
-bool WindowImplementation::HasVerticalSync() const {
+bool Window::HasVerticalSync() const {
   return properties_.VerticalSync;
 }
 
-}  // namespace linux
-}  // namespace platform
+}  // namespace platform::linux
 }  // namespace lambda
 
 #endif  // LAMBDA_PLATFORM_LINUX

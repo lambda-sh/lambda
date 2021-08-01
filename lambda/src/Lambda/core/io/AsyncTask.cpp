@@ -1,17 +1,13 @@
-#include "Lambda/core/io/AsyncTask.h"
+#include <Lambda/core/io/AsyncTask.h>
 
-#include "Lambda/core/util/Time.h"
+#include <Lambda/lib/Time.h>
 
-using lambda::core::util::Time;
-
-namespace lambda {
-namespace core {
-namespace io {
+namespace lambda::core::io {
 
 /// TODO(C3NZ): Callbacks should be made more generic. Is it possible to allow
 // values to escape the callback once it's been resolved/rejected?
 /// Executes the task if and returns a success if the callback succeeds.
-AsyncResult AsyncTask::Execute() {
+AsyncResult AsyncTask::Execute() const {
   if (callback_()) {
     return AsyncResult::Success;
   }
@@ -19,7 +15,7 @@ AsyncResult AsyncTask::Execute() {
 }
 
 /// The status refers to whether or not the task has executed.
-AsyncStatus AsyncTask::GetStatus() {
+AsyncStatus AsyncTask::GetStatus() const {
   if (expires_at_.HasPassed()) {
     return AsyncStatus::Expired;
   }
@@ -34,11 +30,9 @@ AsyncStatus AsyncTask::GetStatus() {
 /// Resets the task to execute at a future time. Usually done through the event
 /// loop.
 void AsyncTask::RescheduleTask(
-    Time new_execution_time, Time new_expiration_time) {
+    const lib::Time new_execution_time, const lib::Time new_expiration_time) {
   execute_at_ = new_execution_time;
   expires_at_ = new_expiration_time;
 }
 
-}  // namespace io
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::io

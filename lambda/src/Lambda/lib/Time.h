@@ -1,17 +1,14 @@
 /// @file Time.h
 /// @brief Cross platform timing utility for the game engine.
-#ifndef LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
-#define LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
+#ifndef LAMBDA_SRC_LAMBDA_LIB_TIME_H_
+#define LAMBDA_SRC_LAMBDA_LIB_TIME_H_
 
 #include <chrono>
 #include <ratio>
 
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Concepts.h"
+#include <Lambda/lib/Assert.h>
 
-namespace lambda {
-namespace core {
-namespace util {
+namespace lambda::lib {
 
 // Clock & Time typedefs
 typedef std::chrono::steady_clock Clock;
@@ -37,13 +34,13 @@ class Time {
   explicit Time(const TimePoint& t) noexcept : time_(t) {}
 
   /// @brief Get the time in seconds.
-  const TimePoint InSeconds() const;
+  TimePoint InSeconds() const;
 
   /// @brief Get the time in Milliseconds.
-  const TimePoint InMilliSeconds() const;
+  TimePoint InMilliseconds() const;
 
   /// @brief Get the time in Microseconds.
-  const TimePoint InMicroSeconds() const;
+  TimePoint InMicroseconds() const;
 
   /// @brief Add milliseconds to the current time and return a new Time
   /// instance.
@@ -62,7 +59,7 @@ class Time {
   bool HasPassed() const;
 
   /// @brief Get the raw Timepoint from our Time abstraction.
-  inline const TimePoint GetTimePoint() const { return time_; }
+  TimePoint GetTimePoint() const { return time_; }
 
   /// @brief Effectively an alias for getting the current time.
   static Time Now();
@@ -89,7 +86,7 @@ class Time {
 
 /// typename T is either a double or float.
 template<typename T, typename Ratio>
-const T DurationTo(const Time& start, const Time& stop) {
+T DurationTo(const Time& start, const Time& stop) {
   std::chrono::duration<T, Ratio> d(stop.GetTimePoint() - start.GetTimePoint());
   return d.count();
 }
@@ -97,27 +94,31 @@ const T DurationTo(const Time& start, const Time& stop) {
 /// @brief Measuring the delta between two different times.
 class TimeStep {
  public:
-  TimeStep(Time start, Time stop) : start_(start), stop_(stop) {}
+  TimeStep(const Time start, const Time stop) : start_(start), stop_(stop) {}
 
   /// @brief Get the timestep in seconds.
   template<typename T>
-  const T InSeconds() const {
-    return DurationTo<T, std::deci>(start_, stop_); }
+  T InSeconds() const {
+    return DurationTo<T, std::deci>(start_, stop_);
+  }
 
   /// @brief Get the timestep in milliseconds.
   template<typename T>
-  const T InMilliSeconds() const {
-    return DurationTo<T, std::milli>(start_, stop_); }
+  T InMilliseconds() const {
+    return DurationTo<T, std::milli>(start_, stop_);
+  }
 
   /// @brief Get the timestep in microseconds.
   template<typename T>
-  const T InMicroSeconds() const {
-    return DurationTo<T, std::micro>(start_, stop_); }
+  T InMicroseconds() const {
+    return DurationTo<T, std::micro>(start_, stop_);
+  }
 
   /// @brief Get the timestep in nanoseconds.
   template<typename T>
-  const T InNanoSeconds() const {
-    return DurationTo<T, std::nano>(start_, stop_); }
+  T InNanoseconds() const {
+    return DurationTo<T, std::nano>(start_, stop_);
+  }
 
  private:
   Time start_;
@@ -125,8 +126,6 @@ class TimeStep {
 };
 
 
-}  // namespace util
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::lib
 
-#endif  // LAMBDA_SRC_LAMBDA_CORE_UTIL_TIME_H_
+#endif  // LAMBDA_SRC_LAMBDA_LIB_TIME_H_

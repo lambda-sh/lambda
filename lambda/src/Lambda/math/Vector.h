@@ -4,50 +4,81 @@
 #include <array>
 #include <vector>
 
+#include <Lambda/lib/Assert.h>
 #include <Lambda/math/Precision.h>
 
 namespace lambda::math {
 
+// ----------------------------------- VECTOR ----------------------------------
+
 /// @brief Implementation for Vectors of varying length.
 /// @tparam Type is the type of the element being stored within Container.
 /// @tparam Container The container to use for storing elements within.
-template<class Type = Real, class Container = std::vector<Real>>
+template<class Type = Real, class Container = std::vector<Type>>
 class Vector {
  public:
-  Vector(const size_t size, Container elements)
-    : size_(size), elements_(std::move(elements)) {}
+  Vector() noexcept : elements_(Container()) {}
 
-  explicit Vector(Container elements)
-    : size_(elements.size()), elements_(std::move(elements)) {}
+  explicit Vector(Container elements) noexcept
+    : elements_(std::move(elements)) {}
 
-  const Container& GetRawElements() { return elements_; }
+  explicit Vector(const Vector& vec) noexcept = default;
+  explicit Vector(const Vector&& vec) noexcept
+      : elements_(std::move(vec.elements_)) {}
 
-  [[nodiscard]] size_t GetSize() const { return size_; }
+  Vector& operator=(const Vector& vec) noexcept = default;
+  Vector& operator=(Vector&& vec) noexcept = default;
+
+  const Container& GetRawElements() noexcept {
+    return elements_;
+  }
+
+  [[nodiscard]] size_t GetSize() const noexcept {
+    return elements_.size();
+  }
+
+  void ApplyInPlace(std::function<Type(Type)> lambda) noexcept {
+    std::for_each(elements_.begin(), elements_.end(), lambda);
+  }
+
+  Vector Apply(std::function<Type(Type)> lambda) noexcept {
+    Container new_elements(elements_.size());
+    std::transform(elements_.begin(), elements_.end(), &new_elements, lambda);
+    return Vector(std::move(new_elements));
+  }
+
+  Vector operator+(const Vector& other_vector) noexcept {
+    LAMBDA_CORE_ASSERT(
+        GetSize() == other_vector.GetSize(),
+        "Vectors are not the same size",
+        "");
+    Container new_elements(GetSize());
+
+    std::transform(
+        elements_.begin(),
+        elements_.end(),
+        other_vector.elements_.begin(),
+        new_elements.begin(),
+        [](Type x, Type y) -> Type {
+          return x + y;
+        });
+
+    return Vector(new_elements);
+  }
+
+  void operator+=(const Vector& other_vector) noexcept {
+    std::transform(
+        elements_.begin(),
+        elements_.end(),
+        other_vector.elements_.begin(),
+        elements_.begin(),
+        [](Type x, Type y) {
+          return x + y;
+        });
+  }
 
  protected:
-  size_t size_;
   Container elements_;
-};
-
-/// @brief Implementation for Vectors of length 3.
-class Vector3 : public Vector<Real, std::array<Real, 3>> {
- public:
-  Vector3() : Vector({0, 0, 0}) {}
-
-  /// @brief Set the x component of the current vector.
-  /// @param x
-  inline void SetX(const Real x) { elements_[0] = x; }
-  [[nodiscard]] inline Real GetX() const { return elements_[0]; }
-
-  /// @brief Set the y component of the current vector.
-  /// @param y
-  inline void SetY(const Real y) { elements_[1] = y; }
-  [[nodiscard]] inline Real GetY() const { return elements_[1]; }
-
-  /// @brief Set the z component of the current vector.
-  /// @param z
-  inline void SetZ(const Real z) { elements_[2] = z; }
-  [[nodiscard]] inline Real GetZ() const { return elements_[2]; }
 };
 
 }  // namespace lambda::math

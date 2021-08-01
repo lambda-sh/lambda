@@ -6,9 +6,7 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_RENDERER_GRAPHICSCONTEXT_H_
 #define LAMBDA_SRC_LAMBDA_CORE_RENDERER_GRAPHICSCONTEXT_H_
 
-namespace lambda {
-namespace core {
-namespace renderer {
+namespace lambda::core::renderer {
 
 /// @brief The Graphics context abstraction.
 ///
@@ -16,12 +14,11 @@ namespace renderer {
 /// graphics to properly be implemented.
 class GraphicsContext {
  public:
+  virtual ~GraphicsContext() = default;
   virtual void Init() = 0;
   virtual void SwapBuffers() = 0;
 };
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_RENDERER_GRAPHICSCONTEXT_H_
