@@ -51,7 +51,7 @@ jobs:
         uses: microsoft/setup-msbuild@v1.0.2
 
       - name: Compile a release build of lambda
-        run: ./scripts/compile_lambda.sh \
+        run: ./scripts/compile_and_test.sh \
             --build Release \
             --cpp-compiler ${{ matrix.cpp-compiler }} \
             --c-compiler ${{ matrix.c-compiler }} \
