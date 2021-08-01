@@ -44,7 +44,7 @@ jobs:
 
       - name: Obtain Randr for glfw & Ninja for building on Ubuntu.
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get update && sudo apt-get install xorg-dev ninja
+        run: sudo apt-get update && sudo apt-get install xorg-dev ninja-build
 
       - name: Add msbuild to PATH
         if: ${{ matrix.os == 'windows-latest' }}
