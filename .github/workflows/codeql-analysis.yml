@@ -44,14 +44,15 @@ jobs:
       with:
         languages: ${{ matrix.language }}
 
-    - name: Setup lambda dependencies.
-      run: ./scripts/setup.sh --within-ci true
+    - run: |
+        # Setup dependencies.
+        ./scripts/setup.sh --within-ci true
 
-    - name: Install ninja to build lambda.
-      run: sudo apt install ninja-build
+        # Install ninja for build.
+        sudo apt install ninja-build
 
-    - name: Build lambda as a static library.
-      run: ./scripts/compile_lambda.sh \
+        # Build lambda.
+        ./scripts/compile_lambda.sh \
             --build Release \
             --cpp-compiler g++-10 \
             --c-compiler gcc-10 \
