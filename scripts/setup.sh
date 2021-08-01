@@ -13,11 +13,12 @@ git submodule update --init --recursive
 
 source lambda-sh/lambda.sh
 
-LAMBDA_INFO "Successfully installed submodules and setup lambda.sh"
+lambda_log_info "Successfully installed submodules and setup lambda.sh"
 
-LAMBDA_PARSE_ARG within-ci false \
-    "Used when setup is being done within a CI system."
-LAMBDA_COMPILE_ARGS $@
+lambda_args_add --name within-ci \
+    --default false \
+    --description "Used when setup is being done within a CI system."
+lambda_args_compile "$@"
 
 if [ "$LAMBDA_within_ci" = true ]; then
     exit
@@ -25,21 +26,24 @@ fi
 
 # ------------------------------ INSTALL LFS ASSETS ----------------------------
 
-git lfs install
-LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to initialize git lfs"
+git lfs install > /dev/null
+lambda_assert_last_command_ok "Failed to initialize git lfs"
 
-git lfs pull
-LAMBDA_ASSERT_LAST_COMMAND_OK "Couldn't pull LFS assets"
+git lfs pull > /dev/null
+lambda_assert_last_command_ok "Couldn't pull LFS assets"
+
+
+lambda_log_info "Updated & initialized git LFS hooks."
 
 # ------------------------------ PRE-COMMIT SETUP ------------------------------
 
 if command -v pre-commit > /dev/null; then
     pre-commit install > /dev/null
-    LAMBDA_INFO "Installed pre-commit hooks."
+    lambda_log_info "Installed pre-commit hooks."
 else
-    LAMBDA_FATAL "pre-commit isn't installed. Aborting setup."
+    lambda_log_fatal "pre-commit isn't installed. Aborting setup."
 fi
 
-LAMBDA_INFO "Setup successfully completed."
+lambda_log_info "Setup successfully completed."
 
-popd  # ROOT_DIR
+popd > /dev/null # ROOT_DIR
