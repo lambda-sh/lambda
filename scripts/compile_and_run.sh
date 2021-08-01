@@ -9,14 +9,39 @@ pushd $ROOT_DIR > /dev/null
 
 source lambda-sh/lambda.sh
 
-LAMBDA_PARSE_ARG build Release "The type of build to produce."
-LAMBDA_PARSE_ARG cores 8 "The amount of cores to use for compiling."
-LAMBDA_PARSE_ARG c-compiler gcc "The compiler to use for C code."
-LAMBDA_PARSE_ARG cpp-compiler g++ "The compiler to use for C++ code."
-LAMBDA_PARSE_ARG os "Linux" "The operating system to build for."
-LAMBDA_PARSE_ARG tool "sandbox" "The Tool to run. (Uses folder names)"
+lambda_args_add \
+    --name build \
+    --default Release \
+    --description "The type of build to produce."
 
-LAMBDA_COMPILE_ARGS $@
+lambda_args_add \
+    --name cores \
+    --default 8 \
+    --description "The amount of cores to use for compilation."
+
+lambda_args_add \
+    --name c-compiler \
+    --default gcc \
+    --description "The compiler to use for C."
+
+lambda_args_add \
+    --name cpp-compiler \
+    --default g++ \
+    --description "The compiler to use for C++."
+
+lambda_args_add \
+    --name os \
+    --default "Linux" \
+    --description \
+        "The operating system being built for. (MacOS, Windows, Linux)"
+
+lambda_args_add \
+    --name tool \
+    --default "sandbox" \
+    --description "The tool to run. (Named after tools in the tool folder)"
+
+
+lambda_args_compile "$@"
 
 # -------------------- COMPILE THE ENGINE AND ALL TOOLS ------------------------
 
@@ -26,7 +51,7 @@ mkdir -p build
 pushd build > /dev/null
 
 if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
-    LAMBDA_INFO "Compiling a $LAMBDA_build build for the engine."
+    lambda_log_info "Compiling a $LAMBDA_build build for the engine."
     cmake .. \
         -DCMAKE_BUILD_TYPE="$LAMBDA_build" \
         -DDISTRIBUTION_BUILD=False \
@@ -34,7 +59,7 @@ if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
         -DLAMBDA_TOOLS_BUILD_MATHBOX=ON \
         -G Ninja
 elif [ "$LAMBDA_build" = "Dist" ]; then
-    LAMBDA_INFO "Compiling a distribution build for the engine."
+    lambda_log_info "Compiling a distribution build for the engine."
     cmake .. \
         -DCMAKE_BUILD_TYPE="Release" \
         -DDISTRIBUTION_BUILD=True \
@@ -42,17 +67,17 @@ elif [ "$LAMBDA_build" = "Dist" ]; then
         -DLAMBDA_TOOLS_BUILD_MATHBOX=ON \
         -G Ninja
 else
-    LAMBDA_FATAL "You need to pass a build type in order to compile a tool."
+    lambda_log_fatal "You need to pass a build type in order to compile a tool."
 fi
 
-LAMBDA_ASSERT_LAST_COMMAND_OK \
+lambda_assert_last_command_ok \
     "Couldn't generate the cmake files necessary for compiling lambda."
 
 # ----------------------------------- BUILD ------------------------------------
 
 if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
     ninja
-    LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to compile Lambda."
+    lambda_assert_last_command_ok "Failed to compile Lambda."
 
     # If using wsl2 & wslg, export latest opengl versions for mesa.
     if grep -q "WSL2" <<< "$(uname -srm)"; then
@@ -62,17 +87,18 @@ if [ "$LAMBDA_os" = "Linux" ] || [ "$LAMBDA_os" = "Macos" ]; then
 
 elif [ "$LAMBDA_os" = "Windows" ]; then
     MSBuild.exe "lambda.sln" //t:Rebuild //p:Configuration=$LAMBDA_build
-    LAMBDA_ASSERT_LAST_COMMAND_OK "Failed to compile Lambda."
+    lambda_assert_last_command_ok "Failed to compile Lambda."
 fi
 
 # ------------------------------------ RUN -------------------------------------
 
 pushd "tools/$LAMBDA_tool" > /dev/null
-LAMBDA_ASSERT_LAST_COMMAND_OK "Couldn't access the tools directory."
+lambda_assert_last_command_ok "Couldn't access the tools directory."
+
 ./"$LAMBDA_tool"
 popd > /dev/null
 
 popd > /dev/null  # "build"
 popd > /dev/null  # ROOT_DIR
 
-LAMBDA_INFO "$LAMBDA_tool and engine have been shutdown."
+lambda_log_info "$LAMBDA_tool and engine have been shutdown."
