@@ -1,22 +1,18 @@
-#include "Lambda/core/renderer/Shader.h"
+#include <Lambda/core/renderer/Shader.h>
 
 #include <string>
-#include <vector>
 
-#include <glad/glad.h>
-#include <glm/gtc/type_ptr.hpp>
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/core/renderer/Renderer.h>
+#include <Lambda/core/renderer/RendererAPI.h>
+#include <Lambda/lib/Log.h>
 
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/renderer/Renderer.h"
-#include "Lambda/core/renderer/RendererAPI.h"
-#include "Lambda/core/util/Log.h"
+#include <Lambda/platform/opengl/OpenGLShader.h>
+#include <Lambda/platform/glad/Glad.h>
 
-#include "Lambda/platform/opengl/OpenGLShader.h"
+namespace lambda::core::renderer {
 
-namespace lambda {
-namespace core {
-namespace renderer {
-
+/// @todo(C3NZ): Convert this into std::string_view
 memory::Shared<Shader> Shader::Create(const std::string& path) {
   switch (Renderer::GetAPI()) {
     case RendererAPI::API::None:
@@ -28,11 +24,13 @@ memory::Shared<Shader> Shader::Create(const std::string& path) {
     default:
       LAMBDA_CORE_ASSERT(
           false,
-          "The Renderer has been set to a graphics API that isn't supported.", "");
+          "The Renderer has been set to a graphics API that isn't supported.",
+          "");
       return nullptr;
   }
 }
 
+/// @todo(C3NZ): Convert this into std::string_view
 memory::Shared<Shader> Shader::Create(
     const std::string& name,
     const std::string& vertex_source,
@@ -54,6 +52,7 @@ memory::Shared<Shader> Shader::Create(
   }
 }
 
+/// @todo(C3NZ): Do not pass around a shared pointer to the shader.
 void ShaderLibrary::Add(const memory::Shared<Shader>& shader) {
   const std::string& name = shader->GetName();
   LAMBDA_CORE_ASSERT(
@@ -65,6 +64,8 @@ void ShaderLibrary::Add(const memory::Shared<Shader>& shader) {
   LAMBDA_CORE_TRACE("Added the shader: {0}", name);
 }
 
+/// @todo(C3NZ): Do not pass around a shared pointer to the shader.
+/// @todo(C3NZ): Use std::stringview instead and copy data as key?
 void ShaderLibrary::Add(
     const std::string& name, const memory::Shared<Shader>& shader) {
   LAMBDA_CORE_ASSERT(
@@ -93,11 +94,9 @@ memory::Shared<Shader> ShaderLibrary::Load(
 memory::Shared<Shader> ShaderLibrary::Get(const std::string& name) {
   LAMBDA_CORE_ASSERT(
       shader_mapping_.find(name) != shader_mapping_.end(),
-      "Failed to get the shader: {0}", 
+      "Failed to get the shader: {0}",
       name);
   return shader_mapping_[name];
 }
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer

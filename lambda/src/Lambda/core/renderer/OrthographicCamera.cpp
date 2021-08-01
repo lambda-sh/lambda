@@ -1,26 +1,23 @@
 #include "Lambda/core/renderer/OrthographicCamera.h"
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace lambda {
-namespace core {
-namespace renderer {
+namespace lambda::core::renderer {
 
 OrthographicCamera::OrthographicCamera(
     float left, float right, float bottom, float top) :
         projection_matrix_(glm::ortho(left, right, bottom, top, -1.0f, 1.0f)),
         view_matrix_(1.0f) {
   view_projection_matrix_ = projection_matrix_ * view_matrix_;
-        }
+}
 
 void OrthographicCamera::SetPosition(const glm::vec3& position) {
   position_ = position;
   RecalculateViewMatrix();
 }
 
-void OrthographicCamera::SetRotation(float rotation) {
+void OrthographicCamera::SetRotation(const float rotation) {
   rotation_ = rotation;
   RecalculateViewMatrix();
 }
@@ -34,6 +31,4 @@ void OrthographicCamera::RecalculateViewMatrix() {
   view_projection_matrix_ = projection_matrix_ * view_matrix_;
 }
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer

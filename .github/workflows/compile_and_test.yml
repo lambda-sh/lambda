@@ -2,10 +2,10 @@ name: compile_and_test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
 
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
   workflow_dispatch:
 
@@ -25,10 +25,10 @@ jobs:
             cpp-compiler: g++-10
             target: Linux
 
-#          - os: macos-latest
-#            c-compiler: gcc-10
-#            cpp-compiler: g++-10
-#            target: Macos
+            #- os: macos-latest
+            #c-compiler: gcc-11
+            #cpp-compiler: g++-11
+            #target: Macos
 
           - os: windows-latest
             cpp-compiler: cl
@@ -42,18 +42,36 @@ jobs:
       - name: Run the projects setup.
         run: ./scripts/setup.sh --within-ci true
 
-      - name: Obtain Randr for glfw on Ubuntu.
+      - name: Obtain Randr for glfw & Ninja for building on Ubuntu.
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get install xorg-dev
+        run: sudo apt-get update && sudo apt-get install xorg-dev ninja-build
 
       - name: Add msbuild to PATH
         if: ${{ matrix.os == 'windows-latest' }}
         uses: microsoft/setup-msbuild@v1.0.2
 
+      - name: Obtain Ninja & gcc for building on MacOS.
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: brew install ninja gcc
+
       - name: Compile a release build of lambda
-        run: ./scripts/compile_lambda.sh \
+        run: ./scripts/compile_and_test.sh \
             --build Release \
             --cpp-compiler ${{ matrix.cpp-compiler }} \
             --c-compiler ${{ matrix.c-compiler }} \
             --os ${{ matrix.target }} \
             --cores 2
+
+      - uses: actions/setup-ruby@v1
+      - name: Send Webhook Notification for build status.
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+          WEBHOOK_URL: ${{ secrets.LAMBDA_BUILD_WEBHOOK }}
+          HOOK_OS_NAME: ${{ runner.os }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          JOB_ID: ${{ github.job }}
+        run: |
+          git clone https://github.com/dhinakg/github-actions-discord-webhook.git webhook
+          bash webhook/send.sh $JOB_STATUS $WEBHOOK_URL
+        shell: bash

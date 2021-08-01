@@ -1,9 +1,9 @@
 #include "Lambda/platform/opengl/OpenGLTexture.h"
 
-#include <glad/glad.h>
+#include <Lambda/platform/glad/Glad.h>
 #include <stb_image.h>
 
-#include "Lambda/core/util/Assert.h"
+#include "Lambda/lib/Assert.h"
 
 namespace lambda {
 namespace platform {

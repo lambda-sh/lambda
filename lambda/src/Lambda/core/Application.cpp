@@ -2,21 +2,20 @@
 
 #include <functional>
 
-#include "Lambda/core/Window.h"
-#include "Lambda/core/events/ApplicationEvent.h"
-#include "Lambda/core/events/Event.h"
-#include "Lambda/core/input/Input.h"
-#include "Lambda/core/layers/Layer.h"
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/renderer/Renderer.h"
-#include "Lambda/core/util/Assert.h"
-#include "Lambda/core/util/Log.h"
-#include "Lambda/core/util/Reverse.h"
-#include "Lambda/core/util/Time.h"
-#include "Lambda/profiler/Profiler.h"
+#include <Lambda/core/Window.h>
+#include <Lambda/core/events/ApplicationEvent.h>
+#include <Lambda/core/events/Event.h>
+#include <Lambda/core/input/Input.h>
+#include <Lambda/core/layers/Layer.h>
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/core/renderer/Renderer.h>
+#include <Lambda/lib/Assert.h>
+#include <Lambda/lib/Log.h>
+#include <Lambda/lib/Reverse.h>
+#include <Lambda/lib/Time.h>
+#include <Lambda/profiler/Profiler.h>
 
-namespace lambda {
-namespace core {
+namespace lambda::core {
 
 memory::Unique<Application> Application::kApplication_ = nullptr;
 
@@ -28,13 +27,14 @@ Application::Application() {
   kApplication_.reset(this);
 
   window_ = Window::Create();
-  window_->SetEventCallback(BIND_EVENT_HANDLER(Application::OnEvent));
+  window_->SetEventCallback(events::Bind(&Application::OnEvent, this));
 
   // After the window is setup, initialize the renderer!
   renderer::Renderer::Init();
 
-  imgui_layer_ = memory::CreateShared<imgui::ImGuiLayer>();
-  PushLayer(imgui_layer_);
+  /// @todo The ImGUI layer should not be owned by the application.
+  imgui_layer_ = memory::CreateUnique<imgui::ImGuiLayer>();
+  imgui_layer_->OnAttach();
 }
 
 /// The application must tell the single to release itself once it's being
@@ -47,18 +47,22 @@ Application::~Application() {
 void Application::Run() {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
   while (running_) {
-    util::Time current_frame_time;
-    util::TimeStep time_step(last_frame_time_, current_frame_time);
+    lib::Time current_frame_time;
+    lib::TimeStep time_step(last_frame_time_, current_frame_time);
     last_frame_time_ = current_frame_time;
 
+    // Update layers if not minimized
     if (!minimized_) {
-      for (memory::Shared<layers::Layer> layer : layer_stack_) {
+      imgui_layer_->OnUpdate(time_step);
+
+      for (auto& layer : layer_stack_) {
         layer->OnUpdate(time_step);
       }
     }
 
     imgui_layer_->Begin();
-    for (memory::Shared<layers::Layer> layer : layer_stack_) {
+    imgui_layer_->OnImGuiRender();
+    for (auto& layer : layer_stack_) {
       layer->OnImGuiRender();
     }
     imgui_layer_->End();
@@ -67,34 +71,33 @@ void Application::Run() {
   }
 }
 
-void Application::OnEvent(memory::Shared<events::Event> event) {
+void Application::OnEvent(memory::Unique<events::Event> event) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
 
-  events::EventDispatcher dispatcher(event);
-  dispatcher.Dispatch<events::WindowCloseEvent>(
-      BIND_EVENT_HANDLER(Application::OnWindowClosed));
+  events::Dispatcher::HandleWhen<events::WindowCloseEvent>(
+      events::Bind(&Application::OnWindowClosed, this), event.get());
 
-  dispatcher.Dispatch<events::WindowResizeEvent>(
-      BIND_EVENT_HANDLER(Application::OnWindowResize));
+  events::Dispatcher::HandleWhen<events::WindowResizeEvent>(
+      events::Bind(&Application::OnWindowResize, this), event.get());
 
-  for (memory::Shared<layers::Layer> layer : util::Reverse(layer_stack_)) {
-    layer->OnEvent(event);
+  for (auto& layer : lib::Reverse(layer_stack_)) {
+    layer->OnEvent(event.get());
     if (event->HasBeenHandled()) {
       break;
     }
   }
 }
 
-void Application::PushLayer(memory::Shared<layers::Layer> layer) {
+void Application::PushLayer(memory::Unique<layers::Layer> layer) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
-  layer_stack_.PushLayer(layer);
   layer->OnAttach();
+  layer_stack_.PushLayer(std::move(layer));
 }
 
-void Application::PushOverlay(memory::Shared<layers::Layer> layer) {
+void Application::PushOverlay(memory::Unique<layers::Layer> layer) {
   LAMBDA_PROFILER_MEASURE_FUNCTION();
-  layer_stack_.PushOverlay(layer);
   layer->OnAttach();
+  layer_stack_.PushOverlay(std::move(layer));
 }
 
 bool Application::OnWindowClosed(const events::WindowCloseEvent& event) {
@@ -117,5 +120,4 @@ bool Application::OnWindowResize(const events::WindowResizeEvent& event) {
 }
 
 
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core

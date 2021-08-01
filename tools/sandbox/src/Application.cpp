@@ -28,7 +28,7 @@ using lambda::core::renderer::ShaderLibrary;
 using lambda::core::renderer::Texture2D;
 using lambda::core::renderer::VertexArray;
 using lambda::core::renderer::VertexBuffer;
-using lambda::core::util::TimeStep;
+using lambda::lib::TimeStep;
 
 namespace tools {
 namespace sandbox {
@@ -123,7 +123,7 @@ class ExampleLayer : public Layer {
     // Demo of the ability to get the time in many different time precisions
     // with different floating point precisions.
     float ts = time_step.InSeconds<float>();
-    float ts2 = time_step.InMicroSeconds<double>();
+    float ts2 = time_step.InMicroseconds<double>();
 
     camera_.OnUpdate(time_step);
 
@@ -185,7 +185,7 @@ class ExampleLayer : public Layer {
     ImGui::End();
   }
 
-  void OnEvent(Shared<Event> event) override {
+  void OnEvent(Event* const event) override {
     camera_.OnEvent(event);
   }
 
@@ -210,7 +210,7 @@ class Sandbox : public Application {
  public:
   Sandbox() : Application() {
     // PushLayer(lambda::core::memory::CreateShared<ExampleLayer>());
-    PushLayer(lambda::core::memory::CreateShared<Sandbox2D>());
+    PushLayer(lambda::core::memory::CreateUnique<Sandbox2D>());
   }
   ~Sandbox() {}
 };

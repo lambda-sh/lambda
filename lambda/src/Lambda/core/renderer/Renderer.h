@@ -3,14 +3,12 @@
 #ifndef LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERER_H_
 #define LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERER_H_
 
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/renderer/OrthographicCamera.h"
-#include "Lambda/core/renderer/RendererAPI.h"
-#include "Lambda/core/renderer/Shader.h"
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/core/renderer/OrthographicCamera.h>
+#include <Lambda/core/renderer/RendererAPI.h>
+#include <Lambda/core/renderer/Shader.h>
 
-namespace lambda {
-namespace core {
-namespace renderer {
+namespace lambda::core::renderer {
 
 /// @brief The primary interface used for managing
 class Renderer {
@@ -35,8 +33,8 @@ class Renderer {
   /// Must be associated with a specific scene. (used in between BeginScene and
   /// EndScene calls)
   static void Submit(
-      core::memory::Shared<VertexArray> vertex_array,
-      core::memory::Shared<Shader> shader,
+      memory::Shared<VertexArray> vertex_array,
+      memory::Shared<Shader> shader,
       const glm::mat4& transform = glm::mat4(1.0f));
 
   /// @brief Get the API being used by the current renderer.
@@ -50,8 +48,6 @@ class Renderer {
   static SceneData* scene_data_;
 };
 
-}  // namespace renderer
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::renderer
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_RENDERER_RENDERER_H_

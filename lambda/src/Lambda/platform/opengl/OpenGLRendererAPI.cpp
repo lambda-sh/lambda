@@ -1,8 +1,9 @@
 #include <Lambda/platform/opengl/OpenGLRendererAPI.h>
 
-#include <glad/glad.h>
 
 #include <Lambda/core/memory/Pointers.h>
+
+#include <Lambda/platform/glad/Glad.h>
 
 namespace lambda::platform::opengl {
 

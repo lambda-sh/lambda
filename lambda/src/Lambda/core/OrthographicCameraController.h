@@ -5,17 +5,17 @@
 #include "Lambda/core/events/MouseEvent.h"
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/OrthographicCamera.h"
-#include "Lambda/core/util/Time.h"
+#include "Lambda/lib/Time.h"
 
 namespace lambda::core {
 
 class OrthographicCameraController {
  public:
   explicit OrthographicCameraController(
-      const float aspect_ratio, const bool can_rotate = false);
+      float aspect_ratio, bool can_rotate = false);
 
-  void OnUpdate(util::TimeStep delta);
-  void OnEvent(memory::Shared<events::Event> event);
+  void OnUpdate(lib::TimeStep delta);
+  void OnEvent(events::Event* const event);
 
   const renderer::OrthographicCamera& GetOrthographicCamera() const {
       return camera_; }

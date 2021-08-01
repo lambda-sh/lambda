@@ -7,7 +7,7 @@
 #include "Lambda/core/input/KeyCodes.h"
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/OrthographicCamera.h"
-#include "Lambda/core/util/Time.h"
+#include "Lambda/lib/Time.h"
 
 namespace lambda::core {
 
@@ -21,8 +21,8 @@ OrthographicCameraController::OrthographicCameraController(
             -zoom_level_,
             zoom_level_) {}
 
-void OrthographicCameraController::OnUpdate(util::TimeStep delta) {
-    const float delta_in_ms = delta.InMilliSeconds<float>();
+void OrthographicCameraController::OnUpdate(lib::TimeStep delta) {
+    const float delta_in_ms = delta.InMilliseconds<float>();
     if (input::Input::IsKeyPressed(LAMBDA_KEY_W)) {
       camera_position_.y += camera_translation_speed_ * delta_in_ms;
     } else if (input::Input::IsKeyPressed(LAMBDA_KEY_S)) {
@@ -74,14 +74,13 @@ bool OrthographicCameraController::OnWindowResize(
 }
 
 void OrthographicCameraController::OnEvent(
-    memory::Shared<events::Event> event) {
-  events::EventDispatcher dispatcher(event);
+    events::Event* const event) {
 
-  dispatcher.Dispatch<events::WindowResizeEvent>(
-      BIND_EVENT_HANDLER(OrthographicCameraController::OnWindowResize));
+  events::Dispatcher::HandleWhen<events::WindowResizeEvent>(
+      BIND_EVENT_HANDLER(OrthographicCameraController::OnWindowResize), event);
 
-  dispatcher.Dispatch<events::MouseScrolledEvent>(
-      BIND_EVENT_HANDLER(OrthographicCameraController::OnMouseScrolled));
+  events::Dispatcher::HandleWhen<events::MouseScrolledEvent>(
+      BIND_EVENT_HANDLER(OrthographicCameraController::OnMouseScrolled), event);
 }
 
 }  // namespace lambda::core

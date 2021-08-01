@@ -5,15 +5,12 @@
 
 #include <string>
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <Lambda/core/Window.h>
+#include <Lambda/core/renderer/GraphicsContext.h>
 
-#include "Lambda/core/Window.h"
-#include "Lambda/core/renderer/GraphicsContext.h"
+#include <Lambda/platform/glfw/GLFW.h>
 
-namespace lambda {
-namespace platform {
-namespace windows {
+namespace lambda::platform::windows {
 
 namespace internal {
 
@@ -27,33 +24,31 @@ struct Properties {
 
 }  // namespace internal
 
-class WindowImplementation : public core::Window {
+class Window : public core::Window {
  public:
-  explicit WindowImplementation(const core::WindowProperties& properties);
-  virtual ~WindowImplementation();
+  explicit Window(core::WindowProperties properties);
+  ~Window() override;
 
   void OnUpdate() override;
 
-  inline unsigned int GetWidth() const override { return properties_.Width; }
-  inline unsigned int GetHeight() const override { return properties_.Height; }
+  unsigned int GetWidth() const override { return properties_.Width; }
+  unsigned int GetHeight() const override { return properties_.Height; }
   void SetVerticalSync(bool enabled) override;
   bool HasVerticalSync() const override;
 
-  inline void SetEventCallback(const EventCallbackFunction& callback) override
+  void SetEventCallback(const EventCallbackFunction& callback) override
       { properties_.EventCallback = callback; }
-  inline void* GetNativeWindow() const override { return window_; }
+  void* GetNativeWindow() const override { return window_; }
  private:
   GLFWwindow* window_;
   core::renderer::GraphicsContext* context_;
   internal::Properties properties_;
 
-  virtual void Init(const core::WindowProperties& properties);
-  virtual void Shutdown();
+  void Init(core::WindowProperties properties);
+  void Shutdown();
 };
 
-}  // namespace windows
-}  // namespace platform
-}  // namespace lambda
+}  // namespace lambda::platform::windows
 
 #endif  // LAMBDA_PLATFORM_WINDOWS
 #endif  // LAMBDA_SRC_LAMBDA_PLATFORM_WINDOWS_WINDOW_H_

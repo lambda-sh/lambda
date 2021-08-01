@@ -1,16 +1,14 @@
-#ifndef LAMBDA_SRC_LAMBDA_CORE_UTIL_FILE_H_
-#define LAMBDA_SRC_LAMBDA_CORE_UTIL_FILE_H_
+#ifndef LAMBDA_SRC_LAMBDA_LIB_FILE_H_
+#define LAMBDA_SRC_LAMBDA_LIB_FILE_H_
 
 #include <string>
 #include <vector>
 #include <mutex>
 
-#include "Lambda/core/Core.h"
-#include "Lambda/core/memory/Pointers.h"
+#include <Lambda/core/Core.h>
+#include <Lambda/core/memory/Pointers.h>
 
-namespace lambda {
-namespace core {
-namespace util {
+namespace lambda::lib {
 
 enum FileMode {
   None = BIT(0),
@@ -39,13 +37,13 @@ enum FilePosition {
 class File {
   // Create a static
  public:
-  static memory::Shared<File> Create(
+  static core::memory::Shared<File> Create(
       const std::string path, FileMode mode);
 
-  static memory::Shared<File> CreateTemp(
+  static core::memory::Shared<File> CreateTemp(
       const std::string& path, FileMode mode);
 
-  static memory::Shared<File> Open(
+  static core::memory::Shared<File> Open(
       const std::string& path, FileMode mode);
 
   static void Delete(const std::string& path);
@@ -109,8 +107,6 @@ class File {
   std::mutex lock;
 };
 
-}  // namespace util
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::lib
 
-#endif  // LAMBDA_SRC_LAMBDA_CORE_UTIL_FILE_H_
+#endif  // LAMBDA_SRC_LAMBDA_LIB_FILE_H_

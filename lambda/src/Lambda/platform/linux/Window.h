@@ -1,21 +1,16 @@
 #ifndef LAMBDA_SRC_LAMBDA_PLATFORM_LINUX_WINDOW_H_
 #define LAMBDA_SRC_LAMBDA_PLATFORM_LINUX_WINDOW_H_
 
-#include "Lambda/core/events/ApplicationEvent.h"
 #if defined LAMBDA_PLATFORM_LINUX || defined LAMBDA_DEBUG
 
 #include <string>
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <Lambda/core/Window.h>
+#include <Lambda/core/renderer/GraphicsContext.h>
 
-#include "Lambda/core/Window.h"
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/renderer/GraphicsContext.h"
+#include <Lambda/platform/glfw/GLFW.h>
 
-namespace lambda {
-namespace platform {
-namespace linux {
+namespace lambda::platform::linux {
 
 namespace internal {
 
@@ -29,10 +24,10 @@ struct Properties {
 
 }  // namespace internal
 
-class WindowImplementation : public core::Window {
+class Window : public core::Window {
  public:
-  explicit WindowImplementation(const core::WindowProperties& properties);
-  virtual ~WindowImplementation();
+  explicit Window(core::WindowProperties properties);
+  ~Window() override;
 
   void OnUpdate() override;
 
@@ -49,18 +44,16 @@ class WindowImplementation : public core::Window {
 
  private:
   GLFWwindow* window_;
-  /// TODO(C3NZ): Convert this into a Shared resource as opposed to just a raw
-  // pointer.
+  /// todo(C3NZ): Convert this into a Shared resource as opposed to just a raw
+  /// pointer.
   core::renderer::GraphicsContext* context_;
   internal::Properties properties_;
 
-  virtual void Init(const core::WindowProperties& properties);
-  virtual void Shutdown();
+  void Init(core::WindowProperties properties);
+  void Shutdown();
 };
 
-}  // namespace linux
-}  // namespace platform
-}  // namespace lambda
+}  // namespace lambda::platform::linux
 
 #endif  // LAMBDA_PLATFORM_LINUX
 #endif  // LAMBDA_SRC_LAMBDA_PLATFORM_LINUX_WINDOW_H_

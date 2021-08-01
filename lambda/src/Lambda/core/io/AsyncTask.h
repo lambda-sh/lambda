@@ -6,12 +6,10 @@
 
 #include <functional>
 
-#include "Lambda/core/memory/Pointers.h"
-#include "Lambda/core/util/Time.h"
+#include <Lambda/core/memory/Pointers.h>
+#include <Lambda/lib/Time.h>
 
-namespace lambda {
-namespace core {
-namespace io {
+namespace lambda::core::io {
 
 class AsyncTask;
 
@@ -45,60 +43,41 @@ class AsyncTask {
   /// @brief Construct a task that should execute as soon as possible.
   AsyncTask(
       AsyncCallback callback,
-      util::Time execute_at = util::Time(),
-      util::Time expires_at = util::Time().AddSeconds(5)) :
-          callback_(callback),
-          scheduled_at_(util::Time()),
+      const lib::Time execute_at = lib::Time(),
+      const lib::Time expires_at = lib::Time().AddSeconds(5)) :
+          callback_(std::move(callback)),
+          scheduled_at_(lib::Time()),
           execute_at_(execute_at),
           expires_at_(expires_at) {}
 
-  /// @brief Construct a task that should execute from a certain period from the
-  /// current time. (And potentially in an interval)
-  AsyncTask(
-      AsyncCallback callback,
-      uint32_t interval_in_ms,
-      bool should_repeat) :
-          callback_(callback),
-          scheduled_at_(core::util::Time()),
-          execute_at_(scheduled_at_.AddMilliseconds(interval_in_ms_)),
-          expires_at_(execute_at_.AddSeconds(5)),
-          should_repeat_(should_repeat),
-          interval_in_ms_(interval_in_ms) {}
-
   /// @brief Executes the AsyncCallback and returns back the result.
-  AsyncResult Execute();
+  [[nodiscard]] AsyncResult Execute() const;
 
   /// @brief Gets the execution status of the callback.
-  AsyncStatus GetStatus();
+  [[nodiscard]] AsyncStatus GetStatus() const;
 
   /// @brief Allows a task to be rescheduled with new times.
   void RescheduleTask(
-      core::util::Time new_execution_time,
-      core::util::Time new_expiration_time);
+      lib::Time new_execution_time,
+      lib::Time new_expiration_time);
 
   /// @brief Get the name of the task (Currently not implemented.)
   /// TODO(C3NZ): There should be overloads in the EventLoop that allow callback
   // functions to easily be named.
-  const std::string& GetName() const { return name_; }
-
-  /// @brief
-  const uint32_t GetIntervalInMilliseconds() const { return interval_in_ms_; }
+  [[nodiscard]] const std::string& GetName() const { return name_; }
 
   /// @brief Allow the ability to see if the task is setup to repeat.
   ///
   /// It is by default set to false.
-  bool ShouldRepeat() { return should_repeat_; }
+  [[nodiscard]] bool ShouldRepeat() const { return should_repeat_; }
 
  private:
   std::string name_;
   AsyncCallback callback_;
   bool should_repeat_ = false;
-  uint32_t interval_in_ms_;
-  util::Time scheduled_at_, execute_at_, executed_at_, expires_at_;
+  lib::Time scheduled_at_, execute_at_, executed_at_, expires_at_;
 };
 
-}  // namespace io
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::io
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_IO_ASYNCTASK_H_

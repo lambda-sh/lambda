@@ -8,35 +8,37 @@
 
 #include <sstream>
 
-#include "Lambda/core/events/Event.h"
+#include <Lambda/core/events/Event.h>
 
-namespace lambda {
-namespace core {
-namespace events {
+namespace lambda::core::events {
 
 /// @brief The Base Key Event used for other Key Events.
 class KeyEvent : public Event {
  public:
-  int GetKeyCode() const { return key_code_; }
+  [[nodiscard]] int GetKeyCode() const { return key_code_; }
 
-  EVENT_CLASS_CATEGORY(kEventCategoryKeyboard | kEventCategoryInput)
+
+  [[nodiscard]] int GetCategoryFlags() const override {
+    return static_cast<int>(EventCategory::Keyboard)
+        | static_cast<int>(EventCategory::Input);
+  }
 
  protected:
   int key_code_;
 
-  explicit KeyEvent(int key_code) : key_code_(key_code) {}
+  explicit KeyEvent(const int key_code) : key_code_(key_code) {}
 };
 
 /// @brief An Event generated whenever a key is pressed within an application
 /// that is running lambda.
-class KeyPressedEvent : public KeyEvent {
+class KeyPressedEvent final : public KeyEvent {
  public:
   KeyPressedEvent(int key_code, int repeat_count)
     : KeyEvent(key_code), repeat_count_(repeat_count) {}
 
-  int GetRepeatCount() const { return repeat_count_; }
+  [[nodiscard]] int GetRepeatCount() const { return repeat_count_; }
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string
         << "KeyPressedEvent: "
@@ -47,7 +49,7 @@ class KeyPressedEvent : public KeyEvent {
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kKeyPressed);
+  EVENT_CLASS_TYPE(KeyPressed);
 
  private:
   int repeat_count_;
@@ -55,36 +57,34 @@ class KeyPressedEvent : public KeyEvent {
 
 /// @brief An Event generated whenever a key is released within an application
 /// that is running lambda.
-class KeyReleasedEvent : public KeyEvent {
+class KeyReleasedEvent final : public KeyEvent {
  public:
-  explicit KeyReleasedEvent(int key_code) : KeyEvent(key_code) {}
+  explicit KeyReleasedEvent(const int key_code) : KeyEvent(key_code) {}
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string << "KeyReleasedEvent: " << key_code_;
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kKeyReleased);
+  EVENT_CLASS_TYPE(KeyReleased);
 };
 
 /// @brief An Event generated whenever a key is typed within an application that
 /// is running lambda. (Keys typed do not track any repeat counts.)
-class KeyTypedEvent : public KeyEvent {
+class KeyTypedEvent final : public KeyEvent {
  public:
-  explicit KeyTypedEvent(int key_code) : KeyEvent(key_code) {}
+  explicit KeyTypedEvent(const int key_code) : KeyEvent(key_code) {}
 
-  std::string ToString() const override {
+  [[nodiscard]] std::string ToString() const override {
     std::stringstream event_string;
     event_string << "KeyTypedEvent: " << key_code_;
     return event_string.str();
   }
 
-  EVENT_CLASS_TYPE(kKeyTyped);
+  EVENT_CLASS_TYPE(KeyTyped);
 };
 
-}  // namespace events
-}  // namespace core
-}  // namespace lambda
+}  // namespace lambda::core::events
 
 #endif  // LAMBDA_SRC_LAMBDA_CORE_EVENTS_KEYEVENT_H_

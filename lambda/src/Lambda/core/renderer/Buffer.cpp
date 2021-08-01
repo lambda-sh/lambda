@@ -3,7 +3,7 @@
 #include "Lambda/core/memory/Pointers.h"
 #include "Lambda/core/renderer/Renderer.h"
 #include "Lambda/core/renderer/RendererAPI.h"
-#include "Lambda/core/util/Assert.h"
+#include "Lambda/lib/Assert.h"
 #include "Lambda/platform/opengl/OpenGLBuffer.h"
 
 using lambda::platform::opengl::OpenGLVertexBuffer;

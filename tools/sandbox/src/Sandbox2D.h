@@ -1,7 +1,7 @@
 #ifndef TOOLS_SANDBOX_SRC_SANDBOX2D_H_
 #define TOOLS_SANDBOX_SRC_SANDBOX2D_H_
 
-#include <Lambda.h>
+#include <Lambda/Lambda.h>
 
 namespace tools {
 namespace sandbox {
@@ -14,9 +14,8 @@ class Sandbox2D : public lambda::core::layers::Layer {
   void OnAttach() override;
   void OnDetach() override;
   void OnImGuiRender() override;
-  void OnUpdate(lambda::core::util::TimeStep) override;
-  void OnEvent(lambda::core::memory::Shared<lambda::core::events::Event> event)
-      override;
+  void OnUpdate(lambda::lib::TimeStep) override;
+  void OnEvent(lambda::core::events::Event* const event) override;
 
  private:
   lambda::core::OrthographicCameraController camera_controller_;
