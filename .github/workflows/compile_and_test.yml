@@ -42,9 +42,9 @@ jobs:
       - name: Run the projects setup.
         run: ./scripts/setup.sh --within-ci true
 
-      - name: Obtain Randr for glfw on Ubuntu.
+      - name: Obtain Randr for glfw & Ninja for building on Ubuntu.
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get update && sudo apt-get install xorg-dev
+        run: sudo apt-get update && sudo apt-get install xorg-dev ninja
 
       - name: Add msbuild to PATH
         if: ${{ matrix.os == 'windows-latest' }}
