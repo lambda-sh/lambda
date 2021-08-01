@@ -44,12 +44,19 @@ export CC=$LAMBDA_c_compiler CXX=$LAMBDA_cpp_compiler
 mkdir -p build
 pushd build > /dev/null
 
+GENERATOR="Ninja"
+
+# TODO(C3NZ): Add generator as a flag instead of tying it to the platform.
+if [ "$LAMBDA_os" = "Windows" ]; then
+    GENERATOR="Visual Studio 16 2019"
+fi
+
 if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
     lambda_log_info "Compiling a $LAMBDA_build build for the engine."
     cmake .. \
         -DCMAKE_BUILD_TYPE="$LAMBDA_build" \
         -DLAMBDA_ENGINE_BUILD_TESTS=ON \
-        -G Ninja
+        -G "$GENERATOR"
 else
     lambda_log_fatal "You need to pass a build type in order to compile a tool."
 fi
