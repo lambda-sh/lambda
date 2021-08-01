@@ -45,18 +45,19 @@ lambda_log_info "Attempting to Compile a $LAMBDA_build for lambda."
 mkdir -p build
 pushd build > /dev/null
 
+GENERATOR="Ninja"
+
+if [ "$LAMBDA_os" = "Windows" ]; then
+    GENERATOR="Visual Studio 16 2019"
+fi
+
 if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
     lambda_log_info "Compiling a $LAMBDA_build build for the engine."
     cmake .. \
         -DCMAKE_BUILD_TYPE="$LAMBDA_build" \
-        -DDISTRIBUTION_BUILD=False
-elif [ "$LAMBDA_build" = "Dist" ]; then
-    lambda_log_info "Compiling a distribution build for the engine."
-    cmake .. \
-        -DCMAKE_BUILD_TYPE="Release" \
-        -DDISTRIBUTION_BUILD=True
+        -G "GENERATOR"
 else
-    lambda_log_fatal "You need to pass a build type in order to compile a tool."
+    lambda_log_fatal "You need to pass a valid build type in order to compile lambda."
 fi
 
 
