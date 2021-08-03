@@ -10,7 +10,6 @@
                 "UNICODE",
                 "_UNICODE"
             ],
-            "compilerPath":"/usr/sbin/g++",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64",
