@@ -45,13 +45,10 @@ jobs:
         languages: ${{ matrix.language }}
 
     - run: |
-        # Setup dependencies.
         ./scripts/setup.sh --within-ci true
 
-        # Install ninja for build.
         sudo apt install ninja-build
 
-        # Build lambda.
         ./scripts/compile_lambda.sh \
             --build Release \
             --cpp-compiler g++-10 \
