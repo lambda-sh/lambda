@@ -17,6 +17,7 @@ project(lambda)
 
 option(LAMBDA_TOOLS_BUILD_SANDBOX "Sandbox for testing lambda" OFF)
 option(LAMBDA_TOOLS_BUILD_MATHBOX "Sandbox for testing math functions" OFF)
+option(LAMBDA_TOOLS_BUILD_DEMO "Basic application demonstrating lambda" OFF)
 option(LAMBDA_ENGINE_BUILD_TESTS "Build tests for lambda" OFF)
 
 file(
@@ -120,4 +121,8 @@ endif()
 
 if (${LAMBDA_TOOLS_BUILD_MATHBOX})
   add_subdirectory(${CMAKE_SOURCE_DIR}/tools/mathbox)
+endif()
+
+if (${LAMBDA_TOOLS_BUILD_DEMO})
+  add_subdirectory(${CMAKE_SOURCE_DIR}/tools/demo)
 endif()
