@@ -1,3 +1,6 @@
+# Rust output directories
+target
+
 # Visual studio build config
 .vs
 
