@@ -1,7 +1,22 @@
 
+
+// Application is the runnable
 pub struct Application {
     name: String,
     running: bool
+}
+
+// Trait for Runnable applications that can be plugged into lambda.
+pub trait Runnable {
+    fn on_update();
+    fn on_render();
+    fn on_event();
+}
+
+impl Runnable for Application {
+    fn on_update() {}
+    fn on_render() {}
+    fn on_event() {}
 }
 
 impl Application {
