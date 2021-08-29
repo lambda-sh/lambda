@@ -1,13 +1,12 @@
-use lambda::core::ApplicationConfiguration;
-use lambda::core::create_application;
+use lambda::core::application as app;
 
 fn main() {
 
-    let configuration = ApplicationConfiguration{
+    let configuration = app::ApplicationConfiguration{
         name: String::from("Demo application"),
         start_on_create: false,
     };
 
-    let app = create_application(configuration);
-    println!("{} is currently running.", app.get_name());
+    let demo = app::create_application(configuration);
+    println!("{} is currently running.", demo.get_name());
 }
