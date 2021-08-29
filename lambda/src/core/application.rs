@@ -1,5 +1,3 @@
-
-
 // Application is the runnable
 pub struct Application {
     name: String,

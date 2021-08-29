@@ -1,4 +1,4 @@
-pub mod application;
+mod application;
 
 //  Data structs from application
 pub use self::application::Application;
