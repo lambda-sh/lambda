@@ -1,20 +1,30 @@
+
+// Data only struct for configuring the application.
+pub struct ApplicationConfiguration {
+    pub name: String,
+    pub start_on_create: bool,
+}
+
+// Trait for Runnable applications that can be plugged into lambda.
+pub trait Runnable {
+    fn run(&self);
+    fn on_update(&self);
+    fn on_render(&self);
+    fn on_event(&self);
+}
+
 // Application is the runnable
 pub struct Application {
     name: String,
     running: bool
 }
 
-// Trait for Runnable applications that can be plugged into lambda.
-pub trait Runnable {
-    fn on_update();
-    fn on_render();
-    fn on_event();
-}
 
 impl Runnable for Application {
-    fn on_update() {}
-    fn on_render() {}
-    fn on_event() {}
+    fn run(&self) {}
+    fn on_update(&self) {}
+    fn on_render(&self) {}
+    fn on_event(&self) {}
 }
 
 impl Application {
@@ -27,11 +37,7 @@ impl Application {
     }
 }
 
-// Data only struct for configuring the application.
-pub struct ApplicationConfiguration {
-    pub name: String,
-    pub start_on_create: bool,
-}
+
 
 pub fn create_application(
     configuration: ApplicationConfiguration) -> Application {
