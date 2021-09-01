@@ -1,18 +1,10 @@
 use lambda::{
-    core::create_default_application,
-    core::Application,
+    core::create_lambda_application,
     core::Runnable,
-    core::RunnableApplication,
     core::start_application,
 };
 
 pub struct DemoApp;
-
-impl Application for DemoApp {
-    fn get_name(&self) -> std::string::String { return String::from("Demo app") }
-    fn get_window(&self) -> &lambda::core::LambdaWindow { todo!() }
-    fn is_running(&self) -> bool { todo!() }
-}
 
 impl Runnable for DemoApp {
     fn setup(&self){
@@ -30,10 +22,14 @@ impl DemoApp {
     pub fn new() -> Self {
         return DemoApp{};
     }
+
+    pub fn get_name(&self) -> String {
+        return String::from("Demo app");
+    }
 }
 
 fn main() {
-    let lambda = create_default_application();
+    let lambda = create_lambda_application();
     println!("{} was just created", lambda.get_name());
     start_application(lambda);
 

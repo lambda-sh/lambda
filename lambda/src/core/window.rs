@@ -7,6 +7,7 @@ pub trait Window  {
     fn get_size(&self) -> [u32; 2];
 }
 
+#[derive(Clone)]
 pub struct LambdaWindow {
     name: String,
     size: [u32; 2]

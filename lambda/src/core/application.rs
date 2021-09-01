@@ -3,13 +3,6 @@ use crate::core::window::{
     LambdaWindow,
 };
 
-
-pub trait Application {
-    fn get_name(&self) -> String;
-    fn get_window(&self) -> &LambdaWindow;
-    fn is_running(&self) -> bool;
-}
-
 pub trait Runnable {
     fn setup(&self);
     fn run(&self);
@@ -32,22 +25,19 @@ impl LambdaApplication {
             running: false
         }
     }
-}
 
-impl Application for LambdaApplication {
-    fn get_name(&self) -> String {
+    pub fn get_name(&self) -> String {
         return self.name.clone();
     }
 
-    fn get_window(&self) -> &LambdaWindow {
-        return &self.window;
+    pub fn get_window(&self) -> LambdaWindow {
+        return self.window.clone();
     }
 
-    fn is_running(&self) -> bool {
+    pub fn get_running(&self) -> bool {
         return self.running;
     }
 }
-
 
 impl Runnable for LambdaApplication {
     fn setup(&self) {
@@ -62,14 +52,11 @@ impl Runnable for LambdaApplication {
 }
 
 
-pub fn create_default_application() -> LambdaApplication {
-    return LambdaApplication::new()
+pub fn create_lambda_application() -> LambdaApplication {
+    return LambdaApplication::new();
 }
 
-pub trait RunnableApplication: Runnable + Application {}
-impl<T> RunnableApplication for T where T: Runnable + Application {}
-
-pub fn start_application<T: RunnableApplication>(app: T) {
+pub fn start_application<T: Runnable>(app: T) {
     app.setup();
     app.run();
 }
