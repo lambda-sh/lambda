@@ -11,15 +11,15 @@ pub trait Runnable {
     fn on_event(&self);
 }
 
-pub struct LambdaApplication {
+pub struct LambdaRunnable {
     name: String,
     window: LambdaWindow,
     running: bool
 }
 
-impl LambdaApplication {
+impl LambdaRunnable {
     pub fn new() -> Self {
-        return LambdaApplication{
+        return LambdaRunnable{
             name: String::from("f"),
             window: LambdaWindow::new(),
             running: false
@@ -30,8 +30,9 @@ impl LambdaApplication {
         return self.name.clone();
     }
 
-    pub fn get_window(&self) -> LambdaWindow {
-        return self.window.clone();
+    // Get a cloned copy of the window
+    pub fn get_window_data(&self) -> LambdaWindow {
+        return self.window;
     }
 
     pub fn get_running(&self) -> bool {
@@ -39,21 +40,28 @@ impl LambdaApplication {
     }
 }
 
-impl Runnable for LambdaApplication {
+impl Runnable for LambdaRunnable {
+    /// One setup to initialize the
     fn setup(&self) {
         println!("Just hit lambda application runner setup!")
     }
+
     fn run(&self) {
+        while self.running {
+            self.on_update();
+        }
         println!("Just hit lambda application runner loop!")
     }
-    fn on_update(&self) {}
+    fn on_update(&self) {
+
+    }
     fn on_render(&self) {}
     fn on_event(&self) {}
 }
 
 
-pub fn create_lambda_application() -> LambdaApplication {
-    return LambdaApplication::new();
+pub fn create_lambda_application() -> LambdaRunnable {
+    return LambdaRunnable::new();
 }
 
 pub fn start_application<T: Runnable>(app: T) {
