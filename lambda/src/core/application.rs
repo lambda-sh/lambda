@@ -5,7 +5,7 @@ use crate::core::window::{
 
 pub trait Runnable {
     fn setup(&self);
-    fn run(&self);
+    fn run(self);
     fn on_update(&self);
     fn on_render(&self);
     fn on_event(&self);
@@ -46,11 +46,8 @@ impl Runnable for LambdaRunnable {
         println!("Just hit lambda application runner setup!")
     }
 
-    fn run(&self) {
-        while self.running {
-            self.on_update();
-        }
-        println!("Just hit lambda application runner loop!")
+    fn run(self) {
+        self.window.start_event_loop();
     }
     fn on_update(&self) {
 

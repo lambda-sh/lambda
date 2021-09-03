@@ -10,7 +10,7 @@ impl Runnable for DemoApp {
     fn setup(&self){
         println!("Demo application runner setup!")
     }
-    fn run(&self){
+    fn run(self){
         println!("Demo applicaiton runner loop!")
     }
     fn on_update(&self){}
