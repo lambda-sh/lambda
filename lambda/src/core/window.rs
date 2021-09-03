@@ -11,6 +11,7 @@ use winit::{
         Event,
         WindowEvent
     },
+    monitor::MonitorHandle,
     window::Window as WinitHandle,
 };
 
@@ -79,9 +80,19 @@ impl Window for LambdaWindow {
         const DEFAULT_WINDOW_SIZE: [u32; 2]= [512, 512];
         let event_loop = winit::event_loop::EventLoop::new();
 
+        for monitor in event_loop.available_monitors() {
+            println!("{}", monitor.name().unwrap());
+        }
+        let primary_monitor: Option<MonitorHandle> = {
+            match event_loop.primary_monitor() {
+                Some(monitor) => { Some(monitor) },
+                None => event_loop.available_monitors().next(),
+            }
+        };
+
         let window_size = construct_window_size(
                 DEFAULT_WINDOW_SIZE,
-                event_loop.primary_monitor().unwrap().scale_factor());
+                primary_monitor.unwrap().scale_factor());
 
 
         let winit_handle = winit::window::WindowBuilder::new()
