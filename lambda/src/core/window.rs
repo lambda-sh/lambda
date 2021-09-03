@@ -1,15 +1,18 @@
 use winit::{
-    event_loop::EventLoop,
-    dpi::LogicalSize,
-    dpi::PhysicalSize,
+    dpi::{
+        LogicalSize,
+        PhysicalSize,
+    },
+    event_loop::{
+        ControlFlow,
+        EventLoop,
+    },
+    event::{
+        Event,
+        WindowEvent
+    },
+    window::Window as WinitHandle,
 };
-
-pub enum LambdaEvents {
-    AppTick,
-    AppStartup,
-    AppShutdown,
-}
-
 
 pub trait Window{
     fn new() -> Self;
@@ -18,45 +21,12 @@ pub trait Window{
 }
 
 /// Metadata for Lambda window sizing.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct WindowSize {
     pub width: u32,
     pub height: u32,
     pub logical: LogicalSize<u32>,
     pub physical: PhysicalSize<u32>,
-}
-
-pub struct LambdaWindow {
-    name: String,
-    size: WindowSize,
-    event_loop: Box<EventLoop<()>>,
-    winit_handle: Box<winit::window::Window>
-}
-
-impl LambdaWindow {
-    pub fn start_event_loop(self) {
-        // Note that this takes a `move` closure. This means it will take ownership
-        // over any resources referenced within. It also means they will be dropped
-        // only when the application is quit.
-        self.event_loop.run(move |event, _, control_flow| {
-            use winit::event::{Event, WindowEvent};
-            use winit::event_loop::ControlFlow;
-
-            match event {
-                Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Resized(dims) => {}
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => { },
-                    _ => (),
-                },
-                Event::MainEventsCleared => {},
-                Event::RedrawRequested(_) => {
-                    // Here's where we'll perform our rendering.
-                }
-                _ => (),
-            }
-        });
-    }
 }
 
 /// Construct a WindowSize struct from the window dimensions and scale factor.
@@ -72,6 +42,34 @@ fn construct_window_size(
         physical
     }
 }
+
+pub struct LambdaWindow {
+    name: String,
+    size: WindowSize,
+    event_loop: Box<EventLoop<()>>,
+    winit_handle: Box<WinitHandle>
+}
+
+impl LambdaWindow {
+    pub fn start_event_loop(self) {
+        self.event_loop.run(move |event, _, control_flow| {
+
+            match event {
+                Event::WindowEvent { event, .. } => match event {
+                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::Resized(dims) => {},
+                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => { },
+                    _ => (),
+                },
+                Event::MainEventsCleared => {},
+                Event::RedrawRequested(_) => {
+                }
+                _ => (),
+            }
+        });
+    }
+}
+
 
 impl Window for LambdaWindow {
 
