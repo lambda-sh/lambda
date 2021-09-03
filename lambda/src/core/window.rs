@@ -51,17 +51,17 @@ impl Window for LambdaWindow {
 
     /// Returns a constructed LambdaWindow in a default state.
     fn new() -> Self {
-        const default_title: &str = "lambda window";
-        const default_window_size: [u32; 2]= [512, 512];
+        const DEFAULT_TITLE: &str = "lambda window";
+        const DEFAULT_WINDOW_SIZE: [u32; 2]= [512, 512];
         let event_loop = winit::event_loop::EventLoop::new();
 
         let window_size = construct_window_size(
-                default_window_size,
+                DEFAULT_WINDOW_SIZE,
                 event_loop.primary_monitor().unwrap().scale_factor());
 
 
         let winit_handle = winit::window::WindowBuilder::new()
-                .with_title(default_title)
+                .with_title(DEFAULT_TITLE)
                 .with_inner_size(window_size.logical)
                 .build(&event_loop)
                 .expect("Failed to create a winit handle for LambdaWindow.");
@@ -70,7 +70,7 @@ impl Window for LambdaWindow {
         // Compute the logical and physical window sizes using the screens
         // primary monitor.
         return LambdaWindow{
-            name: default_title.to_string(),
+            name: DEFAULT_TITLE.to_string(),
             size: window_size,
             event_loop: Box::new(event_loop),
             winit_handle: Box::new(winit_handle),
