@@ -1,4 +1,9 @@
-use crate::core::window::{
+
+use crate::core::{
+    LambdaEventLoop,
+};
+
+use crate::core::{
     Window,
     LambdaWindow,
 };
@@ -14,15 +19,18 @@ pub trait Runnable {
 pub struct LambdaRunnable {
     name: String,
     window: LambdaWindow,
+    event_loop: LambdaEventLoop,
     running: bool
 }
 
 impl LambdaRunnable {
     pub fn new() -> Self {
+        let event_loop = LambdaEventLoop::new();
         return LambdaRunnable{
             name: String::from("f"),
-            window: LambdaWindow::new(),
-            running: false
+            window: LambdaWindow::new().with_event_loop(&event_loop),
+            event_loop,
+            running: false,
         }
     }
 
@@ -47,7 +55,7 @@ impl Runnable for LambdaRunnable {
     }
 
     fn run(self) {
-        self.window.start_event_loop();
+        self.event_loop.run_in_main_thread();
     }
     fn on_update(&self) {
 

@@ -9,3 +9,7 @@ pub use self::application::start_application;
 mod window;
 pub use self::window::Window;
 pub use self::window::LambdaWindow;
+
+mod event_loop;
+pub use self::event_loop::LambdaEventLoop;
+pub use self::event_loop::HardwareLookup;

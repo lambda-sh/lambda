@@ -11,17 +11,26 @@ use winit::{
         Event,
         WindowEvent
     },
-    monitor::MonitorHandle,
-    window::Window as WinitHandle,
+    window::{
+        Window as WinitHandle,
+        WindowBuilder
+    },
 };
 
+use crate::core::{
+    LambdaEventLoop,
+    event_loop::HardwareLookup,
+};
+
+/// The base window trait that every lambda window implementation must have to
+/// work with lambda::core components.
 pub trait Window{
     fn new() -> Self;
     fn on_update(&mut self);
     fn on_event(&mut self);
 }
 
-/// Metadata for Lambda window sizing.
+/// Metadata for Lambda window sizing that supports Copy and move operations.
 #[derive(Clone, Copy)]
 pub struct WindowSize {
     pub width: u32,
@@ -30,7 +39,9 @@ pub struct WindowSize {
     pub physical: PhysicalSize<u32>,
 }
 
-/// Construct a WindowSize struct from the window dimensions and scale factor.
+/// Construct WindowSize metdata from the window dimensions and scale factor of
+/// the monitor being rendered to.
+#[inline]
 fn construct_window_size(
         window_size: [u32; 2], scale_factor: f64) -> WindowSize {
     let logical: LogicalSize<u32> = window_size.into();
@@ -47,68 +58,50 @@ fn construct_window_size(
 pub struct LambdaWindow {
     name: String,
     size: WindowSize,
-    event_loop: Box<EventLoop<()>>,
-    winit_handle: Box<WinitHandle>
+    winit_handle: Option<Box<WinitHandle>>
 }
 
 impl LambdaWindow {
-    pub fn start_event_loop(self) {
-        self.event_loop.run(move |event, _, control_flow| {
+    /// Rebind a Lambda window to an event loop that will be attached to
+    /// the new LambdaWindow returned by this object.
+    pub fn with_event_loop(self, event_loop: &LambdaEventLoop) -> Self {
+        let name = self.name.to_string();
+        let size = construct_window_size(
+            [self.size.width, self.size.height],
+            event_loop.from_winit().primary_monitor().unwrap_or(
+                event_loop.from_winit().available_monitors().next().unwrap()).scale_factor());
 
-            match event {
-                Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Resized(dims) => {},
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => { },
-                    _ => (),
-                },
-                Event::MainEventsCleared => {},
-                Event::RedrawRequested(_) => {
-                }
-                _ => (),
-            }
-        });
+        let winit_handle = Some(
+            Box::new(WindowBuilder::new()
+                .with_title(name.to_string())
+                .with_inner_size(self.size.logical)
+                .build(event_loop.from_winit())
+                .expect("Failed to create a winit handle for LambdaWindow.")));
+
+        return LambdaWindow{
+            name,
+            size,
+            winit_handle,
+        };
     }
 }
 
 
 impl Window for LambdaWindow {
 
-    /// Returns a constructed LambdaWindow in a default state.
+    /// Returns a constructed LambdaWindow in it's default configuration state..
     fn new() -> Self {
         const DEFAULT_TITLE: &str = "lambda window";
         const DEFAULT_WINDOW_SIZE: [u32; 2]= [512, 512];
-        let event_loop = winit::event_loop::EventLoop::new();
-
-        for monitor in event_loop.available_monitors() {
-            println!("{}", monitor.name().unwrap());
-        }
-        let primary_monitor: Option<MonitorHandle> = {
-            match event_loop.primary_monitor() {
-                Some(monitor) => { Some(monitor) },
-                None => event_loop.available_monitors().next(),
-            }
-        };
 
         let window_size = construct_window_size(
                 DEFAULT_WINDOW_SIZE,
-                primary_monitor.unwrap().scale_factor());
+                1.0);
 
-
-        let winit_handle = winit::window::WindowBuilder::new()
-                .with_title(DEFAULT_TITLE)
-                .with_inner_size(window_size.logical)
-                .build(&event_loop)
-                .expect("Failed to create a winit handle for LambdaWindow.");
-
-
-        // Compute the logical and physical window sizes using the screens
-        // primary monitor.
         return LambdaWindow{
             name: DEFAULT_TITLE.to_string(),
             size: window_size,
-            event_loop: Box::new(event_loop),
-            winit_handle: Box::new(winit_handle),
+            winit_handle: None,
         };
     }
 
