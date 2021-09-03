@@ -15,11 +15,10 @@ pub trait Window{
     fn new() -> Self;
     fn on_update(&mut self);
     fn on_event(&mut self);
-    fn set_event_callback<Events>(&mut self, event_callback: impl Fn(Events) -> bool );
-    fn get_size(&self) -> [u32; 2];
 }
 
 /// Metadata for Lambda window sizing.
+#[derive(Clone)]
 pub struct WindowSize {
     pub width: u32,
     pub height: u32,
@@ -30,8 +29,8 @@ pub struct WindowSize {
 pub struct LambdaWindow {
     name: String,
     size: WindowSize,
-    event_loop: EventLoop<()>,
-    winit_handle: winit::window::Window
+    event_loop: Box<EventLoop<()>>,
+    winit_handle: Box<winit::window::Window>
 }
 
 /// Construct a WindowSize struct from the window dimensions and scale factor.
@@ -67,28 +66,14 @@ impl Window for LambdaWindow {
                 .build(&event_loop)
                 .expect("Failed to create a winit handle for LambdaWindow.");
 
-        event_loop.run(|event, _, control_flow| {
-            use winit::event::{Event, WindowEvent};
-            use winit::event_loop::ControlFlow;
-
-            match event {
-                Event::WindowEvent {event, ..} => match event {
-                    WindowEvent::CloseRequested => {
-                        *control_flow = ControlFlow::Exit
-                    },
-                    WindowEvent::Resized(dims) => {
-                    }
-                }
-            }
-        });
 
         // Compute the logical and physical window sizes using the screens
         // primary monitor.
         return LambdaWindow{
             name: default_title.to_string(),
             size: window_size,
-            event_loop,
-            winit_handle
+            event_loop: Box::new(event_loop),
+            winit_handle: Box::new(winit_handle),
         };
     }
 
@@ -96,16 +81,4 @@ impl Window for LambdaWindow {
     }
 
     fn on_update(&mut self) {}
-    fn set_event_callback<LambdaEvents>(&mut self,
-            event_callback: impl Fn(LambdaEvents) -> bool) {
-        self.callback = event_callback;
-    }
-
-    fn get_size(&self) -> WindowSize {
-        return self.size;
-    }
-}
-
-impl LambdaWindow() {
-
 }

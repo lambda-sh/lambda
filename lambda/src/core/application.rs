@@ -31,8 +31,8 @@ impl LambdaRunnable {
     }
 
     // Get a cloned copy of the window
-    pub fn get_window_data(&self) -> LambdaWindow {
-        return self.window;
+    pub fn get_window_data(&self) -> &LambdaWindow {
+        return &self.window;
     }
 
     pub fn get_running(&self) -> bool {
