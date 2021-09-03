@@ -46,9 +46,24 @@ impl LambdaEventLoop {
             }
         });
     }
-    pub fn run_in_separate_thread(&self) {
 
+    pub fn run_in_separate_thread(self) {
+          self.event_loop.run(move |event, _, control_flow| {
+                match event {
+                    Event::WindowEvent { event, .. } => match event {
+                        WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                        WindowEvent::Resized(dims) => {},
+                        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => { },
+                        _ => (),
+                    },
+                    Event::MainEventsCleared => {},
+                    Event::RedrawRequested(_) => {
+                    }
+                    _ => (),
+                }
+            });
     }
+
     pub fn get_proxy(&self) {}
 
     pub fn from_winit(&self) -> &EventLoop<LambdaEvent> {
