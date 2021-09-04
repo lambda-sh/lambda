@@ -1,31 +1,25 @@
+use std::rc::Rc;
+
 use winit::{
     dpi::{
         LogicalSize,
         PhysicalSize,
     },
-    event_loop::{
-        ControlFlow,
-        EventLoop,
-    },
-    event::{
-        Event,
-        WindowEvent
-    },
     window::{
-        Window as WinitHandle,
+        Window as WinitWindow,
         WindowBuilder
     },
 };
 
 use crate::core::{
     LambdaEventLoop,
-    event_loop::HardwareLookup,
 };
 
 /// The base window trait that every lambda window implementation must have to
 /// work with lambda::core components.
 pub trait Window{
     fn new() -> Self;
+    fn redraw(&self);
     fn on_update(&mut self);
     fn on_event(&mut self);
 }
@@ -58,7 +52,7 @@ fn construct_window_size(
 pub struct LambdaWindow {
     name: String,
     size: WindowSize,
-    winit_handle: Option<Box<WinitHandle>>
+    winit_window: Option<WinitWindow>,
 }
 
 impl LambdaWindow {
@@ -66,23 +60,27 @@ impl LambdaWindow {
     /// the new LambdaWindow returned by this object.
     pub fn with_event_loop(self, event_loop: &LambdaEventLoop) -> Self {
         let name = self.name.to_string();
+        let winit_loop = event_loop.winit_loop_ref();
         let size = construct_window_size(
             [self.size.width, self.size.height],
-            event_loop.from_winit().primary_monitor().unwrap_or(
-                event_loop.from_winit().available_monitors().next().unwrap()).scale_factor());
+            winit_loop.primary_monitor().unwrap_or(
+                winit_loop.available_monitors().next().unwrap()).scale_factor());
 
-        let winit_handle = Some(
-            Box::new(WindowBuilder::new()
+        let winit_window = Some(WindowBuilder::new()
                 .with_title(name.to_string())
                 .with_inner_size(self.size.logical)
-                .build(event_loop.from_winit())
-                .expect("Failed to create a winit handle for LambdaWindow.")));
+                .build(winit_loop)
+                .expect("Failed to create a winit handle for LambdaWindow."));
 
         return LambdaWindow{
             name,
             size,
-            winit_handle,
+            winit_window,
         };
+    }
+
+    pub fn winit_window(&self) -> &WinitWindow {
+        return self.winit_window.as_ref().unwrap();
     }
 }
 
@@ -101,7 +99,7 @@ impl Window for LambdaWindow {
         return LambdaWindow{
             name: DEFAULT_TITLE.to_string(),
             size: window_size,
-            winit_handle: None,
+            winit_window: None,
         };
     }
 
@@ -110,4 +108,5 @@ impl Window for LambdaWindow {
     }
 
     fn on_update(&mut self) {}
+    fn redraw(&self) { }
 }

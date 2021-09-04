@@ -12,4 +12,3 @@ pub use self::window::LambdaWindow;
 
 mod event_loop;
 pub use self::event_loop::LambdaEventLoop;
-pub use self::event_loop::HardwareLookup;
