@@ -30,8 +30,7 @@ impl LambdaEventLoop {
     }
 
     pub fn run_in_main_thread(self) {
-      self.event_loop.run(move |event, _, control_flow| {
-
+        self.event_loop.run(move |event, _, control_flow| {
             match event {
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
