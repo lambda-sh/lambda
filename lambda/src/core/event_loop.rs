@@ -20,6 +20,7 @@ pub struct EventLoopPublisher {
 }
 
 impl EventLoopPublisher {
+    /// Instantiate a new EventLoopPublisher from an event loop proxy.
     pub fn new(winit_proxy: EventLoopProxy<LambdaEvent>) -> Self {
         return EventLoopPublisher{
             winit_proxy,
@@ -54,10 +55,13 @@ impl LambdaEventLoop {
         self.event_loop.run(callback);
     }
 
+    /// Creates an event publisher that can be used for publishing events to the
+    /// event loop.
     pub fn create_publisher(&self) -> EventLoopPublisher {
         return EventLoopPublisher::new(self.event_loop.create_proxy());
     }
 
+    /// Returns a reference to the underlying winit pointer.
     pub fn winit_loop_ref(&self) -> &EventLoop<LambdaEvent> {
         return &self.event_loop;
     }

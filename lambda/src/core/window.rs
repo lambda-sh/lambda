@@ -11,7 +11,7 @@ use winit::{
     },
 };
 
-use crate::core::{
+use crate::core::event_loop::{
     LambdaEventLoop,
 };
 
@@ -20,8 +20,7 @@ use crate::core::{
 pub trait Window{
     fn new() -> Self;
     fn redraw(&self);
-    fn on_update(&mut self);
-    fn on_event(&mut self);
+    fn close(&self);
 }
 
 /// Metadata for Lambda window sizing that supports Copy and move operations.
@@ -78,10 +77,6 @@ impl LambdaWindow {
             winit_window,
         };
     }
-
-    pub fn winit_window(&self) -> &WinitWindow {
-        return self.winit_window.as_ref().unwrap();
-    }
 }
 
 
@@ -103,10 +98,9 @@ impl Window for LambdaWindow {
         };
     }
 
-    fn on_event(&mut self) {
+    fn close(&self) { }
 
+    fn redraw(&self) { 
+        self.winit_window.as_ref().unwrap().request_redraw();
     }
-
-    fn on_update(&mut self) {}
-    fn redraw(&self) { }
 }

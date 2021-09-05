@@ -1,32 +1,36 @@
-use std::borrow::Borrow;
-
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::ControlFlow;
 
-use crate::core::{
+use crate::core::event_loop::{
     LambdaEventLoop,
 };
 
-use crate::core::{
+use crate::core::window::{
     Window,
     LambdaWindow,
 };
 
-use crate::core::event_loop::{EventLoopPublisher, LambdaEvent};
+use crate::core::event_loop::{LambdaEvent};
+
 
 pub trait Runnable {
     fn setup(&self);
     fn run(self);
     fn on_update(&self);
-    fn on_render(&self);
     fn on_event(&self);
+}
+
+pub trait Layer {
+    fn on_attach(&self) {}
+    fn on_detach(&self) {}
+    fn on_update(&self) {}
+    fn on_event(&self, event: LambdaEvent) {}
 }
 
 pub struct LambdaRunnable {
     name: String,
     window: LambdaWindow,
     event_loop: LambdaEventLoop,
-    running: bool,
 }
 
 impl LambdaRunnable {
@@ -39,29 +43,22 @@ impl LambdaRunnable {
             name,
             window,
             event_loop,
-            running: false,
         }
     }
 
     pub fn get_name(&self) -> String {
         return self.name.clone();
     }
-
-    pub fn is_running(&self) -> bool {
-        return self.running;
-    }
 }
 
 impl Runnable for LambdaRunnable {
     /// One setup to initialize the
     fn setup(&self) {
-        println!("Just hit lambda application runner setup!")
+        let publisher = self.event_loop.create_publisher();
+        publisher.send_event(LambdaEvent::Initialized);
     }
 
     fn run(self) {
-        let publisher = self.event_loop.create_publisher();
-        publisher.send_event(LambdaEvent::Initialized);
-
         // Decompose Runnable components for transferring ownership to the 
         // closure.
         let app = self;
@@ -97,11 +94,13 @@ impl Runnable for LambdaRunnable {
                         }
                     },
                     Event::MainEventsCleared => { 
-                        window.winit_window().request_redraw();
                     },
                     Event::RedrawRequested(_) => {
+                        window.redraw();
                     }
-                    Event::NewEvents(_) => {},
+                    Event::NewEvents(_) => {
+
+                    },
                     Event::DeviceEvent { device_id, event } => {},
                     Event::UserEvent(lambda_event) => {
                         match lambda_event {
@@ -119,10 +118,10 @@ impl Runnable for LambdaRunnable {
 
             });
     }
+
     fn on_update(&self) {
 
     }
-    fn on_render(&self) {}
     fn on_event(&self) {}
 }
 

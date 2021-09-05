@@ -1,6 +1,6 @@
 use lambda::{
-    core::create_lambda_application,
-    core::start_application,
+    core::application::create_lambda_application,
+    core::application::start_application,
 };
 fn main() {
     let lambda = create_lambda_application();
