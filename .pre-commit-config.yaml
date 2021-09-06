@@ -9,7 +9,12 @@ repos:
     rev: 0.6.0
     hooks:
       - id: cpplint
-        name: Lint-engine
+        name: C++ Linter
         args: [
           "--filter=-legal/copyright,-build/include,-build/c++11",
           ]
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: master
+    hooks:
+      - id: fmt
+        name: Rust Linter

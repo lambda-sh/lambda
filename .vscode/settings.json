@@ -5,5 +5,6 @@
     "*.tcc": "cpp",
     "chrono": "cpp",
     "string_view": "cpp"
-  }
+  },
+  "vim.autoindent": false
 }

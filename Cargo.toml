@@ -10,3 +10,5 @@ default-members = [
     "lambda",
     "tools/lambda_rs_demo"
 ]
+
+cargo-features = ["edition2021"]
