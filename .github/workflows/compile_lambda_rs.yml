@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        rustup-toolchain: ["nightly", "stable"]
+        rustup-toolchain: ["nightly"]
 
     steps:
       - name: Checkout Repository
