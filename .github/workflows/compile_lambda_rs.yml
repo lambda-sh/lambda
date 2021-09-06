@@ -1,0 +1,61 @@
+name: compile_and_test
+
+on:
+  push:
+    branches: [ main, dev, vmarcella/lambda-rs ]
+
+  pull_request:
+    branches: [ main, dev, vmarcella/lambda-rs ]
+
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build_and_test:
+    name: Build lambda-rs on ${{ matrix.os }} with ${{ matrix.rustup-toolchain }}.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: [ubuntu-latest, windows-latest, macos-latest]
+            rustup-toolchain: ["nightly", "stable"]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Run the projects setup.
+        run: ./scripts/setup.sh --within-ci true
+
+      - name: Obtain Xorg for building on Ubuntu.
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get update && sudo apt-get install xorg-dev
+
+      - name: Add msbuild to PATH
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: microsoft/setup-msbuild@v1.0.2
+
+      - name: Obtain rust toolchain for {{ matrix.rustup-toolchain }}
+        run: |
+          rustup toolchain install {{ matrix.rustup-toolchain }}
+          rustup default {{ matrix.rustup-toolchain }}
+
+      - name: Build Lambda & other default workspace members.
+        run: cargo build
+
+      - uses: actions/setup-ruby@v1
+      - name: Send Webhook Notification for build status.
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+          WEBHOOK_URL: ${{ secrets.LAMBDA_BUILD_WEBHOOK }}
+          HOOK_OS_NAME: ${{ runner.os }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          JOB_ID: ${{ github.job }}
+        run: |
+          git clone https://github.com/dhinakg/github-actions-discord-webhook.git webhook
+          bash webhook/send.sh $JOB_STATUS $WEBHOOK_URL
+        shell: bash
