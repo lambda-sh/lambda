@@ -65,6 +65,4 @@ impl LambdaEventLoop {
     pub fn winit_loop_ref(&self) -> &EventLoop<LambdaEvent> {
         return &self.event_loop;
     }
-
-
 }
