@@ -6,9 +6,7 @@ use lambda::core::{
   layer::Layer,
 };
 
-pub struct FirstLayer {
-  name: String,
-}
+pub struct FirstLayer {}
 
 impl Layer for FirstLayer {
   fn attach(&self) {
@@ -30,9 +28,7 @@ impl Layer for FirstLayer {
 
 impl Default for FirstLayer {
   fn default() -> Self {
-    return FirstLayer {
-      name: String::from("Hello, lambda!"),
-    };
+    return FirstLayer {};
   }
 }
 
