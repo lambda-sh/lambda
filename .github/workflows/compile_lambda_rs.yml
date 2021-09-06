@@ -37,10 +37,10 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         uses: microsoft/setup-msbuild@v1.0.2
 
-      - name: Obtain rust toolchain for {{ matrix.rustup-toolchain }}
+      - name: Obtain rust toolchain for ${{ matrix.rustup-toolchain }}
         run: |
-          rustup toolchain install {{ matrix.rustup-toolchain }}
-          rustup default {{ matrix.rustup-toolchain }}
+          rustup toolchain install ${{ matrix.rustup-toolchain }}
+          rustup default ${{ matrix.rustup-toolchain }}
 
       - name: Build Lambda & other default workspace members.
         run: cargo build
