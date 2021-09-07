@@ -42,6 +42,7 @@ lambda_log_info "Attempting to Compile a $LAMBDA_build for lambda."
 
 # ----------------------------------- CMAKE ------------------------------------
 
+pushd archive/lambda_cpp
 mkdir -p build
 pushd build > /dev/null
 
@@ -75,4 +76,5 @@ lambda_assert_last_command_ok "Couldn't successfully compile lambda."
 lambda_log_info "Successfully compiled lambda"
 
 popd > /dev/null  # build
+popd > /dev/null  # archive/lambda_cpp
 popd > /dev/null  # ROOT_DIR
