@@ -11,7 +11,7 @@
 	path = docs
 	url = https://github.com/C3NZ/game-engine-docs.git
 [submodule "archive/lambda_cpp/vendor/spdlog"]
-	path = vendor/spdlog
+	path = archive/lambda_cpp/vendor/spdlog
 	url = https://github.com/gabime/spdlog.git
 [submodule "archive/lambda_cpp/vendor/readerwriterqueue"]
 	path = archive/lambda_cpp/vendor/readerwriterqueue
