@@ -36,7 +36,7 @@ set_target_properties(lambda PROPERTIES PREFIX "")
 set_target_properties(lambda PROPERTIES OUTPUT_NAME "lambda")
 
 # Directory to include Lambda src.
-set(LAMBDA_ENGINE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/Lambda")
+set(LAMBDA_ENGINE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}")
 
 # Root directory to provide sub directories a reliable absolute path
 set(LAMBDA_ENGINE_ROOT_DIR "${CMAKE_SOURCE_DIR}")
