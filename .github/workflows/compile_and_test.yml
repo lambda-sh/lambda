@@ -2,10 +2,10 @@ name: compile_and_test
 
 on:
   push:
-    branches: [ main, dev, vmarcella-rs ]
+    branches: [ main, dev, vmarcella/lambda-rs ]
 
   pull_request:
-    branches: [ main, dev, vmarcella-rs]
+    branches: [ main, dev, vmarcella/lambda-rs ]
 
   workflow_dispatch:
 
