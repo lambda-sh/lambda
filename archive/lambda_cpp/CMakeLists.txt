@@ -86,7 +86,7 @@ endif()
 
 # ----------------------------- ENGINE DEPENDENCIES ----------------------------
 
-add_subdirectory(${CMAKE_SOURCE_DIR}vendor/spdlog)
+add_subdirectory(${CMAKE_SOURCE_DIR}/vendor/spdlog)
 target_link_libraries(lambda spdlog::spdlog)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/vendor/glad)
@@ -112,7 +112,7 @@ target_link_libraries(lambda readerwriterqueue)
 # Update how tests are implemented.
 if (${LAMBDA_ENGINE_BUILD_TESTS})
     add_subdirectory(${CMAKE_SOURCE_DIR}/vendor/googletest)
-    add_subdirectory(${CMAKE_SOURCE_DIR}/lambda/tests)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 endif()
 
 if (${LAMBDA_TOOLS_BUILD_SANDBOX})
