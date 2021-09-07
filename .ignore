@@ -1,4 +1,4 @@
 docs
-lambda/vendor
+archive/lambda_cpp/vendor
 \.git
 target
