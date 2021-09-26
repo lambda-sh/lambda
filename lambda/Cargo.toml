@@ -1,7 +1,7 @@
 [package]
 name = "lambda"
 version = "0.1.0"
-edition = "2021"
+edition = "2018"
 
 [lib]
 name = "lambda"
@@ -10,6 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 gfx-hal = "=0.9.0"
 winit = "=0.25.0"
+shaderc = "=0.7"
 
 # ------------------------------- GFX-RS BACKENDS ------------------------------
 
