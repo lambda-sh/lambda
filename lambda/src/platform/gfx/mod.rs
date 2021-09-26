@@ -130,8 +130,8 @@ pub fn create_render_pass<B: gfx_hal::Backend>(
 
   return unsafe {
     gpu
-				.device
-				.create_render_pass(attachments.into_iter(), subpasses.into_iter(), deps.into_iter())
-				.expect("Your primary graphics card does not have enough memory for this render pass.")
+			.device
+			.create_render_pass(attachments.into_iter(), subpasses.into_iter(), deps.into_iter())
+			.expect("Your primary graphics card does not have enough memory for this render pass.")
   };
 }
