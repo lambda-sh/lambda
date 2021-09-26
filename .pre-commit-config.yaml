@@ -17,7 +17,7 @@ repos:
     hooks:
       - id: fmt
         args: []
-        entry: rustup run nightly fmt --
+        entry: rustup run nightly cargo fmt --
         language: system
         name: Linting for lambda-rs & tools.
         types: [rust]

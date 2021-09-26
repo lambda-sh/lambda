@@ -1,6 +1,12 @@
 use winit::{
-  dpi::{LogicalSize, PhysicalSize},
-  window::{Window as WinitWindow, WindowBuilder},
+  dpi::{
+    LogicalSize,
+    PhysicalSize,
+  },
+  window::{
+    Window as WinitWindow,
+    WindowBuilder,
+  },
 };
 
 use crate::core::event_loop::LambdaEventLoop;
