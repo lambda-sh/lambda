@@ -1,39 +1,11 @@
-use std::convert::TryInto;
-
 use gfx_hal::{
-  adapter::{
-    self,
-    Adapter,
-  },
   command::Level,
   device::Device as HalDevice,
-  format::{
-    ChannelType,
-    Format,
-  },
-  image::{
-    Access,
-    Layout,
-  },
-  memory::Dependencies,
-  pass::{
-    Attachment,
-    AttachmentLoadOp,
-    AttachmentOps,
-    AttachmentStoreOp,
-    SubpassDependency,
-    SubpassDesc,
-  },
   pool::{
     CommandPool,
     CommandPoolCreateFlags,
   },
-  prelude::{
-    PhysicalDevice,
-    QueueFamily,
-  },
-  pso::PipelineStage,
-  window::Surface,
+  prelude::PhysicalDevice,
   Instance as HalInstance,
 };
 
