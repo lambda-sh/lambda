@@ -11,6 +11,19 @@ use gfx_hal::{
     ChannelType,
     Format,
   },
+  image::{
+    Access,
+    Layout,
+  },
+  memory::Dependencies,
+  pass::{
+    Attachment,
+    AttachmentLoadOp,
+    AttachmentOps,
+    AttachmentStoreOp,
+    SubpassDependency,
+    SubpassDesc,
+  },
   pool::{
     CommandPool,
     CommandPoolCreateFlags,
@@ -19,21 +32,16 @@ use gfx_hal::{
     PhysicalDevice,
     QueueFamily,
   },
-  window::{
-    Extent2D as HalExtent2D,
-    InitError as HalWindowInitError,
-    Surface,
-  },
+  pso::PipelineStage,
+  window::Surface,
   Instance as HalInstance,
 };
 
 use super::{
   event_loop::LambdaEvent,
-  window::{
-    LambdaWindow,
-    Window,
-  },
+  window::LambdaWindow,
 };
+use crate::platform;
 
 pub trait Renderer {
   fn resize(&mut self, width: u32, height: u32);
@@ -41,11 +49,11 @@ pub trait Renderer {
   fn on_event(&self, event: LambdaEvent);
 }
 
-pub struct LambdaRenderer<Backend: gfx_hal::Backend> {
-  instance: Backend::Instance,
+pub struct LambdaRenderer<B: gfx_hal::Backend> {
+  instance: B::Instance,
 
   // Both surface and Window are optional
-  surface: Option<Backend::Surface>,
+  surface: Option<B::Surface>,
 }
 
 impl<B: gfx_hal::Backend> Default for LambdaRenderer<B> {
@@ -57,47 +65,20 @@ impl<B: gfx_hal::Backend> Default for LambdaRenderer<B> {
 }
 
 impl<B: gfx_hal::Backend> LambdaRenderer<B> {
-  /// Create a Surface for a backend using a WinitP.
-  fn create_surface(
-    instance: &B::Instance,
-    window: &LambdaWindow,
-  ) -> B::Surface {
-    return unsafe {
-      instance
-        .create_surface(window.winit_window_ref().unwrap())
-        .unwrap()
-    };
-  }
-
-  fn find_supported_render_queue<'a>(
-    surface: &'a B::Surface,
-    adapter: &'a Adapter<B>,
-  ) -> &'a B::QueueFamily {
-    return adapter
-      .queue_families
-      .iter()
-      .find(|family| {
-        let supports_queue = surface.supports_queue_family(family);
-        let supports_graphics = family.queue_type().supports_graphics();
-
-        supports_queue && supports_graphics
-      })
-      .unwrap();
-  }
-
   pub fn new(name: &str, window: Option<&LambdaWindow>) -> Self {
     let instance = B::Instance::create(name, 1)
       .expect("gfx backend not supported by LambdaRenderer.");
 
     // Surfaces are only required if the renderer is constructed with a Window, otherwise
     // the renderer doesn't need to have a surface and can simply be used for GPU compute.
-    let surface: B::Surface = Self::create_surface(&instance, window.unwrap());
+    let surface =
+      platform::gfx::create_surface::<B>(&instance, window.unwrap());
 
     // a device adapter using the first adapter attached to the
     // current backend instance and then finds the supported queue family
     let primary_adapter = instance.enumerate_adapters().remove(0);
     let queue_family =
-      Self::find_supported_render_queue(&surface, &primary_adapter);
+      platform::gfx::find_supported_render_queue(&surface, &primary_adapter);
 
     // Open up the GPU through our primary adapter.
     let mut gpu = unsafe {
@@ -125,19 +106,8 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
       (command_pool, command_buffer)
     };
 
-    let surface_color_format = {
-      let supported_formats = surface
-        .supported_formats(&primary_adapter.physical_device)
-        .unwrap_or(vec![]);
-
-      let default_format =
-        *supported_formats.get(0).unwrap_or(&Format::Rgba8Srgb);
-
-      supported_formats
-        .into_iter()
-        .find(|format| -> bool { format.base_format().1 == ChannelType::Srgb })
-        .unwrap_or(default_format)
-    };
+    let render_pass =
+      platform::gfx::create_render_pass(&mut gpu, None, None, None);
 
     return Self {
       instance,
