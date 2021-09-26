@@ -80,7 +80,7 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
         let supports_queue = surface.supports_queue_family(family);
         let supports_graphics = family.queue_type().supports_graphics();
 
-        return supports_queue && supports_graphics;
+        supports_queue && supports_graphics
       })
       .unwrap();
   }
