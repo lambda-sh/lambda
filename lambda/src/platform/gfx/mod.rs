@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use gfx_hal::{
   adapter::{
     Adapter,
