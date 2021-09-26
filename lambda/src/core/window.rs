@@ -1,12 +1,6 @@
 use winit::{
-  dpi::{
-    LogicalSize,
-    PhysicalSize,
-  },
-  window::{
-    Window as WinitWindow,
-    WindowBuilder,
-  },
+  dpi::{LogicalSize, PhysicalSize},
+  window::{Window as WinitWindow, WindowBuilder},
 };
 
 use crate::core::event_loop::LambdaEventLoop;
@@ -79,6 +73,11 @@ impl LambdaWindow {
       size,
       winit_window,
     };
+  }
+
+  /// Get the window reference associated with this
+  pub fn winit_window_ref(&self) -> Option<&WinitWindow> {
+    return self.winit_window.as_ref();
   }
 }
 

@@ -13,8 +13,11 @@ repos:
         args: [
           "--filter=-legal/copyright,-build/include,-build/c++11",
           ]
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: master
+  - repo: local
     hooks:
       - id: fmt
-        name: Rust Linter
+        args: []
+        entry: rustup run nightly fmt --
+        language: system
+        name: Linting for lambda-rs & tools.
+        types: [rust]
