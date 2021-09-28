@@ -74,7 +74,7 @@ impl LambdaWindow {
         .expect("Failed to create a winit handle for LambdaWindow."),
     );
 
-    return LambdaWindow {
+    return Self {
       name,
       size,
       winit_window,

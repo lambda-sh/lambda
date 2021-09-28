@@ -1,7 +1,4 @@
-use std::time::{
-  Duration,
-  Instant,
-};
+use std::time::Instant;
 
 use winit::{
   event::{

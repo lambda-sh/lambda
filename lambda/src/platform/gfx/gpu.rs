@@ -101,7 +101,10 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     let adapter = self.adapter;
     let mut gpu = self.gpu;
     let mut command_pool = unsafe {
-      gpu.device.create_command_pool(gpu.queue_groups.pop().unwrap().family, CommandPoolCreateFlags::empty()).expect("The GPU could not allocate a command pool because it is out of memory")
+      gpu.device.create_command_pool(
+				gpu.queue_groups.pop().unwrap().family,
+				CommandPoolCreateFlags::empty())
+				.expect("The GPU could not allocate a command pool because it is out of memory")
     };
 
     return Self {
