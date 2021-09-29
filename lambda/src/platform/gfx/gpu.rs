@@ -29,7 +29,10 @@ use gfx_hal::{
     PhysicalDevice,
     QueueFamily,
   },
-  pso::PipelineStage,
+  pso::{
+    DescriptorSetLayoutBinding,
+    PipelineStage,
+  },
   queue::family,
   window::Surface,
 };
@@ -50,10 +53,6 @@ pub enum RenderQueueType {
   Graphical,
   GraphicalCompute,
   Transfer,
-}
-
-pub enum GfxGpuError {
-  CommandBuffer,
 }
 
 /// Checks if queue_family is capable of supporting the requested queue type &
@@ -132,11 +131,16 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
 
   /// Allocate's a command buffer through the GPU
   pub fn allocate_command_buffer(&mut self) -> B::CommandBuffer {
-    return unsafe {
-      match &mut self.command_pool {
-				Some(command_pool) => command_pool.allocate_one(Level::Primary),
-				None => panic!("Cannot allocate a command buffer without a command pool initialized."),
-			}
+    // TODO(vmarcella): This function should probably not just panic and instead
+    // return a Result Type that allows for this action to be recoverable if
+    // failed.
+    return match &mut self.command_pool {
+      Some(command_pool) => unsafe {
+        command_pool.allocate_one(Level::Primary)
+      },
+      None => panic!(
+        "Cannot allocate a command buffer without a command pool initialized."
+      ),
     };
   }
 
@@ -188,7 +192,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
       }],
     };
 
-    /// TODO(vmarcella): Error handling here should probably be
+    // TODO(vmarcella): Error handling here should propagate an Error upwards.
     return unsafe {
       self
 				.gpu
@@ -198,3 +202,5 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     };
   }
 }
+
+fn compile_shader_binary_into_module<B: gfx_hal::Backend>(gpu: &GfxGpu<B>) {}
