@@ -1,6 +1,4 @@
 use gfx_hal::{
-  command::Level,
-  device::Device as HalDevice,
   pool::{
     CommandPool,
     CommandPoolCreateFlags,
@@ -47,6 +45,7 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
       .open_primary_gpu(Some(&surface))
       .with_command_pool();
 
+    let command_buffer = gpu.allocate_command_buffer();
     // create a command pool on the primary graphics card device and allocate one command buffer for
     // sending instructions to the GPU.
     let render_pass = gpu.create_render_pass(None, None, None);

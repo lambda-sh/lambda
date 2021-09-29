@@ -17,6 +17,7 @@ use super::{
     Layer,
     LayerStack,
   },
+  render::LambdaRenderer,
   window::{
     LambdaWindow,
     Window,
@@ -33,6 +34,7 @@ pub struct LambdaRunnable {
   window: LambdaWindow,
   event_loop: LambdaEventLoop,
   layer_stack: LayerStack,
+  renderer: LambdaRenderer<backend::Backend>,
 }
 
 impl LambdaRunnable {
@@ -48,12 +50,14 @@ impl Default for LambdaRunnable {
     let event_loop = LambdaEventLoop::new();
     let window = LambdaWindow::new().with_event_loop(&event_loop);
     let layer_stack = LayerStack::new();
+    let renderer = LambdaRenderer::new(&name, Some(&window));
 
     return LambdaRunnable {
       name,
       window,
       event_loop,
       layer_stack,
+      renderer,
     };
   }
 }

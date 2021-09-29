@@ -53,7 +53,7 @@ pub struct LambdaWindow {
 }
 
 impl LambdaWindow {
-  /// Rebind a Lambda window to an event loop that will be attached to
+  /// Rebind the winit window to an event loop that will be attached to
   /// the new LambdaWindow returned by this object.
   pub fn with_event_loop(self, event_loop: &LambdaEventLoop) -> Self {
     let name = self.name.to_string();
