@@ -4,7 +4,6 @@ use gfx_hal::{
     ChannelType,
     Format,
   },
-  prelude::QueueFamily,
   window::Surface,
   Instance,
 };

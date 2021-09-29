@@ -3,7 +3,10 @@ use gfx_hal::{
     Adapter,
     Gpu,
   },
-  command,
+  command::{
+    self,
+    Level,
+  },
   device::Device,
   image::{
     Access,
@@ -18,7 +21,10 @@ use gfx_hal::{
     SubpassDependency,
     SubpassDesc,
   },
-  pool::CommandPoolCreateFlags,
+  pool::{
+    CommandPool,
+    CommandPoolCreateFlags,
+  },
   prelude::{
     PhysicalDevice,
     QueueFamily,
@@ -46,7 +52,12 @@ pub enum RenderQueueType {
   Transfer,
 }
 
-/// Returns a callback for finding an internal adapter to use for GFX.
+pub enum GfxGpuError {
+  CommandBuffer,
+}
+
+/// Checks if queue_family is capable of supporting the requested queue type &
+/// Optional surface.
 fn is_queue_family_supported<B: gfx_hal::Backend>(
   queue_family: &B::QueueFamily,
   queue_type: RenderQueueType,
@@ -62,8 +73,12 @@ fn is_queue_family_supported<B: gfx_hal::Backend>(
       None => false,
     },
     // TODO(vmarcella): These arms should be filled out to support the other kinds of queue types.
-    RenderQueueType::GraphicalCompute => todo!(),
-    RenderQueueType::Transfer => todo!(),
+    RenderQueueType::GraphicalCompute => {
+      todo!("GraphicalCompute RenderQueue's are not currently implemented.")
+    }
+    RenderQueueType::Transfer => {
+      todo!("Transfer RenderQueues are not currently implemented.")
+    }
   }
 }
 
@@ -97,6 +112,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     };
   }
 
+  /// Attaches a command pool to the current gfx gpu.
   pub fn with_command_pool(self) -> Self {
     let adapter = self.adapter;
     let mut gpu = self.gpu;
@@ -114,7 +130,17 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     };
   }
 
-  /// Create a render pass with the current GPU.
+  /// Allocate's a command buffer through the GPU
+  pub fn allocate_command_buffer(&mut self) -> B::CommandBuffer {
+    return unsafe {
+      match &mut self.command_pool {
+				Some(command_pool) => command_pool.allocate_one(Level::Primary),
+				None => panic!("Cannot allocate a command buffer without a command pool initialized."),
+			}
+    };
+  }
+
+  /// Create a render pass with the current using the current GPU resources.
   pub fn create_render_pass(
     &mut self,
     resource_attachments: Option<Vec<Attachment>>,
@@ -162,6 +188,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
       }],
     };
 
+    /// TODO(vmarcella): Error handling here should probably be
     return unsafe {
       self
 				.gpu
