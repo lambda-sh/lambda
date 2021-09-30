@@ -3,10 +3,7 @@ use gfx_hal::{
     Adapter,
     Gpu,
   },
-  command::{
-    self,
-    Level,
-  },
+  command::Level,
   device::Device,
   image::{
     Access,
@@ -40,7 +37,6 @@ use gfx_hal::{
 ///
 /// Commands oriented around creating resources on & for the GPU.
 ///
-
 pub struct GfxGpu<B: gfx_hal::Backend> {
   adapter: Adapter<B>,
   gpu: Gpu<B>,
@@ -115,7 +111,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
   pub fn with_command_pool(self) -> Self {
     let adapter = self.adapter;
     let mut gpu = self.gpu;
-    let mut command_pool = unsafe {
+    let command_pool = unsafe {
       gpu.device.create_command_pool(
 				gpu.queue_groups.pop().unwrap().family,
 				CommandPoolCreateFlags::empty())
