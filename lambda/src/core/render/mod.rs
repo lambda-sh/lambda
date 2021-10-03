@@ -7,6 +7,9 @@ use super::{
   event_loop::LambdaEvent,
   window::LambdaWindow,
 };
+
+pub mod shader;
+
 use crate::platform::gfx;
 
 pub trait Renderer {
