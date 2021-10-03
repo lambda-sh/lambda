@@ -22,7 +22,14 @@ impl Layer for FirstLayer {
   }
 
   fn on_update(&self, last_frame: &std::time::Duration) {
-    println!("[layer 1] {} ns since last update", last_frame.as_nanos());
+    println!(
+      "This layer was last updated: {} nanoseconds ago",
+      last_frame.as_nanos()
+    );
+    println!(
+      "This layer was last updated: {} milliseconds ago",
+      last_frame.as_millis()
+    );
   }
 }
 
@@ -37,3 +44,5 @@ fn main() {
 
   start_runnable(app);
 }
+
+// These 40 lines of code create what you saw before
