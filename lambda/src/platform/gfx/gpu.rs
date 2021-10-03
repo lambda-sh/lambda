@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use gfx_hal::{
   adapter::{
     Adapter,
@@ -28,9 +30,10 @@ use gfx_hal::{
   },
   pso::{
     DescriptorSetLayoutBinding,
+    PipelineCreationFlags,
     PipelineStage,
+    ShaderStageFlags,
   },
-  queue::family,
   window::Surface,
 };
 
@@ -138,6 +141,22 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
         "Cannot allocate a command buffer without a command pool initialized."
       ),
     };
+  }
+
+  /// Create a pipeline layout on the GPU.
+  pub fn create_pipeline_layout(&mut self) -> B::PipelineLayout {
+    unsafe {
+      // wait, I think I have a hack for this
+      let max: u32 = size_of::<u32>() as u32;
+      return self
+        .gpu
+        .device
+        .create_pipeline_layout(
+          vec![].iter(),
+          vec![(ShaderStageFlags::VERTEX, 0..max)].into_iter(),
+        )
+        .expect("Out of memory.");
+    }
   }
 
   /// Create a render pass with the current using the current GPU resources.

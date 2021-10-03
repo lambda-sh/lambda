@@ -1,8 +1,18 @@
 use std::io::Read;
 
 use shaderc;
+
 /// shaderc exports for use throughout
-pub use shaderc::ShaderKind;
+use crate::core::render::shader;
+
+/// Converts shader::ShaderKind to a corresponding shaderc::ShaderKind
+fn shader_to_shaderc(shader_kind: shader::ShaderKind) -> shaderc::ShaderKind {
+  return match shader_kind {
+    shader::ShaderKind::Vertex => shaderc::ShaderKind::Vertex,
+    shader::ShaderKind::Fragment => shaderc::ShaderKind::Fragment,
+    shader::ShaderKind::Compute => shaderc::ShaderKind::Compute,
+  };
+}
 
 pub struct ShaderCompiler {
   compiler: shaderc::Compiler,
@@ -24,7 +34,7 @@ impl ShaderCompiler {
   pub fn compile_file_into_binary(
     &mut self,
     path: &str,
-    shader_kind: ShaderKind,
+    shader_kind: crate::core::render::shader::ShaderKind,
   ) -> Vec<u32> {
     // TODO(vmarcella): Investigate into common strategies for reading from files
     // efficiently in Rust.
@@ -38,17 +48,33 @@ impl ShaderCompiler {
     // enforce that all remain named main?
     let compiled_shader = self
       .compiler
-      .compile_into_spirv(&shader_source, shader_kind, path, "main", None)
+      .compile_into_spirv(
+        &shader_source,
+        shader_to_shaderc(shader_kind),
+        path,
+        "main",
+        None,
+      )
       .expect("Failed to compile the shader.");
     return compiled_shader.as_binary().to_vec();
   }
 
   pub fn compile_string_into_binary(
-    &self,
+    &mut self,
     name: &str,
-    string: &str,
-    shader_kind: ShaderKind,
-  ) {
-    todo!("ShaderCompiler currently doesn't implement compiling a string into spirv binary.")
+    shader_source: &str,
+    shader_kind: crate::core::render::shader::ShaderKind,
+  ) -> Vec<u32> {
+    let compiled_shader = self
+      .compiler
+      .compile_into_spirv(
+        shader_source,
+        shader_to_shaderc(shader_kind),
+        name,
+        "main",
+        None,
+      )
+      .expect("Failed to compile the shader.");
+    return compiled_shader.as_binary().to_vec();
   }
 }
