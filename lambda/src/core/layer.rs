@@ -1,12 +1,12 @@
 use std::time::Duration;
 
-use super::event_loop::LambdaEvent;
+use super::{event_loop::LambdaEvent, render::RenderAPI};
 
 pub trait Layer {
   fn attach(&self);
   fn detach(&self);
   fn on_event(&self, event: &LambdaEvent);
-  fn on_update(&self, last_frame: &Duration);
+  fn on_update(&self, last_frame: &Duration, renderer: &mut RenderAPI);
 }
 
 /// A stack based Vec that can Push & Pop layers.
@@ -38,9 +38,7 @@ impl LayerStack {
     }
   }
 
-  pub fn on_update(&self, last_frame: &Duration) {
-    for layer in &self.layers {
-      layer.on_update(last_frame);
-    }
-  }
+	pub fn get_layers(&mut self) -> &Vec<Box<dyn Layer + 'static>> {
+		return &self.layers;
+	}
 }

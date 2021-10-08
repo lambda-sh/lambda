@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{thread::current, time::Instant};
 
 use winit::{
   event::{
@@ -8,21 +8,18 @@ use winit::{
   event_loop::ControlFlow,
 };
 
-use super::{
-  event_loop::{
+use crate::core::layer;
+
+use super::{event_loop::{
     LambdaEvent,
     LambdaEventLoop,
-  },
-  layer::{
+  }, layer::{
     Layer,
     LayerStack,
-  },
-  render::LambdaRenderer,
-  window::{
+  }, render::{LambdaRenderer, RenderAPI}, window::{
     LambdaWindow,
     Window,
-  },
-};
+  }};
 
 pub trait Runnable {
   fn setup(&self);
@@ -50,7 +47,7 @@ impl Default for LambdaRunnable {
     let event_loop = LambdaEventLoop::new();
     let window = LambdaWindow::new().with_event_loop(&event_loop);
     let layer_stack = LayerStack::new();
-    let renderer = LambdaRenderer::new(&name, Some(&window));
+    let renderer = RenderAPI::new(&name, Some(&window));
 
     return LambdaRunnable {
       name,
@@ -75,7 +72,8 @@ impl Runnable for LambdaRunnable {
     let app = self;
     let event_loop = app.event_loop;
     let window = app.window;
-    let layer_stack = app.layer_stack;
+    let mut layer_stack = app.layer_stack;
+		let mut renderer = app.renderer;
 
     let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();
@@ -133,7 +131,11 @@ impl Runnable for LambdaRunnable {
       Event::MainEventsCleared => {
         last_frame = current_frame.clone();
         current_frame = Instant::now();
-        layer_stack.on_update(&current_frame.duration_since(last_frame));
+				let duration = &current_frame.duration_since(last_frame);
+
+				for layer in layer_stack.get_layers() {
+					layer.on_update(duration, &mut renderer);
+				}
       }
       Event::RedrawRequested(_) => {
         window.redraw();
@@ -143,6 +145,7 @@ impl Runnable for LambdaRunnable {
       Event::UserEvent(lambda_event) => match lambda_event {
         LambdaEvent::Initialized => {
           println!("Initialized Lambda");
+					renderer.init();
         }
         LambdaEvent::Shutdown => todo!(),
       },

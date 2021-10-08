@@ -45,7 +45,7 @@ impl ShaderMetadata {
   }
 }
 
-struct LambdaShader {
+pub struct LambdaShader {
   binary: Vec<u32>,
   kind: ShaderKind,
   metadata: Option<ShaderMetadata>,
@@ -69,4 +69,10 @@ impl LambdaShader {
     let mut compiler = shaderc::ShaderCompiler::new();
     let shader_binary = compiler.compile_file_into_binary(path, kind);
   }
+
+	pub fn get_shader_binary(&self) -> &Vec<u32> {
+		return &self.binary;
+	}
+
+	
 }
