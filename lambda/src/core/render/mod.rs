@@ -1,14 +1,9 @@
 use gfx_hal::{
-  device::Device,
-  prelude::PhysicalDevice,
   pso::{
     EntryPoint,
-    Face,
-    GraphicsPipelineDesc,
     InputAssemblerDesc,
     Primitive,
     PrimitiveAssemblerDesc,
-    Rasterizer,
     Specialization,
   },
   Instance as HalInstance,
