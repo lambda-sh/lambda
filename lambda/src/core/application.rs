@@ -1,4 +1,7 @@
-use std::{thread::current, time::Instant};
+use std::{
+  thread::current,
+  time::Instant,
+};
 
 use winit::{
   event::{
@@ -8,18 +11,25 @@ use winit::{
   event_loop::ControlFlow,
 };
 
-use crate::core::layer;
-
-use super::{event_loop::{
+use super::{
+  event_loop::{
     LambdaEvent,
     LambdaEventLoop,
-  }, layer::{
+  },
+  layer::{
     Layer,
     LayerStack,
-  }, render::{LambdaRenderer, RenderAPI}, window::{
+  },
+  render::{
+    LambdaRenderer,
+    RenderAPI,
+  },
+  window::{
     LambdaWindow,
     Window,
-  }};
+  },
+};
+use crate::core::layer;
 
 pub trait Runnable {
   fn setup(&self);
@@ -73,7 +83,7 @@ impl Runnable for LambdaRunnable {
     let event_loop = app.event_loop;
     let window = app.window;
     let mut layer_stack = app.layer_stack;
-		let mut renderer = app.renderer;
+    let mut renderer = app.renderer;
 
     let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();
@@ -131,11 +141,11 @@ impl Runnable for LambdaRunnable {
       Event::MainEventsCleared => {
         last_frame = current_frame.clone();
         current_frame = Instant::now();
-				let duration = &current_frame.duration_since(last_frame);
+        let duration = &current_frame.duration_since(last_frame);
 
-				for layer in layer_stack.get_layers() {
-					layer.on_update(duration, &mut renderer);
-				}
+        for layer in layer_stack.get_layers() {
+          layer.on_update(duration, &mut renderer);
+        }
       }
       Event::RedrawRequested(_) => {
         window.redraw();
@@ -145,7 +155,7 @@ impl Runnable for LambdaRunnable {
       Event::UserEvent(lambda_event) => match lambda_event {
         LambdaEvent::Initialized => {
           println!("Initialized Lambda");
-					renderer.init();
+          renderer.init();
         }
         LambdaEvent::Shutdown => todo!(),
       },

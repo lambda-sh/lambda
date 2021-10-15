@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use super::{event_loop::LambdaEvent, render::RenderAPI};
+use super::{
+  event_loop::LambdaEvent,
+  render::RenderAPI,
+};
 
 pub trait Layer {
   fn attach(&self);
@@ -38,7 +41,7 @@ impl LayerStack {
     }
   }
 
-	pub fn get_layers(&mut self) -> &Vec<Box<dyn Layer + 'static>> {
-		return &self.layers;
-	}
+  pub fn get_layers(&mut self) -> &Vec<Box<dyn Layer + 'static>> {
+    return &self.layers;
+  }
 }

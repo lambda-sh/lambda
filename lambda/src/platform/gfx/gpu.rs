@@ -1,25 +1,43 @@
 use std::mem::size_of;
 
-use gfx_hal::{adapter::{
+use gfx_hal::{
+  adapter::{
     Adapter,
     Gpu,
-  }, command::Level, device::Device, image::{
+  },
+  command::Level,
+  device::Device,
+  image::{
     Access,
     Layout,
-  }, memory::Dependencies, pass::{
+  },
+  memory::Dependencies,
+  pass::{
     Attachment,
     AttachmentLoadOp,
     AttachmentOps,
     AttachmentStoreOp,
     SubpassDependency,
     SubpassDesc,
-  }, pool::{
+  },
+  pool::{
     CommandPool,
     CommandPoolCreateFlags,
-  }, prelude::{
+  },
+  prelude::{
     PhysicalDevice,
     QueueFamily,
-  }, pso::{DescriptorSetLayoutBinding, EntryPoint, PipelineCreationFlags, PipelineStage, ShaderStageFlags, Specialization}, window::Surface};
+  },
+  pso::{
+    DescriptorSetLayoutBinding,
+    EntryPoint,
+    PipelineCreationFlags,
+    PipelineStage,
+    ShaderStageFlags,
+    Specialization,
+  },
+  window::Surface,
+};
 
 use crate::core::render::shader::LambdaShader;
 
@@ -39,8 +57,6 @@ pub enum RenderQueueType {
   GraphicalCompute,
   Transfer,
 }
-
-
 
 /// Checks if queue_family is capable of supporting the requested queue type &
 /// Optional surface.
@@ -196,31 +212,31 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     };
 
     // TODO(vmarcella): Error handling here should propagate an Error upwards.
-    return unsafe {
-      self
-				.gpu
-				.device
-				.create_render_pass(attachments.into_iter(), subpasses.into_iter(), deps.into_iter())
-				.expect("Your primary graphics card does not have enough memory for this render pass.")
+    unsafe {
+      return self
+        .gpu
+        .device
+        .create_render_pass(attachments.into_iter(), subpasses.into_iter(), deps.into_iter())
+        .expect("Your primary graphics card does not have enough memory for this render pass.");
     };
   }
 
-	pub fn create_shader_module(&mut self, binary: &Vec<u32>) -> (B::ShaderModule, EntryPoint<B>) {
-		unsafe {
-			let module = self.gpu.device.create_shader_module(&binary).expect("Failed to create a shader module.");
-			// TODO(vmarcella): Allow for the customization of main & 
-			let entry = EntryPoint{
-				entry: "main",
-				module: &module,
-				specialization: Specialization::default()
-			};
+  pub fn create_shader_module(&mut self, binary: &Vec<u32>) -> B::ShaderModule {
+    unsafe {
+      let module = self
+        .gpu
+        .device
+        .create_shader_module(&binary)
+        .expect("Failed to create a shader module.");
+      return module;
+    }
+  }
 
-			return (&module, entry);
-		}
-	}
-
-	pub fn create_render_pipeline(&mut self, render_pass: &B::RenderPass, pipeline_layout: &B::PipelineLayout, shader_modules: Vec<B::ShaderModule> ) {
-
-	}
-
+  pub fn create_render_pipeline(
+    &mut self,
+    render_pass: &B::RenderPass,
+    pipeline_layout: &B::PipelineLayout,
+    shader_modules: Vec<B::ShaderModule>,
+  ) {
+  }
 }

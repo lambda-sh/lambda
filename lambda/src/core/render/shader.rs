@@ -70,9 +70,7 @@ impl LambdaShader {
     let shader_binary = compiler.compile_file_into_binary(path, kind);
   }
 
-	pub fn get_shader_binary(&self) -> &Vec<u32> {
-		return &self.binary;
-	}
-
-	
+  pub fn get_shader_binary(&self) -> &Vec<u32> {
+    return &self.binary;
+  }
 }
