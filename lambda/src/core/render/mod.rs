@@ -1,9 +1,9 @@
 use gfx_hal::pso::{
-    EntryPoint,
-    InputAssemblerDesc,
-    Primitive,
-    PrimitiveAssemblerDesc,
-    Specialization,
+  EntryPoint,
+  InputAssemblerDesc,
+  Primitive,
+  PrimitiveAssemblerDesc,
+  Specialization,
 };
 
 use super::{
@@ -11,9 +11,9 @@ use super::{
   window::LambdaWindow,
 };
 
-pub mod shader;
 pub mod assembler;
 pub mod pipeline;
+pub mod shader;
 
 use shader::LambdaShader;
 
