@@ -1,12 +1,9 @@
-use gfx_hal::{
-  pso::{
+use gfx_hal::pso::{
     EntryPoint,
     InputAssemblerDesc,
     Primitive,
     PrimitiveAssemblerDesc,
     Specialization,
-  },
-  Instance as HalInstance,
 };
 
 use super::{
@@ -15,6 +12,9 @@ use super::{
 };
 
 pub mod shader;
+pub mod assembler;
+pub mod pipeline;
+
 use shader::LambdaShader;
 
 use crate::platform::gfx;
