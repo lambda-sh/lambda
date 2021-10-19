@@ -1,4 +1,4 @@
-use gfx_hal::pso::{
+pub(crate) use gfx_hal::pso::{
   EntryPoint,
   InputAssemblerDesc,
   Primitive,
@@ -6,10 +6,12 @@ use gfx_hal::pso::{
   Specialization,
 };
 
+use self::pipeline::GraphicsPipeline;
 use super::{
   event_loop::LambdaEvent,
   window::LambdaWindow,
 };
+use crate::core::render::assembler::create_vertex_assembler;
 
 pub mod assembler;
 pub mod pipeline;
@@ -73,6 +75,10 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
     println!("Initializing Renderer");
   }
 
+  pub fn attach_pipeline(&mut self, pipeline: GraphicsPipeline<'static, B>) {
+    let pipeline = self.gpu.create_graphics_pipeline(pipeline);
+  }
+
   pub fn create_gpu_pipeline(&mut self, shader: LambdaShader) {
     let module = self.gpu.create_shader_module(shader.get_shader_binary());
     // TODO(vmarcella): Abstract the gfx hal assembler away from the
@@ -83,14 +89,7 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
       specialization: Specialization::default(),
     };
 
-    let primitive_assembler = PrimitiveAssemblerDesc::Vertex {
-      buffers: &[],
-      attributes: &[],
-      input_assembler: InputAssemblerDesc::new(Primitive::TriangleList),
-      vertex: entry,
-      tessellation: None,
-      geometry: None,
-    };
+    let assembler = create_vertex_assembler(entry);
   }
 }
 

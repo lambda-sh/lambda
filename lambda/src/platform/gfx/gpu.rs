@@ -39,7 +39,10 @@ use gfx_hal::{
   window::Surface,
 };
 
-use crate::core::render::shader::LambdaShader;
+use crate::core::render::{
+  pipeline::GraphicsPipeline,
+  shader::LambdaShader,
+};
 
 ///
 /// Commands oriented around creating resources on & for the GPU.
@@ -232,11 +235,24 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     }
   }
 
-  pub fn create_render_pipeline(
-    &mut self,
-    render_pass: &B::RenderPass,
-    pipeline_layout: &B::PipelineLayout,
-    shader_modules: Vec<B::ShaderModule>,
-  ) {
+  /// Access the gfx_hal GPU resource directly. Primarily being used for
+  /// prototyping and shouldn't be used directly.
+  pub fn get_physical_gpu(&self) -> &Gpu<B> {
+    return &self.gpu;
+  }
+
+  /// Create a graphics pipeline from the GPU.
+  pub fn create_graphics_pipeline(
+    &self,
+    pipeline: GraphicsPipeline<B>,
+  ) -> &B::GraphicsPipeline {
+    unsafe {
+      let pipeline = &self
+        .gpu
+        .device
+        .create_graphics_pipeline(pipeline.get_pipeline(), None)
+        .expect("");
+      return pipeline;
+    }
   }
 }
