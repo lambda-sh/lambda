@@ -26,6 +26,7 @@ impl ShaderMetadata {
     };
   }
 
+  /// Attach name to the ShaderMetadata.
   pub fn with_name(self, name: &str) -> Self {
     return Self {
       name: Some(String::from(name)),
@@ -35,6 +36,7 @@ impl ShaderMetadata {
     };
   }
 
+  /// Attach the shader source code to a LambdaShader
   pub fn with_shader_source(self, shader_source: &str) -> Self {
     return Self {
       name: self.name,

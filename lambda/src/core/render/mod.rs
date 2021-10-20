@@ -34,6 +34,13 @@ pub struct LambdaRenderer<B: gfx_hal::Backend> {
   // Both surface and Window are optional
   surface: Option<B::Surface>,
   shader_library: Vec<LambdaShader>,
+  submission_complete_fence: Option<B::Fence>,
+  rendering_complete_semaphore: Option<B::Semaphore>,
+
+  // TODO(vmarcella): Isolate pipeline & render pass management away from
+  // the Renderer.
+  graphic_pipelines: Option<Vec<B::GraphicsPipeline>>,
+  render_passes: Option<Vec<B::RenderPass>>,
 }
 
 impl<B: gfx_hal::Backend> Default for LambdaRenderer<B> {
@@ -62,6 +69,7 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
 
     let command_buffer = gpu.allocate_command_buffer();
     let render_pass = gpu.create_render_pass(None, None, None);
+    let (submission_fence, rendering_semaphore) = gpu.create_access_fences();
 
     return Self {
       instance,
@@ -75,8 +83,16 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
     println!("Initializing Renderer");
   }
 
-  pub fn attach_pipeline(&mut self, pipeline: GraphicsPipeline<'static, B>) {
-    let pipeline = self.gpu.create_graphics_pipeline(pipeline);
+  pub fn shutdown(&mut self) {
+    self.instance.destroy_surface(&surface);
+  }
+
+  // TODO(vmarcella):
+  pub fn attach_pipeline(
+    &mut self,
+    mut graphics_pipeline: GraphicsPipeline<'static, B>,
+  ) {
+    let pipeline = self.gpu.create_graphics_pipeline(&mut graphics_pipeline);
   }
 
   pub fn create_gpu_pipeline(&mut self, shader: LambdaShader) {

@@ -29,14 +29,13 @@ use gfx_hal::{
     QueueFamily,
   },
   pso::{
-    DescriptorSetLayoutBinding,
-    EntryPoint,
-    PipelineCreationFlags,
     PipelineStage,
     ShaderStageFlags,
-    Specialization,
   },
-  window::Surface,
+  window::{
+    PresentationSurface,
+    Surface,
+  },
 };
 
 use crate::core::render::{
@@ -224,6 +223,17 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     };
   }
 
+  pub fn destroy_render_pass(&mut self, render_pass: B::RenderPass) {
+    unsafe {
+      self.gpu.device.destroy_render_pass(render_pass);
+    }
+  }
+
+  /// Unconfigure the swapchain for a surface created from this GPU.
+  pub fn unconfigure_swapchain(&mut self, surface: &B::Surface) {
+    unsafe { surface.unconfigure_swapchain(&self.gpu.device) }
+  }
+
   pub fn create_shader_module(&mut self, binary: &Vec<u32>) -> B::ShaderModule {
     unsafe {
       let module = self
@@ -235,24 +245,57 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     }
   }
 
-  /// Access the gfx_hal GPU resource directly. Primarily being used for
-  /// prototyping and shouldn't be used directly.
-  pub fn get_physical_gpu(&self) -> &Gpu<B> {
-    return &self.gpu;
+  /// Destroy a Shader Module created by this GPU.
+  pub fn destroy_shader_module(&mut self, shader_module: B::ShaderModule) {
+    unsafe {
+      self.gpu.device.destroy_shader_module(shader_module);
+    }
   }
 
   /// Create a graphics pipeline from the GPU.
   pub fn create_graphics_pipeline(
     &self,
-    pipeline: GraphicsPipeline<B>,
-  ) -> &B::GraphicsPipeline {
+    pipeline: &mut GraphicsPipeline<B>,
+  ) -> B::GraphicsPipeline {
     unsafe {
-      let pipeline = &self
+      let pipeline = self
         .gpu
         .device
-        .create_graphics_pipeline(pipeline.get_pipeline(), None)
+        .create_graphics_pipeline(&mut pipeline.get_pipeline(), None)
         .expect("");
       return pipeline;
+    }
+  }
+
+  pub fn destroy_graphics_pipeline(&self, pipeline: B::GraphicsPipeline) {
+    unsafe {
+      self.gpu.device.destroy_graphics_pipeline(pipeline);
+    }
+  }
+
+  /// Create access fences for synchronizing with the current GPU.
+  pub fn create_access_fences(&mut self) -> (B::Fence, B::Semaphore) {
+    let submission_complete_fence =
+      self.gpu.device.create_fence(true).expect("Out of memory.");
+
+    let semaphore_fence =
+      self.gpu.device.create_semaphore().expect("Out of memory");
+
+    return (submission_complete_fence, semaphore_fence);
+  }
+
+  pub fn destroy_access_fences(
+    &mut self,
+    submission_complete_fence: B::Fence,
+    rendering_complete_semaphore: B::Semaphore,
+  ) {
+    unsafe {
+      self
+        .gpu
+        .device
+        .destroy_semaphore(rendering_complete_semaphore);
+
+      self.gpu.device.destroy_fence(submission_complete_fence);
     }
   }
 }

@@ -36,6 +36,13 @@ impl<B: gfx_hal::Backend> GfxInstance<B> {
     };
   }
 
+  /// Destroy a surface created by this graphical instance.
+  pub fn destroy_surface(&self, mut surface: B::Surface) {
+    unsafe {
+      self.instance.destroy_surface(surface);
+    }
+  }
+
   // Open a connection to the primary GPU with an optional surface attached.
   //
   pub fn open_primary_gpu(

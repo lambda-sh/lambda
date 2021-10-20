@@ -1,7 +1,4 @@
-use std::{
-  thread::current,
-  time::Instant,
-};
+use std::time::Instant;
 
 use winit::{
   event::{
@@ -29,7 +26,6 @@ use super::{
     Window,
   },
 };
-use crate::core::layer;
 
 pub trait Runnable {
   fn setup(&self);
@@ -41,7 +37,7 @@ pub struct LambdaRunnable {
   window: LambdaWindow,
   event_loop: LambdaEventLoop,
   layer_stack: LayerStack,
-  renderer: LambdaRenderer<backend::Backend>,
+  renderer: RenderAPI,
 }
 
 impl LambdaRunnable {
@@ -52,6 +48,9 @@ impl LambdaRunnable {
 }
 
 impl Default for LambdaRunnable {
+  /// Constructs a LambdaRunanble with an event loop for publishing events to
+  /// the application, a window with a renderable surface, a layer stack for
+  /// storing layers into the engine.
   fn default() -> Self {
     let name = String::from("LambdaRunnable");
     let event_loop = LambdaEventLoop::new();
@@ -76,6 +75,9 @@ impl Runnable for LambdaRunnable {
     publisher.send_event(LambdaEvent::Initialized);
   }
 
+  /// Initiates an event loop that captures the context of the LambdaRunnable
+  /// and generates events from the windows event loop until the end of an
+  /// applications lifetime.
   fn run(self) {
     // Decompose Runnable components for transferring ownership to the
     // closure.
@@ -143,6 +145,7 @@ impl Runnable for LambdaRunnable {
         current_frame = Instant::now();
         let duration = &current_frame.duration_since(last_frame);
 
+        // Update all layers with the duration since the last frame &
         for layer in layer_stack.get_layers() {
           layer.on_update(duration, &mut renderer);
         }
@@ -157,7 +160,11 @@ impl Runnable for LambdaRunnable {
           println!("Initialized Lambda");
           renderer.init();
         }
-        LambdaEvent::Shutdown => todo!(),
+        LambdaEvent::Shutdown => {
+          // TODO(vmarcella): Clean up resources during shutdown. All owned
+          // resources will call into here to gracefully shutdown.
+          renderer.shutdown();
+        }
       },
       Event::Suspended => {}
       Event::Resumed => {}
@@ -167,16 +174,23 @@ impl Runnable for LambdaRunnable {
   }
 }
 
+/// Create a generic lambda runnable. This provides you a Runnable
+/// Application Instance that can be hooked into through attaching
+/// a Layer.
 pub fn create_lambda_runnable() -> LambdaRunnable {
   return LambdaRunnable::default();
 }
 
+/// Builds & executes a Runnable all in one good. This is useful for when you
+/// don't need to execute any code in between the building & execution stage of
+/// the runnable
 pub fn build_and_start_runnable<T: Default + Runnable>() {
   let app = T::default();
 
   start_runnable(app);
 }
 
+/// Simple function for starting any prebuilt Runnable.
 pub fn start_runnable<T: Runnable>(app: T) {
   app.setup();
   app.run();
