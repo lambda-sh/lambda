@@ -13,20 +13,20 @@ use lambda::{
 pub struct FirstLayer {}
 
 impl Component for FirstLayer {
-  fn attach(&self) {
+  fn attach(&mut self) {
     println!("Attached the first layer to lambda");
   }
 
-  fn detach(&self) {
-    todo!()
-  }
+  fn detach(self: &mut FirstLayer) {}
 
-  fn on_event(&self, event: &lambda::core::event_loop::LambdaEvent) {
-    todo!()
+  fn on_event(
+    self: &mut FirstLayer,
+    event: &lambda::core::event_loop::LambdaEvent,
+  ) {
   }
 
   fn on_update(
-    &self,
+    self: &mut FirstLayer,
     last_frame: &std::time::Duration,
     renderer: &mut RenderAPI,
   ) {
@@ -56,20 +56,20 @@ impl Default for AILayer {
   }
 }
 impl Component for AILayer {
-  fn attach(&self) {
+  fn attach(self: &mut AILayer) {
     println!("Attached AI Layer")
   }
 
-  fn detach(&self) {
-    todo!()
-  }
+  fn detach(self: &mut AILayer) {}
 
-  fn on_event(&self, event: &lambda::core::event_loop::LambdaEvent) {
-    todo!()
+  fn on_event(
+    self: &mut AILayer,
+    event: &lambda::core::event_loop::LambdaEvent,
+  ) {
   }
 
   fn on_update(
-    &self,
+    self: &mut AILayer,
     last_frame: &std::time::Duration,
     renderer: &mut RenderAPI,
   ) {
