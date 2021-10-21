@@ -165,6 +165,14 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     }
   }
 
+  /// Destroy a pipeline layout that was allocated by this GPU.
+  pub fn destory_pipeline_layout(
+    &mut self,
+    pipeline_layout: B::PipelineLayout,
+  ) {
+    unsafe { self.gpu.device.destroy_pipeline_layout(pipeline_layout) }
+  }
+
   /// Create a render pass with the current using the current GPU resources.
   pub fn create_render_pass(
     &mut self,
@@ -262,7 +270,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
         .gpu
         .device
         .create_graphics_pipeline(&mut pipeline.get_pipeline(), None)
-        .expect("");
+        .expect("Failed to create a Graphics pipeline on the GPU.");
       return pipeline;
     }
   }
@@ -275,8 +283,11 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
 
   /// Create access fences for synchronizing with the current GPU.
   pub fn create_access_fences(&mut self) -> (B::Fence, B::Semaphore) {
-    let submission_complete_fence =
-      self.gpu.device.create_fence(true).expect("Out of memory.");
+    let submission_complete_fence = self
+      .gpu
+      .device
+      .create_fence(true)
+      .expect("Ran out of memory when trying to create.");
 
     let semaphore_fence =
       self.gpu.device.create_semaphore().expect("Out of memory");
@@ -284,6 +295,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     return (submission_complete_fence, semaphore_fence);
   }
 
+  /// Destroy access fences created on the GPU.
   pub fn destroy_access_fences(
     &mut self,
     submission_complete_fence: B::Fence,

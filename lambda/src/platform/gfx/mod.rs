@@ -17,6 +17,7 @@ pub struct GfxInstance<B: gfx_hal::Backend> {
 }
 
 impl<B: gfx_hal::Backend> GfxInstance<B> {
+  /// Create a new GfxInstance connected to the platforms primary backend.
   pub fn new(name: &str) -> Self {
     let instance = B::Instance::create(name, 1)
       .expect("gfx backend not supported by the current platform");
@@ -43,8 +44,10 @@ impl<B: gfx_hal::Backend> GfxInstance<B> {
     }
   }
 
-  // Open a connection to the primary GPU with an optional surface attached.
-  //
+  /// Open a connection to the primary GPU with an optional surface that the GPU
+  /// can access for rendering.
+  // TODO(vmarcella): This function should allow the RenderQueueType to be
+  // optionally passed in with the default type being Graphical.
   pub fn open_primary_gpu(
     &self,
     surface: Option<&B::Surface>,
