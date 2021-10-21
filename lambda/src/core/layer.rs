@@ -5,43 +5,75 @@ use super::{
   render::RenderAPI,
 };
 
-pub trait Layer {
-  fn attach(&self);
-  fn detach(&self);
-  fn on_event(&self, event: &LambdaEvent);
-  fn on_update(&self, last_frame: &Duration, renderer: &mut RenderAPI);
+/// The Component Interface for allowing Component based data structures
+/// like the ComponentStack to store components with various purposes
+/// and implementations to work together.
+pub trait Component {
+  fn attach(&mut self);
+  fn detach(&mut self);
+  fn on_event(&mut self, event: &LambdaEvent);
+  fn on_update(&mut self, last_frame: &Duration, renderer: &mut RenderAPI);
 }
 
 /// A stack based Vec that can Push & Pop layers.
-pub struct LayerStack {
-  layers: Vec<Box<dyn Layer + 'static>>,
+pub struct ComponentStack {
+  components: Vec<Box<dyn Component + 'static>>,
 }
 
-impl LayerStack {
-  pub fn new() -> Self {
-    return LayerStack { layers: Vec::new() };
-  }
-
-  pub fn push_layer<T>(&mut self)
-  where
-    T: Default + Layer + 'static,
-  {
-    let layer = Box::new(T::default());
-    self.layers.push(layer);
-  }
-
-  pub fn pop_layer(&mut self) -> Option<Box<dyn Layer + 'static>> {
-    let layer = self.layers.pop();
-    return layer;
-  }
-
-  pub fn on_event(&self, event: &LambdaEvent) {
-    for layer in &self.layers {
-      layer.on_event(&event);
+impl Component for ComponentStack {
+  /// Attaches all the components that are currently on the component graph
+  fn attach(&mut self) {
+    for component in &self.components {
+      component.attach();
     }
   }
 
-  pub fn get_layers(&mut self) -> &Vec<Box<dyn Layer + 'static>> {
-    return &self.layers;
+  /// Detaches all components currently on the component stack.
+  fn detach(&mut self) {
+    for component in &self.components {
+      component.detach();
+    }
+  }
+
+  /// Pass events to all components in the component stack.
+  fn on_event(&mut self, event: &LambdaEvent) {
+    for component in &self.components {
+      component.on_event(&event);
+    }
+  }
+
+  /// Update all components currently in the component stack.
+  fn on_update(&mut self, last_frame: &Duration, renderer: &mut RenderAPI) {
+    for component in &self.components {
+      component.on_update(last_frame, renderer);
+    }
+  }
+}
+
+impl ComponentStack {
+  /// Return a new component stack with an empty array of components.
+  pub fn new() -> Self {
+    return ComponentStack {
+      components: Vec::new(),
+    };
+  }
+
+  /// Push a component on to the component stack.
+  pub fn push_component<T>(&mut self)
+  where
+    T: Default + Component + 'static,
+  {
+    let layer = Box::new(T::default());
+    self.components.push(layer);
+  }
+
+  /// Pop a component from the component stack.
+  pub fn pop_component(&mut self) -> Option<Box<dyn Component + 'static>> {
+    let layer = self.components.pop();
+    return layer;
+  }
+
+  pub fn get_layers(&mut self) -> &Vec<Box<dyn Component + 'static>> {
+    return &self.components;
   }
 }

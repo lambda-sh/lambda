@@ -14,8 +14,8 @@ use super::{
     LambdaEventLoop,
   },
   layer::{
-    Layer,
-    LayerStack,
+    Component,
+    ComponentStack,
   },
   render::{
     LambdaRenderer,
@@ -36,13 +36,15 @@ pub struct LambdaRunnable {
   name: String,
   window: LambdaWindow,
   event_loop: LambdaEventLoop,
-  layer_stack: LayerStack,
+  component_stack: ComponentStack,
   renderer: RenderAPI,
 }
 
 impl LambdaRunnable {
-  pub fn with_layer_attached<T: Default + Layer + 'static>(mut self) -> Self {
-    self.layer_stack.push_layer::<T>();
+  pub fn with_component_attached<T: Default + Component + 'static>(
+    mut self,
+  ) -> Self {
+    self.component_stack.push_component::<T>();
     return self;
   }
 }
@@ -55,14 +57,14 @@ impl Default for LambdaRunnable {
     let name = String::from("LambdaRunnable");
     let event_loop = LambdaEventLoop::new();
     let window = LambdaWindow::new().with_event_loop(&event_loop);
-    let layer_stack = LayerStack::new();
+    let component_stack = ComponentStack::new();
     let renderer = RenderAPI::new(&name, Some(&window));
 
     return LambdaRunnable {
       name,
       window,
       event_loop,
-      layer_stack,
+      component_stack,
       renderer,
     };
   }
@@ -84,7 +86,7 @@ impl Runnable for LambdaRunnable {
     let app = self;
     let event_loop = app.event_loop;
     let window = app.window;
-    let mut layer_stack = app.layer_stack;
+    let mut layer_stack = app.component_stack;
     let mut renderer = app.renderer;
 
     let mut last_frame = Instant::now();
