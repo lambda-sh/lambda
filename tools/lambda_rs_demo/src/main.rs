@@ -4,7 +4,7 @@ use lambda::{
       create_lambda_runnable,
       start_runnable,
     },
-    layer::Layer,
+    layer::Component,
     render::RenderAPI,
   },
   platform::gfx::create_default_gfx_instance,
@@ -12,7 +12,7 @@ use lambda::{
 
 pub struct FirstLayer {}
 
-impl Layer for FirstLayer {
+impl Component for FirstLayer {
   fn attach(&self) {
     println!("Attached the first layer to lambda");
   }
@@ -35,7 +35,6 @@ impl Layer for FirstLayer {
       last_frame.as_nanos()
     );
 
-    renderer.init();
     println!(
       "This layer was last updated: {} milliseconds ago",
       last_frame.as_millis()
@@ -56,7 +55,7 @@ impl Default for AILayer {
     return Self {};
   }
 }
-impl Layer for AILayer {
+impl Component for AILayer {
   fn attach(&self) {
     println!("Attached AI Layer")
   }
@@ -80,8 +79,8 @@ impl Layer for AILayer {
 
 fn main() {
   let app = create_lambda_runnable()
-    .with_layer_attached::<FirstLayer>()
-    .with_layer_attached::<AILayer>();
+    .with_component_attached::<FirstLayer>()
+    .with_component_attached::<AILayer>();
 
   start_runnable(app);
 }
