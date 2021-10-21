@@ -38,10 +38,7 @@ use gfx_hal::{
   },
 };
 
-use crate::core::render::{
-  pipeline::GraphicsPipeline,
-  shader::LambdaShader,
-};
+use crate::core::render::pipeline::GraphicsPipeline;
 
 ///
 /// Commands oriented around creating resources on & for the GPU.
@@ -149,6 +146,15 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     };
   }
 
+  pub fn destroy_command_pool(&mut self) {
+    unsafe {
+      self
+        .gpu
+        .device
+        .destroy_command_pool(self.command_pool.take().unwrap());
+    }
+  }
+
   /// Create a pipeline layout on the GPU.
   pub fn create_pipeline_layout(&mut self) -> B::PipelineLayout {
     unsafe {
@@ -166,7 +172,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
   }
 
   /// Destroy a pipeline layout that was allocated by this GPU.
-  pub fn destory_pipeline_layout(
+  pub fn destroy_pipeline_layout(
     &mut self,
     pipeline_layout: B::PipelineLayout,
   ) {
@@ -238,7 +244,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
   }
 
   /// Unconfigure the swapchain for a surface created from this GPU.
-  pub fn unconfigure_swapchain(&mut self, surface: &B::Surface) {
+  pub fn unconfigure_swapchain(&mut self, surface: &mut B::Surface) {
     unsafe { surface.unconfigure_swapchain(&self.gpu.device) }
   }
 
@@ -293,6 +299,23 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
       self.gpu.device.create_semaphore().expect("Out of memory");
 
     return (submission_complete_fence, semaphore_fence);
+  }
+
+  /// Instructs the GPU to wait for or reset a submission fence. Useful
+  /// for resetting the command buffer
+  pub fn wait_for_or_reset_fence(&mut self, fence: &mut B::Fence) {
+    unsafe {
+      let mut device = &self.gpu.device;
+      let render_timeout_ns = 1_000_000_000;
+      device
+        .wait_for_fence(fence, render_timeout_ns)
+        .expect("The GPU ran out of memory or became detached.");
+      device
+        .reset_fence(fence)
+        .expect("The Fence failed to reset.");
+
+      self.command_pool.as_mut().unwrap().reset(false);
+    }
   }
 
   /// Destroy access fences created on the GPU.
