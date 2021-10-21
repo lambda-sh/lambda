@@ -18,8 +18,8 @@ use super::{
     ComponentStack,
   },
   render::{
-    LambdaRenderer,
     RenderAPI,
+    Renderer,
   },
   window::{
     LambdaWindow,
@@ -28,7 +28,7 @@ use super::{
 };
 
 pub trait Runnable {
-  fn setup(&self);
+  fn setup(&mut self);
   fn run(self);
 }
 
@@ -72,7 +72,7 @@ impl Default for LambdaRunnable {
 
 impl Runnable for LambdaRunnable {
   /// One setup to initialize the
-  fn setup(&self) {
+  fn setup(&mut self) {
     let publisher = self.event_loop.create_publisher();
     publisher.send_event(LambdaEvent::Initialized);
   }
@@ -84,9 +84,10 @@ impl Runnable for LambdaRunnable {
     // Decompose Runnable components for transferring ownership to the
     // closure.
     let app = self;
+    let publisher = app.event_loop.create_publisher();
     let event_loop = app.event_loop;
     let window = app.window;
-    let mut layer_stack = app.component_stack;
+    let mut component_stack = app.component_stack;
     let mut renderer = app.renderer;
 
     let mut last_frame = Instant::now();
@@ -94,7 +95,10 @@ impl Runnable for LambdaRunnable {
 
     event_loop.run_forever(move |event, _, control_flow| match event {
       Event::WindowEvent { event, .. } => match event {
-        WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+        WindowEvent::CloseRequested => {
+          // Issue a Shutdown event to deallocate resources and clean up.
+          publisher.send_event(LambdaEvent::Shutdown)
+        }
         WindowEvent::Resized(dims) => {}
         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {}
         WindowEvent::Moved(_) => {}
@@ -147,10 +151,7 @@ impl Runnable for LambdaRunnable {
         current_frame = Instant::now();
         let duration = &current_frame.duration_since(last_frame);
 
-        // Update all layers with the duration since the last frame &
-        for layer in layer_stack.get_layers() {
-          layer.on_update(duration, &mut renderer);
-        }
+        component_stack.on_update(duration, &mut renderer);
       }
       Event::RedrawRequested(_) => {
         window.redraw();
@@ -160,12 +161,16 @@ impl Runnable for LambdaRunnable {
       Event::UserEvent(lambda_event) => match lambda_event {
         LambdaEvent::Initialized => {
           println!("Initialized Lambda");
-          renderer.init();
+          component_stack.attach();
+          renderer.attach();
         }
         LambdaEvent::Shutdown => {
-          // TODO(vmarcella): Clean up resources during shutdown. All owned
-          // resources will call into here to gracefully shutdown.
-          renderer.shutdown();
+          component_stack.detach();
+          renderer.detach();
+
+          // Once this has been set, the ControlFlow can no longer be
+          // modified.
+          *control_flow = ControlFlow::Exit;
         }
       },
       Event::Suspended => {}
@@ -193,7 +198,7 @@ pub fn build_and_start_runnable<T: Default + Runnable>() {
 }
 
 /// Simple function for starting any prebuilt Runnable.
-pub fn start_runnable<T: Runnable>(app: T) {
+pub fn start_runnable<T: Runnable>(mut app: T) {
   app.setup();
   app.run();
 }

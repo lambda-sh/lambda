@@ -23,28 +23,28 @@ pub struct ComponentStack {
 impl Component for ComponentStack {
   /// Attaches all the components that are currently on the component graph
   fn attach(&mut self) {
-    for component in &self.components {
+    for component in &mut self.components {
       component.attach();
     }
   }
 
   /// Detaches all components currently on the component stack.
   fn detach(&mut self) {
-    for component in &self.components {
+    for component in &mut self.components {
       component.detach();
     }
   }
 
   /// Pass events to all components in the component stack.
   fn on_event(&mut self, event: &LambdaEvent) {
-    for component in &self.components {
+    for component in &mut self.components {
       component.on_event(&event);
     }
   }
 
   /// Update all components currently in the component stack.
   fn on_update(&mut self, last_frame: &Duration, renderer: &mut RenderAPI) {
-    for component in &self.components {
+    for component in &mut self.components {
       component.on_update(last_frame, renderer);
     }
   }
