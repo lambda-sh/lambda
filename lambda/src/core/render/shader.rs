@@ -67,9 +67,15 @@ impl LambdaShader {
   }
 
   /// Creates a shader given a file path.
-  pub fn from_file(path: &str, kind: ShaderKind) {
+  pub fn from_file(path: &str, kind: ShaderKind) -> Self {
     let mut compiler = shaderc::ShaderCompiler::new();
     let shader_binary = compiler.compile_file_into_binary(path, kind);
+
+    return Self {
+      binary: shader_binary,
+      kind,
+      metadata: None,
+    };
   }
 
   pub fn get_shader_binary(&self) -> &Vec<u32> {

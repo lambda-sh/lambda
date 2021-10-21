@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-pub(crate) use gfx_hal::pso::{
+use gfx_hal::pso::{
   EntryPoint,
   Specialization,
 };
@@ -26,8 +26,10 @@ use shader::LambdaShader;
 
 use crate::platform::gfx;
 
-pub trait Renderer {
+pub trait Renderer<Type> {
   fn resize(&mut self, width: u32, height: u32);
+
+  fn destroy(renderer: Type);
 }
 
 pub struct LambdaRenderer<B: gfx_hal::Backend> {
@@ -60,7 +62,7 @@ impl<B: gfx_hal::Backend> Default for LambdaRenderer<B> {
 /// by the platform.
 pub type RenderAPI = LambdaRenderer<backend::Backend>;
 
-impl Component for RenderAPI {
+impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
   /// Allocates resources on the GPU to enable rendering for other
   fn attach(&mut self) {
     println!("The Rendering API has been attached and is being initialized.");
@@ -70,8 +72,10 @@ impl Component for RenderAPI {
     let (submission_fence, rendering_semaphore) =
       self.gpu.create_access_fences();
 
-    let shader =
-      LambdaShader::from_string("test-shader", "", ShaderKind::Vertex);
+    let shader = LambdaShader::from_file(
+      "/home/vmarcella/dev/lambda/lambda/assets/shaders/triangle.vert",
+      ShaderKind::Vertex,
+    );
 
     let (module, pipeline_layout, pipeline) =
       self.create_gpu_pipeline(shader, &render_pass);
@@ -87,31 +91,38 @@ impl Component for RenderAPI {
 
   /// Detaches the renderers resources from t
   fn detach(&mut self) {
-    // Destroy access fences now that the renderer has been detached.
     self.gpu.destroy_access_fences(
-      self.submission_complete_fence.unwrap(),
-      self.rendering_complete_semaphore.unwrap(),
+      self.submission_complete_fence.take().unwrap(),
+      self.rendering_complete_semaphore.take().unwrap(),
     );
 
-    for pipeline_layout in self.pipeline_layouts {
+    for pipeline_layout in self.pipeline_layouts.take().unwrap() {
       self.gpu.destroy_pipeline_layout(pipeline_layout);
     }
 
-    for render_pass in self.render_passes.unwrap() {
+    for render_pass in self.render_passes.take().unwrap() {
       self.gpu.destroy_render_pass(render_pass);
     }
 
-    for pipeline in self.graphic_pipelines.unwrap() {
+    for pipeline in self.graphic_pipelines.take().unwrap() {
       self.gpu.destroy_graphics_pipeline(pipeline);
     }
+
+    // Destroy command pool allocated on the GPU.
+    self.gpu.destroy_command_pool();
+    let mut surface = self.surface.take().unwrap();
+
+    // Unconfigure the swapchain and destroy the surface context.
+    self.gpu.unconfigure_swapchain(&mut surface);
+    self.instance.destroy_surface(surface);
   }
 
-  fn on_event(&mut self, event: &LambdaEvent) {
-    todo!()
-  }
+  fn on_event(&mut self, event: &LambdaEvent) {}
 
   fn on_update(&mut self, _: &Duration, _: &mut RenderAPI) {
-    todo!()
+    self.gpu.wait_for_or_reset_fence(
+      self.submission_complete_fence.as_mut().unwrap(),
+    );
   }
 }
 
@@ -129,7 +140,7 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
     return Self {
       instance,
       gpu,
-      surface: None,
+      surface: Some(surface),
       shader_library: vec![],
       submission_complete_fence: None,
       rendering_complete_semaphore: None,
@@ -169,11 +180,5 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
       self.gpu.create_graphics_pipeline(&mut logical_pipeline);
 
     return (module, pipeline_layout, physical_pipeline);
-  }
-}
-
-impl Renderer for RenderAPI {
-  fn resize(&mut self, width: u32, height: u32) {
-    todo!("Need to implement resizing for the LambdaRenderer!")
   }
 }
