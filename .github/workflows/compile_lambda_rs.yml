@@ -48,7 +48,7 @@ jobs:
 
       - uses: actions/setup-ruby@v1
       - name: Send Webhook Notification for build status.
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/vmarcella-rs' }}
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/vmarcella/lambda-rs' }}
         env:
           JOB_STATUS: ${{ job.status }}
           WEBHOOK_URL: ${{ secrets.LAMBDA_BUILD_WEBHOOK }}
