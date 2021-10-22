@@ -38,6 +38,10 @@ jobs:
         with:
           version: 1.10.0
 
+      - name: Add Alias for Ninja on windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: Set-Alias -Name 'ninja' -Value 'ninja.exe'
+
       - name: Obtain rust toolchain for ${{ matrix.rustup-toolchain }}
         run: |
           rustup toolchain install ${{ matrix.rustup-toolchain }}
