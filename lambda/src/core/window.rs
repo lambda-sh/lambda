@@ -85,6 +85,15 @@ impl LambdaWindow {
   pub fn winit_window_ref(&self) -> Option<&WinitWindow> {
     return self.winit_window.as_ref();
   }
+
+  pub fn resize(&mut self, width: u32, height: u32) {
+    self.size.width = width;
+    self.size.height = height;
+  }
+
+  pub fn dimensions(&self) -> [u32; 2] {
+    return [self.size.width, self.size.height];
+  }
 }
 
 impl Window for LambdaWindow {

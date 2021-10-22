@@ -1,11 +1,16 @@
 use std::time::Duration;
 
-use gfx_hal::pso::{
-  EntryPoint,
-  Specialization,
+use gfx_hal::{
+  pso::{
+    EntryPoint,
+    Specialization,
+  },
+  window::{
+    Extent2D,
+    PresentationSurface,
+  },
 };
 
-use self::pipeline::GraphicsPipeline;
 use super::{
   event_loop::LambdaEvent,
   window::LambdaWindow,
@@ -26,18 +31,14 @@ use shader::LambdaShader;
 
 use crate::platform::gfx;
 
-pub trait Renderer<Type> {
-  fn resize(&mut self, width: u32, height: u32);
-
-  fn destroy(renderer: Type);
-}
-
 pub struct LambdaRenderer<B: gfx_hal::Backend> {
   instance: gfx::GfxInstance<B>,
   gpu: gfx::gpu::GfxGpu<B>,
+  format: gfx_hal::format::Format,
 
   // Both surface and Window are optional
   surface: Option<B::Surface>,
+  extent: Option<Extent2D>,
   shader_library: Vec<LambdaShader>,
   submission_complete_fence: Option<B::Fence>,
   rendering_complete_semaphore: Option<B::Semaphore>,
@@ -91,6 +92,7 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
 
   /// Detaches the renderers resources from t
   fn detach(&mut self) {
+    println!("Destroying GPU resources allocated during run.");
     self.gpu.destroy_access_fences(
       self.submission_complete_fence.take().unwrap(),
       self.rendering_complete_semaphore.take().unwrap(),
@@ -115,14 +117,54 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     // Unconfigure the swapchain and destroy the surface context.
     self.gpu.unconfigure_swapchain(&mut surface);
     self.instance.destroy_surface(surface);
+
+    println!("Destroyed all GPU resources");
   }
 
-  fn on_event(&mut self, event: &LambdaEvent) {}
+  fn on_event(&mut self, event: &LambdaEvent) {
+    match event {
+      LambdaEvent::Resized {
+        new_width,
+        new_height,
+      } => {
+        self.extent = Some(self.gpu.configure_swapchain_and_update_extent(
+          self.surface.as_mut().unwrap(),
+          self.format,
+          [*new_width, *new_height],
+        ));
+        ()
+      }
+      _ => (),
+    };
+  }
 
-  fn on_update(&mut self, _: &Duration, _: &mut RenderAPI) {
+  fn on_update(&mut self, _: &Duration) {
     self.gpu.wait_for_or_reset_fence(
       self.submission_complete_fence.as_mut().unwrap(),
     );
+    let surface = self.surface.as_mut().unwrap();
+
+    let acquire_timeout_ns = 1_000_000_000;
+    let image = unsafe {
+      match surface.acquire_image(acquire_timeout_ns) {
+        Ok((image, _)) => image,
+        Err(_) => {
+          return ();
+        }
+      }
+    };
+
+    let framebuffer = unsafe {
+      use std::borrow::Borrow;
+
+      let mut render_pass = self.render_passes.as_mut().unwrap()[0].borrow();
+      let extent = self.extent.as_ref().unwrap();
+      self.gpu.create_frame_buffer(
+        render_pass,
+        vec![image].into_iter(),
+        extent,
+      );
+    };
   }
 }
 
@@ -137,9 +179,12 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
       .open_primary_gpu(Some(&surface))
       .with_command_pool();
 
+    let format = gpu.find_supported_color_format(&surface);
+
     return Self {
       instance,
       gpu,
+      format,
       surface: Some(surface),
       shader_library: vec![],
       submission_complete_fence: None,
@@ -147,6 +192,7 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
       graphic_pipelines: None,
       pipeline_layouts: None,
       render_passes: None,
+      extent: todo!(),
     };
   }
 

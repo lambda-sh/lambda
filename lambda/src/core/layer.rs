@@ -12,7 +12,7 @@ pub trait Component {
   fn attach(&mut self);
   fn detach(&mut self);
   fn on_event(&mut self, event: &LambdaEvent);
-  fn on_update(&mut self, last_frame: &Duration, renderer: &mut RenderAPI);
+  fn on_update(&mut self, last_frame: &Duration);
 }
 
 /// A stack based Vec that can Push & Pop layers.
@@ -43,9 +43,9 @@ impl Component for ComponentStack {
   }
 
   /// Update all components currently in the component stack.
-  fn on_update(&mut self, last_frame: &Duration, renderer: &mut RenderAPI) {
+  fn on_update(&mut self, last_frame: &Duration) {
     for component in &mut self.components {
-      component.on_update(last_frame, renderer);
+      component.on_update(last_frame);
     }
   }
 }

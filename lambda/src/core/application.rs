@@ -17,10 +17,7 @@ use super::{
     Component,
     ComponentStack,
   },
-  render::{
-    RenderAPI,
-    Renderer,
-  },
+  render::RenderAPI,
   window::{
     LambdaWindow,
     Window,
@@ -32,6 +29,8 @@ pub trait Runnable {
   fn run(self);
 }
 
+/// LambdaRunnable is a pre configured composition of a generic set of
+/// components from the lambda-rs codebase
 pub struct LambdaRunnable {
   name: String,
   window: LambdaWindow,
@@ -99,8 +98,17 @@ impl Runnable for LambdaRunnable {
           // Issue a Shutdown event to deallocate resources and clean up.
           publisher.send_event(LambdaEvent::Shutdown)
         }
-        WindowEvent::Resized(dims) => {}
-        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {}
+        WindowEvent::Resized(dims) => {
+          publisher.send_event(LambdaEvent::Resized {
+            new_width: dims.width,
+            new_height: dims.height,
+          })
+        }
+        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => publisher
+          .send_event(LambdaEvent::Resized {
+            new_width: new_inner_size.width,
+            new_height: new_inner_size.height,
+          }),
         WindowEvent::Moved(_) => {}
         WindowEvent::Destroyed => {}
         WindowEvent::DroppedFile(_) => {}
@@ -150,29 +158,37 @@ impl Runnable for LambdaRunnable {
         last_frame = current_frame.clone();
         current_frame = Instant::now();
         let duration = &current_frame.duration_since(last_frame);
+        renderer.on_update(duration);
 
-        component_stack.on_update(duration, &mut renderer);
+        component_stack.on_update(duration);
       }
       Event::RedrawRequested(_) => {
         window.redraw();
       }
       Event::NewEvents(_) => {}
       Event::DeviceEvent { device_id, event } => {}
-      Event::UserEvent(lambda_event) => match lambda_event {
-        LambdaEvent::Initialized => {
-          println!("Initialized Lambda");
-          component_stack.attach();
-          renderer.attach();
-        }
-        LambdaEvent::Shutdown => {
-          component_stack.detach();
-          renderer.detach();
+      Event::UserEvent(lambda_event) => {
+        renderer.on_event(&lambda_event);
+        component_stack.on_event(&lambda_event);
+        match lambda_event {
+          LambdaEvent::Initialized => {
+            component_stack.attach();
+            renderer.attach();
+          }
+          LambdaEvent::Shutdown => {
+            component_stack.detach();
+            renderer.detach();
 
-          // Once this has been set, the ControlFlow can no longer be
-          // modified.
-          *control_flow = ControlFlow::Exit;
+            // Once this has been set, the ControlFlow can no longer be
+            // modified.
+            *control_flow = ControlFlow::Exit;
+          }
+          _ => {
+            renderer.on_event(&lambda_event);
+            component_stack.on_event(&lambda_event);
+          }
         }
-      },
+      }
       Event::Suspended => {}
       Event::Resumed => {}
       Event::RedrawEventsCleared => {}

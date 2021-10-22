@@ -11,6 +11,7 @@ use winit::{
 pub enum LambdaEvent {
   Initialized,
   Shutdown,
+  Resized { new_width: u32, new_height: u32 },
 }
 
 pub struct LambdaEventLoop {
