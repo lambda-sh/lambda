@@ -16,7 +16,6 @@ use gfx_hal::{
   },
   image::{
     Access,
-    FramebufferAttachment,
     Layout,
   },
   memory::Dependencies,
@@ -146,7 +145,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     surface: &mut B::Surface,
     color_format: gfx_hal::format::Format,
     size: [u32; 2],
-  ) -> Extent2D {
+  ) -> (Extent2D, gfx_hal::image::FramebufferAttachment) {
     let caps = surface.capabilities(&self.adapter.physical_device);
     let mut swapchain_config = SwapchainConfig::from_caps(
       &caps,
@@ -162,7 +161,6 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     if caps.image_count.contains(&3) {
       swapchain_config.image_count = 3;
     }
-
     let surface_extent = swapchain_config.extent;
     unsafe {
       &surface
@@ -170,7 +168,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
         .expect("Failed to configure the swapchain");
     }
 
-    return surface_extent;
+    return (surface_extent, swapchain_config.framebuffer_attachment());
   }
 
   /// Allocate's a command buffer through the GPU
@@ -198,23 +196,21 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
   }
 
   /// Create a frame buffer on the GPU.
-  pub fn create_frame_buffer<I>(
+  pub fn create_frame_buffer(
     &mut self,
     render_pass: &B::RenderPass,
-    images: I,
+    image: gfx_hal::image::FramebufferAttachment,
     dimensions: &Extent2D,
   ) -> B::Framebuffer
-  where
-    I: IntoIterator + std::iter::Iterator<Item = FramebufferAttachment>,
-  {
+where {
     unsafe {
       use gfx_hal::image::Extent;
       return self
         .gpu
         .device
         .create_framebuffer(
-          render_pass,
-          images,
+          &render_pass,
+          vec![image].into_iter(),
           Extent {
             width: dimensions.width,
             height: dimensions.height,

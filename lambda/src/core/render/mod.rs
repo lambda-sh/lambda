@@ -39,6 +39,7 @@ pub struct LambdaRenderer<B: gfx_hal::Backend> {
   // Both surface and Window are optional
   surface: Option<B::Surface>,
   extent: Option<Extent2D>,
+  frame_buffer_attachment: Option<gfx_hal::image::FramebufferAttachment>,
   shader_library: Vec<LambdaShader>,
   submission_complete_fence: Option<B::Fence>,
   rendering_complete_semaphore: Option<B::Semaphore>,
@@ -127,12 +128,14 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
         new_width,
         new_height,
       } => {
-        self.extent = Some(self.gpu.configure_swapchain_and_update_extent(
-          self.surface.as_mut().unwrap(),
-          self.format,
-          [*new_width, *new_height],
-        ));
-        ()
+        let (extent, frame_buffer_attachment) =
+          self.gpu.configure_swapchain_and_update_extent(
+            self.surface.as_mut().unwrap(),
+            self.format,
+            [*new_width, *new_height],
+          );
+        self.extent = Some(extent);
+        self.frame_buffer_attachment = Some(frame_buffer_attachment);
       }
       _ => (),
     };
@@ -145,13 +148,12 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     let surface = self.surface.as_mut().unwrap();
 
     let acquire_timeout_ns = 1_000_000_000;
-    let image = unsafe {
-      match surface.acquire_image(acquire_timeout_ns) {
-        Ok((image, _)) => image,
-        Err(_) => {
-          return ();
-        }
-      }
+    let mut image = unsafe {
+      let i = match surface.acquire_image(acquire_timeout_ns) {
+        Ok((image, _)) => Some(image),
+        Err(_) => None,
+      };
+      i.unwrap()
     };
 
     let framebuffer = unsafe {
@@ -159,11 +161,28 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
 
       let mut render_pass = self.render_passes.as_mut().unwrap()[0].borrow();
       let extent = self.extent.as_ref().unwrap();
-      self.gpu.create_frame_buffer(
-        render_pass,
-        vec![image].into_iter(),
-        extent,
-      );
+      let fba = self.frame_buffer_attachment.as_ref().unwrap();
+
+      self
+        .gpu
+        .create_frame_buffer(render_pass, fba.clone(), extent);
+    };
+
+    let viewport = {
+      use gfx_hal::pso::{
+        Rect,
+        Viewport,
+      };
+
+      Viewport {
+        rect: Rect {
+          x: 0,
+          y: 0,
+          w: self.extent.as_ref().unwrap().width as i16,
+          h: self.extent.as_ref().unwrap().height as i16,
+        },
+        depth: 0.0..1.0,
+      }
     };
   }
 }
@@ -192,7 +211,8 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
       graphic_pipelines: None,
       pipeline_layouts: None,
       render_passes: None,
-      extent: todo!(),
+      extent: None,
+      frame_buffer_attachment: None,
     };
   }
 
