@@ -37,6 +37,12 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         uses: microsoft/setup-msbuild@v1.0.2
 
+      - name: Setup Ninja for compiling shaderc
+        if: ${{ matrix.os == 'windows-latest '}}
+        uses: ashutoshvarma/setup-ninja@master
+        with:
+          version: 1.10.0
+
       - name: Obtain rust toolchain for ${{ matrix.rustup-toolchain }}
         run: |
           rustup toolchain install ${{ matrix.rustup-toolchain }}
