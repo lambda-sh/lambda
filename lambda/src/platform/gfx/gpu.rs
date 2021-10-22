@@ -135,7 +135,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     let mut gpu = self.gpu;
     let command_pool = unsafe {
       gpu.device.create_command_pool(
-				gpu.queue_groups.pop().unwrap().family,
+		    self.queue_group.family,
 				CommandPoolCreateFlags::empty())
 				.expect("The GPU could not allocate a command pool because it is out of memory")
     };
@@ -207,7 +207,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     let fba = swapchain_config.framebuffer_attachment();
 
     unsafe {
-      &surface
+      surface
         .configure_swapchain(&self.gpu.device, swapchain_config)
         .expect("Failed to configure the swapchain");
     }
@@ -307,7 +307,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
       Some(attachments) => attachments,
       None => {
         vec![Attachment {
-          format: None,
+          format: Some(Format::Rgba8Srgb),
           samples: 1,
           ops: AttachmentOps::new(
             AttachmentLoadOp::Clear,
