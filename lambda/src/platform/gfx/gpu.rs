@@ -1,7 +1,4 @@
-use std::{
-  borrow::Borrow,
-  mem::size_of,
-};
+use std::mem::size_of;
 
 use gfx_hal::{
   adapter::{
@@ -39,9 +36,15 @@ use gfx_hal::{
     PipelineStage,
     ShaderStageFlags,
   },
+  queue::{
+    Queue,
+    QueueGroup,
+  },
   window::{
     Extent2D,
+    PresentError,
     PresentationSurface,
+    Suboptimal,
     Surface,
     SwapchainConfig,
   },
@@ -55,6 +58,7 @@ use crate::core::render::pipeline::GraphicsPipeline;
 pub struct GfxGpu<B: gfx_hal::Backend> {
   adapter: Adapter<B>,
   gpu: Gpu<B>,
+  queue_group: QueueGroup<B>,
   command_pool: Option<B::CommandPool>,
 }
 
@@ -108,16 +112,19 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
       })
       .expect("No compatible queue family found.");
 
-    let gpu = unsafe {
+    let mut gpu = unsafe {
       adapter
         .physical_device
         .open(&[(queue_family, &[1.0])], gfx_hal::Features::empty())
         .expect("Failed to open the device.")
     };
 
+    let queue_group = gpu.queue_groups.pop().unwrap();
+
     return Self {
       adapter,
       gpu,
+      queue_group,
       command_pool: None,
     };
   }
@@ -132,12 +139,46 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
 				CommandPoolCreateFlags::empty())
 				.expect("The GPU could not allocate a command pool because it is out of memory")
     };
+    let queue_group = self.queue_group;
 
     return Self {
       adapter,
       gpu,
+      queue_group,
       command_pool: Some(command_pool),
     };
+  }
+
+  /// Submits a command buffer to the GPU.
+  pub fn submit_command_buffer(
+    &mut self,
+    command_buffer: &B::CommandBuffer,
+    semaphore: &B::Semaphore,
+    fence: &mut B::Fence,
+  ) {
+    unsafe {
+      self.queue_group.queues[0].submit(
+        vec![command_buffer].into_iter(),
+        vec![].into_iter(),
+        vec![semaphore].into_iter(),
+        Some(fence),
+      );
+    }
+  }
+
+  /// Render to the surface and return the result from the GPU.
+  pub fn render_to_surface(
+    &mut self,
+    surface: &mut B::Surface,
+    image: <B::Surface as PresentationSurface<B>>::SwapchainImage,
+    semaphore: &mut B::Semaphore,
+  ) -> Result<Option<Suboptimal>, PresentError> {
+    unsafe {
+      let result =
+        self.queue_group.queues[0].present(surface, image, Some(semaphore));
+
+      return result;
+    }
   }
 
   pub fn configure_swapchain_and_update_extent(
@@ -161,14 +202,17 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     if caps.image_count.contains(&3) {
       swapchain_config.image_count = 3;
     }
+
     let surface_extent = swapchain_config.extent;
+    let fba = swapchain_config.framebuffer_attachment();
+
     unsafe {
       &surface
         .configure_swapchain(&self.gpu.device, swapchain_config)
         .expect("Failed to configure the swapchain");
     }
 
-    return (surface_extent, swapchain_config.framebuffer_attachment());
+    return (surface_extent, fba);
   }
 
   /// Allocate's a command buffer through the GPU
@@ -201,8 +245,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     render_pass: &B::RenderPass,
     image: gfx_hal::image::FramebufferAttachment,
     dimensions: &Extent2D,
-  ) -> B::Framebuffer
-where {
+  ) -> B::Framebuffer {
     unsafe {
       use gfx_hal::image::Extent;
       return self

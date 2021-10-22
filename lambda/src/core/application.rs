@@ -168,8 +168,6 @@ impl Runnable for LambdaRunnable {
       Event::NewEvents(_) => {}
       Event::DeviceEvent { device_id, event } => {}
       Event::UserEvent(lambda_event) => {
-        renderer.on_event(&lambda_event);
-        component_stack.on_event(&lambda_event);
         match lambda_event {
           LambdaEvent::Initialized => {
             component_stack.attach();

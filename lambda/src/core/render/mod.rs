@@ -1,6 +1,11 @@
 use std::time::Duration;
 
 use gfx_hal::{
+  command::{
+    ClearColor,
+    ClearValue,
+    CommandBuffer,
+  },
   pso::{
     EntryPoint,
     Specialization,
@@ -35,14 +40,14 @@ pub struct LambdaRenderer<B: gfx_hal::Backend> {
   instance: gfx::GfxInstance<B>,
   gpu: gfx::gpu::GfxGpu<B>,
   format: gfx_hal::format::Format,
+  shader_library: Vec<LambdaShader>,
 
-  // Both surface and Window are optional
   surface: Option<B::Surface>,
   extent: Option<Extent2D>,
   frame_buffer_attachment: Option<gfx_hal::image::FramebufferAttachment>,
-  shader_library: Vec<LambdaShader>,
   submission_complete_fence: Option<B::Fence>,
   rendering_complete_semaphore: Option<B::Semaphore>,
+  command_buffer: Option<B::CommandBuffer>,
 
   // TODO(vmarcella): Isolate pipeline & render pass management away from
   // the Renderer.
@@ -89,6 +94,7 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     self.graphic_pipelines = Some(vec![pipeline]);
     self.submission_complete_fence = Some(submission_fence);
     self.rendering_complete_semaphore = Some(rendering_semaphore);
+    self.command_buffer = Some(command_buffer);
   }
 
   /// Detaches the renderers resources from t
@@ -141,14 +147,16 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     };
   }
 
+  /// Rendering update loop.
   fn on_update(&mut self, _: &Duration) {
     self.gpu.wait_for_or_reset_fence(
       self.submission_complete_fence.as_mut().unwrap(),
     );
+
     let surface = self.surface.as_mut().unwrap();
 
     let acquire_timeout_ns = 1_000_000_000;
-    let mut image = unsafe {
+    let image = unsafe {
       let i = match surface.acquire_image(acquire_timeout_ns) {
         Ok((image, _)) => Some(image),
         Err(_) => None,
@@ -156,16 +164,15 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
       i.unwrap()
     };
 
-    let framebuffer = unsafe {
-      use std::borrow::Borrow;
+    use std::borrow::Borrow;
+    let render_pass = self.render_passes.as_mut().unwrap()[0].borrow();
+    let extent = self.extent.as_ref().unwrap();
+    let fba = self.frame_buffer_attachment.as_ref().unwrap();
 
-      let mut render_pass = self.render_passes.as_mut().unwrap()[0].borrow();
-      let extent = self.extent.as_ref().unwrap();
-      let fba = self.frame_buffer_attachment.as_ref().unwrap();
-
+    let framebuffer = {
       self
         .gpu
-        .create_frame_buffer(render_pass, fba.clone(), extent);
+        .create_frame_buffer(render_pass, fba.clone(), extent)
     };
 
     let viewport = {
@@ -184,9 +191,66 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
         depth: 0.0..1.0,
       }
     };
+
+    unsafe {
+      let command_buffer = self.command_buffer.as_mut().unwrap();
+      command_buffer
+        .begin_primary(gfx_hal::command::CommandBufferFlags::ONE_TIME_SUBMIT);
+
+      // Configure the vieports & the scissor rectangles for the rasterizer
+      let viewports = vec![viewport.clone()].into_iter();
+      let rect = vec![viewport.rect].into_iter();
+      command_buffer.set_viewports(0, viewports);
+      command_buffer.set_scissors(0, rect);
+
+      // Render attachments to specify for the current render pass.
+      let render_attachments = vec![gfx_hal::command::RenderAttachmentInfo {
+        image_view: image.borrow(),
+        clear_value: ClearValue {
+          color: ClearColor {
+            float32: [0.0, 0.0, 0.0, 1.0],
+          },
+        },
+      }]
+      .into_iter();
+
+      // Initialize the render pass
+      command_buffer.begin_render_pass(
+        render_pass,
+        &framebuffer,
+        viewport.rect,
+        render_attachments,
+        gfx_hal::command::SubpassContents::Inline,
+      );
+
+      let pipeline = &self.graphic_pipelines.as_ref().unwrap()[0];
+
+      // Bind graphical pipeline and submit commands to the GPU.
+      command_buffer.bind_graphics_pipeline(pipeline);
+      command_buffer.draw(0..3, 0..1);
+      command_buffer.end_render_pass();
+      command_buffer.finish();
+
+      self.gpu.submit_command_buffer(
+        &command_buffer,
+        self.rendering_complete_semaphore.as_ref().unwrap(),
+        self.submission_complete_fence.as_mut().unwrap(),
+      );
+
+      let result = self.gpu.render_to_surface(
+        surface,
+        image,
+        self.rendering_complete_semaphore.as_mut().unwrap(),
+      );
+
+      if result.is_err() {
+        todo!("Publish an event from the renderer that the swapchain needs to be reconfigured")
+      }
+
+      self.gpu.destroy_frame_buffer(framebuffer);
+    }
   }
 }
-
 impl<B: gfx_hal::Backend> LambdaRenderer<B> {
   pub fn new(name: &str, window: Option<&LambdaWindow>) -> Self {
     let instance = gfx::GfxInstance::<B>::new(name);
@@ -213,6 +277,7 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
       render_passes: None,
       extent: None,
       frame_buffer_attachment: None,
+      command_buffer: None,
     };
   }
 
