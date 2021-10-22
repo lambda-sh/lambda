@@ -25,11 +25,7 @@ impl Component for FirstLayer {
   ) {
   }
 
-  fn on_update(
-    self: &mut FirstLayer,
-    last_frame: &std::time::Duration,
-    renderer: &mut RenderAPI,
-  ) {
+  fn on_update(self: &mut FirstLayer, last_frame: &std::time::Duration) {
     println!(
       "This layer was last updated: {} nanoseconds ago",
       last_frame.as_nanos()
@@ -68,11 +64,7 @@ impl Component for AILayer {
   ) {
   }
 
-  fn on_update(
-    self: &mut AILayer,
-    last_frame: &std::time::Duration,
-    renderer: &mut RenderAPI,
-  ) {
+  fn on_update(self: &mut AILayer, last_frame: &std::time::Duration) {
     println!("Updating AI");
   }
 }
