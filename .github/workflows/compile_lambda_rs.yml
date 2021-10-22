@@ -9,10 +9,6 @@ on:
 
   workflow_dispatch:
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   build_and_test:
     name: Build lambda-rs on ${{ matrix.os }} with ${{ matrix.rustup-toolchain }}.
@@ -20,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        rustup-toolchain: ["nightly"]
+        rustup-toolchain: ["stable"]
 
     steps:
       - name: Checkout Repository
