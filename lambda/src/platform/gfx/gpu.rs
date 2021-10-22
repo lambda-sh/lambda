@@ -1,4 +1,7 @@
-use std::mem::size_of;
+use std::{
+  borrow::Borrow,
+  mem::size_of,
+};
 
 use gfx_hal::{
   adapter::{
@@ -7,8 +10,13 @@ use gfx_hal::{
   },
   command::Level,
   device::Device,
+  format::{
+    ChannelType,
+    Format,
+  },
   image::{
     Access,
+    FramebufferAttachment,
     Layout,
   },
   memory::Dependencies,
@@ -33,8 +41,10 @@ use gfx_hal::{
     ShaderStageFlags,
   },
   window::{
+    Extent2D,
     PresentationSurface,
     Surface,
+    SwapchainConfig,
   },
 };
 
@@ -131,6 +141,38 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     };
   }
 
+  pub fn configure_swapchain_and_update_extent(
+    &mut self,
+    surface: &mut B::Surface,
+    color_format: gfx_hal::format::Format,
+    size: [u32; 2],
+  ) -> Extent2D {
+    let caps = surface.capabilities(&self.adapter.physical_device);
+    let mut swapchain_config = SwapchainConfig::from_caps(
+      &caps,
+      color_format,
+      Extent2D {
+        width: size[0],
+        height: size[1],
+      },
+    );
+
+    // TODO(vmarcella) Profile the performance on MacOS to see if this slows
+    // down frame times.
+    if caps.image_count.contains(&3) {
+      swapchain_config.image_count = 3;
+    }
+
+    let surface_extent = swapchain_config.extent;
+    unsafe {
+      &surface
+        .configure_swapchain(&self.gpu.device, swapchain_config)
+        .expect("Failed to configure the swapchain");
+    }
+
+    return surface_extent;
+  }
+
   /// Allocate's a command buffer through the GPU
   pub fn allocate_command_buffer(&mut self) -> B::CommandBuffer {
     // TODO(vmarcella): This function should probably not just panic and instead
@@ -152,6 +194,41 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
         .gpu
         .device
         .destroy_command_pool(self.command_pool.take().unwrap());
+    }
+  }
+
+  /// Create a frame buffer on the GPU.
+  pub fn create_frame_buffer<I>(
+    &mut self,
+    render_pass: &B::RenderPass,
+    images: I,
+    dimensions: &Extent2D,
+  ) -> B::Framebuffer
+  where
+    I: IntoIterator + std::iter::Iterator<Item = FramebufferAttachment>,
+  {
+    unsafe {
+      use gfx_hal::image::Extent;
+      return self
+        .gpu
+        .device
+        .create_framebuffer(
+          render_pass,
+          images,
+          Extent {
+            width: dimensions.width,
+            height: dimensions.height,
+            depth: 1,
+          },
+        )
+        .unwrap();
+    }
+  }
+
+  /// Destroy a frame buffer that was created by the GPU.
+  pub fn destroy_frame_buffer(&mut self, frame_buffer: B::Framebuffer) {
+    unsafe {
+      self.gpu.device.destroy_framebuffer(frame_buffer);
     }
   }
 
@@ -332,5 +409,25 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
 
       self.gpu.device.destroy_fence(submission_complete_fence);
     }
+  }
+
+  /// Finds the first supported color format or default to Rgba8Srgb.
+  pub fn find_supported_color_format(
+    &mut self,
+    surface: &B::Surface,
+  ) -> Format {
+    // Define a surface color format compatible with the graphics
+    // device & surface
+    let supported_formats = surface
+      .supported_formats(&self.adapter.physical_device)
+      .unwrap_or(vec![]);
+
+    let default_format =
+      *supported_formats.get(0).unwrap_or(&Format::Rgba8Srgb);
+
+    return supported_formats
+      .into_iter()
+      .find(|format| -> bool { format.base_format().1 == ChannelType::Srgb })
+      .unwrap_or(default_format);
   }
 }

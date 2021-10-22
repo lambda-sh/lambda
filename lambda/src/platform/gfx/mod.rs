@@ -1,12 +1,4 @@
-use gfx_hal::{
-  adapter::Adapter,
-  format::{
-    ChannelType,
-    Format,
-  },
-  window::Surface,
-  Instance,
-};
+use gfx_hal::Instance;
 
 use crate::core::window::LambdaWindow;
 
@@ -65,23 +57,4 @@ impl<B: gfx_hal::Backend> GfxInstance<B> {
 // graphical backend
 pub fn create_default_gfx_instance() -> GfxInstance<backend::Backend> {
   return GfxInstance::<backend::Backend>::new("Lambda Application");
-}
-
-/// Finds the first supported color format or default to Rgba8Srgb.
-pub fn find_supported_color_format<B: gfx_hal::Backend>(
-  surface: &B::Surface,
-  adapter: &Adapter<B>,
-) -> Format {
-  // Define a surface color format compatible with the graphics
-  // device & surface
-  let supported_formats = surface
-    .supported_formats(&adapter.physical_device)
-    .unwrap_or(vec![]);
-
-  let default_format = *supported_formats.get(0).unwrap_or(&Format::Rgba8Srgb);
-
-  return supported_formats
-    .into_iter()
-    .find(|format| -> bool { format.base_format().1 == ChannelType::Srgb })
-    .unwrap_or(default_format);
 }
