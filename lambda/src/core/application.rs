@@ -9,13 +9,13 @@ use winit::{
 };
 
 use super::{
+  component::{
+    Component,
+    ComponentStack,
+  },
   event_loop::{
     LambdaEvent,
     LambdaEventLoop,
-  },
-  layer::{
-    Component,
-    ComponentStack,
   },
   render::RenderAPI,
   window::{

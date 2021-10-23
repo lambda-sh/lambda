@@ -1,5 +1,5 @@
 pub mod application;
+pub mod component;
 pub mod event_loop;
-pub mod layer;
 pub mod render;
 pub mod window;

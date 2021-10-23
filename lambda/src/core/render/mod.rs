@@ -21,7 +21,7 @@ use super::{
   window::LambdaWindow,
 };
 use crate::core::{
-  layer::Component,
+  component::Component,
   render::{
     assembler::create_vertex_assembler,
     shader::ShaderKind,
