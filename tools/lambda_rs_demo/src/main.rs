@@ -4,9 +4,12 @@ use lambda::core::{
     start_runnable,
   },
   component::Component,
+  event_loop::EventLoopPublisher,
 };
 
-pub struct DemoComponent {}
+pub struct DemoComponent {
+  publisher: Option<EventLoopPublisher>,
+}
 
 impl Component for DemoComponent {
   fn attach(&mut self) {
@@ -17,7 +20,7 @@ impl Component for DemoComponent {
 
   fn on_event(
     self: &mut DemoComponent,
-    event: &lambda::core::event_loop::LambdaEvent,
+    event: &lambda::core::event_loop::Event,
   ) {
   }
 
@@ -36,12 +39,18 @@ impl Component for DemoComponent {
 
 impl Default for DemoComponent {
   fn default() -> Self {
-    return DemoComponent {};
+    return DemoComponent { publisher: None };
   }
 }
 
 fn main() {
-  let app = create_lambda_runnable().with_component::<DemoComponent>();
+  let app = create_lambda_runnable().with_component(
+    move |runnable, mut demo: DemoComponent| {
+      let publisher = runnable.create_event_publisher();
+      demo.publisher = Some(publisher);
+      return (runnable, demo);
+    },
+  );
 
   start_runnable(app);
 }
