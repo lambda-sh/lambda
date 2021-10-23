@@ -174,12 +174,15 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     let extent = self.extent.as_ref().unwrap();
     let fba = self.frame_buffer_attachment.as_ref().unwrap();
 
+    // Allocate the framebuffer
     let framebuffer = {
       self
         .gpu
         .create_frame_buffer(render_pass, fba.clone(), extent)
     };
 
+    // TODO(vmarcella): Investigate into abstracting the viewport behind a
+    // camera.
     let viewport = {
       use gfx_hal::pso::{
         Rect,
@@ -219,7 +222,8 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
       }]
       .into_iter();
 
-      // Initialize the render pass
+      // Initialize the render pass on the command buffer & inline the subpass
+      // contents.
       command_buffer.begin_render_pass(
         &render_pass,
         &framebuffer,
@@ -228,14 +232,14 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
         gfx_hal::command::SubpassContents::Inline,
       );
 
-      let pipeline = &self.graphic_pipelines.as_ref().unwrap()[0];
-
       // Bind graphical pipeline and submit commands to the GPU.
+      let pipeline = &self.graphic_pipelines.as_ref().unwrap()[0];
       command_buffer.bind_graphics_pipeline(pipeline);
       command_buffer.draw(0..3, 0..1);
       command_buffer.end_render_pass();
       command_buffer.finish();
 
+      // Submit the command buffer for rendering on the GPU.
       self.gpu.submit_command_buffer(
         &command_buffer,
         self.rendering_complete_semaphore.as_ref().unwrap(),
