@@ -39,10 +39,7 @@ jobs:
 
       - name: Install ninja 1.10.2 on windows.
         if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          wget https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-win.zip
-          unzip ninja-win.zip
-          echo "$(pwd)/ninja" >> $GITHUB_PATH
+        run: choco install ninja
 
       - name: Obtain rust toolchain for ${{ matrix.rustup-toolchain }}
         run: |
