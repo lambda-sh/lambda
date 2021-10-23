@@ -174,9 +174,6 @@ impl Runnable for LambdaRunnable {
             renderer.attach();
           }
           LambdaEvent::Shutdown => {
-            component_stack.detach();
-            renderer.detach();
-
             // Once this has been set, the ControlFlow can no longer be
             // modified.
             *control_flow = ControlFlow::Exit;
@@ -190,7 +187,10 @@ impl Runnable for LambdaRunnable {
       Event::Suspended => {}
       Event::Resumed => {}
       Event::RedrawEventsCleared => {}
-      Event::LoopDestroyed => {}
+      Event::LoopDestroyed => {
+        component_stack.detach();
+        renderer.detach();
+      }
     });
   }
 }
