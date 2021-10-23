@@ -9,6 +9,10 @@ on:
 
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build_and_test:
     name: Build lambda-rs on ${{ matrix.os }} with ${{ matrix.rustup-toolchain }}.
