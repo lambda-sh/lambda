@@ -33,14 +33,12 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         uses: microsoft/setup-msbuild@v1.0.2
 
-      - name: Setup Ninja for compiling shaderc
-        uses: ashutoshvarma/setup-ninja@master
-        with:
-          version: 1.10.0
-
-      - name: Add Alias for Ninja on windows
+      - name: Install ninja 1.10.2 on windows.
         if: ${{ matrix.os == 'windows-latest' }}
-        run: Set-Alias -Name 'ninja' -Value 'ninja.exe'
+        run: |
+          wget https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-win.zip
+          unzip ninja-win.zip
+          echo "$(pwd)/ninja" >> $GITHUB_PATH
 
       - name: Obtain rust toolchain for ${{ matrix.rustup-toolchain }}
         run: |
