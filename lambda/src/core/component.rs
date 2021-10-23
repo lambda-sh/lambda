@@ -1,11 +1,6 @@
 use std::time::Duration;
 
-use super::event_loop::LambdaEvent;
-
-enum ComponentIO<I, O> {
-  To(I),
-  From(O),
-}
+use super::event_loop::Event;
 
 /// The Component Interface for allowing Component based data structures
 /// like the ComponentStack to store components with various purposes
@@ -13,7 +8,7 @@ enum ComponentIO<I, O> {
 pub trait Component {
   fn attach(&mut self);
   fn detach(&mut self);
-  fn on_event(&mut self, event: &LambdaEvent);
+  fn on_event(&mut self, event: &Event);
   fn on_update(&mut self, last_frame: &Duration);
 }
 
@@ -38,7 +33,7 @@ impl Component for ComponentStack {
   }
 
   /// Pass events to all components in the component stack.
-  fn on_event(&mut self, event: &LambdaEvent) {
+  fn on_event(&mut self, event: &Event) {
     for component in &mut self.components {
       component.on_event(&event);
     }
@@ -61,21 +56,17 @@ impl ComponentStack {
   }
 
   /// Push a component on to the component stack.
-  pub fn push_component<T>(&mut self)
+  pub fn push_component<T>(&mut self, component: T)
   where
     T: Default + Component + 'static,
   {
-    let layer = Box::new(T::default());
-    self.components.push(layer);
+    let component = Box::new(component);
+    self.components.push(component);
   }
 
   /// Pop a component from the component stack.
   pub fn pop_component(&mut self) -> Option<Box<dyn Component + 'static>> {
-    let layer = self.components.pop();
-    return layer;
-  }
-
-  pub fn get_layers(&mut self) -> &Vec<Box<dyn Component + 'static>> {
-    return &self.components;
+    let component = self.components.pop();
+    return component;
   }
 }

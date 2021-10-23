@@ -14,7 +14,7 @@ use super::{
     ComponentStack,
   },
   event_loop::{
-    LambdaEvent,
+    Event as OtherEvent,
     LambdaEventLoop,
   },
   render::RenderAPI,
@@ -23,6 +23,7 @@ use super::{
     Window,
   },
 };
+use crate::core::event_loop::EventLoopPublisher;
 
 pub trait Runnable {
   fn setup(&mut self);
@@ -40,9 +41,26 @@ pub struct LambdaRunnable {
 }
 
 impl LambdaRunnable {
-  pub fn with_component<T: Default + Component + 'static>(mut self) -> Self {
-    self.component_stack.push_component::<T>();
+  pub fn with_name(mut self, name: &str) -> Self {
+    self.name = String::from(name);
     return self;
+  }
+
+  pub fn with_component<T: Default + Component + 'static>(
+    self,
+    configure_component: impl FnOnce(Self, T) -> (Self, T),
+  ) -> Self {
+    let (mut runnable, component) = configure_component(self, T::default());
+    runnable.component_stack.push_component(component);
+    return runnable;
+  }
+
+  /// Creates an event publisher that allows LambdaEvents to be sent into
+  /// The LambdaRunnable event loop. This allows for components to send
+  /// information to other components.
+  pub fn create_event_publisher(&self) -> EventLoopPublisher {
+    let publisher = self.event_loop.create_publisher();
+    return publisher;
   }
 }
 
@@ -71,7 +89,7 @@ impl Runnable for LambdaRunnable {
   /// One setup to initialize the
   fn setup(&mut self) {
     let publisher = self.event_loop.create_publisher();
-    publisher.send_event(LambdaEvent::Initialized);
+    publisher.send_event(OtherEvent::Initialized);
   }
 
   /// Initiates an event loop that captures the context of the LambdaRunnable
@@ -94,16 +112,16 @@ impl Runnable for LambdaRunnable {
       Event::WindowEvent { event, .. } => match event {
         WindowEvent::CloseRequested => {
           // Issue a Shutdown event to deallocate resources and clean up.
-          publisher.send_event(LambdaEvent::Shutdown)
+          publisher.send_event(OtherEvent::Shutdown)
         }
         WindowEvent::Resized(dims) => {
-          publisher.send_event(LambdaEvent::Resized {
+          publisher.send_event(OtherEvent::Resized {
             new_width: dims.width,
             new_height: dims.height,
           })
         }
         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => publisher
-          .send_event(LambdaEvent::Resized {
+          .send_event(OtherEvent::Resized {
             new_width: new_inner_size.width,
             new_height: new_inner_size.height,
           }),
@@ -167,11 +185,11 @@ impl Runnable for LambdaRunnable {
       Event::DeviceEvent { device_id, event } => {}
       Event::UserEvent(lambda_event) => {
         match lambda_event {
-          LambdaEvent::Initialized => {
+          OtherEvent::Initialized => {
             component_stack.attach();
             renderer.attach();
           }
-          LambdaEvent::Shutdown => {
+          OtherEvent::Shutdown => {
             // Once this has been set, the ControlFlow can no longer be
             // modified.
             *control_flow = ControlFlow::Exit;

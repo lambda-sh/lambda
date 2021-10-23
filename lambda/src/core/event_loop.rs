@@ -1,34 +1,31 @@
-use winit::{
-  event::Event,
-  event_loop::{
-    ControlFlow,
-    EventLoop,
-    EventLoopProxy,
-    EventLoopWindowTarget,
-  },
+use winit::event_loop::{
+  ControlFlow,
+  EventLoop,
+  EventLoopProxy,
+  EventLoopWindowTarget,
 };
 
-pub enum LambdaEvent {
+pub enum Event {
   Initialized,
   Shutdown,
   Resized { new_width: u32, new_height: u32 },
 }
 
 pub struct LambdaEventLoop {
-  event_loop: EventLoop<LambdaEvent>,
+  event_loop: EventLoop<Event>,
 }
 
 pub struct EventLoopPublisher {
-  winit_proxy: EventLoopProxy<LambdaEvent>,
+  winit_proxy: EventLoopProxy<Event>,
 }
 
 impl EventLoopPublisher {
   /// Instantiate a new EventLoopPublisher from an event loop proxy.
-  pub fn new(winit_proxy: EventLoopProxy<LambdaEvent>) -> Self {
+  pub fn new(winit_proxy: EventLoopProxy<Event>) -> Self {
     return EventLoopPublisher { winit_proxy };
   }
 
-  pub fn send_event(&self, event: LambdaEvent) {
+  pub fn send_event(&self, event: Event) {
     self.winit_proxy.send_event(event);
   }
 }
@@ -39,7 +36,7 @@ impl LambdaEventLoop {
   /// Creates a new Lambda event loop with the underlying event loop
   /// implementation allocated on the heap.
   pub fn new() -> Self {
-    let event_loop = EventLoop::<LambdaEvent>::with_user_event();
+    let event_loop = EventLoop::<Event>::with_user_event();
     return LambdaEventLoop { event_loop };
   }
 
@@ -48,8 +45,8 @@ impl LambdaEventLoop {
   where
     Callback: 'static
       + FnMut(
-        Event<LambdaEvent>,
-        &EventLoopWindowTarget<LambdaEvent>,
+        winit::event::Event<Event>,
+        &EventLoopWindowTarget<Event>,
         &mut ControlFlow,
       ) -> (),
   {
@@ -63,7 +60,7 @@ impl LambdaEventLoop {
   }
 
   /// Returns a reference to the underlying winit pointer.
-  pub fn winit_loop_ref(&self) -> &EventLoop<LambdaEvent> {
+  pub fn winit_loop_ref(&self) -> &EventLoop<Event> {
     return &self.event_loop;
   }
 }

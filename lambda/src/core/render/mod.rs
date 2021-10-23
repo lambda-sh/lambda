@@ -17,7 +17,7 @@ use gfx_hal::{
 };
 
 use super::{
-  event_loop::LambdaEvent,
+  event_loop::Event,
   window::LambdaWindow,
 };
 use crate::core::{
@@ -133,9 +133,9 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     println!("Destroyed all GPU resources");
   }
 
-  fn on_event(&mut self, event: &LambdaEvent) {
+  fn on_event(&mut self, event: &Event) {
     match event {
-      LambdaEvent::Resized {
+      Event::Resized {
         new_width,
         new_height,
       } => {
