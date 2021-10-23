@@ -40,9 +40,7 @@ pub struct LambdaRunnable {
 }
 
 impl LambdaRunnable {
-  pub fn with_component_attached<T: Default + Component + 'static>(
-    mut self,
-  ) -> Self {
+  pub fn with_component<T: Default + Component + 'static>(mut self) -> Self {
     self.component_stack.push_component::<T>();
     return self;
   }

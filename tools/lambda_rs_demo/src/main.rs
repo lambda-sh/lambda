@@ -1,13 +1,9 @@
-use lambda::{
-  core::{
-    application::{
-      create_lambda_runnable,
-      start_runnable,
-    },
-    layer::Component,
-    render::RenderAPI,
+use lambda::core::{
+  application::{
+    create_lambda_runnable,
+    start_runnable,
   },
-  platform::gfx::create_default_gfx_instance,
+  component::Component,
 };
 
 pub struct FirstLayer {}
@@ -71,8 +67,8 @@ impl Component for AILayer {
 
 fn main() {
   let app = create_lambda_runnable()
-    .with_component_attached::<FirstLayer>()
-    .with_component_attached::<AILayer>();
+    .with_component::<FirstLayer>()
+    .with_component::<AILayer>();
 
   start_runnable(app);
 }
