@@ -6,22 +6,22 @@ use lambda::core::{
   component::Component,
 };
 
-pub struct FirstLayer {}
+pub struct DemoComponent {}
 
-impl Component for FirstLayer {
+impl Component for DemoComponent {
   fn attach(&mut self) {
     println!("Attached the first layer to lambda");
   }
 
-  fn detach(self: &mut FirstLayer) {}
+  fn detach(self: &mut DemoComponent) {}
 
   fn on_event(
-    self: &mut FirstLayer,
+    self: &mut DemoComponent,
     event: &lambda::core::event_loop::LambdaEvent,
   ) {
   }
 
-  fn on_update(self: &mut FirstLayer, last_frame: &std::time::Duration) {
+  fn on_update(self: &mut DemoComponent, last_frame: &std::time::Duration) {
     println!(
       "This layer was last updated: {} nanoseconds ago",
       last_frame.as_nanos()
@@ -34,41 +34,14 @@ impl Component for FirstLayer {
   }
 }
 
-impl Default for FirstLayer {
+impl Default for DemoComponent {
   fn default() -> Self {
-    return FirstLayer {};
-  }
-}
-
-struct AILayer {}
-
-impl Default for AILayer {
-  fn default() -> Self {
-    return Self {};
-  }
-}
-impl Component for AILayer {
-  fn attach(self: &mut AILayer) {
-    println!("Attached AI Layer")
-  }
-
-  fn detach(self: &mut AILayer) {}
-
-  fn on_event(
-    self: &mut AILayer,
-    event: &lambda::core::event_loop::LambdaEvent,
-  ) {
-  }
-
-  fn on_update(self: &mut AILayer, last_frame: &std::time::Duration) {
-    println!("Updating AI");
+    return DemoComponent {};
   }
 }
 
 fn main() {
-  let app = create_lambda_runnable()
-    .with_component::<FirstLayer>()
-    .with_component::<AILayer>();
+  let app = create_lambda_runnable().with_component::<DemoComponent>();
 
   start_runnable(app);
 }
