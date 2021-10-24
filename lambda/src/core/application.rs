@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use winit::{
   event::{
-    Event,
+    Event as WinitEvent,
     WindowEvent,
   },
   event_loop::ControlFlow,
@@ -14,7 +14,7 @@ use super::{
     ComponentStack,
   },
   event_loop::{
-    Event as OtherEvent,
+    Event,
     LambdaEventLoop,
   },
   render::RenderAPI,
@@ -89,7 +89,7 @@ impl Runnable for LambdaRunnable {
   /// One setup to initialize the
   fn setup(&mut self) {
     let publisher = self.event_loop.create_publisher();
-    publisher.send_event(OtherEvent::Initialized);
+    publisher.send_event(Event::Initialized);
   }
 
   /// Initiates an event loop that captures the context of the LambdaRunnable
@@ -109,19 +109,17 @@ impl Runnable for LambdaRunnable {
     let mut current_frame = Instant::now();
 
     event_loop.run_forever(move |event, _, control_flow| match event {
-      Event::WindowEvent { event, .. } => match event {
+      WinitEvent::WindowEvent { event, .. } => match event {
         WindowEvent::CloseRequested => {
           // Issue a Shutdown event to deallocate resources and clean up.
-          publisher.send_event(OtherEvent::Shutdown)
+          publisher.send_event(Event::Shutdown)
         }
-        WindowEvent::Resized(dims) => {
-          publisher.send_event(OtherEvent::Resized {
-            new_width: dims.width,
-            new_height: dims.height,
-          })
-        }
+        WindowEvent::Resized(dims) => publisher.send_event(Event::Resized {
+          new_width: dims.width,
+          new_height: dims.height,
+        }),
         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => publisher
-          .send_event(OtherEvent::Resized {
+          .send_event(Event::Resized {
             new_width: new_inner_size.width,
             new_height: new_inner_size.height,
           }),
@@ -170,7 +168,7 @@ impl Runnable for LambdaRunnable {
         WindowEvent::Touch(_) => {}
         WindowEvent::ThemeChanged(_) => {}
       },
-      Event::MainEventsCleared => {
+      WinitEvent::MainEventsCleared => {
         last_frame = current_frame.clone();
         current_frame = Instant::now();
         let duration = &current_frame.duration_since(last_frame);
@@ -178,18 +176,18 @@ impl Runnable for LambdaRunnable {
 
         component_stack.on_update(duration);
       }
-      Event::RedrawRequested(_) => {
+      WinitEvent::RedrawRequested(_) => {
         window.redraw();
       }
-      Event::NewEvents(_) => {}
-      Event::DeviceEvent { device_id, event } => {}
-      Event::UserEvent(lambda_event) => {
+      WinitEvent::NewEvents(_) => {}
+      WinitEvent::DeviceEvent { device_id, event } => {}
+      WinitEvent::UserEvent(lambda_event) => {
         match lambda_event {
-          OtherEvent::Initialized => {
+          Event::Initialized => {
             component_stack.attach();
             renderer.attach();
           }
-          OtherEvent::Shutdown => {
+          Event::Shutdown => {
             // Once this has been set, the ControlFlow can no longer be
             // modified.
             *control_flow = ControlFlow::Exit;
@@ -200,10 +198,10 @@ impl Runnable for LambdaRunnable {
           }
         }
       }
-      Event::Suspended => {}
-      Event::Resumed => {}
-      Event::RedrawEventsCleared => {}
-      Event::LoopDestroyed => {
+      WinitEvent::Suspended => {}
+      WinitEvent::Resumed => {}
+      WinitEvent::RedrawEventsCleared => {}
+      WinitEvent::LoopDestroyed => {
         component_stack.detach();
         renderer.detach();
       }
