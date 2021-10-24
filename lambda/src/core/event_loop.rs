@@ -1,20 +1,33 @@
+use std::time::Duration;
+
+// TODO(vmarcella): Refactor this into the platform API.
 use winit::event_loop::{
   ControlFlow,
-  EventLoop,
+  EventLoop as WinitEventLoop,
   EventLoopProxy,
   EventLoopWindowTarget,
 };
 
+use super::component::Component;
+
+pub enum LambdaEvents {
+  Attach,
+  Detach,
+}
+
 pub enum Event {
+  Lambda(LambdaEvents),
   Initialized,
   Shutdown,
   Resized { new_width: u32, new_height: u32 },
 }
 
-pub struct LambdaEventLoop {
-  event_loop: EventLoop<Event>,
+/// Event loop
+pub struct EventLoop {
+  event_loop: WinitEventLoop<Event>,
 }
 
+/// Event loop publisher
 pub struct EventLoopPublisher {
   winit_proxy: EventLoopProxy<Event>,
 }
@@ -32,12 +45,12 @@ impl EventLoopPublisher {
 
 /// A wrapper over the Winit event loop that allows for reuse of their event
 /// loops.
-impl LambdaEventLoop {
+impl EventLoop {
   /// Creates a new Lambda event loop with the underlying event loop
   /// implementation allocated on the heap.
   pub fn new() -> Self {
-    let event_loop = EventLoop::<Event>::with_user_event();
-    return LambdaEventLoop { event_loop };
+    let event_loop = WinitEventLoop::<Event>::with_user_event();
+    return EventLoop { event_loop };
   }
 
   /// Executes the event loop in the current thread.
@@ -60,7 +73,9 @@ impl LambdaEventLoop {
   }
 
   /// Returns a reference to the underlying winit pointer.
-  pub fn winit_loop_ref(&self) -> &EventLoop<Event> {
+  // TODO(vmarcella): Migrate this into a winit platform library so that the
+  // underlying winit handle isn't exposed in core.
+  pub fn winit_loop_ref(&self) -> &WinitEventLoop<Event> {
     return &self.event_loop;
   }
 }

@@ -48,6 +48,7 @@ fn main() {
     move |runnable, mut demo: DemoComponent| {
       let publisher = runnable.create_event_publisher();
       demo.publisher = Some(publisher);
+
       return (runnable, demo);
     },
   );

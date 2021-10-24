@@ -9,7 +9,7 @@ use winit::{
   },
 };
 
-use crate::core::event_loop::LambdaEventLoop;
+use crate::core::event_loop::EventLoop;
 
 /// The base window trait that every lambda window implementation must have to
 /// work with lambda::core components.
@@ -55,7 +55,7 @@ pub struct LambdaWindow {
 impl LambdaWindow {
   /// Rebind the winit window to an event loop that will be attached to
   /// the new LambdaWindow returned by this object.
-  pub fn with_event_loop(self, event_loop: &LambdaEventLoop) -> Self {
+  pub fn with_event_loop(self, event_loop: &EventLoop) -> Self {
     let name = self.name.to_string();
     let winit_loop = event_loop.winit_loop_ref();
     let size = construct_window_size(

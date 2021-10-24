@@ -15,7 +15,7 @@ use super::{
   },
   event_loop::{
     Event,
-    LambdaEventLoop,
+    EventLoop,
   },
   render::RenderAPI,
   window::{
@@ -35,12 +35,13 @@ pub trait Runnable {
 pub struct LambdaRunnable {
   name: String,
   window: LambdaWindow,
-  event_loop: LambdaEventLoop,
+  event_loop: EventLoop,
   component_stack: ComponentStack,
-  renderer: RenderAPI,
+  renderer: Option<RenderAPI>,
 }
 
 impl LambdaRunnable {
+  /// Set the name for the current runnable
   pub fn with_name(mut self, name: &str) -> Self {
     self.name = String::from(name);
     return self;
@@ -62,6 +63,17 @@ impl LambdaRunnable {
     let publisher = self.event_loop.create_publisher();
     return publisher;
   }
+
+  /// Attaches an active renderer to the runnable.
+  fn with_renderer(
+    self,
+    configure_renderer: impl FnOnce(Self, RenderAPI) -> (Self, RenderAPI),
+  ) -> Self {
+    let renderer = RenderAPI::new(self.name.as_str(), Some(&self.window));
+    let (mut runnable, renderer) = configure_renderer(self, renderer);
+    runnable.renderer = Some(renderer);
+    return runnable;
+  }
 }
 
 impl Default for LambdaRunnable {
@@ -70,10 +82,10 @@ impl Default for LambdaRunnable {
   /// storing layers into the engine.
   fn default() -> Self {
     let name = String::from("LambdaRunnable");
-    let event_loop = LambdaEventLoop::new();
+    let event_loop = EventLoop::new();
     let window = LambdaWindow::new().with_event_loop(&event_loop);
     let component_stack = ComponentStack::new();
-    let renderer = RenderAPI::new(&name, Some(&window));
+    let renderer = None;
 
     return LambdaRunnable {
       name,
@@ -88,6 +100,7 @@ impl Default for LambdaRunnable {
 impl Runnable for LambdaRunnable {
   /// One setup to initialize the
   fn setup(&mut self) {
+    // Attaches the event loop ;
     let publisher = self.event_loop.create_publisher();
     publisher.send_event(Event::Initialized);
   }
@@ -102,8 +115,10 @@ impl Runnable for LambdaRunnable {
     let publisher = app.event_loop.create_publisher();
     let event_loop = app.event_loop;
     let window = app.window;
+
+    // TODO(vmarcella): The renderer should most likely just act as
     let mut component_stack = app.component_stack;
-    let mut renderer = app.renderer;
+    let mut renderer = app.renderer.unwrap();
 
     let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();
@@ -172,9 +187,8 @@ impl Runnable for LambdaRunnable {
         last_frame = current_frame.clone();
         current_frame = Instant::now();
         let duration = &current_frame.duration_since(last_frame);
-        renderer.on_update(duration);
-
         component_stack.on_update(duration);
+        renderer.on_update(duration);
       }
       WinitEvent::RedrawRequested(_) => {
         window.redraw();
@@ -193,8 +207,8 @@ impl Runnable for LambdaRunnable {
             *control_flow = ControlFlow::Exit;
           }
           _ => {
-            renderer.on_event(&lambda_event);
             component_stack.on_event(&lambda_event);
+            renderer.on_event(&lambda_event);
           }
         }
       }
@@ -213,7 +227,11 @@ impl Runnable for LambdaRunnable {
 /// Application Instance that can be hooked into through attaching
 /// a Layer.
 pub fn create_lambda_runnable() -> LambdaRunnable {
-  return LambdaRunnable::default();
+  return LambdaRunnable::default().with_renderer(
+    move |mut runnable, renderer| {
+      return (runnable, renderer);
+    },
+  );
 }
 
 /// Builds & executes a Runnable all in one good. This is useful for when you

@@ -102,7 +102,8 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     self.command_buffer = Some(command_buffer);
   }
 
-  /// Detaches the renderers resources from t
+  /// Detaches physical rendering resources that were allocated by this
+  /// component.
   fn detach(&mut self) {
     println!("Destroying GPU resources allocated during run.");
     self.gpu.destroy_access_fences(
@@ -169,6 +170,8 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
       i.unwrap()
     };
 
+    // TODO(vmarcella): This code will fail if there are no render passes
+    // attached to the renderer.
     use std::borrow::Borrow;
     let render_pass = &self.render_passes.as_mut().unwrap()[0];
     let extent = self.extent.as_ref().unwrap();
@@ -315,7 +318,7 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
 
     let fragment_entry = EntryPoint::<B> {
       entry: "main",
-      module: &&fragment_module,
+      module: &fragment_module,
       specialization: Specialization::default(),
     };
 
