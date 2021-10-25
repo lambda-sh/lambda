@@ -6,8 +6,8 @@ use super::event_loop::Event;
 /// like the ComponentStack to store components with various purposes
 /// and implementations to work together.
 pub trait Component {
-  fn attach(&mut self);
-  fn detach(&mut self);
+  fn on_attach(&mut self);
+  fn on_detach(&mut self);
   fn on_event(&mut self, event: &Event);
   fn on_update(&mut self, last_frame: &Duration);
 }
@@ -19,16 +19,16 @@ pub struct ComponentStack {
 
 impl Component for ComponentStack {
   /// Attaches all the components that are currently on the component graph
-  fn attach(&mut self) {
+  fn on_attach(&mut self) {
     for component in &mut self.components {
-      component.attach();
+      component.on_attach();
     }
   }
 
   /// Detaches all components currently on the component stack.
-  fn detach(&mut self) {
+  fn on_detach(&mut self) {
     for component in &mut self.components {
-      component.detach();
+      component.on_detach();
     }
   }
 

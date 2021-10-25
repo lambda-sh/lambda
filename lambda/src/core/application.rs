@@ -65,12 +65,14 @@ impl LambdaRunnable {
   }
 
   /// Attaches an active renderer to the runnable.
-  fn with_renderer(
+  pub fn with_renderable_component<T: Default + Component + 'static>(
     self,
-    configure_renderer: impl FnOnce(Self, RenderAPI) -> (Self, RenderAPI),
+    configure_component: impl FnOnce(Self, RenderAPI, T) -> (Self, RenderAPI, T),
   ) -> Self {
+    let component = T::default();
     let renderer = RenderAPI::new(self.name.as_str(), Some(&self.window));
-    let (mut runnable, renderer) = configure_renderer(self, renderer);
+    let (mut runnable, renderer, component) =
+      configure_component(self, renderer, component);
     runnable.renderer = Some(renderer);
     return runnable;
   }
@@ -85,14 +87,14 @@ impl Default for LambdaRunnable {
     let event_loop = EventLoop::new();
     let window = LambdaWindow::new().with_event_loop(&event_loop);
     let component_stack = ComponentStack::new();
-    let renderer = None;
+    let renderer = RenderAPI::new(name.as_str(), Some(&window));
 
     return LambdaRunnable {
       name,
       window,
       event_loop,
       component_stack,
-      renderer,
+      renderer: Some(renderer),
     };
   }
 }
@@ -198,8 +200,8 @@ impl Runnable for LambdaRunnable {
       WinitEvent::UserEvent(lambda_event) => {
         match lambda_event {
           Event::Initialized => {
-            component_stack.attach();
-            renderer.attach();
+            component_stack.on_attach();
+            renderer.on_attach();
           }
           Event::Shutdown => {
             // Once this has been set, the ControlFlow can no longer be
@@ -216,8 +218,8 @@ impl Runnable for LambdaRunnable {
       WinitEvent::Resumed => {}
       WinitEvent::RedrawEventsCleared => {}
       WinitEvent::LoopDestroyed => {
-        component_stack.detach();
-        renderer.detach();
+        component_stack.on_detach();
+        renderer.on_detach();
       }
     });
   }
@@ -227,11 +229,7 @@ impl Runnable for LambdaRunnable {
 /// Application Instance that can be hooked into through attaching
 /// a Layer.
 pub fn create_lambda_runnable() -> LambdaRunnable {
-  return LambdaRunnable::default().with_renderer(
-    move |mut runnable, renderer| {
-      return (runnable, renderer);
-    },
-  );
+  return LambdaRunnable::default();
 }
 
 /// Builds & executes a Runnable all in one good. This is useful for when you

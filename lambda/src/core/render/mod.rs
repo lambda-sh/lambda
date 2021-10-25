@@ -56,6 +56,83 @@ pub struct LambdaRenderer<B: gfx_hal::Backend> {
   render_passes: Option<Vec<B::RenderPass>>,
 }
 
+impl<B: gfx_hal::Backend> LambdaRenderer<B> {
+  pub fn new(name: &str, window: Option<&LambdaWindow>) -> Self {
+    let instance = gfx::GfxInstance::<B>::new(name);
+
+    // Surfaces are only required if the renderer is constructed with a Window, otherwise
+    // the renderer doesn't need to have a surface and can simply be used for GPU compute.
+    let surface = instance.create_surface(window.unwrap());
+    let mut gpu = instance
+      .open_primary_gpu(Some(&surface))
+      .with_command_pool();
+
+    let format = gpu.find_supported_color_format(&surface);
+
+    return Self {
+      instance,
+      gpu,
+      format,
+      surface: Some(surface),
+      shader_library: vec![],
+      submission_complete_fence: None,
+      rendering_complete_semaphore: None,
+      graphic_pipelines: None,
+      pipeline_layouts: None,
+      render_passes: None,
+      extent: None,
+      frame_buffer_attachment: None,
+      command_buffer: None,
+    };
+  }
+
+  /// Create a graphical pipeline using a single shader with an associated
+  /// render pass. This will currently return all gfx_hal related pipeline assets
+  pub fn create_gpu_pipeline(
+    &mut self,
+    vertex_shader: LambdaShader,
+    fragment_shader: LambdaShader,
+    render_pass: &B::RenderPass,
+  ) -> (B::ShaderModule, B::PipelineLayout, B::GraphicsPipeline) {
+    let vertex_module = self
+      .gpu
+      .create_shader_module(vertex_shader.get_shader_binary());
+    let fragment_module = self
+      .gpu
+      .create_shader_module(fragment_shader.get_shader_binary());
+
+    // TODO(vmarcella): Abstract the gfx hal assembler away from the
+    // render module directly.
+    let vertex_entry = EntryPoint::<B> {
+      entry: "main",
+      module: &vertex_module,
+      specialization: Specialization::default(),
+    };
+
+    let fragment_entry = EntryPoint::<B> {
+      entry: "main",
+      module: &fragment_module,
+      specialization: Specialization::default(),
+    };
+
+    // TODO(vmarcella): This process could use a more consistent abstraction
+    // for getting a pipeline created.
+    let assembler = create_vertex_assembler(vertex_entry);
+    let pipeline_layout = self.gpu.create_pipeline_layout();
+    let mut logical_pipeline = pipeline::create_graphics_pipeline(
+      assembler,
+      &pipeline_layout,
+      render_pass,
+      Some(fragment_entry),
+    );
+
+    let physical_pipeline =
+      self.gpu.create_graphics_pipeline(&mut logical_pipeline);
+
+    return (vertex_module, pipeline_layout, physical_pipeline);
+  }
+}
+
 impl<B: gfx_hal::Backend> Default for LambdaRenderer<B> {
   /// The default constructor returns a named renderer that has no
   /// window attached.
@@ -69,9 +146,22 @@ impl<B: gfx_hal::Backend> Default for LambdaRenderer<B> {
 /// by the platform.
 pub type RenderAPI = LambdaRenderer<backend::Backend>;
 
+/// A render API that is provided by the lambda runnable.
+pub struct RenderClient<'a> {
+  api: &'a RenderAPI,
+}
+
+impl<'a> RenderClient<'a> {
+  fn new(renderer: &'a RenderAPI) -> Self {
+    return Self { api: renderer };
+  }
+
+  pub fn upload_shader() {}
+}
+
 impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
   /// Allocates resources on the GPU to enable rendering for other
-  fn attach(&mut self) {
+  fn on_attach(&mut self) {
     println!("The Rendering API has been attached and is being initialized.");
 
     let command_buffer = self.gpu.allocate_command_buffer();
@@ -104,7 +194,7 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
 
   /// Detaches physical rendering resources that were allocated by this
   /// component.
-  fn detach(&mut self) {
+  fn on_detach(&mut self) {
     println!("Destroying GPU resources allocated during run.");
     self.gpu.destroy_access_fences(
       self.submission_complete_fence.take().unwrap(),
@@ -261,81 +351,5 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
 
       self.gpu.destroy_frame_buffer(framebuffer);
     }
-  }
-}
-impl<B: gfx_hal::Backend> LambdaRenderer<B> {
-  pub fn new(name: &str, window: Option<&LambdaWindow>) -> Self {
-    let instance = gfx::GfxInstance::<B>::new(name);
-
-    // Surfaces are only required if the renderer is constructed with a Window, otherwise
-    // the renderer doesn't need to have a surface and can simply be used for GPU compute.
-    let surface = instance.create_surface(window.unwrap());
-    let mut gpu = instance
-      .open_primary_gpu(Some(&surface))
-      .with_command_pool();
-
-    let format = gpu.find_supported_color_format(&surface);
-
-    return Self {
-      instance,
-      gpu,
-      format,
-      surface: Some(surface),
-      shader_library: vec![],
-      submission_complete_fence: None,
-      rendering_complete_semaphore: None,
-      graphic_pipelines: None,
-      pipeline_layouts: None,
-      render_passes: None,
-      extent: None,
-      frame_buffer_attachment: None,
-      command_buffer: None,
-    };
-  }
-
-  /// Create a graphical pipeline using a single shader with an associated
-  /// render pass. This will currently return all gfx_hal related pipeline assets
-  pub fn create_gpu_pipeline(
-    &mut self,
-    vertex_shader: LambdaShader,
-    fragment_shader: LambdaShader,
-    render_pass: &B::RenderPass,
-  ) -> (B::ShaderModule, B::PipelineLayout, B::GraphicsPipeline) {
-    let vertex_module = self
-      .gpu
-      .create_shader_module(vertex_shader.get_shader_binary());
-    let fragment_module = self
-      .gpu
-      .create_shader_module(fragment_shader.get_shader_binary());
-
-    // TODO(vmarcella): Abstract the gfx hal assembler away from the
-    // render module directly.
-    let vertex_entry = EntryPoint::<B> {
-      entry: "main",
-      module: &vertex_module,
-      specialization: Specialization::default(),
-    };
-
-    let fragment_entry = EntryPoint::<B> {
-      entry: "main",
-      module: &fragment_module,
-      specialization: Specialization::default(),
-    };
-
-    // TODO(vmarcella): This process could use a more consistent abstraction
-    // for getting a pipeline created.
-    let assembler = create_vertex_assembler(vertex_entry);
-    let pipeline_layout = self.gpu.create_pipeline_layout();
-    let mut logical_pipeline = pipeline::create_graphics_pipeline(
-      assembler,
-      &pipeline_layout,
-      render_pass,
-      Some(fragment_entry),
-    );
-
-    let physical_pipeline =
-      self.gpu.create_graphics_pipeline(&mut logical_pipeline);
-
-    return (vertex_module, pipeline_layout, physical_pipeline);
   }
 }

@@ -12,11 +12,11 @@ pub struct DemoComponent {
 }
 
 impl Component for DemoComponent {
-  fn attach(&mut self) {
+  fn on_attach(&mut self) {
     println!("Attached the first layer to lambda");
   }
 
-  fn detach(self: &mut DemoComponent) {}
+  fn on_detach(self: &mut DemoComponent) {}
 
   fn on_event(
     self: &mut DemoComponent,
@@ -44,12 +44,12 @@ impl Default for DemoComponent {
 }
 
 fn main() {
-  let app = create_lambda_runnable().with_component(
-    move |runnable, mut demo: DemoComponent| {
+  let app = create_lambda_runnable().with_renderable_component(
+    move |runnable, renderer, mut demo: DemoComponent| {
       let publisher = runnable.create_event_publisher();
       demo.publisher = Some(publisher);
 
-      return (runnable, demo);
+      return (runnable, renderer, demo);
     },
   );
 

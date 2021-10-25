@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 // TODO(vmarcella): Refactor this into the platform API.
 use winit::event_loop::{
   ControlFlow,
@@ -7,8 +5,6 @@ use winit::event_loop::{
   EventLoopProxy,
   EventLoopWindowTarget,
 };
-
-use super::component::Component;
 
 pub enum LambdaEvents {
   Attach,
