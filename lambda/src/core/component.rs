@@ -64,7 +64,8 @@ impl ComponentStack {
     self.components.push(component);
   }
 
-  /// Pop a component from the component stack.
+  /// Pop a component from the component stack. Doesn't delete or detach
+  /// the component.
   pub fn pop_component(&mut self) -> Option<Box<dyn Component + 'static>> {
     let component = self.components.pop();
     return component;

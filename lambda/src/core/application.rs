@@ -47,6 +47,7 @@ impl LambdaRunnable {
     return self;
   }
 
+  /// Attach a component to the current runnable.
   pub fn with_component<T: Default + Component + 'static>(
     self,
     configure_component: impl FnOnce(Self, T) -> (Self, T),
@@ -237,7 +238,6 @@ pub fn create_lambda_runnable() -> LambdaRunnable {
 /// the runnable
 pub fn build_and_start_runnable<T: Default + Runnable>() {
   let app = T::default();
-
   start_runnable(app);
 }
 

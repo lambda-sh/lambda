@@ -46,6 +46,7 @@ fn construct_window_size(
   };
 }
 
+/// LambdaWindow provides the windowing for lambda.
 pub struct LambdaWindow {
   name: String,
   size: WindowSize,

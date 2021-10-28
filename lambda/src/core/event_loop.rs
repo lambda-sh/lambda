@@ -6,11 +6,13 @@ use winit::event_loop::{
   EventLoopWindowTarget,
 };
 
+/// Lambda specific events.
 pub enum LambdaEvents {
   Attach,
   Detach,
 }
 
+/// Generic Event Enum
 pub enum Event {
   Lambda(LambdaEvents),
   Initialized,
@@ -34,6 +36,7 @@ impl EventLoopPublisher {
     return EventLoopPublisher { winit_proxy };
   }
 
+  /// Send an event
   pub fn send_event(&self, event: Event) {
     self.winit_proxy.send_event(event);
   }
