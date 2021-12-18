@@ -1,8 +1,8 @@
 use lambda::core::{
-  component::Component,
-  event_loop::EventLoopPublisher,
-  runnable::{create_lambda_runnable, start_runnable},
+  component::Component, event_loop::EventLoopPublisher,
+  runnable::start_runnable,
 };
+use lambda::runnables::create_lambda_runnable;
 
 pub struct DemoComponent {
   publisher: Option<EventLoopPublisher>,
