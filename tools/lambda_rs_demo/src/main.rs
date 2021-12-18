@@ -1,10 +1,7 @@
 use lambda::core::{
-  application::{
-    create_lambda_runnable,
-    start_runnable,
-  },
   component::Component,
   event_loop::EventLoopPublisher,
+  runnable::{create_lambda_runnable, start_runnable},
 };
 
 pub struct DemoComponent {
