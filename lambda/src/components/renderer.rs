@@ -120,8 +120,9 @@ impl Component for Renderer {
     let mut surfaces = HashMap::new();
     swap(&mut surfaces, &mut self.surfaces);
 
-    for (surface_name, mut surface) in surfaces.into_iter() {
+    for (_surface_name, mut surface) in surfaces.into_iter() {
       // Unconfigure the swapchain and destroy the surface context.
+      println!("Destroying Surface: {}", _surface_name);
       self.gpu.unconfigure_swapchain(&mut surface);
       self.instance.destroy_surface(surface);
     }
