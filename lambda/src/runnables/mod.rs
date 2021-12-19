@@ -5,10 +5,10 @@ use winit::{
   event_loop::ControlFlow,
 };
 
+use super::components::Renderer;
 use super::core::{
   component::{Component, ComponentStack},
   event_loop::{Event, EventLoop, EventLoopPublisher},
-  render::RenderAPI,
   runnable::Runnable,
   window::{LambdaWindow, Window},
 };
@@ -22,7 +22,7 @@ pub struct LambdaRunnable {
   window: LambdaWindow,
   event_loop: EventLoop,
   component_stack: ComponentStack,
-  renderer: Option<RenderAPI>,
+  renderer: Renderer,
 }
 
 impl LambdaRunnable {
@@ -53,14 +53,11 @@ impl LambdaRunnable {
   /// Attaches an active renderer to the runnable.
   pub fn with_renderable_component<T: Default + Component + 'static>(
     self,
-    configure_component: impl FnOnce(Self, RenderAPI, T) -> (Self, RenderAPI, T),
+    configure_component: impl FnOnce(&Renderer, T) -> T,
   ) -> Self {
     let component = T::default();
-    let renderer = RenderAPI::new(self.name.as_str(), Some(&self.window));
-    let (mut runnable, renderer, component) =
-      configure_component(self, renderer, component);
-    runnable.renderer = Some(renderer);
-    return runnable;
+    let component = configure_component(&self.renderer, component);
+    return self;
   }
 }
 
@@ -73,14 +70,14 @@ impl Default for LambdaRunnable {
     let event_loop = EventLoop::new();
     let window = LambdaWindow::new().with_event_loop(&event_loop);
     let component_stack = ComponentStack::new();
-    let renderer = RenderAPI::new(name.as_str(), Some(&window));
+    let renderer = Renderer::new(name.as_str(), &window);
 
     return LambdaRunnable {
       name,
       window,
       event_loop,
       component_stack,
-      renderer: Some(renderer),
+      renderer,
     };
   }
 }
@@ -106,7 +103,7 @@ impl Runnable for LambdaRunnable {
 
     // TODO(vmarcella): The renderer should most likely just act as
     let mut component_stack = app.component_stack;
-    let mut renderer = app.renderer.unwrap();
+    let mut renderer = app.renderer;
 
     let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();

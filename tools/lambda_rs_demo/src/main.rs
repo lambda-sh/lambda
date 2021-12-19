@@ -42,11 +42,8 @@ impl Default for DemoComponent {
 
 fn main() {
   let app = create_lambda_runnable().with_renderable_component(
-    move |runnable, renderer, mut demo: DemoComponent| {
-      let publisher = runnable.create_event_publisher();
-      demo.publisher = Some(publisher);
-
-      return (runnable, renderer, demo);
+    move |renderer, demo: DemoComponent| {
+      return demo;
     },
   );
 
