@@ -52,11 +52,12 @@ impl LambdaRunnable {
 
   /// Attaches an active renderer to the runnable.
   pub fn with_renderable_component<T: Default + Component + 'static>(
-    self,
+    mut self,
     configure_component: impl FnOnce(&Renderer, T) -> T,
   ) -> Self {
     let component = T::default();
     let component = configure_component(&self.renderer, component);
+    self.component_stack.push_component(component);
     return self;
   }
 }

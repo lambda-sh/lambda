@@ -58,7 +58,7 @@ impl ComponentStack {
   /// Push a component on to the component stack.
   pub fn push_component<T>(&mut self, component: T)
   where
-    T: Default + Component + 'static,
+    T: Component + 'static,
   {
     let component = Box::new(component);
     self.components.push(component);
