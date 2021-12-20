@@ -12,12 +12,16 @@ gfx-hal = "=0.9.0"
 winit = "=0.25.0"
 shaderc = "=0.7"
 
+[dev-dependencies]
+cargo-audit = "0.16.0"
+
 [features]
 default = ["shaderc/build-from-source"]
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------
 
-[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+# Linux dev-dependencies.
+[target.'cfg(all(unix, not(target_os = "macos")))'.dev-dependencies]
 cargo-tarpaulin = "=0.18.5"
 
 # ------------------------------- GFX-RS BACKENDS ------------------------------
