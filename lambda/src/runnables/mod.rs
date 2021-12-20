@@ -5,13 +5,14 @@ use winit::{
   event_loop::ControlFlow,
 };
 
-use super::components::Renderer;
 use super::core::{
-  component::{Component, ComponentStack},
+  component::Component,
   event_loop::{Event, EventLoop, EventLoopPublisher},
   runnable::Runnable,
   window::{LambdaWindow, Window},
 };
+
+use super::components::{ComponentStack, Renderer};
 
 ///
 /// LambdaRunnable is a pre configured composition of a generic set of
