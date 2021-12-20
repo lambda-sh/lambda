@@ -14,6 +14,12 @@ shaderc = "=0.7"
 
 [features]
 default = ["shaderc/build-from-source"]
+
+# ---------------------------- PLATFORM DEPENDENCIES ---------------------------
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+cargo-tarpaulin = "=0.18.5"
+
 # ------------------------------- GFX-RS BACKENDS ------------------------------
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.backend]
