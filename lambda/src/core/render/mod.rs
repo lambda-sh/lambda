@@ -1,31 +1,15 @@
 use std::time::Duration;
 
 use gfx_hal::{
-  command::{
-    ClearColor,
-    ClearValue,
-    CommandBuffer,
-  },
-  pso::{
-    EntryPoint,
-    Specialization,
-  },
-  window::{
-    Extent2D,
-    PresentationSurface,
-  },
+  command::{ClearColor, ClearValue, CommandBuffer},
+  pso::{EntryPoint, Specialization},
+  window::{Extent2D, PresentationSurface},
 };
 
-use super::{
-  event_loop::Event,
-  window::LambdaWindow,
-};
+use super::{event_loop::Event, window::LambdaWindow};
 use crate::core::{
   component::Component,
-  render::{
-    assembler::create_vertex_assembler,
-    shader::ShaderKind,
-  },
+  render::{assembler::create_vertex_assembler, shader::ShaderKind},
 };
 
 pub mod assembler;
@@ -57,35 +41,6 @@ pub struct LambdaRenderer<B: gfx_hal::Backend> {
 }
 
 impl<B: gfx_hal::Backend> LambdaRenderer<B> {
-  pub fn new(name: &str, window: Option<&LambdaWindow>) -> Self {
-    let instance = gfx::GfxInstance::<B>::new(name);
-
-    // Surfaces are only required if the renderer is constructed with a Window, otherwise
-    // the renderer doesn't need to have a surface and can simply be used for GPU compute.
-    let surface = instance.create_surface(window.unwrap());
-    let mut gpu = instance
-      .open_primary_gpu(Some(&surface))
-      .with_command_pool();
-
-    let format = gpu.find_supported_color_format(&surface);
-
-    return Self {
-      instance,
-      gpu,
-      format,
-      surface: Some(surface),
-      shader_library: vec![],
-      submission_complete_fence: None,
-      rendering_complete_semaphore: None,
-      graphic_pipelines: None,
-      pipeline_layouts: None,
-      render_passes: None,
-      extent: None,
-      frame_buffer_attachment: None,
-      command_buffer: None,
-    };
-  }
-
   /// Create a graphical pipeline using a single shader with an associated
   /// render pass. This will currently return all gfx_hal related pipeline assets
   pub fn create_gpu_pipeline(
@@ -130,14 +85,6 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
       self.gpu.create_graphics_pipeline(&mut logical_pipeline);
 
     return (vertex_module, pipeline_layout, physical_pipeline);
-  }
-}
-
-impl<B: gfx_hal::Backend> Default for LambdaRenderer<B> {
-  /// The default constructor returns a named renderer that has no
-  /// window attached.
-  fn default() -> Self {
-    return Self::new("LambdaRenderer", None);
   }
 }
 
@@ -277,10 +224,7 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     // TODO(vmarcella): Investigate into abstracting the viewport behind a
     // camera.
     let viewport = {
-      use gfx_hal::pso::{
-        Rect,
-        Viewport,
-      };
+      use gfx_hal::pso::{Rect, Viewport};
 
       Viewport {
         rect: Rect {
