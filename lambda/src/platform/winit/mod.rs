@@ -1,7 +1,7 @@
 use winit::{
   dpi::{LogicalSize, PhysicalSize},
   event::Event,
-  event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
+  event_loop::{ControlFlow, EventLoop, EventLoopProxy, EventLoopWindowTarget},
   monitor::MonitorHandle,
   window::{Window, WindowBuilder},
 };
@@ -32,7 +32,7 @@ pub struct WindowSize {
   pub physical: PhysicalSize<u32>,
 }
 
-pub struct PlatformWindow {
+pub struct WindowHandle {
   pub window_handle: Window,
   pub size: WindowSize,
   pub monitor_handle: MonitorHandle,
@@ -56,18 +56,41 @@ fn construct_window_size(
   };
 }
 
+pub struct EventLoopPublisher<E: 'static> {
+  winit_proxy: EventLoopProxy<E>,
+}
+
+impl<E: 'static> EventLoopPublisher<E> {
+  /// Instantiate a new EventLoopPublisher from an event loop proxy.
+  #[inline]
+  pub fn new(winit_proxy: EventLoopProxy<E>) -> Self {
+    return EventLoopPublisher { winit_proxy };
+  }
+
+  /// Send an event
+  #[inline]
+  pub fn send_event(&self, event: E) {
+    self.winit_proxy.send_event(event);
+  }
+}
+
 impl<E: 'static> Loop<E> {
+  pub fn create_publisher(&mut self) -> EventLoopPublisher<E> {
+    let proxy = self.event_loop.create_proxy();
+    return EventLoopPublisher::new(proxy);
+  }
+
   /// Returns the primary monitor for the current OS if detectable.
-  fn get_primary_monitor(&self) -> Option<MonitorHandle> {
+  pub fn get_primary_monitor(&self) -> Option<MonitorHandle> {
     return self.event_loop.primary_monitor();
   }
 
   /// Get all monitors available on the system.
-  fn get_all_monitors(&self) -> impl Iterator<Item = MonitorHandle> {
+  pub fn get_all_monitors(&self) -> impl Iterator<Item = MonitorHandle> {
     return self.event_loop.available_monitors();
   }
 
-  fn get_any_available_monitors(&self) -> MonitorHandle {
+  pub fn get_any_available_monitors(&self) -> MonitorHandle {
     match self.event_loop.available_monitors().next() {
       Some(monitor) => monitor,
       None => panic!("No available monitors found."),
@@ -86,7 +109,7 @@ impl<E: 'static> Loop<E> {
   pub fn create_window_handle(
     &mut self,
     window_properties: WindowProperties,
-  ) -> PlatformWindow {
+  ) -> WindowHandle {
     let name = window_properties.name;
     let dimensions = window_properties.dimensions;
     let monitor_handle = window_properties.monitor_handle;
@@ -99,7 +122,7 @@ impl<E: 'static> Loop<E> {
       .build(&self.event_loop)
       .expect("Failed to create a winit handle.");
 
-    return PlatformWindow {
+    return WindowHandle {
       window_handle,
       size,
       monitor_handle,

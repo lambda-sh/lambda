@@ -1,6 +1,5 @@
+use super::winit::WindowHandle;
 use gfx_hal::Instance;
-
-use crate::core::window::LambdaWindow;
 
 pub mod gpu;
 
@@ -20,11 +19,11 @@ impl<B: gfx_hal::Backend> GfxInstance<B> {
   /// Create a surface for a given lambda window using it's underlying
   /// winit window handle.
   /// TODO(vmarcella): Wrap up the B::Surface type to a custom type of our own.
-  pub fn create_surface(&self, window: &LambdaWindow) -> B::Surface {
+  pub fn create_surface(&self, window_handle: &WindowHandle) -> B::Surface {
     return unsafe {
       self
         .instance
-        .create_surface(window.winit_window_ref().unwrap())
+        .create_surface(&window_handle.window_handle)
         .unwrap()
     };
   }
