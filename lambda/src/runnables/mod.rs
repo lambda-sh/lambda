@@ -1,3 +1,4 @@
+use crate::platform::winit::create_event_loop;
 use std::time::Instant;
 
 use winit::{
@@ -5,14 +6,13 @@ use winit::{
   event_loop::ControlFlow,
 };
 
+use crate::platform::winit::Loop;
+
 use super::core::{
-  component::Component,
-  event_loop::{Event, EventLoop, EventLoopPublisher},
-  runnable::Runnable,
-  window::{LambdaWindow, Window},
+  component::Component, event_loop::Event, runnable::Runnable,
 };
 
-use super::components::{ComponentStack, Renderer};
+use super::components::{ComponentStack, Renderer, Window};
 
 ///
 /// LambdaRunnable is a pre configured composition of a generic set of
@@ -20,8 +20,8 @@ use super::components::{ComponentStack, Renderer};
 
 pub struct LambdaRunnable {
   name: String,
-  window: LambdaWindow,
-  event_loop: EventLoop,
+  event_loop: Loop<Event>,
+  window: Window,
   component_stack: ComponentStack,
   renderer: Renderer,
 }
@@ -43,14 +43,6 @@ impl LambdaRunnable {
     return runnable;
   }
 
-  /// Creates an event publisher that allows LambdaEvents to be sent into
-  /// The LambdaRunnable event loop. This allows for components to send
-  /// information to other components.
-  pub fn create_event_publisher(&self) -> EventLoopPublisher {
-    let publisher = self.event_loop.create_publisher();
-    return publisher;
-  }
-
   /// Attaches an active renderer to the runnable.
   pub fn with_renderable_component<T: Default + Component + 'static>(
     mut self,
@@ -69,15 +61,15 @@ impl Default for LambdaRunnable {
   /// storing layers into the engine.
   fn default() -> Self {
     let name = String::from("LambdaRunnable");
-    let event_loop = EventLoop::new();
-    let window = LambdaWindow::new().with_event_loop(&event_loop);
+    let mut event_loop = create_event_loop::<Event>();
+    let window = Window::new(name.as_str(), [480, 360], &mut event_loop);
     let component_stack = ComponentStack::new();
     let renderer = Renderer::new(name.as_str(), &window);
 
     return LambdaRunnable {
       name,
-      window,
       event_loop,
+      window,
       component_stack,
       renderer,
     };
@@ -86,11 +78,7 @@ impl Default for LambdaRunnable {
 
 impl Runnable for LambdaRunnable {
   /// One setup to initialize the
-  fn setup(&mut self) {
-    // Attaches the event loop ;
-    let publisher = self.event_loop.create_publisher();
-    publisher.send_event(Event::Initialized);
-  }
+  fn setup(&mut self) {}
 
   /// Initiates an event loop that captures the context of the LambdaRunnable
   /// and generates events from the windows event loop until the end of an
@@ -99,13 +87,14 @@ impl Runnable for LambdaRunnable {
     // Decompose Runnable components for transferring ownership to the
     // closure.
     let app = self;
-    let publisher = app.event_loop.create_publisher();
-    let event_loop = app.event_loop;
-    let window = app.window;
+    let mut window = app.window;
+    let mut event_loop = app.event_loop;
 
     // TODO(vmarcella): The renderer should most likely just act as
     let mut component_stack = app.component_stack;
     let mut renderer = app.renderer;
+
+    let publisher = event_loop.create_publisher();
 
     let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();
@@ -114,7 +103,7 @@ impl Runnable for LambdaRunnable {
       WinitEvent::WindowEvent { event, .. } => match event {
         WindowEvent::CloseRequested => {
           // Issue a Shutdown event to deallocate resources and clean up.
-          publisher.send_event(Event::Shutdown)
+          publisher.send_event(Event::Shutdown);
         }
         WindowEvent::Resized(dims) => publisher.send_event(Event::Resized {
           new_width: dims.width,
