@@ -2,9 +2,10 @@ use crate::core::component::Component;
 use crate::core::event_loop::Event;
 use core::mem::swap;
 
-use crate::core::window::LambdaWindow;
 use crate::platform::gfx;
 use std::collections::HashMap;
+
+use crate::components::Window;
 
 pub struct RendererBase<B: gfx_hal::Backend> {
   instance: gfx::GfxInstance<B>,
@@ -33,9 +34,9 @@ type PlatformFences = Fences<PlatformAPI>;
 pub type Renderer = RendererBase<PlatformAPI>;
 
 impl Renderer {
-  pub fn new(name: &str, window: &LambdaWindow) -> Self {
+  pub fn new(name: &str, window: &Window) -> Self {
     let instance = gfx::GfxInstance::<PlatformAPI>::new(name);
-    let mut surface = instance.create_surface(window);
+    let mut surface = instance.create_surface(window.window_handle());
     let mut gpu = instance
       .open_primary_gpu(Some(&surface))
       .with_command_pool();
