@@ -4,7 +4,7 @@ use crate::{core::component::Component, core::events::Event};
 
 /// A stack based Vec that can Push & Pop layers.
 pub struct ComponentStack {
-  components: Vec<Box<dyn Component + 'static>>,
+  components: Vec<Box<dyn Component>>,
 }
 
 impl Component for ComponentStack {

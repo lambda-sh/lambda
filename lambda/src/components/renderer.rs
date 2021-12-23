@@ -3,9 +3,42 @@ use std::collections::HashMap;
 
 use crate::{
   components::Window,
-  core::{component::Component, events::Event},
+  core::{component::Component, events::Event, render::shader::ShaderKind},
   platform::gfx,
 };
+
+/// Enums for How to load shaders into the
+pub enum Shader {
+  FromFile {
+    name: Option<String>,
+    path: String,
+    kind: ShaderKind,
+  },
+  FromString {
+    name: Option<String>,
+    source: String,
+    kind: ShaderKind,
+  },
+}
+
+pub enum Resource {
+  Shader(Shader),
+}
+
+pub enum OnAttachSteps {
+  UploadShader(Shader),
+}
+
+pub enum OnDetachSteps {}
+pub enum OnEventSteps {}
+pub enum OnUpdateSteps {}
+
+pub struct RenderPlan {
+  OnAttach: Vec<OnAttachSteps>,
+  OnDetach: Vec<OnDetachSteps>,
+  OnEvent: Vec<OnEventSteps>,
+  OnUpdate: Vec<OnUpdateSteps>,
+}
 
 pub struct RendererBase<B: gfx_hal::Backend> {
   instance: gfx::GfxInstance<B>,
