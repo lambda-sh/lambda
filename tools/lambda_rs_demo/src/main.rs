@@ -1,4 +1,6 @@
-use lambda::core::{component::Component, runnable::start_runnable};
+use lambda::core::{
+  component::Component, render::shader::Shader, runnable::start_runnable,
+};
 use lambda::runnables::create_lambda_runnable;
 
 pub struct DemoComponent {}
@@ -22,6 +24,12 @@ impl Component for DemoComponent {
       "This layer was last updated: {} milliseconds ago",
       last_frame.as_millis()
     );
+  }
+}
+
+impl DemoComponent {
+  fn new() -> Self {
+    return DemoComponent {};
   }
 }
 
