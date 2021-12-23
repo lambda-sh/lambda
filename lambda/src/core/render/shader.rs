@@ -47,13 +47,13 @@ impl ShaderMetadata {
   }
 }
 
-pub struct LambdaShader {
+pub struct Shader {
   binary: Vec<u32>,
   kind: ShaderKind,
   metadata: Option<ShaderMetadata>,
 }
 
-impl LambdaShader {
+impl Shader {
   /// Creates a shader given a source string.
   pub fn from_string(name: &str, source: &str, kind: ShaderKind) -> Self {
     let mut compiler = shaderc::ShaderCompiler::new();

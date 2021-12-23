@@ -16,7 +16,7 @@ pub mod assembler;
 pub mod pipeline;
 pub mod shader;
 
-use shader::LambdaShader;
+use shader::Shader;
 
 use crate::platform::gfx;
 
@@ -24,7 +24,7 @@ pub struct LambdaRenderer<B: gfx_hal::Backend> {
   instance: gfx::GfxInstance<B>,
   gpu: gfx::gpu::GfxGpu<B>,
   format: gfx_hal::format::Format,
-  shader_library: Vec<LambdaShader>,
+  shader_library: Vec<Shader>,
 
   surface: Option<B::Surface>,
   extent: Option<Extent2D>,
@@ -45,8 +45,8 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
   /// render pass. This will currently return all gfx_hal related pipeline assets
   pub fn create_gpu_pipeline(
     &mut self,
-    vertex_shader: LambdaShader,
-    fragment_shader: LambdaShader,
+    vertex_shader: Shader,
+    fragment_shader: Shader,
     render_pass: &B::RenderPass,
   ) -> (B::ShaderModule, B::PipelineLayout, B::GraphicsPipeline) {
     let vertex_module = self
@@ -116,12 +116,12 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     let (submission_fence, rendering_semaphore) =
       self.gpu.create_access_fences();
 
-    let vertex_shader = LambdaShader::from_file(
+    let vertex_shader = Shader::from_file(
       "/home/vmarcella/dev/lambda/lambda/assets/shaders/triangle.vert",
       ShaderKind::Vertex,
     );
 
-    let fragment_shader = LambdaShader::from_file(
+    let fragment_shader = Shader::from_file(
       "/home/vmarcella/dev/lambda/lambda/assets/shaders/triangle.frag",
       ShaderKind::Fragment,
     );
