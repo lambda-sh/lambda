@@ -1,51 +1,22 @@
 use std::mem::size_of;
 
 use gfx_hal::{
-  adapter::{
-    Adapter,
-    Gpu,
-  },
+  adapter::{Adapter, Gpu},
   command::Level,
   device::Device,
-  format::{
-    ChannelType,
-    Format,
-  },
-  image::{
-    Access,
-    Layout,
-  },
+  format::{ChannelType, Format},
+  image::{Access, Layout},
   memory::Dependencies,
   pass::{
-    Attachment,
-    AttachmentLoadOp,
-    AttachmentOps,
-    AttachmentStoreOp,
-    SubpassDependency,
-    SubpassDesc,
+    Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp,
+    SubpassDependency, SubpassDesc,
   },
-  pool::{
-    CommandPool,
-    CommandPoolCreateFlags,
-  },
-  prelude::{
-    PhysicalDevice,
-    QueueFamily,
-  },
-  pso::{
-    PipelineStage,
-    ShaderStageFlags,
-  },
-  queue::{
-    Queue,
-    QueueGroup,
-  },
+  pool::{CommandPool, CommandPoolCreateFlags},
+  prelude::{PhysicalDevice, QueueFamily},
+  pso::{PipelineStage, ShaderStageFlags},
+  queue::{Queue, QueueGroup},
   window::{
-    Extent2D,
-    PresentError,
-    PresentationSurface,
-    Suboptimal,
-    Surface,
+    Extent2D, PresentError, PresentationSurface, Suboptimal, Surface,
     SwapchainConfig,
   },
 };
@@ -397,6 +368,7 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     }
   }
 
+  /// Destroy a graphics pipeline allocated by this GPU.
   pub fn destroy_graphics_pipeline(&self, pipeline: B::GraphicsPipeline) {
     unsafe {
       self.gpu.device.destroy_graphics_pipeline(pipeline);
@@ -455,8 +427,8 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     &mut self,
     surface: &B::Surface,
   ) -> Format {
-    // Define a surface color format compatible with the graphics
-    // device & surface
+    // Define a surface color format compatible with the graphics device &
+    // surface
     let supported_formats = surface
       .supported_formats(&self.adapter.physical_device)
       .unwrap_or(vec![]);
