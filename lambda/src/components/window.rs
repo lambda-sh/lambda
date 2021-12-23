@@ -1,9 +1,9 @@
-use crate::core::component::Component;
-use crate::core::event_loop::Event;
-use crate::platform::winit::{
-  create_event_loop, Loop, WindowHandle, WindowProperties,
-};
 use std::time::Duration;
+
+use crate::{
+  core::{component::Component, events::Event},
+  platform::winit::{Loop, WindowHandle, WindowProperties},
+};
 
 pub struct Window {
   window_handle: WindowHandle,

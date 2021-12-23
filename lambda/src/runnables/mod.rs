@@ -1,23 +1,20 @@
-use crate::platform::winit::create_event_loop;
 use std::time::Instant;
 
+// TODO(vmarcella): Isolate this behind a platform specific API.
 use winit::{
   event::{Event as WinitEvent, WindowEvent},
   event_loop::ControlFlow,
 };
 
-use crate::platform::winit::Loop;
-
-use super::core::{
-  component::Component, event_loop::Event, runnable::Runnable,
+use crate::{
+  components::{ComponentStack, Renderer, Window},
+  core::{component::Component, events::Event, runnable::Runnable},
+  platform::{winit::create_event_loop, winit::Loop},
 };
-
-use super::components::{ComponentStack, Renderer, Window};
 
 ///
 /// LambdaRunnable is a pre configured composition of a generic set of
 /// components from the lambda-rs codebase
-
 pub struct LambdaRunnable {
   name: String,
   event_loop: Loop<Event>,

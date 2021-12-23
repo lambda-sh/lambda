@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use super::event_loop::Event;
+use super::events::Event;
 
 /// The Component Interface for allowing Component based data structures
 /// like the ComponentStack to store components with various purposes

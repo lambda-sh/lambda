@@ -6,7 +6,7 @@ use gfx_hal::{
   window::{Extent2D, PresentationSurface},
 };
 
-use super::event_loop::Event;
+use super::events::Event;
 use crate::core::{
   component::Component,
   render::{assembler::create_vertex_assembler, shader::ShaderKind},

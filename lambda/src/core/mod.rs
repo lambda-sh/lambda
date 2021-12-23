@@ -1,5 +1,5 @@
 pub mod component;
-pub mod event_loop;
+pub mod events;
 pub mod render;
 pub mod runnable;
 pub mod window;

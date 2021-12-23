@@ -1,11 +1,11 @@
-use crate::core::component::Component;
-use crate::core::event_loop::Event;
 use core::mem::swap;
-
-use crate::platform::gfx;
 use std::collections::HashMap;
 
-use crate::components::Window;
+use crate::{
+  components::Window,
+  core::{component::Component, events::Event},
+  platform::gfx,
+};
 
 pub struct RendererBase<B: gfx_hal::Backend> {
   instance: gfx::GfxInstance<B>,
@@ -131,7 +131,7 @@ impl Component for Renderer {
     println!("Destroyed all GPU resources");
   }
 
-  fn on_event(&mut self, event: &crate::core::event_loop::Event) {}
+  fn on_event(&mut self, event: &Event) {}
 
   fn on_update(&mut self, last_frame: &std::time::Duration) {}
 }
