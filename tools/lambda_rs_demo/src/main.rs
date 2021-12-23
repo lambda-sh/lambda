@@ -1,12 +1,7 @@
-use lambda::core::{
-  component::Component, event_loop::EventLoopPublisher,
-  runnable::start_runnable,
-};
+use lambda::core::{component::Component, runnable::start_runnable};
 use lambda::runnables::create_lambda_runnable;
 
-pub struct DemoComponent {
-  publisher: Option<EventLoopPublisher>,
-}
+pub struct DemoComponent {}
 
 impl Component for DemoComponent {
   fn on_attach(&mut self) {
@@ -15,11 +10,7 @@ impl Component for DemoComponent {
 
   fn on_detach(self: &mut DemoComponent) {}
 
-  fn on_event(
-    self: &mut DemoComponent,
-    event: &lambda::core::event_loop::Event,
-  ) {
-  }
+  fn on_event(self: &mut DemoComponent, event: &lambda::core::events::Event) {}
 
   fn on_update(self: &mut DemoComponent, last_frame: &std::time::Duration) {
     println!(
@@ -36,7 +27,7 @@ impl Component for DemoComponent {
 
 impl Default for DemoComponent {
   fn default() -> Self {
-    return DemoComponent { publisher: None };
+    return DemoComponent {};
   }
 }
 
