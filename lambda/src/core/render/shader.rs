@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::platform::shaderc;
 
 /// Supported Shader kinds.
@@ -93,8 +95,12 @@ impl Shader {
 
   pub fn from_lambda(shader: PrepackagedShaders) -> Self {
     let mut compiler = shaderc::ShaderCompiler::new();
-    let (asset_path, kind) = resolve_shader_path(shader);
-    let shader_binary = compiler.compile_file_into_binary(&asset_path, kind);
+    let (shader_source, kind) = get_shader_source(shader);
+    let shader_binary = compiler.compile_string_into_binary(
+      "triangle_tests",
+      &shader_source,
+      kind,
+    );
 
     return Self {
       binary: shader_binary,
@@ -108,22 +114,34 @@ impl Shader {
   }
 }
 
-pub fn resolve_shader_path(shader: PrepackagedShaders) -> (String, ShaderKind) {
+pub fn get_shader_source(shader: PrepackagedShaders) -> (String, ShaderKind) {
+  // TODO(vmarcella): Shaders should most certainly not be loaded into the
+  // library like this.
   return match shader {
     PrepackagedShaders::Vertex(shader) => {
       let kind = ShaderKind::Vertex;
       match shader {
-        VertexShaders::Triangle => {
-          ("assets/shaders/triangle.vert".to_string(), kind)
-        }
+        VertexShaders::Triangle => (
+          include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/shaders/triangle.vert"
+          ))
+          .to_string(),
+          kind,
+        ),
       }
     }
     PrepackagedShaders::Fragment(shader) => {
       let kind = ShaderKind::Fragment;
       return match shader {
-        FragmentShaders::Triangle => {
-          ("assets/shaders/triangle.frag".to_string(), kind)
-        }
+        FragmentShaders::Triangle => (
+          include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/shaders/triangle.frag"
+          ))
+          .to_string(),
+          kind,
+        ),
       };
     }
   };
