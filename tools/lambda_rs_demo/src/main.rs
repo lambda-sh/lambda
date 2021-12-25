@@ -1,6 +1,10 @@
+use lambda::core::render::shader::FragmentShaders;
+use lambda::core::render::shader::PrepackagedShaders;
+use lambda::core::render::shader::VertexShaders;
 use lambda::core::{
   component::Component, render::shader::Shader, runnable::start_runnable,
 };
+
 use lambda::runnables::create_lambda_runnable;
 
 pub struct DemoComponent {}
@@ -42,6 +46,13 @@ impl Default for DemoComponent {
 fn main() {
   let app = create_lambda_runnable().with_renderable_component(
     move |renderer, demo: DemoComponent| {
+      let vertex_shader = Shader::from_lambda(PrepackagedShaders::Vertex(
+        VertexShaders::Triangle,
+      ));
+
+      let fragment_shader = Shader::from_lambda(PrepackagedShaders::Fragment(
+        FragmentShaders::Triangle,
+      ));
       return demo;
     },
   );
