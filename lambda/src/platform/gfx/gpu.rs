@@ -100,6 +100,9 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     };
   }
 
+  // TODO(vmarcella): A command pool allocated GPU should be implemented via a
+  // GPU typestate. For example, with_command_pool should return a gpu with an
+  // type signature something along the lines of: GPU<CommandReady>
   /// Attaches a command pool to the current gfx gpu.
   pub fn with_command_pool(self) -> Self {
     let adapter = self.adapter;
@@ -127,11 +130,13 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     semaphore: &B::Semaphore,
     fence: &mut B::Fence,
   ) {
+    let commands = vec![command_buffer].into_iter();
+    let semaphores = vec![semaphore].into_iter();
     unsafe {
       self.queue_group.queues[0].submit(
-        vec![command_buffer].into_iter(),
+        commands,
         vec![].into_iter(),
-        vec![semaphore].into_iter(),
+        semaphores,
         Some(fence),
       );
     }
