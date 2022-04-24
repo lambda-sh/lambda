@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{core::component::Component, core::events::Event};
+use crate::core::{
+  component::Component,
+  events::Event,
+};
 
 /// A stack based Vec that can Push & Pop layers.
 pub struct ComponentStack {

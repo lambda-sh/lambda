@@ -1,5 +1,6 @@
-use super::winit::WindowHandle;
 use gfx_hal::Instance;
+
+use super::winit::WindowHandle;
 
 pub mod gpu;
 

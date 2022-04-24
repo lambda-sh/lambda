@@ -1,9 +1,20 @@
 use winit::{
-  dpi::{LogicalSize, PhysicalSize},
+  dpi::{
+    LogicalSize,
+    PhysicalSize,
+  },
   event::Event,
-  event_loop::{ControlFlow, EventLoop, EventLoopProxy, EventLoopWindowTarget},
+  event_loop::{
+    ControlFlow,
+    EventLoop,
+    EventLoopProxy,
+    EventLoopWindowTarget,
+  },
   monitor::MonitorHandle,
-  window::{Window, WindowBuilder},
+  window::{
+    Window,
+    WindowBuilder,
+  },
 };
 
 /// Loop wrapping for the winit event loop.

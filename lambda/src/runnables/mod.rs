@@ -2,14 +2,29 @@ use std::time::Instant;
 
 // TODO(vmarcella): Isolate this behind a platform specific API.
 use winit::{
-  event::{Event as WinitEvent, WindowEvent},
+  event::{
+    Event as WinitEvent,
+    WindowEvent,
+  },
   event_loop::ControlFlow,
 };
 
 use crate::{
-  components::{ComponentStack, Renderer, Window},
-  core::{component::Component, events::Event, runnable::Runnable},
-  platform::{winit::create_event_loop, winit::Loop},
+  components::{
+    ComponentStack,
+    RenderPlan,
+    Renderer,
+    Window,
+  },
+  core::{
+    component::Component,
+    events::Event,
+    runnable::Runnable,
+  },
+  platform::winit::{
+    create_event_loop,
+    Loop,
+  },
 };
 
 ///
@@ -38,6 +53,11 @@ impl LambdaRunnable {
     let (mut runnable, component) = configure_component(self, T::default());
     runnable.component_stack.push_component(component);
     return runnable;
+  }
+
+  pub fn with_render_plan(mut self, plan: RenderPlan) -> Self {
+    self.renderer.upload_render_plan(plan);
+    return self;
   }
 
   /// Attaches an active renderer to the runnable.

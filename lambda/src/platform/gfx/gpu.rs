@@ -1,22 +1,51 @@
 use std::mem::size_of;
 
 use gfx_hal::{
-  adapter::{Adapter, Gpu},
+  adapter::{
+    Adapter,
+    Gpu,
+  },
   command::Level,
   device::Device,
-  format::{ChannelType, Format},
-  image::{Access, Layout},
+  format::{
+    ChannelType,
+    Format,
+  },
+  image::{
+    Access,
+    Layout,
+  },
   memory::Dependencies,
   pass::{
-    Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp,
-    SubpassDependency, SubpassDesc,
+    Attachment,
+    AttachmentLoadOp,
+    AttachmentOps,
+    AttachmentStoreOp,
+    SubpassDependency,
+    SubpassDesc,
   },
-  pool::{CommandPool, CommandPoolCreateFlags},
-  prelude::{PhysicalDevice, QueueFamily},
-  pso::{PipelineStage, ShaderStageFlags},
-  queue::{Queue, QueueGroup},
+  pool::{
+    CommandPool,
+    CommandPoolCreateFlags,
+  },
+  prelude::{
+    PhysicalDevice,
+    QueueFamily,
+  },
+  pso::{
+    PipelineStage,
+    ShaderStageFlags,
+  },
+  queue::{
+    Queue,
+    QueueGroup,
+  },
   window::{
-    Extent2D, PresentError, PresentationSurface, Suboptimal, Surface,
+    Extent2D,
+    PresentError,
+    PresentationSurface,
+    Suboptimal,
+    Surface,
     SwapchainConfig,
   },
 };

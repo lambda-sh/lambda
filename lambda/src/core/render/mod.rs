@@ -1,15 +1,28 @@
 use std::time::Duration;
 
 use gfx_hal::{
-  command::{ClearColor, ClearValue, CommandBuffer},
-  pso::{EntryPoint, Specialization},
-  window::{Extent2D, PresentationSurface},
+  command::{
+    ClearColor,
+    ClearValue,
+    CommandBuffer,
+  },
+  pso::{
+    EntryPoint,
+    Specialization,
+  },
+  window::{
+    Extent2D,
+    PresentationSurface,
+  },
 };
 
 use super::events::Event;
 use crate::core::{
   component::Component,
-  render::{assembler::create_vertex_assembler, shader::ShaderKind},
+  render::{
+    assembler::create_vertex_assembler,
+    shader::ShaderKind,
+  },
 };
 
 pub mod assembler;
@@ -224,7 +237,10 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     // TODO(vmarcella): Investigate into abstracting the viewport behind a
     // camera.
     let viewport = {
-      use gfx_hal::pso::{Rect, Viewport};
+      use gfx_hal::pso::{
+        Rect,
+        Viewport,
+      };
 
       Viewport {
         rect: Rect {

@@ -1,8 +1,15 @@
 use std::time::Duration;
 
 use crate::{
-  core::{component::Component, events::Event},
-  platform::winit::{Loop, WindowHandle, WindowProperties},
+  core::{
+    component::Component,
+    events::Event,
+  },
+  platform::winit::{
+    Loop,
+    WindowHandle,
+    WindowProperties,
+  },
 };
 
 pub struct Window {

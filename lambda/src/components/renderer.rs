@@ -3,7 +3,11 @@ use std::collections::HashMap;
 
 use crate::{
   components::Window,
-  core::{component::Component, events::Event, render::shader::ShaderKind},
+  core::{
+    component::Component,
+    events::Event,
+    render::shader::ShaderKind,
+  },
   platform::gfx,
 };
 
@@ -34,10 +38,10 @@ pub enum OnEventSteps {}
 pub enum OnUpdateSteps {}
 
 pub struct RenderPlan {
-  OnAttach: Vec<OnAttachSteps>,
-  OnDetach: Vec<OnDetachSteps>,
-  OnEvent: Vec<OnEventSteps>,
-  OnUpdate: Vec<OnUpdateSteps>,
+  on_attach: Vec<OnAttachSteps>,
+  on_detach: Vec<OnDetachSteps>,
+  on_event: Vec<OnEventSteps>,
+  on_update: Vec<OnUpdateSteps>,
 }
 
 pub struct RendererBase<B: gfx_hal::Backend> {
@@ -107,6 +111,10 @@ impl Renderer {
       pipeline_layouts: vec![],
       render_passes: vec![],
     };
+  }
+
+  pub fn upload_render_plan(&mut self, plan: RenderPlan) {
+    todo!();
   }
 }
 

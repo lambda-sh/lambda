@@ -1,11 +1,16 @@
-use lambda::core::render::shader::FragmentShaders;
-use lambda::core::render::shader::PrepackagedShaders;
-use lambda::core::render::shader::VertexShaders;
-use lambda::core::{
-  component::Component, render::shader::Shader, runnable::start_runnable,
+use lambda::{
+  core::{
+    component::Component,
+    render::shader::{
+      FragmentShaders,
+      PrepackagedShaders,
+      Shader,
+      VertexShaders,
+    },
+    runnable::start_runnable,
+  },
+  runnables::create_lambda_runnable,
 };
-
-use lambda::runnables::create_lambda_runnable;
 
 pub struct DemoComponent {}
 
