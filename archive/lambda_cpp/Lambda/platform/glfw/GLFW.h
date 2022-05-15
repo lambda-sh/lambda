@@ -1,8 +1,0 @@
-#ifndef LAMBDA_PLATFORM_GLFW_GLFW_H_
-#define LAMBDA_PLATFORM_GLFW_GLFW_H_
-
-#define GLFW_INCLUDE_NONE
-
-#include <GLFW/glfw3.h>
-
-#endif  // LAMBDA_PLATFORM_GLFW_GLFW_H_
