@@ -19,10 +19,10 @@ cargo-audit = "0.16.0"
 
 [features]
 default = ["shaderc/build-from-source", "detect-platform"]
-linux-optimizations=["lambda-platform/with-vulkan", "lambda-platform/with-opengl"]
-wsl-optimizations=["lambda-platform/with-opengl"]
-windows-optimizations=["lambda-platform/with-vulkan", "lambda-platform/with-dx11", "lambda-platform/with-dx12"]
-macos-optimizations=["lambda-platform/with-metal", "lambda-platform/with-vulkan"]
+stable-linux-dependencies=["lambda-platform/gfx-with-vulkan"]
+stable-wsl-dependencies=["lambda-platform/gfx-with-opengl"]
+stable-windows-dependencies=["lambda-platform/gfx-with-dx12"]
+stable-macos-dependencies=["lambda-platform/gfx-with-metal"]
 detect-platform=[]
 
 
