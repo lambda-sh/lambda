@@ -17,6 +17,23 @@ use winit::{
   },
 };
 
+/// Embedded module for exporting data/types from winit as minimally/controlled
+/// as possible. The exports from this module are not guaranteed to be stable.
+pub mod winit_exports {
+  pub use winit::{
+    event::{
+      Event,
+      WindowEvent,
+    },
+    event_loop::{
+      ControlFlow,
+      EventLoop,
+      EventLoopProxy,
+      EventLoopWindowTarget,
+    },
+  };
+}
+
 /// Loop wrapping for the winit event loop.
 pub struct Loop<E: 'static> {
   event_loop: EventLoop<E>,

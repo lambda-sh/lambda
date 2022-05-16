@@ -1,12 +1,13 @@
 use std::time::Instant;
 
-// TODO(vmarcella): Isolate this behind a platform specific API.
-use winit::{
-  event::{
+use lambda_platform::winit::{
+  create_event_loop,
+  winit_exports::{
+    ControlFlow,
     Event as WinitEvent,
     WindowEvent,
   },
-  event_loop::ControlFlow,
+  Loop,
 };
 
 use crate::{
@@ -20,10 +21,6 @@ use crate::{
     component::Component,
     events::Event,
     runnable::Runnable,
-  },
-  platform::winit::{
-    create_event_loop,
-    Loop,
   },
 };
 
