@@ -8,6 +8,37 @@ pub mod pipeline;
 
 use api::RenderingAPI;
 
+/// Exports directly from the gfx_hal crate to be used while lambda-platform
+/// stabilizes it's API.
+pub mod gfx_hal_exports {
+  pub use gfx_hal::{
+    command::{
+      ClearColor,
+      ClearValue,
+      CommandBuffer,
+      CommandBufferFlags,
+      RenderAttachmentInfo,
+      SubpassContents,
+    },
+    format::Format,
+    image::FramebufferAttachment,
+    pso::{
+      EntryPoint,
+      InputAssemblerDesc,
+      Primitive,
+      PrimitiveAssemblerDesc,
+      Rect,
+      Specialization,
+      Viewport,
+    },
+    window::{
+      Extent2D,
+      PresentationSurface,
+    },
+    Backend,
+  };
+}
+
 pub struct GfxInstance<B: gfx_hal::Backend> {
   instance: B::Instance,
 }

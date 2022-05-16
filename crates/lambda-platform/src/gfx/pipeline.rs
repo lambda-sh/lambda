@@ -11,8 +11,6 @@ use gfx_hal::{
   Backend,
 };
 
-use super::gpu;
-
 /// Graphical pipeline for use in the lambda renderer.
 pub struct GraphicsPipeline<'a, B: Backend> {
   pipeline_desc: GraphicsPipelineDesc<'a, B>,

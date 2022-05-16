@@ -1,11 +1,9 @@
-use gfx_hal::{
-  pso::{
-    EntryPoint,
-    InputAssemblerDesc,
-    Primitive,
-    PrimitiveAssemblerDesc,
-  },
+use lambda_platform::gfx::gfx_hal_exports::{
   Backend,
+  EntryPoint,
+  InputAssemblerDesc,
+  Primitive,
+  PrimitiveAssemblerDesc,
 };
 
 /// Create a primitive vertex assembler with no current configurations.

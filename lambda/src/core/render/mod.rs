@@ -1,21 +1,5 @@
 use std::time::Duration;
 
-use gfx_hal::{
-  command::{
-    ClearColor,
-    ClearValue,
-    CommandBuffer,
-  },
-  pso::{
-    EntryPoint,
-    Specialization,
-  },
-  window::{
-    Extent2D,
-    PresentationSurface,
-  },
-};
-
 use super::events::Event;
 use crate::core::{
   component::Component,
@@ -26,22 +10,29 @@ use crate::core::{
 };
 
 pub mod assembler;
-pub mod pipeline;
 pub mod shader;
 
+use lambda_platform::{
+  gfx,
+  gfx::{
+    gfx_hal_exports,
+    gfx_hal_exports::{
+      CommandBuffer,
+      PresentationSurface,
+    },
+  },
+};
 use shader::Shader;
 
-use crate::platform::gfx;
-
-pub struct LambdaRenderer<B: gfx_hal::Backend> {
+pub struct LambdaRenderer<B: gfx_hal_exports::Backend> {
   instance: gfx::GfxInstance<B>,
   gpu: gfx::gpu::GfxGpu<B>,
-  format: gfx_hal::format::Format,
+  format: gfx_hal_exports::Format,
   shader_library: Vec<Shader>,
 
   surface: Option<B::Surface>,
-  extent: Option<Extent2D>,
-  frame_buffer_attachment: Option<gfx_hal::image::FramebufferAttachment>,
+  extent: Option<gfx_hal_exports::Extent2D>,
+  frame_buffer_attachment: Option<gfx_hal_exports::FramebufferAttachment>,
   submission_complete_fence: Option<B::Fence>,
   rendering_complete_semaphore: Option<B::Semaphore>,
   command_buffer: Option<B::CommandBuffer>,
@@ -53,7 +44,7 @@ pub struct LambdaRenderer<B: gfx_hal::Backend> {
   render_passes: Option<Vec<B::RenderPass>>,
 }
 
-impl<B: gfx_hal::Backend> LambdaRenderer<B> {
+impl<B: gfx_hal_exports::Backend> LambdaRenderer<B> {
   /// Create a graphical pipeline using a single shader with an associated
   /// render pass. This will currently return all gfx_hal related pipeline assets
   pub fn create_gpu_pipeline(
@@ -71,23 +62,23 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
 
     // TODO(vmarcella): Abstract the gfx hal assembler away from the
     // render module directly.
-    let vertex_entry = EntryPoint::<B> {
+    let vertex_entry = gfx_hal_exports::EntryPoint::<B> {
       entry: "main",
       module: &vertex_module,
-      specialization: Specialization::default(),
+      specialization: gfx_hal_exports::Specialization::default(),
     };
 
-    let fragment_entry = EntryPoint::<B> {
+    let fragment_entry = gfx_hal_exports::EntryPoint::<B> {
       entry: "main",
       module: &fragment_module,
-      specialization: Specialization::default(),
+      specialization: gfx_hal_exports::Specialization::default(),
     };
 
     // TODO(vmarcella): This process could use a more consistent abstraction
     // for getting a pipeline created.
     let assembler = create_vertex_assembler(vertex_entry);
     let pipeline_layout = self.gpu.create_pipeline_layout();
-    let mut logical_pipeline = pipeline::create_graphics_pipeline(
+    let mut logical_pipeline = gfx::pipeline::create_graphics_pipeline(
       assembler,
       &pipeline_layout,
       render_pass,
@@ -104,7 +95,7 @@ impl<B: gfx_hal::Backend> LambdaRenderer<B> {
 /// Platform RenderAPI for layers to use for issuing calls to
 /// a LambdaRenderer using the default rendering nackend provided
 /// by the platform.
-pub type RenderAPI = LambdaRenderer<backend::Backend>;
+pub type RenderAPI = LambdaRenderer<gfx::api::RenderingAPI::Backend>;
 
 /// A render API that is provided by the lambda runnable.
 pub struct RenderClient<'a> {
@@ -119,7 +110,7 @@ impl<'a> RenderClient<'a> {
   pub fn upload_shader() {}
 }
 
-impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
+impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
   /// Allocates resources on the GPU to enable rendering for other
   fn on_attach(&mut self) {
     println!("The Rendering API has been attached and is being initialized.");
@@ -237,13 +228,8 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     // TODO(vmarcella): Investigate into abstracting the viewport behind a
     // camera.
     let viewport = {
-      use gfx_hal::pso::{
-        Rect,
-        Viewport,
-      };
-
-      Viewport {
-        rect: Rect {
+      gfx_hal_exports::Viewport {
+        rect: gfx_hal_exports::Rect {
           x: 0,
           y: 0,
           w: self.extent.as_ref().unwrap().width as i16,
@@ -256,7 +242,7 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
     unsafe {
       let command_buffer = self.command_buffer.as_mut().unwrap();
       command_buffer
-        .begin_primary(gfx_hal::command::CommandBufferFlags::ONE_TIME_SUBMIT);
+        .begin_primary(gfx_hal_exports::CommandBufferFlags::ONE_TIME_SUBMIT);
 
       // Configure the vieports & the scissor rectangles for the rasterizer
       let viewports = vec![viewport.clone()].into_iter();
@@ -265,10 +251,10 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
       command_buffer.set_scissors(0, rect);
 
       // Render attachments to specify for the current render pass.
-      let render_attachments = vec![gfx_hal::command::RenderAttachmentInfo {
+      let render_attachments = vec![gfx_hal_exports::RenderAttachmentInfo {
         image_view: image.borrow(),
-        clear_value: ClearValue {
-          color: ClearColor {
+        clear_value: gfx_hal_exports::ClearValue {
+          color: gfx_hal_exports::ClearColor {
             float32: [0.0, 0.0, 0.0, 1.0],
           },
         },
@@ -282,7 +268,7 @@ impl<B: gfx_hal::Backend> Component for LambdaRenderer<B> {
         &framebuffer,
         viewport.rect,
         render_attachments,
-        gfx_hal::command::SubpassContents::Inline,
+        gfx_hal_exports::SubpassContents::Inline,
       );
 
       // Bind graphical pipeline and submit commands to the GPU.

@@ -1,6 +1,11 @@
 use core::mem::swap;
 use std::collections::HashMap;
 
+use lambda_platform::{
+  gfx,
+  gfx::gfx_hal_exports,
+};
+
 use crate::{
   components::Window,
   core::{
@@ -8,7 +13,6 @@ use crate::{
     events::Event,
     render::shader::ShaderKind,
   },
-  platform::gfx,
 };
 
 /// Enums for How to load shaders into the
@@ -44,11 +48,11 @@ pub struct RenderPlan {
   on_update: Vec<OnUpdateSteps>,
 }
 
-pub struct RendererBase<B: gfx_hal::Backend> {
+pub struct RendererBase<B: gfx_hal_exports::Backend> {
   instance: gfx::GfxInstance<B>,
   gpu: gfx::gpu::GfxGpu<B>,
-  format: gfx_hal::format::Format,
-  extent: gfx_hal::window::Extent2D,
+  format: gfx_hal_exports::Format,
+  extent: gfx_hal_exports::Extent2D,
   fences: HashMap<String, Fences<B>>,
   surfaces: HashMap<String, B::Surface>,
 
@@ -57,9 +61,9 @@ pub struct RendererBase<B: gfx_hal::Backend> {
   render_passes: Vec<B::RenderPass>,
 }
 
-type PlatformAPI = backend::Backend;
+type PlatformAPI = gfx::api::RenderingAPI::Backend;
 
-struct Fences<B: gfx_hal::Backend> {
+struct Fences<B: gfx_hal_exports::Backend> {
   submission_fence: B::Fence,
   rendering_semaphore: B::Semaphore,
 }

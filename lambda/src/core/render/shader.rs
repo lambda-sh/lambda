@@ -1,14 +1,7 @@
 use std::path::Path;
 
-use crate::platform::shaderc;
-
-/// Supported Shader kinds.
-#[derive(Clone, Copy)]
-pub enum ShaderKind {
-  Vertex,
-  Fragment,
-  Compute,
-}
+use lambda_platform::shaderc;
+pub use lambda_platform::shaderc::ShaderKind;
 
 /// Optional ShaderMetadata that can be used for creating
 struct ShaderMetadata {
