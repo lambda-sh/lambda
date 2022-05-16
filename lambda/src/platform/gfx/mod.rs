@@ -1,4 +1,5 @@
 use gfx_hal::Instance;
+use lambda_platform::RenderingAPI;
 
 use super::winit::WindowHandle;
 
@@ -55,6 +56,6 @@ impl<B: gfx_hal::Backend> GfxInstance<B> {
 
 // Create a graphical backend instance using the platforms default installed
 // graphical backend
-pub fn create_default_gfx_instance() -> GfxInstance<backend::Backend> {
-  return GfxInstance::<backend::Backend>::new("Lambda Application");
+pub fn create_default_gfx_instance() -> GfxInstance<RenderingAPI::Backend> {
+  return GfxInstance::<RenderingAPI::Backend>::new("Lambda Application");
 }

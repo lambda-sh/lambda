@@ -118,6 +118,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
+name = "ash"
+version = "0.32.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06063a002a77d2734631db74e8f4ce7148b77fe522e6bca46f2ae7774fd48112"
+dependencies = [
+ "libloading 0.7.2",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -889,6 +898,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "gfx-backend-dx11"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f9e453baf3aaef2b0c354ce0b3d63d76402e406a59b64b7182d123cfa6635ae"
+dependencies = [
+ "arrayvec",
+ "bitflags",
+ "gfx-auxil",
+ "gfx-hal",
+ "gfx-renderdoc",
+ "libloading 0.7.2",
+ "log",
+ "parking_lot",
+ "range-alloc",
+ "raw-window-handle 0.3.4",
+ "smallvec 1.7.0",
+ "spirv_cross",
+ "thunderdome",
+ "winapi",
+ "wio",
+]
+
+[[package]]
 name = "gfx-backend-dx12"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -957,6 +989,27 @@ dependencies = [
  "range-alloc",
  "raw-window-handle 0.3.4",
  "storage-map",
+]
+
+[[package]]
+name = "gfx-backend-vulkan"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9861ec855acbbc65c0e4f966d761224886e811dc2c6d413a4776e9293d0e5c0"
+dependencies = [
+ "arrayvec",
+ "ash",
+ "byteorder",
+ "core-graphics-types",
+ "gfx-hal",
+ "gfx-renderdoc",
+ "inplace_it",
+ "log",
+ "objc",
+ "parking_lot",
+ "raw-window-handle 0.3.4",
+ "smallvec 1.7.0",
+ "winapi",
 ]
 
 [[package]]
@@ -1134,6 +1187,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "inplace_it"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90953f308a79fe6d62a4643e51f848fbfddcd05975a38e69fdf4ab86a7baf7ca"
+
+[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1188,9 +1247,22 @@ version = "0.1.0"
 dependencies = [
  "cargo-audit",
  "cargo-tarpaulin",
+ "gfx-hal",
+ "lambda-platform",
+ "shaderc",
+ "winit",
+]
+
+[[package]]
+name = "lambda-platform"
+version = "0.1.0"
+dependencies = [
+ "cfg-if 1.0.0",
+ "gfx-backend-dx11",
  "gfx-backend-dx12",
  "gfx-backend-gl",
  "gfx-backend-metal",
+ "gfx-backend-vulkan",
  "gfx-hal",
  "shaderc",
  "winit",
@@ -2680,6 +2752,15 @@ dependencies = [
  "wayland-client",
  "winapi",
  "x11-dl",
+]
+
+[[package]]
+name = "wio"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d129932f4644ac2396cb456385cbf9e63b5b30c6e8dc4820bdca4eb082037a5"
+dependencies = [
+ "winapi",
 ]
 
 [[package]]

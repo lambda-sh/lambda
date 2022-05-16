@@ -11,29 +11,23 @@ path = "src/lib.rs"
 gfx-hal = "=0.9.0"
 winit = "=0.25.0"
 shaderc = "=0.7"
+lambda-platform = { path = "../crates/lambda-platform", version = "0.1.0" }
+
 
 [dev-dependencies]
 cargo-audit = "0.16.0"
 
 [features]
-default = ["shaderc/build-from-source"]
+default = ["shaderc/build-from-source", "detect-platform"]
+linux-optimizations=["lambda-platform/with-vulkan", "lambda-platform/with-opengl"]
+wsl-optimizations=["lambda-platform/with-opengl"]
+windows-optimizations=["lambda-platform/with-vulkan", "lambda-platform/with-dx11", "lambda-platform/with-dx12"]
+macos-optimizations=["lambda-platform/with-metal", "lambda-platform/with-vulkan"]
+detect-platform=[]
+
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------
 
 # Linux dev-dependencies.
 [target.'cfg(all(unix, not(target_os = "macos")))'.dev-dependencies]
 cargo-tarpaulin = "=0.18.5"
-
-# ------------------------------- GFX-RS BACKENDS ------------------------------
-
-[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.backend]
-package = "gfx-backend-gl"
-version = "=0.9.0"
-
-[target.'cfg(target_os = "macos")'.dependencies.backend]
-package = "gfx-backend-metal"
-version = "=0.9.0"
-
-[target.'cfg(windows)'.dependencies.backend]
-package = "gfx-backend-dx12"
-version = "=0.9.0"
