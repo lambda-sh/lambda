@@ -8,9 +8,6 @@ name = "lambda"
 path = "src/lib.rs"
 
 [dependencies]
-gfx-hal = "=0.9.0"
-winit = "=0.25.0"
-shaderc = "=0.7"
 lambda-platform = { path = "../crates/lambda-platform", version = "0.1.0" }
 
 
@@ -18,7 +15,7 @@ lambda-platform = { path = "../crates/lambda-platform", version = "0.1.0" }
 cargo-audit = "0.16.0"
 
 [features]
-default = ["shaderc/build-from-source", "detect-platform"]
+default = ["detect-platform"]
 stable-linux-dependencies=["lambda-platform/gfx-with-vulkan"]
 stable-wsl-dependencies=["lambda-platform/gfx-with-opengl"]
 stable-windows-dependencies=["lambda-platform/gfx-with-dx12"]

@@ -1247,10 +1247,7 @@ version = "0.1.0"
 dependencies = [
  "cargo-audit",
  "cargo-tarpaulin",
- "gfx-hal",
  "lambda-platform",
- "shaderc",
- "winit",
 ]
 
 [[package]]
