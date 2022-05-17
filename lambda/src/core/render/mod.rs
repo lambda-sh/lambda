@@ -1,16 +1,7 @@
-use std::time::Duration;
-
-use super::events::Event;
-use crate::core::{
-  component::Component,
-  render::{
-    assembler::create_vertex_assembler,
-    shader::ShaderKind,
-  },
-};
-
 pub mod assembler;
 pub mod shader;
+
+use std::time::Duration;
 
 use lambda_platform::{
   gfx,
@@ -23,6 +14,15 @@ use lambda_platform::{
   },
 };
 use shader::Shader;
+
+use super::events::Event;
+use crate::core::{
+  component::Component,
+  render::{
+    assembler::create_vertex_assembler,
+    shader::ShaderKind,
+  },
+};
 
 pub struct LambdaRenderer<B: gfx_hal_exports::Backend> {
   instance: gfx::GfxInstance<B>,
