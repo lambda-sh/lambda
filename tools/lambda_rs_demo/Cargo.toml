@@ -1,0 +1,11 @@
+[package]
+name = "lambda_rs_demo"
+version = "0.1.0"
+edition = "2018"
+
+[[bin]]
+name = "demo"
+path = "src/main.rs"
+
+[dependencies]
+lambda = { path = "../../lambda" }

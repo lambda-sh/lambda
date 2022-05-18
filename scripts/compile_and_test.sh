@@ -41,6 +41,7 @@ lambda_args_compile $@
 
 export CC=$LAMBDA_c_compiler CXX=$LAMBDA_cpp_compiler
 
+pushd archive/lambda_cpp > /dev/null
 mkdir -p build
 pushd build > /dev/null
 
@@ -87,6 +88,7 @@ pushd lambda/tests > /dev/null
 popd > /dev/null  # lambda/tests
 
 popd > /dev/null  # build
+popd > /dev/null  # archive/lambda_cpp
 popd > /dev/null  # ROOT_DIR
 
 lambda_log_info "$LAMBDA_tool and engine have been shutdown."

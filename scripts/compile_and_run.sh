@@ -47,6 +47,7 @@ lambda_args_compile "$@"
 
 export CC=$LAMBDA_c_compiler CXX=$LAMBDA_cpp_compiler
 
+pushd archive/lambda_cpp > /dev/null
 mkdir -p build
 pushd build > /dev/null
 
@@ -57,6 +58,7 @@ if [ "$LAMBDA_build" = "Release" ] || [ "$LAMBDA_build" = "Debug" ]; then
         -DDISTRIBUTION_BUILD=False \
         -DLAMBDA_TOOLS_BUILD_SANDBOX=ON \
         -DLAMBDA_TOOLS_BUILD_MATHBOX=ON \
+        -DLAMBDA_TOOLS_BUILD_DEMO=ON \
         -G Ninja
 elif [ "$LAMBDA_build" = "Dist" ]; then
     lambda_log_info "Compiling a distribution build for the engine."
@@ -65,6 +67,7 @@ elif [ "$LAMBDA_build" = "Dist" ]; then
         -DDISTRIBUTION_BUILD=True \
         -DLAMBDA_TOOLS_BUILD_SANDBOX=ON \
         -DLAMBDA_TOOLS_BUILD_MATHBOX=ON \
+        -DLAMBDA_TOOLS_BUILD_DEMO=ON \
         -G Ninja
 else
     lambda_log_fatal "You need to pass a build type in order to compile a tool."
@@ -99,6 +102,7 @@ lambda_assert_last_command_ok "Couldn't access the tools directory."
 popd > /dev/null
 
 popd > /dev/null  # "build"
+popd > /dev/null  # "archive/lambda_cpp"
 popd > /dev/null  # ROOT_DIR
 
 lambda_log_info "$LAMBDA_tool and engine have been shutdown."

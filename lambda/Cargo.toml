@@ -1,0 +1,27 @@
+[package]
+name = "lambda"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+name = "lambda"
+path = "src/lib.rs"
+
+[dependencies]
+lambda-platform = { path = "../crates/lambda-platform", version = "0.1.0" }
+
+[dev-dependencies]
+cargo-audit = "0.16.0"
+
+[features]
+default = ["lambda-platform/detect-platform"]
+stable-linux-dependencies=["lambda-platform/gfx-with-vulkan"]
+stable-wsl-dependencies=["lambda-platform/gfx-with-opengl"]
+stable-windows-dependencies=["lambda-platform/gfx-with-dx12"]
+stable-macos-dependencies=["lambda-platform/gfx-with-metal"]
+
+# ---------------------------- PLATFORM DEPENDENCIES ---------------------------
+
+# Linux dev-dependencies.
+[target.'cfg(all(unix, not(target_os = "macos")))'.dev-dependencies]
+cargo-tarpaulin = "=0.18.5"
