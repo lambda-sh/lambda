@@ -2,10 +2,10 @@ name: compile & test lambda-rs
 
 on:
   push:
-    branches: [ main, dev, vmarcella/lambda-rs ]
+    branches: [ main ]
 
   pull_request:
-    branches: [ main, dev, vmarcella/lambda-rs ]
+    branches: [ main ]
 
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ defaults:
 
 jobs:
   build_and_test:
-    name: Build lambda-rs on ${{ matrix.os }} with ${{ matrix.rustup-toolchain }}.
+    name: Build lambda-rs on ${{ matrix.os }}.
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -51,7 +51,7 @@ jobs:
 
       - uses: actions/setup-ruby@v1
       - name: Send Webhook Notification for build status.
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/vmarcella/lambda-rs' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         env:
           JOB_STATUS: ${{ job.status }}
           WEBHOOK_URL: ${{ secrets.LAMBDA_BUILD_WEBHOOK }}
