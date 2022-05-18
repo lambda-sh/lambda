@@ -1,26 +1,26 @@
-[submodule "engine/vendor/glfw"]
-	path = lambda/vendor/glfw
+[submodule "archive/lambda_cpp/vendor/glfw"]
+	path = archive/lambda_cpp/vendor/glfw
 	url = https://github.com/glfw/glfw
-[submodule "engine/vendor/imgui"]
-	path = lambda/vendor/imgui
+[submodule "archive/lambda_cpp/vendor/imgui"]
+	path = archive/lambda_cpp/vendor/imgui
 	url = https://github.com/C3NZ/imgui
-[submodule "engine/vendor/glm"]
-	path = lambda/vendor/glm
+[submodule "archive/lambda_cpp/vendor/glm"]
+	path = archive/lambda_cpp/vendor/glm
 	url = https://github.com/g-truc/glm
 [submodule "docs"]
 	path = docs
 	url = https://github.com/C3NZ/game-engine-docs.git
-[submodule "engine/vendor/spdlog"]
-	path = lambda/vendor/spdlog
+[submodule "archive/lambda_cpp/vendor/spdlog"]
+	path = archive/lambda_cpp/vendor/spdlog
 	url = https://github.com/gabime/spdlog.git
-[submodule "engine/vendor/readerwriterqueue"]
-	path = lambda/vendor/readerwriterqueue
+[submodule "archive/lambda_cpp/vendor/readerwriterqueue"]
+	path = archive/lambda_cpp/vendor/readerwriterqueue
 	url = https://github.com/cameron314/readerwriterqueue
-[submodule "engine/vendor/concurrentqueue"]
-	path = lambda/vendor/concurrentqueue
+[submodule "archive/lambda_cpp/vendor/concurrentqueue"]
+	path = archive/lambda_cpp/vendor/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue
-[submodule "engine/vendor/googletest"]
-	path = lambda/vendor/googletest
+[submodule "archive/lambda_cpp/vendor/googletest"]
+	path = archive/lambda_cpp/vendor/googletest
 	url = https://github.com/google/googletest
 [submodule "lambda-sh"]
 	path = lambda-sh

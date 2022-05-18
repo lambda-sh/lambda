@@ -1,0 +1,13 @@
+[workspace]
+
+# Sub packages provided by lambda.
+members = [
+    "lambda",
+    "crates/lambda-platform",
+    "tools/lambda_rs_demo"
+]
+
+default-members = [
+    "lambda",
+    "tools/lambda_rs_demo"
+]

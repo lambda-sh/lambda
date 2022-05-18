@@ -9,7 +9,15 @@ repos:
     rev: 0.6.0
     hooks:
       - id: cpplint
-        name: Lint-engine
+        name: C++ Linter
         args: [
           "--filter=-legal/copyright,-build/include,-build/c++11",
           ]
+  - repo: local
+    hooks:
+      - id: fmt
+        args: []
+        entry: rustup run nightly cargo fmt --
+        language: system
+        name: Linting for lambda-rs & tools.
+        types: [rust]
