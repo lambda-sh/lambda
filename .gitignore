@@ -17,6 +17,9 @@ build
 CMakeDoxygenDefaults.cmake
 CMakeDoxyfile.in
 
+# IntelliJ IDEA configuration (auto-generated)
+.idea
+
 ### C ###
 # Prerequisites
 *.d
