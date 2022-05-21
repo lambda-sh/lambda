@@ -1,7 +1,4 @@
-use gfx_hal::{
-  queue::QueueFamily,
-  Instance,
-};
+use gfx_hal::queue::QueueFamily;
 
 use self::gpu::RenderQueueType;
 use super::winit::WindowHandle;
@@ -12,6 +9,7 @@ pub mod pipeline;
 pub mod surface;
 
 use api::RenderingAPI;
+use gfx_hal::Instance as _;
 
 /// Exports directly from the gfx_hal crate to be used while lambda-platform
 /// stabilizes it's API.
@@ -44,17 +42,19 @@ pub mod gfx_hal_exports {
   };
 }
 
-pub struct GfxInstance<RenderBackend: gfx_hal::Backend> {
-  instance: RenderBackend::Instance,
+pub struct Instance<RenderBackend: gfx_hal::Backend> {
+  gfx_hal_instance: RenderBackend::Instance,
 }
 
-impl<RenderBackend: gfx_hal::Backend> GfxInstance<RenderBackend> {
+impl<RenderBackend: gfx_hal::Backend> Instance<RenderBackend> {
   /// Create a new GfxInstance connected to the platforms primary backend.
   pub fn new(name: &str) -> Self {
     let instance = RenderBackend::Instance::create(name, 1)
       .expect("gfx backend not supported by the current platform");
 
-    return Self { instance };
+    return Self {
+      gfx_hal_instance: instance,
+    };
   }
 
   /// Create a surface for a given lambda window using it's underlying
@@ -65,7 +65,7 @@ impl<RenderBackend: gfx_hal::Backend> GfxInstance<RenderBackend> {
   ) -> surface::Surface<RenderBackend> {
     unsafe {
       let surface = self
-        .instance
+        .gfx_hal_instance
         .create_surface(&window_handle.window_handle)
         .unwrap();
 
@@ -75,7 +75,7 @@ impl<RenderBackend: gfx_hal::Backend> GfxInstance<RenderBackend> {
 
   pub fn destroy_surface(&self, surface: RenderBackend::Surface) {
     unsafe {
-      self.instance.destroy_surface(surface);
+      self.gfx_hal_instance.destroy_surface(surface);
     }
   }
 }
@@ -87,8 +87,8 @@ pub struct GpuBuilder<RenderBackend: gfx_hal_exports::Backend> {
 }
 
 impl<RenderBackend: gfx_hal_exports::Backend> GpuBuilder<RenderBackend> {
-  pub fn new(instance: &mut GfxInstance<RenderBackend>) -> Self {
-    let adapter = instance.instance.enumerate_adapters().remove(0);
+  pub fn new(instance: &mut Instance<RenderBackend>) -> Self {
+    let adapter = instance.gfx_hal_instance.enumerate_adapters().remove(0);
     return Self {
       adapter,
       render_queue_type: RenderQueueType::Graphical,
@@ -130,6 +130,6 @@ impl<RenderBackend: gfx_hal_exports::Backend> GpuBuilder<RenderBackend> {
 
 // Create a graphical backend instance using the platforms default installed
 // graphical backend
-pub fn create_default_gfx_instance() -> GfxInstance<RenderingAPI::Backend> {
-  return GfxInstance::<RenderingAPI::Backend>::new("Lambda Application");
+pub fn create_default_gfx_instance() -> Instance<RenderingAPI::Backend> {
+  return Instance::<RenderingAPI::Backend>::new("Lambda Application");
 }

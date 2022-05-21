@@ -45,6 +45,7 @@ use gfx_hal::{
     Surface,
     SwapchainConfig,
   },
+  Instance as _,
 };
 
 use super::{

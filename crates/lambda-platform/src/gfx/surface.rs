@@ -6,12 +6,11 @@ use gfx_hal::{
     Surface as _,
     SwapchainConfig,
   },
-  Instance,
 };
 
 use super::{
   gpu::Gpu,
-  GfxInstance,
+  Instance,
 };
 
 /// Defines a surface bound
@@ -121,7 +120,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
 }
 
 pub fn destroy_surface<RenderBackend: gfx_hal::Backend>(
-  instance: &GfxInstance<RenderBackend>,
+  instance: &Instance<RenderBackend>,
   surface: Surface<RenderBackend>,
 ) {
   instance.destroy_surface(surface.gfx_hal_surface);

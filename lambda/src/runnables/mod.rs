@@ -83,7 +83,7 @@ pub struct LambdaRunnable {
   event_loop: Loop<Event>,
   window: Window,
   component_stack: ComponentStack,
-  instance: gfx::GfxInstance<gfx::api::RenderingAPI::Backend>,
+  instance: gfx::Instance<gfx::api::RenderingAPI::Backend>,
 }
 
 impl LambdaRunnable {

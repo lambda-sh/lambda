@@ -23,7 +23,7 @@ use crate::core::{
 };
 
 pub struct LambdaRenderer<B: gfx_hal_exports::Backend> {
-  instance: gfx::GfxInstance<B>,
+  instance: gfx::Instance<B>,
   gpu: gfx::gpu::Gpu<B>,
   format: gfx_hal_exports::Format,
   shader_library: Vec<Shader>,
