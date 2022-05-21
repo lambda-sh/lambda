@@ -1,28 +1,79 @@
-use std::time::Instant;
+use std::{
+  collections::HashMap,
+  mem::swap,
+  time::Instant,
+};
 
-use lambda_platform::winit::{
-  create_event_loop,
-  winit_exports::{
-    ControlFlow,
-    Event as WinitEvent,
-    WindowEvent,
+use lambda_platform::{
+  gfx,
+  gfx::{
+    gfx_hal_exports,
+    gpu::RenderQueueType,
+    surface::destroy_surface,
+    GpuBuilder,
   },
-  Loop,
+  winit::{
+    create_event_loop,
+    winit_exports::{
+      ControlFlow,
+      Event as WinitEvent,
+      WindowEvent,
+    },
+    Loop,
+  },
 };
 
 use crate::{
   components::{
+    self,
     ComponentStack,
-    RenderPlan,
-    Renderer,
     Window,
   },
   core::{
-    component::Component,
+    component::{
+      self,
+      Component,
+    },
     events::Event,
+    render::{
+      self,
+      RenderAPI,
+    },
     runnable::Runnable,
   },
 };
+
+pub fn delete_all_resources<B: gfx_hal_exports::Backend>(
+  surface: &mut gfx::surface::Surface<B>,
+  gpu: &mut gfx::gpu::GfxGpu<B>,
+  submission_fence: B::Fence,
+  rendering_semaphore: B::Semaphore,
+  graphics_pipelines: Vec<B::GraphicsPipeline>,
+  pipeline_layouts: Vec<B::PipelineLayout>,
+  render_passes: Vec<B::RenderPass>,
+) {
+  println!("Destroying GPU resources allocated during run.");
+
+  gpu.destroy_access_fences(submission_fence, rendering_semaphore);
+
+  for pipeline_layout in pipeline_layouts.into_iter() {
+    gpu.destroy_pipeline_layout(pipeline_layout);
+  }
+
+  for render_pass in render_passes.into_iter() {
+    gpu.destroy_render_pass(render_pass);
+  }
+
+  for pipeline in graphics_pipelines.into_iter() {
+    gpu.destroy_graphics_pipeline(pipeline);
+  }
+
+  // Destroy command pool allocated on the GPU.
+  gpu.destroy_command_pool();
+  surface.remove_swapchain_config(&gpu);
+
+  println!("Destroyed all GPU resources");
+}
 
 ///
 /// LambdaRunnable is a pre configured composition of a generic set of
@@ -32,7 +83,7 @@ pub struct LambdaRunnable {
   event_loop: Loop<Event>,
   window: Window,
   component_stack: ComponentStack,
-  renderer: Renderer,
+  instance: gfx::GfxInstance<gfx::api::RenderingAPI::Backend>,
 }
 
 impl LambdaRunnable {
@@ -51,22 +102,6 @@ impl LambdaRunnable {
     runnable.component_stack.push_component(component);
     return runnable;
   }
-
-  pub fn with_render_plan(mut self, plan: RenderPlan) -> Self {
-    self.renderer.upload_render_plan(plan);
-    return self;
-  }
-
-  /// Attaches an active renderer to the runnable.
-  pub fn with_renderable_component<T: Default + Component + 'static>(
-    mut self,
-    configure_component: impl FnOnce(&Renderer, T) -> T,
-  ) -> Self {
-    let component = T::default();
-    let component = configure_component(&self.renderer, component);
-    self.component_stack.push_component(component);
-    return self;
-  }
 }
 
 impl Default for LambdaRunnable {
@@ -78,14 +113,14 @@ impl Default for LambdaRunnable {
     let mut event_loop = create_event_loop::<Event>();
     let window = Window::new(name.as_str(), [480, 360], &mut event_loop);
     let component_stack = ComponentStack::new();
-    let renderer = Renderer::new(name.as_str(), &window);
+    let mut instance = lambda_platform::gfx::create_default_gfx_instance();
 
     return LambdaRunnable {
       name,
       event_loop,
       window,
       component_stack,
-      renderer,
+      instance,
     };
   }
 }
@@ -102,13 +137,40 @@ impl Runnable for LambdaRunnable {
     // closure.
     let app = self;
     let mut window = app.window;
+    let name = app.name;
     let mut event_loop = app.event_loop;
 
     // TODO(vmarcella): The renderer should most likely just act as
     let mut component_stack = app.component_stack;
-    let mut renderer = app.renderer;
+    let mut instance = app.instance;
+
+    let mut surface = Some(instance.create_surface(window.window_handle()));
+
+    let builder = GpuBuilder::new(&mut instance)
+      .with_render_queue_type(RenderQueueType::Graphical);
+
+    let mut gpu = builder
+      .build(surface.as_ref())
+      .expect("Failed to setup a GPU for lambda");
+
+    let (submission_fence, rendering_semaphore) = gpu.create_access_fences();
+
+    let mut s_fence = Some(submission_fence);
+    let mut r_fence = Some(rendering_semaphore);
+
+    // Create the image extent and initial frame buffer attachment description for rendering.
+    let dimensions = window.dimensions();
+    let swapchain_config = surface
+      .as_ref()
+      .unwrap()
+      .generate_swapchain_config(&gpu, [dimensions[0], dimensions[1]]);
+    let (extent, _frame_buffer_attachment) = surface
+      .as_mut()
+      .unwrap()
+      .apply_swapchain_config(&gpu, swapchain_config);
 
     let publisher = event_loop.create_publisher();
+    publisher.send_event(Event::Initialized);
 
     let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();
@@ -178,7 +240,6 @@ impl Runnable for LambdaRunnable {
         current_frame = Instant::now();
         let duration = &current_frame.duration_since(last_frame);
         component_stack.on_update(duration);
-        renderer.on_update(duration);
       }
       WinitEvent::RedrawRequested(_) => {
         window.redraw();
@@ -189,7 +250,6 @@ impl Runnable for LambdaRunnable {
         match lambda_event {
           Event::Initialized => {
             component_stack.on_attach();
-            renderer.on_attach();
           }
           Event::Shutdown => {
             // Once this has been set, the ControlFlow can no longer be
@@ -198,7 +258,6 @@ impl Runnable for LambdaRunnable {
           }
           _ => {
             component_stack.on_event(&lambda_event);
-            renderer.on_event(&lambda_event);
           }
         }
       }
@@ -207,7 +266,16 @@ impl Runnable for LambdaRunnable {
       WinitEvent::RedrawEventsCleared => {}
       WinitEvent::LoopDestroyed => {
         component_stack.on_detach();
-        renderer.on_detach();
+        delete_all_resources(
+          surface.as_mut().unwrap(),
+          &mut gpu,
+          s_fence.take().unwrap(),
+          r_fence.take().unwrap(),
+          vec![],
+          vec![],
+          vec![],
+        );
+        destroy_surface(&instance, surface.take().unwrap());
       }
     });
   }
@@ -215,7 +283,7 @@ impl Runnable for LambdaRunnable {
 
 /// Create a generic lambda runnable. This provides you a Runnable
 /// Application Instance that can be hooked into through attaching
-/// a Layer.
+/// a Layer
 pub fn create_lambda_runnable() -> LambdaRunnable {
   return LambdaRunnable::default();
 }

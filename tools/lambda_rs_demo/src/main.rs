@@ -49,8 +49,8 @@ impl Default for DemoComponent {
 }
 
 fn main() {
-  let app = create_lambda_runnable().with_renderable_component(
-    move |renderer, demo: DemoComponent| {
+  let app = create_lambda_runnable().with_component(
+    move |runnable, demo: DemoComponent| {
       let vertex_shader = Shader::from_lambda(PrepackagedShaders::Vertex(
         VertexShaders::Triangle,
       ));
@@ -58,7 +58,7 @@ fn main() {
       let fragment_shader = Shader::from_lambda(PrepackagedShaders::Fragment(
         FragmentShaders::Triangle,
       ));
-      return demo;
+      return (runnable, demo);
     },
   );
 

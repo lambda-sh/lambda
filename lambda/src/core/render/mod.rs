@@ -168,10 +168,6 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
     self.gpu.destroy_command_pool();
     let mut surface = self.surface.take().unwrap();
 
-    // Unconfigure the swapchain and destroy the surface context.
-    self.gpu.unconfigure_swapchain(&mut surface);
-    self.instance.destroy_surface(surface);
-
     println!("Destroyed all GPU resources");
   }
 
@@ -180,16 +176,7 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
       Event::Resized {
         new_width,
         new_height,
-      } => {
-        let (extent, frame_buffer_attachment) =
-          self.gpu.configure_swapchain_and_update_extent(
-            self.surface.as_mut().unwrap(),
-            self.format,
-            [*new_width, *new_height],
-          );
-        self.extent = Some(extent);
-        self.frame_buffer_attachment = Some(frame_buffer_attachment);
-      }
+      } => {}
       _ => (),
     };
   }

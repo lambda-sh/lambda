@@ -50,7 +50,10 @@ use gfx_hal::{
   },
 };
 
-use super::pipeline::GraphicsPipeline;
+use super::{
+  pipeline::GraphicsPipeline,
+  surface,
+};
 
 ///
 /// Commands oriented around creating resources on & for the GPU.
@@ -70,47 +73,18 @@ pub enum RenderQueueType {
   Transfer,
 }
 
-/// Checks if queue_family is capable of supporting the requested queue type &
-/// Optional surface.
-fn is_queue_family_supported<B: gfx_hal::Backend>(
-  queue_family: &B::QueueFamily,
-  queue_type: RenderQueueType,
-  surface: Option<&B::Surface>,
-) -> bool {
-  match queue_type {
-    RenderQueueType::Compute => queue_family.queue_type().supports_compute(),
-    RenderQueueType::Graphical => match surface {
-      Some(surface) => {
-        surface.supports_queue_family(queue_family)
-          && queue_family.queue_type().supports_graphics()
-      }
-      None => false,
-    },
-    // TODO(vmarcella): These arms should be filled out to support the other kinds of queue types.
-    RenderQueueType::GraphicalCompute => {
-      todo!("GraphicalCompute RenderQueue's are not currently implemented.")
-    }
-    RenderQueueType::Transfer => {
-      todo!("Transfer RenderQueues are not currently implemented.")
-    }
-  }
-}
-
 impl<B: gfx_hal::Backend> GfxGpu<B> {
   /// Instantiates a new GPU given an adapter that is implemented by the GPUs
   /// current rendering backend B. A new GPU does not come with a command pool unless specified.
   pub fn new(
     adapter: Adapter<B>,
-    queue_type: RenderQueueType,
-    surface: Option<&B::Surface>,
+    queue_family: gfx_hal::queue::QueueFamilyId,
   ) -> Self {
     let queue_family = adapter
       .queue_families
       .iter()
-      .find(|family| {
-        return is_queue_family_supported::<B>(family, queue_type, surface);
-      })
-      .expect("No compatible queue family found.");
+      .find(|family| family.id() == queue_family)
+      .expect("Failed to find the queue family requested for the GPU.");
 
     let mut gpu = unsafe {
       adapter
@@ -171,6 +145,14 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     }
   }
 
+  pub fn get_logical_device(&self) -> &B::Device {
+    return &self.gpu.device;
+  }
+
+  pub fn get_physical_device(&self) -> &B::PhysicalDevice {
+    return &self.adapter.physical_device;
+  }
+
   /// Render to the surface and return the result from the GPU.
   pub fn render_to_surface(
     &mut self,
@@ -184,40 +166,6 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
 
       return result;
     }
-  }
-
-  pub fn configure_swapchain_and_update_extent(
-    &mut self,
-    surface: &mut B::Surface,
-    color_format: gfx_hal::format::Format,
-    size: [u32; 2],
-  ) -> (Extent2D, gfx_hal::image::FramebufferAttachment) {
-    let caps = surface.capabilities(&self.adapter.physical_device);
-    let mut swapchain_config = SwapchainConfig::from_caps(
-      &caps,
-      color_format,
-      Extent2D {
-        width: size[0],
-        height: size[1],
-      },
-    );
-
-    // TODO(vmarcella) Profile the performance on MacOS to see if this slows
-    // down frame times.
-    if caps.image_count.contains(&3) {
-      swapchain_config.image_count = 3;
-    }
-
-    let surface_extent = swapchain_config.extent;
-    let fba = swapchain_config.framebuffer_attachment();
-
-    unsafe {
-      surface
-        .configure_swapchain(&self.gpu.device, swapchain_config)
-        .expect("Failed to configure the swapchain");
-    }
-
-    return (surface_extent, fba);
   }
 
   /// Allocate's a command buffer through the GPU
@@ -237,10 +185,13 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
 
   pub fn destroy_command_pool(&mut self) {
     unsafe {
-      self
-        .gpu
-        .device
-        .destroy_command_pool(self.command_pool.take().unwrap());
+      match self.command_pool {
+        Some(_) => self
+          .gpu
+          .device
+          .destroy_command_pool(self.command_pool.take().unwrap()),
+        None => {}
+      }
     }
   }
 
@@ -364,11 +315,6 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
     }
   }
 
-  /// Unconfigure the swapchain for a surface created from this GPU.
-  pub fn unconfigure_swapchain(&mut self, surface: &mut B::Surface) {
-    unsafe { surface.unconfigure_swapchain(&self.gpu.device) }
-  }
-
   pub fn create_shader_module(&mut self, binary: &Vec<u32>) -> B::ShaderModule {
     unsafe {
       let module = self
@@ -454,25 +400,5 @@ impl<B: gfx_hal::Backend> GfxGpu<B> {
 
       self.gpu.device.destroy_fence(submission_complete_fence);
     }
-  }
-
-  /// Finds the first supported color format or default to Rgba8Srgb.
-  pub fn find_supported_color_format(
-    &mut self,
-    surface: &B::Surface,
-  ) -> Format {
-    // Define a surface color format compatible with the graphics device &
-    // surface
-    let supported_formats = surface
-      .supported_formats(&self.adapter.physical_device)
-      .unwrap_or(vec![]);
-
-    let default_format =
-      *supported_formats.get(0).unwrap_or(&Format::Rgba8Srgb);
-
-    return supported_formats
-      .into_iter()
-      .find(|format| -> bool { format.base_format().1 == ChannelType::Srgb })
-      .unwrap_or(default_format);
   }
 }
