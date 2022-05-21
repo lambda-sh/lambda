@@ -12,21 +12,19 @@ use lambda_platform::{
       PresentationSurface,
     },
   },
+  shaderc::ShaderKind,
 };
 use shader::Shader;
 
 use super::events::Event;
 use crate::core::{
   component::Component,
-  render::{
-    assembler::create_vertex_assembler,
-    shader::ShaderKind,
-  },
+  render::assembler::create_vertex_assembler,
 };
 
 pub struct LambdaRenderer<B: gfx_hal_exports::Backend> {
   instance: gfx::GfxInstance<B>,
-  gpu: gfx::gpu::GfxGpu<B>,
+  gpu: gfx::gpu::Gpu<B>,
   format: gfx_hal_exports::Format,
   shader_library: Vec<Shader>,
 

@@ -45,7 +45,7 @@ use crate::{
 
 pub fn delete_all_resources<B: gfx_hal_exports::Backend>(
   surface: &mut gfx::surface::Surface<B>,
-  gpu: &mut gfx::gpu::GfxGpu<B>,
+  gpu: &mut gfx::gpu::Gpu<B>,
   submission_fence: B::Fence,
   rendering_semaphore: B::Semaphore,
   graphics_pipelines: Vec<B::GraphicsPipeline>,
