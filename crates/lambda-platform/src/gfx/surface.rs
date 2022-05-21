@@ -10,7 +10,7 @@ use gfx_hal::{
 };
 
 use super::{
-  gpu::GfxGpu,
+  gpu::Gpu,
   GfxInstance,
 };
 
@@ -66,7 +66,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   /// Generates a swapchain configuration for a the given GPU.
   pub fn generate_swapchain_config(
     &self,
-    gpu: &GfxGpu<RenderBackend>,
+    gpu: &Gpu<RenderBackend>,
     size: [u32; 2],
   ) -> SwapchainConfig {
     let physical_device = gpu.get_physical_device();
@@ -94,7 +94,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   /// Apply a swapchain conifguration for any given device.
   pub fn apply_swapchain_config(
     &mut self,
-    gpu: &GfxGpu<RenderBackend>,
+    gpu: &Gpu<RenderBackend>,
     swapchain_config: SwapchainConfig,
   ) -> (Extent2D, gfx_hal::image::FramebufferAttachment) {
     let device = gpu.get_logical_device();
@@ -111,7 +111,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     return (surface_extent, fba);
   }
 
-  pub fn remove_swapchain_config(&mut self, gpu: &GfxGpu<RenderBackend>) {
+  pub fn remove_swapchain_config(&mut self, gpu: &Gpu<RenderBackend>) {
     unsafe {
       self
         .gfx_hal_surface

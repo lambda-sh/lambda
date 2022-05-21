@@ -104,7 +104,7 @@ impl<RenderBackend: gfx_hal_exports::Backend> GpuBuilder<RenderBackend> {
   pub fn build(
     self,
     surface: Option<&surface::Surface<RenderBackend>>,
-  ) -> Result<gpu::GfxGpu<RenderBackend>, String> {
+  ) -> Result<gpu::Gpu<RenderBackend>, String> {
     match (surface, self.render_queue_type) {
       (Some(surface), RenderQueueType::Graphical) => {
         let adapter = self.adapter;
@@ -121,7 +121,7 @@ impl<RenderBackend: gfx_hal_exports::Backend> GpuBuilder<RenderBackend> {
         let formats =
           surface.get_first_supported_format(&adapter.physical_device);
 
-        return Ok(gpu::GfxGpu::new(adapter, queue_family));
+        return Ok(gpu::Gpu::new(adapter, queue_family));
       }
       (_, _) => return Err("Failed to build GPU.".to_string()),
     }

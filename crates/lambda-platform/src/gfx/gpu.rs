@@ -1,10 +1,7 @@
 use std::mem::size_of;
 
 use gfx_hal::{
-  adapter::{
-    Adapter,
-    Gpu,
-  },
+  adapter::Adapter,
   command::Level,
   device::Device,
   format::{
@@ -58,9 +55,9 @@ use super::{
 ///
 /// Commands oriented around creating resources on & for the GPU.
 ///
-pub struct GfxGpu<B: gfx_hal::Backend> {
+pub struct Gpu<B: gfx_hal::Backend> {
   adapter: Adapter<B>,
-  gpu: Gpu<B>,
+  gpu: gfx_hal::adapter::Gpu<B>,
   queue_group: QueueGroup<B>,
   command_pool: Option<B::CommandPool>,
 }
@@ -73,7 +70,7 @@ pub enum RenderQueueType {
   Transfer,
 }
 
-impl<B: gfx_hal::Backend> GfxGpu<B> {
+impl<B: gfx_hal::Backend> Gpu<B> {
   /// Instantiates a new GPU given an adapter that is implemented by the GPUs
   /// current rendering backend B. A new GPU does not come with a command pool unless specified.
   pub fn new(
