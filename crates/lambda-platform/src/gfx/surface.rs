@@ -90,7 +90,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     return swapchain_config;
   }
 
-  /// Apply a swapchain conifguration for any given device.
+  /// Apply a swapchain configuration for any given device.
   pub fn apply_swapchain_config(
     &mut self,
     gpu: &Gpu<RenderBackend>,
@@ -110,6 +110,8 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     return (surface_extent, fba);
   }
 
+  /// Remove the swapchain configuration that this surface used on this given
+  /// GPU.
   pub fn remove_swapchain_config(&mut self, gpu: &Gpu<RenderBackend>) {
     unsafe {
       self
@@ -119,6 +121,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   }
 }
 
+/// Destroy a surface given the instant that created it.
 pub fn destroy_surface<RenderBackend: gfx_hal::Backend>(
   instance: &Instance<RenderBackend>,
   surface: Surface<RenderBackend>,

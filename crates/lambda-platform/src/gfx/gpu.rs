@@ -4,10 +4,7 @@ use gfx_hal::{
   adapter::Adapter,
   command::Level,
   device::Device,
-  format::{
-    ChannelType,
-    Format,
-  },
+  format::Format,
   image::{
     Access,
     Layout,
@@ -42,22 +39,17 @@ use gfx_hal::{
     PresentError,
     PresentationSurface,
     Suboptimal,
-    Surface,
-    SwapchainConfig,
   },
   Instance as _,
 };
 
-use super::{
-  pipeline::GraphicsPipeline,
-  surface,
-};
+use super::pipeline::GraphicsPipeline;
 
 ///
 /// Commands oriented around creating resources on & for the GPU.
 ///
 pub struct Gpu<B: gfx_hal::Backend> {
-  adapter: Adapter<B>,
+  adapter: gfx_hal::adapter::Adapter<B>,
   gpu: gfx_hal::adapter::Gpu<B>,
   queue_group: QueueGroup<B>,
   command_pool: Option<B::CommandPool>,
@@ -101,26 +93,21 @@ impl<B: gfx_hal::Backend> Gpu<B> {
     };
   }
 
+  pub fn get_queue_family_id(&self) -> gfx_hal::queue::QueueFamilyId {
+    return self.queue_group.family;
+  }
+
   // TODO(vmarcella): A command pool allocated GPU should be implemented via a
   // GPU typestate. For example, with_command_pool should return a gpu with an
   // type signature something along the lines of: GPU<CommandReady>
   /// Attaches a command pool to the current gfx gpu.
-  pub fn with_command_pool(self) -> Self {
-    let adapter = self.adapter;
-    let mut gpu = self.gpu;
-    let command_pool = unsafe {
-      gpu.device.create_command_pool(
-		    self.queue_group.family,
-				CommandPoolCreateFlags::empty())
+  pub fn create_command_pool(
+    &self,
+    flags: gfx_hal::pool::CommandPoolCreateFlags,
+  ) -> B::CommandPool {
+    return unsafe {
+      self.gpu.device.create_command_pool(self.queue_group.family, flags)
 				.expect("The GPU could not allocate a command pool because it is out of memory")
-    };
-    let queue_group = self.queue_group;
-
-    return Self {
-      adapter,
-      gpu,
-      queue_group,
-      command_pool: Some(command_pool),
     };
   }
 
@@ -143,10 +130,12 @@ impl<B: gfx_hal::Backend> Gpu<B> {
     }
   }
 
+  /// Get the underlying logical device for the logical GPU.
   pub fn get_logical_device(&self) -> &B::Device {
     return &self.gpu.device;
   }
 
+  /// Get the underlying physical device for the virtual GPU.
   pub fn get_physical_device(&self) -> &B::PhysicalDevice {
     return &self.adapter.physical_device;
   }
@@ -371,7 +360,7 @@ impl<B: gfx_hal::Backend> Gpu<B> {
   /// for resetting the command buffer
   pub fn wait_for_or_reset_fence(&mut self, fence: &mut B::Fence) {
     unsafe {
-      let mut device = &self.gpu.device;
+      let device = &self.gpu.device;
       let render_timeout_ns = 1_000_000_000;
       device
         .wait_for_fence(fence, render_timeout_ns)

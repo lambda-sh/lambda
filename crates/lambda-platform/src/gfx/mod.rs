@@ -4,8 +4,11 @@ use self::gpu::RenderQueueType;
 use super::winit::WindowHandle;
 
 pub mod api;
+pub mod command;
+pub mod fence;
 pub mod gpu;
 pub mod pipeline;
+pub mod resource;
 pub mod surface;
 
 use api::RenderingAPI;
@@ -126,6 +129,13 @@ impl<RenderBackend: gfx_hal_exports::Backend> GpuBuilder<RenderBackend> {
       (_, _) => return Err("Failed to build GPU.".to_string()),
     }
   }
+}
+
+pub fn destroy_instance_resource<RenderBackend: gfx_hal::Backend, T>(
+  instance: Instance<RenderBackend>,
+  resource: T,
+) {
+  panic!("Deletion of this resource has not been implemented yet.")
 }
 
 // Create a graphical backend instance using the platforms default installed

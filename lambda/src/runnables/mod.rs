@@ -1,8 +1,4 @@
-use std::{
-  collections::HashMap,
-  mem::swap,
-  time::Instant,
-};
+use std::time::Instant;
 
 use lambda_platform::{
   gfx,
@@ -25,24 +21,17 @@ use lambda_platform::{
 
 use crate::{
   components::{
-    self,
     ComponentStack,
     Window,
   },
   core::{
-    component::{
-      self,
-      Component,
-    },
+    component::Component,
     events::Event,
-    render::{
-      self,
-      RenderAPI,
-    },
     runnable::Runnable,
   },
 };
 
+/// Used for cleaning  up all resources allocated during a run.
 pub fn delete_all_resources<B: gfx_hal_exports::Backend>(
   surface: &mut gfx::surface::Surface<B>,
   gpu: &mut gfx::gpu::Gpu<B>,
@@ -113,7 +102,7 @@ impl Default for LambdaRunnable {
     let mut event_loop = create_event_loop::<Event>();
     let window = Window::new(name.as_str(), [480, 360], &mut event_loop);
     let component_stack = ComponentStack::new();
-    let mut instance = lambda_platform::gfx::create_default_gfx_instance();
+    let instance = lambda_platform::gfx::create_default_gfx_instance();
 
     return LambdaRunnable {
       name,
@@ -137,7 +126,6 @@ impl Runnable for LambdaRunnable {
     // closure.
     let app = self;
     let mut window = app.window;
-    let name = app.name;
     let mut event_loop = app.event_loop;
 
     // TODO(vmarcella): The renderer should most likely just act as
