@@ -18,10 +18,7 @@ use gfx_hal::{
     SubpassDependency,
     SubpassDesc,
   },
-  pool::{
-    CommandPool,
-    CommandPoolCreateFlags,
-  },
+  pool::CommandPool,
   prelude::{
     PhysicalDevice,
     QueueFamily,
@@ -40,7 +37,6 @@ use gfx_hal::{
     PresentationSurface,
     Suboptimal,
   },
-  Instance as _,
 };
 
 use super::pipeline::GraphicsPipeline;

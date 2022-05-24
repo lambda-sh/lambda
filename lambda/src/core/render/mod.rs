@@ -95,19 +95,6 @@ impl<B: gfx_hal_exports::Backend> LambdaRenderer<B> {
 /// by the platform.
 pub type RenderAPI = LambdaRenderer<gfx::api::RenderingAPI::Backend>;
 
-/// A render API that is provided by the lambda runnable.
-pub struct RenderClient<'a> {
-  api: &'a RenderAPI,
-}
-
-impl<'a> RenderClient<'a> {
-  fn new(renderer: &'a RenderAPI) -> Self {
-    return Self { api: renderer };
-  }
-
-  pub fn upload_shader() {}
-}
-
 impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
   /// Allocates resources on the GPU to enable rendering for other
   fn on_attach(&mut self) {
