@@ -24,6 +24,7 @@ impl CommandPoolBuilder {
     return self;
   }
 
+  /// Builds a command pool.
   pub fn build<B: gfx_hal::Backend>(self, gpu: &Gpu<B>) -> CommandPool<B> {
     let command_pool = gpu.create_command_pool(self.command_pool_flags);
 
