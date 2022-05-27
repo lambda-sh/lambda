@@ -8,6 +8,7 @@ pub mod command;
 pub mod fence;
 pub mod gpu;
 pub mod pipeline;
+pub mod render_pass;
 pub mod resource;
 pub mod surface;
 
@@ -84,16 +85,13 @@ impl<RenderBackend: gfx_hal::Backend> Instance<RenderBackend> {
 }
 
 /// GpuBuilder for constructing a GPU
-pub struct GpuBuilder<RenderBackend: gfx_hal_exports::Backend> {
-  adapter: gfx_hal::adapter::Adapter<RenderBackend>,
+pub struct GpuBuilder {
   render_queue_type: RenderQueueType,
 }
 
-impl<RenderBackend: gfx_hal_exports::Backend> GpuBuilder<RenderBackend> {
-  pub fn new(instance: &mut Instance<RenderBackend>) -> Self {
-    let adapter = instance.gfx_hal_instance.enumerate_adapters().remove(0);
+impl GpuBuilder {
+  pub fn new() -> Self {
     return Self {
-      adapter,
       render_queue_type: RenderQueueType::Graphical,
     };
   }
@@ -104,13 +102,15 @@ impl<RenderBackend: gfx_hal_exports::Backend> GpuBuilder<RenderBackend> {
   }
 
   /// Builds a GPU
-  pub fn build(
+  pub fn build<RenderBackend: gfx_hal::Backend>(
     self,
+    instance: &mut Instance<RenderBackend>,
     surface: Option<&surface::Surface<RenderBackend>>,
   ) -> Result<gpu::Gpu<RenderBackend>, String> {
     match (surface, self.render_queue_type) {
       (Some(surface), RenderQueueType::Graphical) => {
-        let adapter = self.adapter;
+        let adapter = instance.gfx_hal_instance.enumerate_adapters().remove(0);
+
         let queue_family = adapter
           .queue_families
           .iter()
@@ -129,13 +129,6 @@ impl<RenderBackend: gfx_hal_exports::Backend> GpuBuilder<RenderBackend> {
       (_, _) => return Err("Failed to build GPU.".to_string()),
     }
   }
-}
-
-pub fn destroy_instance_resource<RenderBackend: gfx_hal::Backend, T>(
-  instance: Instance<RenderBackend>,
-  resource: T,
-) {
-  panic!("Deletion of this resource has not been implemented yet.")
 }
 
 // Create a graphical backend instance using the platforms default installed

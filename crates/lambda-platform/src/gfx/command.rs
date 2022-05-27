@@ -35,14 +35,14 @@ impl CommandPoolBuilder {
   }
 }
 
-pub struct CommandPool<B: gfx_hal::Backend> {
-  command_pool: B::CommandPool,
-  command_buffers: HashMap<String, B::CommandBuffer>,
+pub struct CommandPool<RenderBackend: gfx_hal::Backend> {
+  command_pool: RenderBackend::CommandPool,
+  command_buffers: HashMap<String, RenderBackend::CommandBuffer>,
 }
 
 pub struct BufferID;
 
-impl<B: gfx_hal::Backend> CommandPool<B> {
+impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   /// Allocate a command buffer for lambda.
   // TODO(vmarcella): This should expose the level that will be allocated.
   pub fn allocate_command_buffer(&mut self, name: &str) {
@@ -56,9 +56,34 @@ impl<B: gfx_hal::Backend> CommandPool<B> {
   }
 
   /// Deallocate a command buffer
+  // TODO(vmarcella): This function should return a result based on the status
+  // of the deallocation.
   pub fn deallocate_command_buffer(&mut self, name: &str) {
     let buffer = self.command_buffers.remove(&name.to_string()).unwrap();
 
     unsafe { self.command_pool.free(vec![buffer].into_iter()) }
+  }
+
+  /// Buffers can be looked up with the same name that they're given when
+  /// calling `allocate_command_buffer`
+  pub fn get_mutable_command_buffer(
+    &mut self,
+    name: &str,
+  ) -> Option<&mut RenderBackend::CommandBuffer> {
+    return self.command_buffers.get_mut(name);
+  }
+
+  pub fn get_command_buffer(
+    &self,
+    name: &str,
+  ) -> Option<&RenderBackend::CommandBuffer> {
+    return self.command_buffers.get(name);
+  }
+
+  /// Resets the command pool and all of the command buffers.
+  pub fn reset_pool(&mut self, release_resources: bool) {
+    unsafe {
+      self.command_pool.reset(release_resources);
+    }
   }
 }

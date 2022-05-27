@@ -3,6 +3,7 @@ use std::time::Instant;
 use lambda_platform::{
   gfx,
   gfx::{
+    command::CommandPoolBuilder,
     gfx_hal_exports,
     gpu::RenderQueueType,
     surface::destroy_surface,
@@ -128,18 +129,18 @@ impl Runnable for LambdaRunnable {
     let mut window = app.window;
     let mut event_loop = app.event_loop;
 
-    // TODO(vmarcella): The renderer should most likely just act as
     let mut component_stack = app.component_stack;
     let mut instance = app.instance;
 
     let mut surface = Some(instance.create_surface(window.window_handle()));
 
-    let builder = GpuBuilder::new(&mut instance)
-      .with_render_queue_type(RenderQueueType::Graphical);
+    let mut gpu = GpuBuilder::new()
+      .with_render_queue_type(RenderQueueType::Graphical)
+      .build(&mut instance, surface.as_ref())
+      .expect("Failed to build a GPU.");
 
-    let mut gpu = builder
-      .build(surface.as_ref())
-      .expect("Failed to setup a GPU for lambda");
+    let mut command_pool = CommandPoolBuilder::new().build(&gpu);
+    command_pool.allocate_command_buffer("Primary");
 
     let (submission_fence, rendering_semaphore) = gpu.create_access_fences();
 
@@ -149,9 +150,10 @@ impl Runnable for LambdaRunnable {
     // Create the image extent and initial frame buffer attachment description for rendering.
     let dimensions = window.dimensions();
     let swapchain_config = surface
-      .as_ref()
+      .as_mut()
       .unwrap()
       .generate_swapchain_config(&gpu, [dimensions[0], dimensions[1]]);
+
     let (extent, _frame_buffer_attachment) = surface
       .as_mut()
       .unwrap()
