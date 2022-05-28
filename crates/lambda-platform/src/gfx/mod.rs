@@ -121,10 +121,13 @@ impl GpuBuilder {
           .expect("No compatible queue family found.")
           .id();
 
-        let formats =
+        let _formats =
           surface.get_first_supported_format(&adapter.physical_device);
 
         return Ok(gpu::Gpu::new(adapter, queue_family));
+      }
+      (Some(_surface), RenderQueueType::Compute) => {
+        todo!("Support a Compute based GPU.")
       }
       (_, _) => return Err("Failed to build GPU.".to_string()),
     }

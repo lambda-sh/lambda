@@ -2,20 +2,40 @@ use gfx_hal::device::Device;
 
 use super::gpu::Gpu;
 
-pub struct RenderingSemaphoreBuilder {}
+pub struct RenderSemaphoreBuilder {}
 
-impl RenderingSemaphoreBuilder {
-  pub fn build<RenderBackend: gfx_hal::Backend>() {}
+impl RenderSemaphoreBuilder {
+  pub fn new() -> Self {
+    return Self {};
+  }
+
+  pub fn build<RenderBackend: gfx_hal::Backend>(
+    self,
+    gpu: &mut Gpu<RenderBackend>,
+  ) -> RenderSemaphore<RenderBackend> {
+    let semaphore = gpu
+      .get_logical_device()
+      .create_semaphore()
+      .expect("The GPU has no memory to allocate the semaphore");
+
+    return RenderSemaphore { semaphore };
+  }
 }
-pub struct RenderingSemaphore;
+pub struct RenderSemaphore<RenderBackend: gfx_hal::Backend> {
+  semaphore: RenderBackend::Semaphore,
+}
 
-impl RenderingSemaphore {}
+impl<RenderBackend: gfx_hal::Backend> RenderSemaphore<RenderBackend> {
+  pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
+    unsafe { gpu.get_logical_device().destroy_semaphore(self.semaphore) }
+  }
+}
 
-pub struct RenderingFenceBuilder {
+pub struct RenderSubmissionFenceBuilder {
   default_render_timeout: u64,
 }
 
-impl RenderingFenceBuilder {
+impl RenderSubmissionFenceBuilder {
   pub fn new() -> Self {
     return Self {
       default_render_timeout: 1_000_000_000,
@@ -30,25 +50,25 @@ impl RenderingFenceBuilder {
   pub fn build<RenderBackend: gfx_hal::Backend>(
     self,
     gpu: &mut Gpu<RenderBackend>,
-  ) -> RenderingFence<RenderBackend> {
+  ) -> RenderSubmissionFence<RenderBackend> {
     let fence = gpu
       .get_logical_device()
       .create_fence(true)
       .expect("There is not enough memory to create a fence on this device.");
 
-    return RenderingFence {
+    return RenderSubmissionFence {
       fence,
       default_render_timeout: self.default_render_timeout,
     };
   }
 }
 
-pub struct RenderingFence<RenderBackend: gfx_hal::Backend> {
+pub struct RenderSubmissionFence<RenderBackend: gfx_hal::Backend> {
   fence: RenderBackend::Fence,
   default_render_timeout: u64,
 }
 
-impl<RenderBackend: gfx_hal::Backend> RenderingFence<RenderBackend> {
+impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
   /// Block a GPU until the fence is ready and then reset the fence status.
   pub fn block_until_ready(
     &mut self,

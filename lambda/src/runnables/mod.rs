@@ -4,6 +4,10 @@ use lambda_platform::{
   gfx,
   gfx::{
     command::CommandPoolBuilder,
+    fence::{
+      RenderSemaphoreBuilder,
+      RenderSubmissionFenceBuilder,
+    },
     gfx_hal_exports,
     gpu::RenderQueueType,
     surface::destroy_surface,
@@ -36,15 +40,11 @@ use crate::{
 pub fn delete_all_resources<B: gfx_hal_exports::Backend>(
   surface: &mut gfx::surface::Surface<B>,
   gpu: &mut gfx::gpu::Gpu<B>,
-  submission_fence: B::Fence,
-  rendering_semaphore: B::Semaphore,
   graphics_pipelines: Vec<B::GraphicsPipeline>,
   pipeline_layouts: Vec<B::PipelineLayout>,
   render_passes: Vec<B::RenderPass>,
 ) {
   println!("Destroying GPU resources allocated during run.");
-
-  gpu.destroy_access_fences(submission_fence, rendering_semaphore);
 
   for pipeline_layout in pipeline_layouts.into_iter() {
     gpu.destroy_pipeline_layout(pipeline_layout);
@@ -142,7 +142,13 @@ impl Runnable for LambdaRunnable {
     let mut command_pool = CommandPoolBuilder::new().build(&gpu);
     command_pool.allocate_command_buffer("Primary");
 
-    let (submission_fence, rendering_semaphore) = gpu.create_access_fences();
+    let mut submission_fence = RenderSubmissionFenceBuilder::new()
+      .with_render_timeout(1_000_000_000)
+      .build(&mut gpu);
+
+    let rendering_semaphore = RenderSemaphoreBuilder::new().build(&mut gpu);
+
+    submission_fence.block_until_ready(&mut gpu, None);
 
     let mut s_fence = Some(submission_fence);
     let mut r_fence = Some(rendering_semaphore);
@@ -256,11 +262,14 @@ impl Runnable for LambdaRunnable {
       WinitEvent::RedrawEventsCleared => {}
       WinitEvent::LoopDestroyed => {
         component_stack.on_detach();
+
+        // Destroy the submission fence and rendering semaphore.
+        s_fence.take().unwrap().destroy(&mut gpu);
+        r_fence.take().unwrap().destroy(&mut gpu);
+
         delete_all_resources(
           surface.as_mut().unwrap(),
           &mut gpu,
-          s_fence.take().unwrap(),
-          r_fence.take().unwrap(),
           vec![],
           vec![],
           vec![],
