@@ -1,11 +1,8 @@
-use gfx_hal::{
-  format::Format,
-  window::{
-    Extent2D,
-    PresentationSurface,
-    Surface as _,
-    SwapchainConfig,
-  },
+use gfx_hal::window::{
+  Extent2D,
+  PresentationSurface,
+  Surface as _,
+  SwapchainConfig,
 };
 
 use super::{
