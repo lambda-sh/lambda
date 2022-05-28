@@ -26,6 +26,7 @@ pub struct RenderSemaphore<RenderBackend: gfx_hal::Backend> {
 }
 
 impl<RenderBackend: gfx_hal::Backend> RenderSemaphore<RenderBackend> {
+  /// Destroys the semaphore using the GPU that created it.
   pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
     unsafe { gpu.get_logical_device().destroy_semaphore(self.semaphore) }
   }
@@ -42,6 +43,8 @@ impl RenderSubmissionFenceBuilder {
     };
   }
 
+  /// Provides a default render timeout in nanoseconds. This render timeout is
+  /// used to reset the submission fence if it's time-to-live expires.
   pub fn with_render_timeout(mut self, render_timeout: u64) -> Self {
     self.default_render_timeout = render_timeout;
     return self;

@@ -35,30 +35,6 @@ use crate::{
   },
 };
 
-/// Used for cleaning  up all resources allocated during a run.
-pub fn delete_all_resources<B: gfx_hal_exports::Backend>(
-  gpu: &mut gfx::gpu::Gpu<B>,
-  graphics_pipelines: Vec<B::GraphicsPipeline>,
-  pipeline_layouts: Vec<B::PipelineLayout>,
-  render_passes: Vec<B::RenderPass>,
-) {
-  println!("Destroying GPU resources allocated during run.");
-
-  for pipeline_layout in pipeline_layouts.into_iter() {
-    gpu.destroy_pipeline_layout(pipeline_layout);
-  }
-
-  for render_pass in render_passes.into_iter() {
-    gpu.destroy_render_pass(render_pass);
-  }
-
-  for pipeline in graphics_pipelines.into_iter() {
-    gpu.destroy_graphics_pipeline(pipeline);
-  }
-
-  println!("Destroyed all GPU resources");
-}
-
 ///
 /// LambdaRunnable is a pre configured composition of a generic set of
 /// components from the lambda-rs codebase
@@ -260,17 +236,24 @@ impl Runnable for LambdaRunnable {
       WinitEvent::Resumed => {}
       WinitEvent::RedrawEventsCleared => {}
       WinitEvent::LoopDestroyed => {
+        println!("Detaching all components.");
         component_stack.on_detach();
 
+        println!("Destroying the rendering submission fence & semaphore.");
         // Destroy the submission fence and rendering semaphore.
         s_fence.take().unwrap().destroy(&mut gpu);
         r_fence.take().unwrap().destroy(&mut gpu);
 
-        delete_all_resources(&mut gpu, vec![], vec![], vec![]);
-
+        println!("Destroying the command pool.");
         command_pool.take().unwrap().destroy(&mut gpu);
+
+        println!(
+          "Removing the swapchain configuration and destorying the surface."
+        );
         surface.as_mut().unwrap().remove_swapchain_config(&gpu);
         surface.take().unwrap().destroy(&instance);
+
+        println!("All resources were successfully deleted.");
       }
     });
   }
