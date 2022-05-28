@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use gfx_hal::pool::CommandPool as _;
+use gfx_hal::{
+  device::Device,
+  pool::CommandPool as _,
+};
 
 use super::gpu::Gpu;
 
@@ -84,6 +87,14 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   pub fn reset_pool(&mut self, release_resources: bool) {
     unsafe {
       self.command_pool.reset(release_resources);
+    }
+  }
+
+  pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
+    unsafe {
+      gpu
+        .get_logical_device()
+        .destroy_command_pool(self.command_pool);
     }
   }
 }

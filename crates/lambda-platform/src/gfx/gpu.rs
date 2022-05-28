@@ -2,7 +2,6 @@ use std::mem::size_of;
 
 use gfx_hal::{
   adapter::Adapter,
-  command::Level,
   device::Device,
   format::Format,
   image::{
@@ -18,7 +17,6 @@ use gfx_hal::{
     SubpassDependency,
     SubpassDesc,
   },
-  pool::CommandPool,
   prelude::{
     PhysicalDevice,
     QueueFamily,
@@ -48,7 +46,6 @@ pub struct Gpu<B: gfx_hal::Backend> {
   adapter: gfx_hal::adapter::Adapter<B>,
   gpu: gfx_hal::adapter::Gpu<B>,
   queue_group: QueueGroup<B>,
-  command_pool: Option<B::CommandPool>,
 }
 
 #[derive(Clone, Copy)]
@@ -85,7 +82,6 @@ impl<B: gfx_hal::Backend> Gpu<B> {
       adapter,
       gpu,
       queue_group,
-      command_pool: None,
     };
   }
 
@@ -148,33 +144,6 @@ impl<B: gfx_hal::Backend> Gpu<B> {
         self.queue_group.queues[0].present(surface, image, Some(semaphore));
 
       return result;
-    }
-  }
-
-  /// Allocate's a command buffer through the GPU
-  pub fn allocate_command_buffer(&mut self) -> B::CommandBuffer {
-    // TODO(vmarcella): This function should probably not just panic and instead
-    // return a Result Type that allows for this action to be recoverable if
-    // failed.
-    return match &mut self.command_pool {
-      Some(command_pool) => unsafe {
-        command_pool.allocate_one(Level::Primary)
-      },
-      None => panic!(
-        "Cannot allocate a command buffer without a command pool initialized."
-      ),
-    };
-  }
-
-  pub fn destroy_command_pool(&mut self) {
-    unsafe {
-      match self.command_pool {
-        Some(_) => self
-          .gpu
-          .device
-          .destroy_command_pool(self.command_pool.take().unwrap()),
-        None => {}
-      }
     }
   }
 
@@ -350,38 +319,5 @@ impl<B: gfx_hal::Backend> Gpu<B> {
       self.gpu.device.create_semaphore().expect("Out of memory");
 
     return (submission_complete_fence, semaphore_fence);
-  }
-
-  /// Instructs the GPU to wait for or reset a submission fence. Useful
-  /// for resetting the command buffer
-  pub fn wait_for_or_reset_fence(&mut self, fence: &mut B::Fence) {
-    unsafe {
-      let device = &self.gpu.device;
-      let render_timeout_ns = 1_000_000_000;
-      device
-        .wait_for_fence(fence, render_timeout_ns)
-        .expect("The GPU ran out of memory or became detached.");
-      device
-        .reset_fence(fence)
-        .expect("The Fence failed to reset.");
-
-      self.command_pool.as_mut().unwrap().reset(false);
-    }
-  }
-
-  /// Destroy access fences created on the GPU.
-  pub fn destroy_access_fences(
-    &mut self,
-    submission_complete_fence: B::Fence,
-    rendering_complete_semaphore: B::Semaphore,
-  ) {
-    unsafe {
-      self
-        .gpu
-        .device
-        .destroy_semaphore(rendering_complete_semaphore);
-
-      self.gpu.device.destroy_fence(submission_complete_fence);
-    }
   }
 }

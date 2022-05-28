@@ -59,7 +59,6 @@ pub fn delete_all_resources<B: gfx_hal_exports::Backend>(
   }
 
   // Destroy command pool allocated on the GPU.
-  gpu.destroy_command_pool();
   surface.remove_swapchain_config(&gpu);
 
   println!("Destroyed all GPU resources");
@@ -139,8 +138,11 @@ impl Runnable for LambdaRunnable {
       .build(&mut instance, surface.as_ref())
       .expect("Failed to build a GPU.");
 
-    let mut command_pool = CommandPoolBuilder::new().build(&gpu);
-    command_pool.allocate_command_buffer("Primary");
+    let mut command_pool = Some(CommandPoolBuilder::new().build(&gpu));
+    command_pool
+      .as_mut()
+      .unwrap()
+      .allocate_command_buffer("Primary");
 
     let mut submission_fence = RenderSubmissionFenceBuilder::new()
       .with_render_timeout(1_000_000_000)
@@ -274,6 +276,8 @@ impl Runnable for LambdaRunnable {
           vec![],
           vec![],
         );
+
+        command_pool.take().unwrap().destroy(&mut gpu);
         destroy_surface(&instance, surface.take().unwrap());
       }
     });

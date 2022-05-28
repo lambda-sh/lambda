@@ -25,14 +25,10 @@ use crate::core::{
 pub struct LambdaRenderer<B: gfx_hal_exports::Backend> {
   instance: gfx::Instance<B>,
   gpu: gfx::gpu::Gpu<B>,
-  format: gfx_hal_exports::Format,
-  shader_library: Vec<Shader>,
 
   surface: Option<B::Surface>,
   extent: Option<gfx_hal_exports::Extent2D>,
   frame_buffer_attachment: Option<gfx_hal_exports::FramebufferAttachment>,
-  submission_complete_fence: Option<B::Fence>,
-  rendering_complete_semaphore: Option<B::Semaphore>,
   command_buffer: Option<B::CommandBuffer>,
 
   // TODO(vmarcella): Isolate pipeline & render pass management away from
@@ -100,10 +96,7 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
   fn on_attach(&mut self) {
     println!("The Rendering API has been attached and is being initialized.");
 
-    let command_buffer = self.gpu.allocate_command_buffer();
     let render_pass = self.gpu.create_render_pass(None, None, None);
-    let (submission_fence, rendering_semaphore) =
-      self.gpu.create_access_fences();
 
     let vertex_shader = Shader::from_file(
       "/home/vmarcella/dev/lambda/lambda/assets/shaders/triangle.vert",
@@ -123,19 +116,12 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
     self.render_passes = Some(vec![render_pass]);
     self.pipeline_layouts = Some(vec![pipeline_layout]);
     self.graphic_pipelines = Some(vec![pipeline]);
-    self.submission_complete_fence = Some(submission_fence);
-    self.rendering_complete_semaphore = Some(rendering_semaphore);
-    self.command_buffer = Some(command_buffer);
   }
 
   /// Detaches physical rendering resources that were allocated by this
   /// component.
   fn on_detach(&mut self) {
     println!("Destroying GPU resources allocated during run.");
-    self.gpu.destroy_access_fences(
-      self.submission_complete_fence.take().unwrap(),
-      self.rendering_complete_semaphore.take().unwrap(),
-    );
 
     for pipeline_layout in self.pipeline_layouts.take().unwrap() {
       self.gpu.destroy_pipeline_layout(pipeline_layout);
@@ -148,10 +134,6 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
     for pipeline in self.graphic_pipelines.take().unwrap() {
       self.gpu.destroy_graphics_pipeline(pipeline);
     }
-
-    // Destroy command pool allocated on the GPU.
-    self.gpu.destroy_command_pool();
-    let mut surface = self.surface.take().unwrap();
 
     println!("Destroyed all GPU resources");
   }
@@ -168,10 +150,6 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
 
   /// Rendering update loop.
   fn on_update(&mut self, _: &Duration) {
-    self.gpu.wait_for_or_reset_fence(
-      self.submission_complete_fence.as_mut().unwrap(),
-    );
-
     let surface = self.surface.as_mut().unwrap();
 
     let acquire_timeout_ns = 1_000_000_000;
@@ -251,21 +229,20 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
       command_buffer.finish();
 
       // Submit the command buffer for rendering on the GPU.
-      self.gpu.submit_command_buffer(
-        &command_buffer,
-        self.rendering_complete_semaphore.as_ref().unwrap(),
-        self.submission_complete_fence.as_mut().unwrap(),
-      );
+      // self.gpu.submit_command_buffer(
+      //   &command_buffer,
+      //   self.rendering_complete_semaphore.as_ref().unwrap(),
+      //   self.submission_complete_fence.as_mut().unwrap(),
+      //  );
 
-      let result = self.gpu.render_to_surface(
-        surface,
-        image,
-        self.rendering_complete_semaphore.as_mut().unwrap(),
-      );
-
-      if result.is_err() {
-        todo!("Publish an event from the renderer that the swapchain needs to be reconfigured")
-      }
+      // let result = self.gpu.render_to_surface(
+      //   surface,
+      //   image,
+      //   self.rendering_complete_semaphore.as_mut().unwrap(),
+      // );
+      // if result.is_err() {
+      //    todo!("Publish an event from the renderer that the swapchain needs to be reconfigured")
+      // }
 
       self.gpu.destroy_frame_buffer(framebuffer);
     }
