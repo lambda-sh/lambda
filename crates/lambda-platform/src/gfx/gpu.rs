@@ -306,18 +306,4 @@ impl<B: gfx_hal::Backend> Gpu<B> {
       self.gpu.device.destroy_graphics_pipeline(pipeline);
     }
   }
-
-  /// Create access fences for synchronizing with the current GPU.
-  pub fn create_access_fences(&mut self) -> (B::Fence, B::Semaphore) {
-    let submission_complete_fence = self
-      .gpu
-      .device
-      .create_fence(true)
-      .expect("Ran out of memory when trying to create.");
-
-    let semaphore_fence =
-      self.gpu.device.create_semaphore().expect("Out of memory");
-
-    return (submission_complete_fence, semaphore_fence);
-  }
 }
