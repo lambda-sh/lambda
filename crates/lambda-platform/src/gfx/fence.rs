@@ -94,6 +94,7 @@ impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
   }
 
   /// Destroy this fence given the GPU that created it.
+  #[inline]
   pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
     unsafe { gpu.get_logical_device().destroy_fence(self.fence) }
   }

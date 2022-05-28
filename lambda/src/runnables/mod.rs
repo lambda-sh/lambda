@@ -10,7 +10,6 @@ use lambda_platform::{
     },
     gfx_hal_exports,
     gpu::RenderQueueType,
-    surface::destroy_surface,
     GpuBuilder,
   },
   winit::{
@@ -38,7 +37,6 @@ use crate::{
 
 /// Used for cleaning  up all resources allocated during a run.
 pub fn delete_all_resources<B: gfx_hal_exports::Backend>(
-  surface: &mut gfx::surface::Surface<B>,
   gpu: &mut gfx::gpu::Gpu<B>,
   graphics_pipelines: Vec<B::GraphicsPipeline>,
   pipeline_layouts: Vec<B::PipelineLayout>,
@@ -57,9 +55,6 @@ pub fn delete_all_resources<B: gfx_hal_exports::Backend>(
   for pipeline in graphics_pipelines.into_iter() {
     gpu.destroy_graphics_pipeline(pipeline);
   }
-
-  // Destroy command pool allocated on the GPU.
-  surface.remove_swapchain_config(&gpu);
 
   println!("Destroyed all GPU resources");
 }
@@ -133,29 +128,31 @@ impl Runnable for LambdaRunnable {
 
     let mut surface = Some(instance.create_surface(window.window_handle()));
 
+    // Build a GPU with a 3D Render queue that can render to our surface.
     let mut gpu = GpuBuilder::new()
       .with_render_queue_type(RenderQueueType::Graphical)
       .build(&mut instance, surface.as_ref())
       .expect("Failed to build a GPU.");
 
+    // Build command pool and allocate a single buffer named Primary
     let mut command_pool = Some(CommandPoolBuilder::new().build(&gpu));
     command_pool
       .as_mut()
       .unwrap()
       .allocate_command_buffer("Primary");
 
+    // Build our rendering submission fence and semaphore.
     let mut submission_fence = RenderSubmissionFenceBuilder::new()
       .with_render_timeout(1_000_000_000)
       .build(&mut gpu);
 
     let rendering_semaphore = RenderSemaphoreBuilder::new().build(&mut gpu);
 
-    submission_fence.block_until_ready(&mut gpu, None);
-
     let mut s_fence = Some(submission_fence);
     let mut r_fence = Some(rendering_semaphore);
 
-    // Create the image extent and initial frame buffer attachment description for rendering.
+    // Create the image extent and initial frame buffer attachment description
+    // for rendering.
     let dimensions = window.dimensions();
     let swapchain_config = surface
       .as_mut()
@@ -269,16 +266,11 @@ impl Runnable for LambdaRunnable {
         s_fence.take().unwrap().destroy(&mut gpu);
         r_fence.take().unwrap().destroy(&mut gpu);
 
-        delete_all_resources(
-          surface.as_mut().unwrap(),
-          &mut gpu,
-          vec![],
-          vec![],
-          vec![],
-        );
+        delete_all_resources(&mut gpu, vec![], vec![], vec![]);
 
         command_pool.take().unwrap().destroy(&mut gpu);
-        destroy_surface(&instance, surface.take().unwrap());
+        surface.as_mut().unwrap().remove_swapchain_config(&gpu);
+        surface.take().unwrap().destroy(&instance);
       }
     });
   }

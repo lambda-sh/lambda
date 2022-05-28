@@ -116,12 +116,9 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
         .unconfigure_swapchain(gpu.get_logical_device());
     }
   }
-}
 
-/// Destroy a surface given the instant that created it.
-pub fn destroy_surface<RenderBackend: gfx_hal::Backend>(
-  instance: &Instance<RenderBackend>,
-  surface: Surface<RenderBackend>,
-) {
-  instance.destroy_surface(surface.gfx_hal_surface);
+  #[inline]
+  pub fn destroy(self, instance: &Instance<RenderBackend>) {
+    instance.destroy_surface(self.gfx_hal_surface)
+  }
 }

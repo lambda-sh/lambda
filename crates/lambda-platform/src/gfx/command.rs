@@ -90,6 +90,7 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
     }
   }
 
+  #[inline]
   pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
     unsafe {
       gpu
