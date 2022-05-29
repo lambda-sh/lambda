@@ -1,14 +1,11 @@
 use gfx_hal::window::{
-  Extent2D,
-  PresentationSurface,
-  Surface as _,
-  SwapchainConfig,
+  Extent2D, PresentationSurface, Surface as _, SwapchainConfig,
 };
 
-use super::{
-  gpu::Gpu,
-  Instance,
-};
+use super::{gpu::Gpu, Instance};
+
+/// ColorFormat for the surface.
+pub use gfx_hal::format::Format as ColorFormat;
 
 /// Defines a surface bound
 pub struct Surface<RenderBackend: gfx_hal::Backend> {
@@ -45,7 +42,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   pub fn get_first_supported_format(
     &self,
     physical_device: &RenderBackend::PhysicalDevice,
-  ) -> gfx_hal::format::Format {
+  ) -> ColorFormat {
     let supported_formats = self.get_supported_formats(physical_device);
     let default_format = *supported_formats
       .get(0)

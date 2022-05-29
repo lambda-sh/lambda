@@ -4,35 +4,20 @@ use lambda_platform::{
   gfx,
   gfx::{
     command::CommandPoolBuilder,
-    fence::{
-      RenderSemaphoreBuilder,
-      RenderSubmissionFenceBuilder,
-    },
-    gfx_hal_exports,
+    fence::{RenderSemaphoreBuilder, RenderSubmissionFenceBuilder},
     gpu::RenderQueueType,
     GpuBuilder,
   },
   winit::{
     create_event_loop,
-    winit_exports::{
-      ControlFlow,
-      Event as WinitEvent,
-      WindowEvent,
-    },
+    winit_exports::{ControlFlow, Event as WinitEvent, WindowEvent},
     Loop,
   },
 };
 
 use crate::{
-  components::{
-    ComponentStack,
-    Window,
-  },
-  core::{
-    component::Component,
-    events::Event,
-    runnable::Runnable,
-  },
+  components::{ComponentStack, Window},
+  core::{component::Component, events::Event, runnable::Runnable},
 };
 
 ///
