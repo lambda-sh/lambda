@@ -16,6 +16,11 @@ pub struct GraphicsPipeline<'a, B: Backend> {
   pipeline_desc: GraphicsPipelineDesc<'a, B>,
 }
 
+pub struct RenderPipelineBuilder {}
+impl RenderPipelineBuilder {}
+
+pub struct RenderPipeline {}
+
 impl<'a, B: Backend> GraphicsPipeline<'a, B> {
   pub fn get_pipeline(&mut self) -> &GraphicsPipelineDesc<'a, B> {
     return &self.pipeline_desc;

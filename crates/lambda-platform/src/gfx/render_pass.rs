@@ -194,7 +194,7 @@ impl<'builder> RenderPassBuilder<'builder> {
     self,
     gpu: &mut Gpu<RenderBackend>,
   ) -> RenderPass<RenderBackend> {
-    // Build all attachments.
+    // If there are no attachments, use a "stub" that will
     let attachments = match self.attachments.is_empty() {
       true => vec![AttachmentBuilder::new()
         .with_samples(1)
