@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 
-use gfx_hal::{
-  device::Device,
-  pool::CommandPool as _,
-};
+use gfx_hal::{device::Device, pool::CommandPool as _};
 
-use super::gpu::Gpu;
+use super::gpu::{internal, Gpu};
 
 pub struct CommandPoolBuilder {
   command_pool_flags: gfx_hal::pool::CommandPoolCreateFlags,
@@ -29,7 +26,8 @@ impl CommandPoolBuilder {
 
   /// Builds a command pool.
   pub fn build<B: gfx_hal::Backend>(self, gpu: &Gpu<B>) -> CommandPool<B> {
-    let command_pool = gpu.create_command_pool(self.command_pool_flags);
+    let command_pool =
+      internal::create_command_pool(gpu, self.command_pool_flags);
 
     return CommandPool {
       command_pool,
@@ -91,11 +89,7 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   }
 
   #[inline]
-  pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
-    unsafe {
-      gpu
-        .get_logical_device()
-        .destroy_command_pool(self.command_pool);
-    }
+  pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
+    internal::destroy_command_pool(gpu, self.command_pool);
   }
 }

@@ -1,6 +1,6 @@
 use gfx_hal::device::Device;
 
-use super::gpu::Gpu;
+use super::{gpu::Gpu, internal};
 
 pub struct RenderSemaphoreBuilder {}
 
@@ -13,8 +13,7 @@ impl RenderSemaphoreBuilder {
     self,
     gpu: &mut Gpu<RenderBackend>,
   ) -> RenderSemaphore<RenderBackend> {
-    let semaphore = gpu
-      .get_logical_device()
+    let semaphore = internal::logical_device_for(gpu)
       .create_semaphore()
       .expect("The GPU has no memory to allocate the semaphore");
 
@@ -28,7 +27,9 @@ pub struct RenderSemaphore<RenderBackend: gfx_hal::Backend> {
 impl<RenderBackend: gfx_hal::Backend> RenderSemaphore<RenderBackend> {
   /// Destroys the semaphore using the GPU that created it.
   pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
-    unsafe { gpu.get_logical_device().destroy_semaphore(self.semaphore) }
+    unsafe {
+      internal::logical_device_for(gpu).destroy_semaphore(self.semaphore)
+    }
   }
 }
 
@@ -54,8 +55,7 @@ impl RenderSubmissionFenceBuilder {
     self,
     gpu: &mut Gpu<RenderBackend>,
   ) -> RenderSubmissionFence<RenderBackend> {
-    let fence = gpu
-      .get_logical_device()
+    let fence = internal::logical_device_for(gpu)
       .create_fence(true)
       .expect("There is not enough memory to create a fence on this device.");
 
@@ -84,13 +84,11 @@ impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
     };
 
     unsafe {
-      gpu
-        .get_logical_device()
+      internal::logical_device_for(gpu)
         .wait_for_fence(&self.fence, timeout)
         .expect("The GPU ran out of memory or has become detached from the current context.");
 
-      gpu
-        .get_logical_device()
+      internal::logical_device_for(gpu)
         .reset_fence(&mut self.fence)
         .expect("The fence failed to reset.");
     }
@@ -99,6 +97,6 @@ impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
   /// Destroy this fence given the GPU that created it.
   #[inline]
   pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
-    unsafe { gpu.get_logical_device().destroy_fence(self.fence) }
+    unsafe { internal::logical_device_for(gpu).destroy_fence(self.fence) }
   }
 }

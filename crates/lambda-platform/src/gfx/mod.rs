@@ -10,10 +10,7 @@ pub mod resource;
 pub mod surface;
 
 use api::RenderingAPI;
-use gfx_hal::{
-  queue::QueueFamily,
-  Instance as _,
-};
+use gfx_hal::{queue::QueueFamily, Instance as _};
 
 use self::gpu::RenderQueueType;
 
@@ -24,28 +21,16 @@ use self::gpu::RenderQueueType;
 pub mod gfx_hal_exports {
   pub use gfx_hal::{
     command::{
-      ClearColor,
-      ClearValue,
-      CommandBuffer,
-      CommandBufferFlags,
-      RenderAttachmentInfo,
-      SubpassContents,
+      ClearColor, ClearValue, CommandBuffer, CommandBufferFlags,
+      RenderAttachmentInfo, SubpassContents,
     },
     format::Format,
     image::FramebufferAttachment,
     pso::{
-      EntryPoint,
-      InputAssemblerDesc,
-      Primitive,
-      PrimitiveAssemblerDesc,
-      Rect,
-      Specialization,
-      Viewport,
+      EntryPoint, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rect,
+      Specialization, Viewport,
     },
-    window::{
-      Extent2D,
-      PresentationSurface,
-    },
+    window::{Extent2D, PresentationSurface},
     Backend,
   };
 }
@@ -53,9 +38,10 @@ pub mod gfx_hal_exports {
 // ----------------------- INTERNAL INSTANCE OPERATIONS ------------------------
 
 pub mod internal {
+  use super::Instance;
   use gfx_hal::Instance as _;
 
-  use super::Instance;
+  pub use super::gpu::internal::*;
 
   /// Helper function to create a low level gfx_hal surface. Not meant to be
   /// used outside of lambda-platform.

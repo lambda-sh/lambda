@@ -4,37 +4,16 @@ use gfx_hal::{
   adapter::Adapter,
   device::Device,
   format::Format,
-  image::{
-    Access,
-    Layout,
-  },
+  image::{Access, Layout},
   memory::Dependencies,
   pass::{
-    Attachment,
-    AttachmentLoadOp,
-    AttachmentOps,
-    AttachmentStoreOp,
-    SubpassDependency,
-    SubpassDesc,
+    Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp,
+    SubpassDependency, SubpassDesc,
   },
-  prelude::{
-    PhysicalDevice,
-    QueueFamily,
-  },
-  pso::{
-    PipelineStage,
-    ShaderStageFlags,
-  },
-  queue::{
-    Queue,
-    QueueGroup,
-  },
-  window::{
-    Extent2D,
-    PresentError,
-    PresentationSurface,
-    Suboptimal,
-  },
+  prelude::{PhysicalDevice, QueueFamily},
+  pso::{PipelineStage, ShaderStageFlags},
+  queue::{Queue, QueueGroup},
+  window::{Extent2D, PresentError, PresentationSurface, Suboptimal},
 };
 
 use super::pipeline::GraphicsPipeline;
@@ -54,6 +33,45 @@ pub enum RenderQueueType {
   Graphical,
   GraphicalCompute,
   Transfer,
+}
+
+pub mod internal {
+  use gfx_hal::device::Device;
+
+  use super::Gpu;
+
+  pub fn create_command_pool<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+    flags: gfx_hal::pool::CommandPoolCreateFlags,
+  ) -> RenderBackend::CommandPool {
+    return unsafe {
+      gpu.get_logical_device().create_command_pool(gpu.queue_group.family, flags)
+				.expect("The GPU could not allocate a command pool because it is out of memory")
+    };
+  }
+
+  /// Destroys a command pool allocated by the given GPU.
+  pub fn destroy_command_pool<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+    command_pool: RenderBackend::CommandPool,
+  ) {
+    unsafe {
+      gpu.get_logical_device().destroy_command_pool(command_pool);
+    }
+  }
+
+  /// Retrieves the gfx_hal logical device for a given GPU.
+  pub fn logical_device_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> &RenderBackend::Device {
+    return gpu.get_logical_device();
+  }
+
+  pub fn physical_device_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> &RenderBackend::PhysicalDevice {
+    return gpu.get_physical_device();
+  }
 }
 
 impl<B: gfx_hal::Backend> Gpu<B> {
@@ -89,20 +107,6 @@ impl<B: gfx_hal::Backend> Gpu<B> {
     return self.queue_group.family;
   }
 
-  // TODO(vmarcella): A command pool allocated GPU should be implemented via a
-  // GPU typestate. For example, with_command_pool should return a gpu with an
-  // type signature something along the lines of: GPU<CommandReady>
-  /// Attaches a command pool to the current gfx gpu.
-  pub fn create_command_pool(
-    &self,
-    flags: gfx_hal::pool::CommandPoolCreateFlags,
-  ) -> B::CommandPool {
-    return unsafe {
-      self.gpu.device.create_command_pool(self.queue_group.family, flags)
-				.expect("The GPU could not allocate a command pool because it is out of memory")
-    };
-  }
-
   /// Submits a command buffer to the GPU.
   pub fn submit_command_buffer(
     &mut self,
@@ -123,12 +127,12 @@ impl<B: gfx_hal::Backend> Gpu<B> {
   }
 
   /// Get the underlying logical device for the logical GPU.
-  pub fn get_logical_device(&self) -> &B::Device {
+  fn get_logical_device(&self) -> &B::Device {
     return &self.gpu.device;
   }
 
   /// Get the underlying physical device for the virtual GPU.
-  pub fn get_physical_device(&self) -> &B::PhysicalDevice {
+  fn get_physical_device(&self) -> &B::PhysicalDevice {
     return &self.adapter.physical_device;
   }
 

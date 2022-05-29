@@ -1,14 +1,8 @@
 use std::borrow::Borrow;
 
-use gfx_hal::{
-  device::Device,
-  pass::SubpassDesc,
-};
+use gfx_hal::{device::Device, pass::SubpassDesc};
 
-use super::{
-  gpu::Gpu,
-  surface::ColorFormat,
-};
+use super::{gpu::Gpu, internal, surface::ColorFormat};
 
 // ----------------------- RENDER ATTACHMENT OPERATIONS ------------------------
 
@@ -194,7 +188,8 @@ impl<'builder> RenderPassBuilder<'builder> {
     self,
     gpu: &mut Gpu<RenderBackend>,
   ) -> RenderPass<RenderBackend> {
-    // If there are no attachments, use a "stub" that will
+    // If there are no attachments, use a stub image attachment with clear and
+    // store operations.
     let attachments = match self.attachments.is_empty() {
       true => vec![AttachmentBuilder::new()
         .with_samples(1)
@@ -210,6 +205,7 @@ impl<'builder> RenderPassBuilder<'builder> {
         .collect(),
     };
 
+    // If there are no subpass descriptions, use a stub subpass attachment
     let subpasses = match self.subpasses.is_empty() {
       true => vec![SubpassBuilder::new().build().gfx_hal_subpass()],
       false => self
@@ -220,8 +216,7 @@ impl<'builder> RenderPassBuilder<'builder> {
     };
 
     let render_pass = unsafe {
-      gpu
-        .get_logical_device()
+      internal::logical_device_for(gpu)
         .create_render_pass(
           attachments.into_iter(),
           subpasses.into_iter(),

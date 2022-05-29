@@ -4,35 +4,21 @@ use lambda_platform::{
   gfx,
   gfx::{
     command::CommandPoolBuilder,
-    fence::{
-      RenderSemaphoreBuilder,
-      RenderSubmissionFenceBuilder,
-    },
+    fence::{RenderSemaphoreBuilder, RenderSubmissionFenceBuilder},
     gpu::RenderQueueType,
     surface::SurfaceBuilder,
     GpuBuilder,
   },
   winit::{
     create_event_loop,
-    winit_exports::{
-      ControlFlow,
-      Event as WinitEvent,
-      WindowEvent,
-    },
+    winit_exports::{ControlFlow, Event as WinitEvent, WindowEvent},
     Loop,
   },
 };
 
 use crate::{
-  components::{
-    ComponentStack,
-    Window,
-  },
-  core::{
-    component::Component,
-    events::Event,
-    runnable::Runnable,
-  },
+  components::{ComponentStack, Window},
+  core::{component::Component, events::Event, runnable::Runnable},
 };
 
 ///
@@ -147,111 +133,113 @@ impl Runnable for LambdaRunnable {
     let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();
 
-    event_loop.run_forever(move |event, _, control_flow| match event {
-      WinitEvent::WindowEvent { event, .. } => match event {
-        WindowEvent::CloseRequested => {
-          // Issue a Shutdown event to deallocate resources and clean up.
-          publisher.send_event(Event::Shutdown);
-        }
-        WindowEvent::Resized(dims) => publisher.send_event(Event::Resized {
-          new_width: dims.width,
-          new_height: dims.height,
-        }),
-        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => publisher
-          .send_event(Event::Resized {
-            new_width: new_inner_size.width,
-            new_height: new_inner_size.height,
+    event_loop.run_forever(move |event, _, control_flow| {
+      println!("next-frame");
+      match event {
+        WinitEvent::WindowEvent { event, .. } => match event {
+          WindowEvent::CloseRequested => {
+            // Issue a Shutdown event to deallocate resources and clean up.
+            publisher.send_event(Event::Shutdown);
+          }
+          WindowEvent::Resized(dims) => publisher.send_event(Event::Resized {
+            new_width: dims.width,
+            new_height: dims.height,
           }),
-        WindowEvent::Moved(_) => {}
-        WindowEvent::Destroyed => {}
-        WindowEvent::DroppedFile(_) => {}
-        WindowEvent::HoveredFile(_) => {}
-        WindowEvent::HoveredFileCancelled => {}
-        WindowEvent::ReceivedCharacter(_) => {}
-        WindowEvent::Focused(_) => {}
-        WindowEvent::KeyboardInput {
-          device_id,
-          input,
-          is_synthetic,
-        } => {}
-        WindowEvent::ModifiersChanged(_) => {}
-        WindowEvent::CursorMoved {
-          device_id,
-          position,
-          modifiers,
-        } => {}
-        WindowEvent::CursorEntered { device_id } => {}
-        WindowEvent::CursorLeft { device_id } => {}
-        WindowEvent::MouseWheel {
-          device_id,
-          delta,
-          phase,
-          modifiers,
-        } => {}
-        WindowEvent::MouseInput {
-          device_id,
-          state,
-          button,
-          modifiers,
-        } => {}
-        WindowEvent::TouchpadPressure {
-          device_id,
-          pressure,
-          stage,
-        } => {}
-        WindowEvent::AxisMotion {
-          device_id,
-          axis,
-          value,
-        } => {}
-        WindowEvent::Touch(_) => {}
-        WindowEvent::ThemeChanged(_) => {}
-      },
-      WinitEvent::MainEventsCleared => {
-        last_frame = current_frame.clone();
-        current_frame = Instant::now();
-        let duration = &current_frame.duration_since(last_frame);
-        component_stack.on_update(duration);
-      }
-      WinitEvent::RedrawRequested(_) => {
-        window.redraw();
-      }
-      WinitEvent::NewEvents(_) => {}
-      WinitEvent::DeviceEvent { device_id, event } => {}
-      WinitEvent::UserEvent(lambda_event) => {
-        match lambda_event {
-          Event::Initialized => {
-            component_stack.on_attach();
-          }
-          Event::Shutdown => {
-            // Once this has been set, the ControlFlow can no longer be
-            // modified.
-            *control_flow = ControlFlow::Exit;
-          }
-          _ => {
-            component_stack.on_event(&lambda_event);
+          WindowEvent::ScaleFactorChanged { new_inner_size, .. } => publisher
+            .send_event(Event::Resized {
+              new_width: new_inner_size.width,
+              new_height: new_inner_size.height,
+            }),
+          WindowEvent::Moved(_) => {}
+          WindowEvent::Destroyed => {}
+          WindowEvent::DroppedFile(_) => {}
+          WindowEvent::HoveredFile(_) => {}
+          WindowEvent::HoveredFileCancelled => {}
+          WindowEvent::ReceivedCharacter(_) => {}
+          WindowEvent::Focused(_) => {}
+          WindowEvent::KeyboardInput {
+            device_id,
+            input,
+            is_synthetic,
+          } => {}
+          WindowEvent::ModifiersChanged(_) => {}
+          WindowEvent::CursorMoved {
+            device_id,
+            position,
+            modifiers,
+          } => {}
+          WindowEvent::CursorEntered { device_id } => {}
+          WindowEvent::CursorLeft { device_id } => {}
+          WindowEvent::MouseWheel {
+            device_id,
+            delta,
+            phase,
+            modifiers,
+          } => {}
+          WindowEvent::MouseInput {
+            device_id,
+            state,
+            button,
+            modifiers,
+          } => {}
+          WindowEvent::TouchpadPressure {
+            device_id,
+            pressure,
+            stage,
+          } => {}
+          WindowEvent::AxisMotion {
+            device_id,
+            axis,
+            value,
+          } => {}
+          WindowEvent::Touch(_) => {}
+          WindowEvent::ThemeChanged(_) => {}
+        },
+        WinitEvent::MainEventsCleared => {
+          last_frame = current_frame.clone();
+          current_frame = Instant::now();
+          let duration = &current_frame.duration_since(last_frame);
+          component_stack.on_update(duration);
+          window.redraw();
+        }
+        WinitEvent::RedrawRequested(_) => {}
+        WinitEvent::NewEvents(_) => {}
+        WinitEvent::DeviceEvent { device_id, event } => {}
+        WinitEvent::UserEvent(lambda_event) => {
+          match lambda_event {
+            Event::Initialized => {
+              component_stack.on_attach();
+            }
+            Event::Shutdown => {
+              // Once this has been set, the ControlFlow can no longer be
+              // modified.
+
+              println!("Detaching all components.");
+              *control_flow = ControlFlow::Exit;
+            }
+            _ => {
+              component_stack.on_event(&lambda_event);
+            }
           }
         }
-      }
-      WinitEvent::Suspended => {}
-      WinitEvent::Resumed => {}
-      WinitEvent::RedrawEventsCleared => {}
-      WinitEvent::LoopDestroyed => {
-        println!("Detaching all components.");
-        component_stack.on_detach();
+        WinitEvent::Suspended => {}
+        WinitEvent::Resumed => {}
+        WinitEvent::RedrawEventsCleared => {}
+        WinitEvent::LoopDestroyed => {
+          component_stack.on_detach();
+          println!("Destroying the rendering submission fence & semaphore.");
+          // Destroy the submission fence and rendering semaphore.
+          s_fence.take().unwrap().destroy(&mut gpu);
+          r_fence.take().unwrap().destroy(&mut gpu);
 
-        println!("Destroying the rendering submission fence & semaphore.");
-        // Destroy the submission fence and rendering semaphore.
-        s_fence.take().unwrap().destroy(&mut gpu);
-        r_fence.take().unwrap().destroy(&mut gpu);
+          println!("Destroying the command pool.");
+          command_pool.take().unwrap().destroy(&mut gpu);
 
-        println!("Destroying the command pool.");
-        command_pool.take().unwrap().destroy(&mut gpu);
+          surface.as_mut().unwrap().remove_swapchain_config(&gpu);
+          surface.take().unwrap().destroy(&instance);
 
-        surface.as_mut().unwrap().remove_swapchain_config(&gpu);
-        surface.take().unwrap().destroy(&instance);
-
-        println!("All resources were successfully deleted.");
+          println!("All resources were successfully deleted.");
+        }
       }
     });
   }

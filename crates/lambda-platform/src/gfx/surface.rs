@@ -1,17 +1,10 @@
 /// ColorFormat for the surface.
 pub use gfx_hal::format::Format as ColorFormat;
 use gfx_hal::window::{
-  Extent2D,
-  PresentationSurface,
-  Surface as _,
-  SwapchainConfig,
+  Extent2D, PresentationSurface, Surface as _, SwapchainConfig,
 };
 
-use super::{
-  gpu::Gpu,
-  internal,
-  Instance,
-};
+use super::{gpu::Gpu, internal, Instance};
 
 pub struct SurfaceBuilder {
   name: Option<String>,
@@ -94,7 +87,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     gpu: &Gpu<RenderBackend>,
     size: [u32; 2],
   ) -> SwapchainConfig {
-    let physical_device = gpu.get_physical_device();
+    let physical_device = internal::physical_device_for(gpu);
 
     let caps = self.gfx_hal_surface.capabilities(physical_device);
     let format = self.get_first_supported_format(physical_device);
@@ -122,7 +115,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     gpu: &Gpu<RenderBackend>,
     swapchain_config: SwapchainConfig,
   ) -> (Extent2D, gfx_hal::image::FramebufferAttachment) {
-    let device = gpu.get_logical_device();
+    let device = internal::logical_device_for(gpu);
     let surface_extent = swapchain_config.extent;
     let fba = swapchain_config.framebuffer_attachment();
 
@@ -144,7 +137,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     unsafe {
       self
         .gfx_hal_surface
-        .unconfigure_swapchain(gpu.get_logical_device());
+        .unconfigure_swapchain(internal::logical_device_for(gpu));
     }
   }
 
