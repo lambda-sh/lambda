@@ -1,6 +1,11 @@
 use gfx_hal::device::Device;
 
-use super::{gpu::Gpu, surface::ColorFormat};
+use super::{
+  gpu::Gpu,
+  surface::ColorFormat,
+};
+
+// ----------------------- RENDER ATTACHMENT OPERATIONS ------------------------
 
 #[derive(Debug)]
 pub enum Operations {
@@ -31,6 +36,8 @@ impl Operations {
     };
   }
 }
+
+// ----------------------------- RENDER ATTACHMENT -----------------------------
 
 pub struct AttachmentBuilder {
   samples: u8,
@@ -96,6 +103,8 @@ impl Attachment {
   }
 }
 
+// -------------------------------- RENDER PASS --------------------------------
+
 pub struct RenderPassBuilder {
   attachments: Vec<Attachment>,
 }
@@ -115,28 +124,28 @@ impl RenderPassBuilder {
 
   // TODO(vmarcella): implement subpass building logic logic.
   pub fn with_subpass(mut self) -> Self {
+    todo!("Implement subpass support for render passes");
     return self;
   }
 
   pub fn build<RenderBackend: gfx_hal::Backend>(
-    mut self,
+    self,
     gpu: &mut Gpu<RenderBackend>,
   ) -> RenderPass<RenderBackend> {
     // Build all attachments.
-    if self.attachments.is_empty() {
-      self.attachments.push(
-        AttachmentBuilder::new()
-          .with_samples(1)
-          .on_load(Operations::Clear)
-          .on_store(Operations::Store)
-          .build(),
-      )
-    }
-
-    let attachments = self
-      .attachments
-      .into_iter()
-      .map(|attachment| attachment.gfx_hal_attachment());
+    let attachments = match self.attachments.is_empty() {
+      true => vec![AttachmentBuilder::new()
+        .with_samples(1)
+        .on_load(Operations::Clear)
+        .on_store(Operations::Store)
+        .build()
+        .gfx_hal_attachment()],
+      false => self
+        .attachments
+        .into_iter()
+        .map(|attachment| attachment.gfx_hal_attachment())
+        .collect(),
+    };
 
     let render_pass = unsafe {
       gpu

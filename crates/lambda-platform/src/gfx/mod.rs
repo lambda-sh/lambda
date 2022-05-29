@@ -1,7 +1,4 @@
-use gfx_hal::queue::QueueFamily;
-
-use self::gpu::RenderQueueType;
-use super::winit::WindowHandle;
+// -------------------------- GFX PLATFORM EXPORTS -----------------------------
 
 pub mod api;
 pub mod command;
@@ -13,7 +10,14 @@ pub mod resource;
 pub mod surface;
 
 use api::RenderingAPI;
-use gfx_hal::Instance as _;
+use gfx_hal::{
+  queue::QueueFamily,
+  Instance as _,
+};
+
+use self::gpu::RenderQueueType;
+
+// ----------------------------- GFX-HAL EXPORTS -------------------------------
 
 /// Exports directly from the gfx_hal crate to be used while lambda-platform
 /// stabilizes it's API.
@@ -46,6 +50,41 @@ pub mod gfx_hal_exports {
   };
 }
 
+// ----------------------- INTERNAL INSTANCE OPERATIONS ------------------------
+
+pub mod internal {
+  use gfx_hal::Instance as _;
+
+  use super::Instance;
+
+  /// Helper function to create a low level gfx_hal surface. Not meant to be
+  /// used outside of lambda-platform.
+  #[inline]
+  pub fn create_surface<RenderBackend: gfx_hal::Backend>(
+    instance: &Instance<RenderBackend>,
+    window_handle: &crate::winit::WindowHandle,
+  ) -> RenderBackend::Surface {
+    // TODO(vmarcella): This should propagate any errors upwards to the caller.
+    unsafe {
+      let surface = instance
+        .gfx_hal_instance
+        .create_surface(&window_handle.window_handle)
+        .unwrap();
+
+      return surface;
+    };
+  }
+
+  pub fn destroy_surface<RenderBackend: gfx_hal::Backend>(
+    instance: &Instance<RenderBackend>,
+    surface: RenderBackend::Surface,
+  ) {
+    unsafe {
+      instance.gfx_hal_instance.destroy_surface(surface);
+    }
+  }
+}
+
 pub struct Instance<RenderBackend: gfx_hal::Backend> {
   gfx_hal_instance: RenderBackend::Instance,
 }
@@ -59,28 +98,6 @@ impl<RenderBackend: gfx_hal::Backend> Instance<RenderBackend> {
     return Self {
       gfx_hal_instance: instance,
     };
-  }
-
-  /// Create a surface for a given lambda window using it's underlying
-  /// winit window handle.
-  pub fn create_surface(
-    &self,
-    window_handle: &WindowHandle,
-  ) -> surface::Surface<RenderBackend> {
-    unsafe {
-      let surface = self
-        .gfx_hal_instance
-        .create_surface(&window_handle.window_handle)
-        .unwrap();
-
-      return surface::Surface::new(surface);
-    };
-  }
-
-  pub fn destroy_surface(&self, surface: RenderBackend::Surface) {
-    unsafe {
-      self.gfx_hal_instance.destroy_surface(surface);
-    }
   }
 }
 

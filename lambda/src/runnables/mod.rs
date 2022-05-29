@@ -4,20 +4,35 @@ use lambda_platform::{
   gfx,
   gfx::{
     command::CommandPoolBuilder,
-    fence::{RenderSemaphoreBuilder, RenderSubmissionFenceBuilder},
+    fence::{
+      RenderSemaphoreBuilder,
+      RenderSubmissionFenceBuilder,
+    },
     gpu::RenderQueueType,
+    surface::SurfaceBuilder,
     GpuBuilder,
   },
   winit::{
     create_event_loop,
-    winit_exports::{ControlFlow, Event as WinitEvent, WindowEvent},
+    winit_exports::{
+      ControlFlow,
+      Event as WinitEvent,
+      WindowEvent,
+    },
     Loop,
   },
 };
 
 use crate::{
-  components::{ComponentStack, Window},
-  core::{component::Component, events::Event, runnable::Runnable},
+  components::{
+    ComponentStack,
+    Window,
+  },
+  core::{
+    component::Component,
+    events::Event,
+    runnable::Runnable,
+  },
 };
 
 ///
@@ -87,7 +102,8 @@ impl Runnable for LambdaRunnable {
     let mut component_stack = app.component_stack;
     let mut instance = app.instance;
 
-    let mut surface = Some(instance.create_surface(window.window_handle()));
+    let mut surface =
+      Some(SurfaceBuilder::new().build(&mut instance, &window.window_handle()));
 
     // Build a GPU with a 3D Render queue that can render to our surface.
     let mut gpu = GpuBuilder::new()
@@ -103,7 +119,7 @@ impl Runnable for LambdaRunnable {
       .allocate_command_buffer("Primary");
 
     // Build our rendering submission fence and semaphore.
-    let mut submission_fence = RenderSubmissionFenceBuilder::new()
+    let submission_fence = RenderSubmissionFenceBuilder::new()
       .with_render_timeout(1_000_000_000)
       .build(&mut gpu);
 
@@ -232,9 +248,6 @@ impl Runnable for LambdaRunnable {
         println!("Destroying the command pool.");
         command_pool.take().unwrap().destroy(&mut gpu);
 
-        println!(
-          "Removing the swapchain configuration and destorying the surface."
-        );
         surface.as_mut().unwrap().remove_swapchain_config(&gpu);
         surface.take().unwrap().destroy(&instance);
 
