@@ -103,7 +103,7 @@ impl Runnable for LambdaRunnable {
     let mut instance = app.instance;
 
     let mut surface =
-      Some(SurfaceBuilder::new().build(&mut instance, &window.window_handle()));
+      Some(SurfaceBuilder::new().build(&instance, window.window_handle()));
 
     // Build a GPU with a 3D Render queue that can render to our surface.
     let mut gpu = GpuBuilder::new()

@@ -75,6 +75,7 @@ pub mod internal {
     };
   }
 
+  /// Destroy a low level gfx_hal surface using the instance abstraction.
   pub fn destroy_surface<RenderBackend: gfx_hal::Backend>(
     instance: &Instance<RenderBackend>,
     surface: RenderBackend::Surface,
@@ -82,6 +83,12 @@ pub mod internal {
     unsafe {
       instance.gfx_hal_instance.destroy_surface(surface);
     }
+  }
+
+  pub fn get_adapter<RenderBackend: gfx_hal::Backend>(
+    instance: &mut Instance<RenderBackend>,
+    adapter_num: usize,
+  ) {
   }
 }
 

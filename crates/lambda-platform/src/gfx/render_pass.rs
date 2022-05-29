@@ -1,4 +1,9 @@
-use gfx_hal::device::Device;
+use std::borrow::Borrow;
+
+use gfx_hal::{
+  device::Device,
+  pass::SubpassDesc,
+};
 
 use super::{
   gpu::Gpu,
@@ -103,16 +108,74 @@ impl Attachment {
   }
 }
 
-// -------------------------------- RENDER PASS --------------------------------
+// ------------------------------ RENDER SUBPASS -------------------------------
 
-pub struct RenderPassBuilder {
-  attachments: Vec<Attachment>,
+pub use gfx_hal::image::Layout as ImageLayoutHint;
+
+pub struct SubpassBuilder {
+  color_attachment: Option<(usize, ImageLayoutHint)>,
 }
 
-impl RenderPassBuilder {
+impl SubpassBuilder {
+  pub fn new() -> Self {
+    return Self {
+      color_attachment: None,
+    };
+  }
+
+  pub fn use_color_attachment(
+    mut self,
+    attachment_index: usize,
+    layout: ImageLayoutHint,
+  ) -> Self {
+    self.color_attachment = Some((attachment_index, layout));
+    return self;
+  }
+  pub fn with_inputs() {
+    todo!("Implement input support for subpasses")
+  }
+  pub fn with_resolves() {
+    todo!("Implement resolving support for subpasses")
+  }
+  pub fn with_preserves() {
+    todo!("Implement preservation support for subpasses")
+  }
+
+  pub fn build<'a>(self) -> Subpass<'a> {
+    return Subpass {
+      subpass: gfx_hal::pass::SubpassDesc {
+        colors: &[(0, ImageLayoutHint::ColorAttachmentOptimal)],
+        depth_stencil: None,
+        inputs: &[],
+        resolves: &[],
+        preserves: &[],
+      },
+    };
+  }
+}
+
+pub struct Subpass<'a> {
+  subpass: gfx_hal::pass::SubpassDesc<'a>,
+}
+
+impl<'a> Subpass<'a> {
+  fn gfx_hal_subpass(self) -> gfx_hal::pass::SubpassDesc<'a> {
+    return self.subpass;
+  }
+}
+
+// -------------------------------- RENDER PASS --------------------------------
+
+pub struct RenderPassBuilder<'builder> {
+  attachments: Vec<Attachment>,
+  subpasses: Vec<Subpass<'builder>>,
+}
+
+impl<'builder> RenderPassBuilder<'builder> {
   pub fn new() -> Self {
     return Self {
       attachments: vec![],
+      subpasses: vec![],
     };
   }
 
@@ -122,9 +185,8 @@ impl RenderPassBuilder {
     return self;
   }
 
-  // TODO(vmarcella): implement subpass building logic logic.
-  pub fn with_subpass(mut self) -> Self {
-    todo!("Implement subpass support for render passes");
+  pub fn add_subpass(mut self, subpass: Subpass<'builder>) -> Self {
+    self.subpasses.push(subpass);
     return self;
   }
 
@@ -138,6 +200,7 @@ impl RenderPassBuilder {
         .with_samples(1)
         .on_load(Operations::Clear)
         .on_store(Operations::Store)
+        .with_color_format(ColorFormat::Rgba8Srgb)
         .build()
         .gfx_hal_attachment()],
       false => self
@@ -147,12 +210,21 @@ impl RenderPassBuilder {
         .collect(),
     };
 
+    let subpasses = match self.subpasses.is_empty() {
+      true => vec![SubpassBuilder::new().build().gfx_hal_subpass()],
+      false => self
+        .subpasses
+        .into_iter()
+        .map(|subpass| subpass.gfx_hal_subpass())
+        .collect(),
+    };
+
     let render_pass = unsafe {
       gpu
         .get_logical_device()
         .create_render_pass(
           attachments.into_iter(),
-          vec![].into_iter(),
+          subpasses.into_iter(),
           vec![].into_iter(),
         )
         .ok()
