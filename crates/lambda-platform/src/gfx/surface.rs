@@ -1,10 +1,17 @@
 /// ColorFormat for the surface.
 pub use gfx_hal::format::Format as ColorFormat;
 use gfx_hal::window::{
-  Extent2D, PresentationSurface, Surface as _, SwapchainConfig,
+  Extent2D,
+  PresentationSurface,
+  Surface as _,
+  SwapchainConfig,
 };
 
-use super::{gpu::Gpu, internal, Instance};
+use super::{
+  gpu::Gpu,
+  internal,
+  Instance,
+};
 
 pub struct SurfaceBuilder {
   name: Option<String>,

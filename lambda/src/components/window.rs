@@ -1,8 +1,15 @@
 use std::time::Duration;
 
-use lambda_platform::winit::{Loop, WindowHandle, WindowProperties};
+use lambda_platform::winit::{
+  Loop,
+  WindowHandle,
+  WindowProperties,
+};
 
-use crate::core::{component::Component, events::Event};
+use crate::core::{
+  component::Component,
+  events::Event,
+};
 
 pub struct Window {
   window_handle: WindowHandle,

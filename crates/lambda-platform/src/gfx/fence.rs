@@ -1,6 +1,9 @@
 use gfx_hal::device::Device;
 
-use super::{gpu::Gpu, internal};
+use super::{
+  gpu::Gpu,
+  internal,
+};
 
 pub struct RenderSemaphoreBuilder {}
 
@@ -26,7 +29,7 @@ pub struct RenderSemaphore<RenderBackend: gfx_hal::Backend> {
 
 impl<RenderBackend: gfx_hal::Backend> RenderSemaphore<RenderBackend> {
   /// Destroys the semaphore using the GPU that created it.
-  pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
+  pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
     unsafe {
       internal::logical_device_for(gpu).destroy_semaphore(self.semaphore)
     }
@@ -96,7 +99,7 @@ impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
 
   /// Destroy this fence given the GPU that created it.
   #[inline]
-  pub fn destroy(self, gpu: &mut Gpu<RenderBackend>) {
+  pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
     unsafe { internal::logical_device_for(gpu).destroy_fence(self.fence) }
   }
 }

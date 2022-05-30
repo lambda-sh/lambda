@@ -96,7 +96,7 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
   fn on_attach(&mut self) {
     println!("The Rendering API has been attached and is being initialized.");
 
-    let render_pass = self.gpu.create_render_pass(None, None, None);
+    // let render_pass = self.gpu.create_render_pass(None, None, None);
 
     let vertex_shader = Shader::from_file(
       "/home/vmarcella/dev/lambda/lambda/assets/shaders/triangle.vert",
@@ -108,14 +108,11 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
       ShaderKind::Fragment,
     );
 
-    let (module, pipeline_layout, pipeline) =
-      self.create_gpu_pipeline(vertex_shader, fragment_shader, &render_pass);
-
-    self.gpu.destroy_shader_module(module);
-
-    self.render_passes = Some(vec![render_pass]);
-    self.pipeline_layouts = Some(vec![pipeline_layout]);
-    self.graphic_pipelines = Some(vec![pipeline]);
+    // let (module, pipeline_layout, pipeline) =
+    // self.create_gpu_pipeline(vertex_shader, fragment_shader, &render_pass);
+    // self.gpu.destroy_shader_module(module);
+    // self.pipeline_layouts = Some(vec![pipeline_layout]);
+    // self.graphic_pipelines = Some(vec![pipeline]);
   }
 
   /// Detaches physical rendering resources that were allocated by this
@@ -125,10 +122,6 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
 
     for pipeline_layout in self.pipeline_layouts.take().unwrap() {
       self.gpu.destroy_pipeline_layout(pipeline_layout);
-    }
-
-    for render_pass in self.render_passes.take().unwrap() {
-      self.gpu.destroy_render_pass(render_pass);
     }
 
     for pipeline in self.graphic_pipelines.take().unwrap() {

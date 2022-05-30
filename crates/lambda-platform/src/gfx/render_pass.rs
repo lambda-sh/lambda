@@ -1,8 +1,13 @@
-use std::borrow::Borrow;
+use gfx_hal::{
+  device::Device,
+  pass::SubpassDesc,
+};
 
-use gfx_hal::{device::Device, pass::SubpassDesc};
-
-use super::{gpu::Gpu, internal, surface::ColorFormat};
+use super::{
+  gpu::Gpu,
+  internal,
+  surface::ColorFormat,
+};
 
 // ----------------------- RENDER ATTACHMENT OPERATIONS ------------------------
 
@@ -186,7 +191,7 @@ impl<'builder> RenderPassBuilder<'builder> {
 
   pub fn build<RenderBackend: gfx_hal::Backend>(
     self,
-    gpu: &mut Gpu<RenderBackend>,
+    gpu: &Gpu<RenderBackend>,
   ) -> RenderPass<RenderBackend> {
     // If there are no attachments, use a stub image attachment with clear and
     // store operations.
@@ -222,8 +227,9 @@ impl<'builder> RenderPassBuilder<'builder> {
           subpasses.into_iter(),
           vec![].into_iter(),
         )
-        .ok()
-        .unwrap()
+        .expect(
+          "The GPU does not have enough memory to allocate a render pass.",
+        )
     };
 
     return RenderPass { render_pass };
@@ -232,4 +238,12 @@ impl<'builder> RenderPassBuilder<'builder> {
 
 pub struct RenderPass<RenderBackend: gfx_hal::Backend> {
   render_pass: RenderBackend::RenderPass,
+}
+
+impl<RenderBackend: gfx_hal::Backend> RenderPass<RenderBackend> {
+  pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
+    unsafe {
+      internal::logical_device_for(gpu).destroy_render_pass(self.render_pass);
+    }
+  }
 }

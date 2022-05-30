@@ -1,12 +1,17 @@
 use std::collections::HashMap;
 
-use gfx_hal::{device::Device, pool::CommandPool as _};
+use gfx_hal::{
+  device::Device,
+  pool::CommandPool as _,
+};
 
-use super::gpu::{internal, Gpu};
+use super::gpu::Gpu;
 
 pub struct CommandPoolBuilder {
   command_pool_flags: gfx_hal::pool::CommandPoolCreateFlags,
 }
+
+pub mod internal {}
 
 impl CommandPoolBuilder {
   pub fn new() -> Self {
@@ -26,8 +31,14 @@ impl CommandPoolBuilder {
 
   /// Builds a command pool.
   pub fn build<B: gfx_hal::Backend>(self, gpu: &Gpu<B>) -> CommandPool<B> {
-    let command_pool =
-      internal::create_command_pool(gpu, self.command_pool_flags);
+    let command_pool = unsafe {
+      super::internal::logical_device_for(gpu)
+        .create_command_pool(
+          super::internal::queue_family_for(gpu),
+          self.command_pool_flags,
+        )
+        .expect("")
+    };
 
     return CommandPool {
       command_pool,
@@ -74,6 +85,7 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
     return self.command_buffers.get_mut(name);
   }
 
+  #[inline]
   pub fn get_command_buffer(
     &self,
     name: &str,
@@ -82,6 +94,7 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   }
 
   /// Resets the command pool and all of the command buffers.
+  #[inline]
   pub fn reset_pool(&mut self, release_resources: bool) {
     unsafe {
       self.command_pool.reset(release_resources);
@@ -90,6 +103,9 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
 
   #[inline]
   pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
-    internal::destroy_command_pool(gpu, self.command_pool);
+    unsafe {
+      super::gpu::internal::logical_device_for(gpu)
+        .destroy_command_pool(self.command_pool);
+    }
   }
 }

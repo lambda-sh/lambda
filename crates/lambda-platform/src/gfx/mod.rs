@@ -10,7 +10,10 @@ pub mod resource;
 pub mod surface;
 
 use api::RenderingAPI;
-use gfx_hal::{queue::QueueFamily, Instance as _};
+use gfx_hal::{
+  queue::QueueFamily,
+  Instance as _,
+};
 
 use self::gpu::RenderQueueType;
 
@@ -21,16 +24,28 @@ use self::gpu::RenderQueueType;
 pub mod gfx_hal_exports {
   pub use gfx_hal::{
     command::{
-      ClearColor, ClearValue, CommandBuffer, CommandBufferFlags,
-      RenderAttachmentInfo, SubpassContents,
+      ClearColor,
+      ClearValue,
+      CommandBuffer,
+      CommandBufferFlags,
+      RenderAttachmentInfo,
+      SubpassContents,
     },
     format::Format,
     image::FramebufferAttachment,
     pso::{
-      EntryPoint, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rect,
-      Specialization, Viewport,
+      EntryPoint,
+      InputAssemblerDesc,
+      Primitive,
+      PrimitiveAssemblerDesc,
+      Rect,
+      Specialization,
+      Viewport,
     },
-    window::{Extent2D, PresentationSurface},
+    window::{
+      Extent2D,
+      PresentationSurface,
+    },
     Backend,
   };
 }
@@ -38,10 +53,10 @@ pub mod gfx_hal_exports {
 // ----------------------- INTERNAL INSTANCE OPERATIONS ------------------------
 
 pub mod internal {
-  use super::Instance;
   use gfx_hal::Instance as _;
 
   pub use super::gpu::internal::*;
+  use super::Instance;
 
   /// Helper function to create a low level gfx_hal surface. Not meant to be
   /// used outside of lambda-platform.
@@ -100,12 +115,14 @@ pub struct GpuBuilder {
 }
 
 impl GpuBuilder {
+  #[inline]
   pub fn new() -> Self {
     return Self {
       render_queue_type: RenderQueueType::Graphical,
     };
   }
 
+  #[inline]
   pub fn with_render_queue_type(mut self, queue_type: RenderQueueType) -> Self {
     self.render_queue_type = queue_type;
     return self;

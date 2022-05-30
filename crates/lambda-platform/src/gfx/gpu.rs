@@ -4,16 +4,37 @@ use gfx_hal::{
   adapter::Adapter,
   device::Device,
   format::Format,
-  image::{Access, Layout},
+  image::{
+    Access,
+    Layout,
+  },
   memory::Dependencies,
   pass::{
-    Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp,
-    SubpassDependency, SubpassDesc,
+    Attachment,
+    AttachmentLoadOp,
+    AttachmentOps,
+    AttachmentStoreOp,
+    SubpassDependency,
+    SubpassDesc,
   },
-  prelude::{PhysicalDevice, QueueFamily},
-  pso::{PipelineStage, ShaderStageFlags},
-  queue::{Queue, QueueGroup},
-  window::{Extent2D, PresentError, PresentationSurface, Suboptimal},
+  prelude::{
+    PhysicalDevice,
+    QueueFamily,
+  },
+  pso::{
+    PipelineStage,
+    ShaderStageFlags,
+  },
+  queue::{
+    Queue,
+    QueueGroup,
+  },
+  window::{
+    Extent2D,
+    PresentError,
+    PresentationSurface,
+    Suboptimal,
+  },
 };
 
 use super::pipeline::GraphicsPipeline;
@@ -36,41 +57,27 @@ pub enum RenderQueueType {
 }
 
 pub mod internal {
-  use gfx_hal::device::Device;
+  use gfx_hal::queue::QueueFamilyId;
 
   use super::Gpu;
-
-  pub fn create_command_pool<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-    flags: gfx_hal::pool::CommandPoolCreateFlags,
-  ) -> RenderBackend::CommandPool {
-    return unsafe {
-      gpu.get_logical_device().create_command_pool(gpu.queue_group.family, flags)
-				.expect("The GPU could not allocate a command pool because it is out of memory")
-    };
-  }
-
-  /// Destroys a command pool allocated by the given GPU.
-  pub fn destroy_command_pool<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-    command_pool: RenderBackend::CommandPool,
-  ) {
-    unsafe {
-      gpu.get_logical_device().destroy_command_pool(command_pool);
-    }
-  }
 
   /// Retrieves the gfx_hal logical device for a given GPU.
   pub fn logical_device_for<RenderBackend: gfx_hal::Backend>(
     gpu: &Gpu<RenderBackend>,
   ) -> &RenderBackend::Device {
-    return gpu.get_logical_device();
+    return &gpu.gpu.device;
   }
 
   pub fn physical_device_for<RenderBackend: gfx_hal::Backend>(
     gpu: &Gpu<RenderBackend>,
   ) -> &RenderBackend::PhysicalDevice {
-    return gpu.get_physical_device();
+    return &gpu.adapter.physical_device;
+  }
+
+  pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> gfx_hal::queue::QueueFamilyId {
+    return gpu.queue_group.family;
   }
 }
 
@@ -103,10 +110,6 @@ impl<B: gfx_hal::Backend> Gpu<B> {
     };
   }
 
-  pub fn get_queue_family_id(&self) -> gfx_hal::queue::QueueFamilyId {
-    return self.queue_group.family;
-  }
-
   /// Submits a command buffer to the GPU.
   pub fn submit_command_buffer(
     &mut self,
@@ -124,16 +127,6 @@ impl<B: gfx_hal::Backend> Gpu<B> {
         Some(fence),
       );
     }
-  }
-
-  /// Get the underlying logical device for the logical GPU.
-  fn get_logical_device(&self) -> &B::Device {
-    return &self.gpu.device;
-  }
-
-  /// Get the underlying physical device for the virtual GPU.
-  fn get_physical_device(&self) -> &B::PhysicalDevice {
-    return &self.adapter.physical_device;
   }
 
   /// Render to the surface and return the result from the GPU.
@@ -213,36 +206,7 @@ impl<B: gfx_hal::Backend> Gpu<B> {
     resource_attachments: Option<Vec<Attachment>>,
     render_subpasses: Option<Vec<SubpassDesc>>,
     dependencies: Option<Vec<SubpassDependency>>,
-  ) -> B::RenderPass {
-    // Use attached resources or create a stub for pipeline compatibility
-    let attachments = match resource_attachments {
-      Some(attachments) => attachments,
-      None => {
-        vec![Attachment {
-          format: Some(Format::Rgba8Srgb),
-          samples: 1,
-          ops: AttachmentOps::new(
-            AttachmentLoadOp::Clear,
-            AttachmentStoreOp::Store,
-          ),
-          stencil_ops: AttachmentOps::DONT_CARE,
-          layouts: Layout::Undefined..Layout::Present,
-        }]
-      }
-    };
-
-    // Use attached render subpasses or create a stub for pipeline compatibility.
-    let subpasses = match render_subpasses {
-      Some(subpasses) => subpasses,
-      None => vec![SubpassDesc {
-        colors: &[(0, Layout::ColorAttachmentOptimal)],
-        depth_stencil: None,
-        inputs: &[],
-        resolves: &[],
-        preserves: &[],
-      }],
-    };
-
+  ) {
     // Use attached dependencies or create a stub for pipeline compatibility.
     let deps = match dependencies {
       Some(deps) => deps,
@@ -254,21 +218,6 @@ impl<B: gfx_hal::Backend> Gpu<B> {
           ..PipelineStage::COLOR_ATTACHMENT_OUTPUT,
       }],
     };
-
-    // TODO(vmarcella): Error handling here should propagate an Error upwards.
-    unsafe {
-      return self
-        .gpu
-        .device
-        .create_render_pass(attachments.into_iter(), subpasses.into_iter(), deps.into_iter())
-        .expect("Your primary graphics card does not have enough memory for this render pass.");
-    };
-  }
-
-  pub fn destroy_render_pass(&mut self, render_pass: B::RenderPass) {
-    unsafe {
-      self.gpu.device.destroy_render_pass(render_pass);
-    }
   }
 
   pub fn create_shader_module(&mut self, binary: &Vec<u32>) -> B::ShaderModule {

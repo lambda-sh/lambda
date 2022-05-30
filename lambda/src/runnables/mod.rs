@@ -4,21 +4,36 @@ use lambda_platform::{
   gfx,
   gfx::{
     command::CommandPoolBuilder,
-    fence::{RenderSemaphoreBuilder, RenderSubmissionFenceBuilder},
+    fence::{
+      RenderSemaphoreBuilder,
+      RenderSubmissionFenceBuilder,
+    },
     gpu::RenderQueueType,
+    render_pass::RenderPassBuilder,
     surface::SurfaceBuilder,
     GpuBuilder,
   },
   winit::{
     create_event_loop,
-    winit_exports::{ControlFlow, Event as WinitEvent, WindowEvent},
+    winit_exports::{
+      ControlFlow,
+      Event as WinitEvent,
+      WindowEvent,
+    },
     Loop,
   },
 };
 
 use crate::{
-  components::{ComponentStack, Window},
-  core::{component::Component, events::Event, runnable::Runnable},
+  components::{
+    ComponentStack,
+    Window,
+  },
+  core::{
+    component::Component,
+    events::Event,
+    runnable::Runnable,
+  },
 };
 
 ///
@@ -111,6 +126,8 @@ impl Runnable for LambdaRunnable {
 
     let rendering_semaphore = RenderSemaphoreBuilder::new().build(&mut gpu);
 
+    let mut render_pass = Some(RenderPassBuilder::new().build(&gpu));
+
     let mut s_fence = Some(submission_fence);
     let mut r_fence = Some(rendering_semaphore);
 
@@ -134,7 +151,6 @@ impl Runnable for LambdaRunnable {
     let mut current_frame = Instant::now();
 
     event_loop.run_forever(move |event, _, control_flow| {
-      println!("next-frame");
       match event {
         WinitEvent::WindowEvent { event, .. } => match event {
           WindowEvent::CloseRequested => {
@@ -229,11 +245,12 @@ impl Runnable for LambdaRunnable {
           component_stack.on_detach();
           println!("Destroying the rendering submission fence & semaphore.");
           // Destroy the submission fence and rendering semaphore.
-          s_fence.take().unwrap().destroy(&mut gpu);
-          r_fence.take().unwrap().destroy(&mut gpu);
+          s_fence.take().unwrap().destroy(&gpu);
+          r_fence.take().unwrap().destroy(&gpu);
 
           println!("Destroying the command pool.");
           command_pool.take().unwrap().destroy(&mut gpu);
+          render_pass.take().unwrap().destroy(&gpu);
 
           surface.as_mut().unwrap().remove_swapchain_config(&gpu);
           surface.take().unwrap().destroy(&instance);
