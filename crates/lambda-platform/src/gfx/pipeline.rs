@@ -1,4 +1,5 @@
 use gfx_hal::{
+  device::Device,
   pass::Subpass,
   pso::{
     ColorBlendDesc,
@@ -11,15 +12,33 @@ use gfx_hal::{
   Backend,
 };
 
+use super::gpu::Gpu;
+
 /// Graphical pipeline for use in the lambda renderer.
 pub struct GraphicsPipeline<'a, B: Backend> {
   pipeline_desc: GraphicsPipelineDesc<'a, B>,
 }
 
 pub struct RenderPipelineBuilder {}
-impl RenderPipelineBuilder {}
 
-pub struct RenderPipeline {}
+impl RenderPipelineBuilder {
+  pub fn build<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> RenderPipeline<RenderBackend> {
+    let pipeline_layout = unsafe {
+      super::internal::logical_device_for(gpu)
+        .create_pipeline_layout(vec![].into_iter(), vec![].into_iter())
+        .expect(
+          "The GPU does not have enough memory to allocate a pipeline layout",
+        )
+    };
+    return RenderPipeline { pipeline_layout };
+  }
+}
+
+pub struct RenderPipeline<RenderBackend: gfx_hal::Backend> {
+  pipeline_layout: RenderBackend::PipelineLayout,
+}
 
 impl<'a, B: Backend> GraphicsPipeline<'a, B> {
   pub fn get_pipeline(&mut self) -> &GraphicsPipelineDesc<'a, B> {

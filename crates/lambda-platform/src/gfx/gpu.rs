@@ -57,8 +57,6 @@ pub enum RenderQueueType {
 }
 
 pub mod internal {
-  use gfx_hal::queue::QueueFamilyId;
-
   use super::Gpu;
 
   /// Retrieves the gfx_hal logical device for a given GPU.
