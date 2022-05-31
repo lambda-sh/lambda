@@ -84,15 +84,15 @@ fn construct_window_size(
   };
 }
 
-pub struct EventLoopPublisher<E: 'static> {
+pub struct LoopPublisher<E: 'static> {
   winit_proxy: EventLoopProxy<E>,
 }
 
-impl<E: 'static> EventLoopPublisher<E> {
+impl<E: 'static> LoopPublisher<E> {
   /// Instantiate a new EventLoopPublisher from an event loop proxy.
   #[inline]
   pub fn new(winit_proxy: EventLoopProxy<E>) -> Self {
-    return EventLoopPublisher { winit_proxy };
+    return LoopPublisher { winit_proxy };
   }
 
   /// Send an event
@@ -103,9 +103,9 @@ impl<E: 'static> EventLoopPublisher<E> {
 }
 
 impl<E: 'static> Loop<E> {
-  pub fn create_publisher(&mut self) -> EventLoopPublisher<E> {
+  pub fn create_publisher(&mut self) -> LoopPublisher<E> {
     let proxy = self.event_loop.create_proxy();
-    return EventLoopPublisher::new(proxy);
+    return LoopPublisher::new(proxy);
   }
 
   /// Returns the primary monitor for the current OS if detectable.
