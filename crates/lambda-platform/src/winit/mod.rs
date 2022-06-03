@@ -19,6 +19,7 @@ use winit::{
 
 /// Embedded module for exporting data/types from winit as minimally/controlled
 /// as possible. The exports from this module are not guaranteed to be stable.
+// TODO(ahlawat) = Remove all these except WindowEvent since we're abstracting them already? Double check
 pub mod winit_exports {
   pub use winit::{
     event::{
@@ -34,11 +35,22 @@ pub mod winit_exports {
   };
 }
 
+/// LoopBuilder - Putting this here for consistency.
+pub struct LoopBuilder;
+
+impl LoopBuilder {
+  pub fn build<Events: 'static>() -> Loop<Events> {
+    let event_loop = EventLoop::<Events>::with_user_event();
+    return Loop { event_loop };
+  }
+}
+
 /// Loop wrapping for the winit event loop.
 pub struct Loop<E: 'static> {
   event_loop: EventLoop<E>,
 }
 
+/// TODO(ahlawat) = Remove this and refactor the code depending directly on it.
 pub fn create_event_loop<Events: 'static>() -> Loop<Events> {
   let event_loop = EventLoop::<Events>::with_user_event();
   return Loop { event_loop };
@@ -51,7 +63,7 @@ pub struct WindowProperties {
   pub monitor_handle: MonitorHandle,
 }
 
-/// Metadata for Lambda window sizing that supports Copy and move operations.
+/// Metadata for Lambda window sizing that supports Copy and Move operations.
 #[derive(Clone, Copy)]
 pub struct WindowSize {
   pub width: u32,
@@ -66,6 +78,77 @@ pub struct WindowHandle {
   pub monitor_handle: MonitorHandle,
 }
 
+// Should we take the loop as a field right here? Probably a ref or something? IDK
+pub struct WindowHandleBuilder {
+  window_handle: Option<Window>,
+  size: Option<WindowSize>,
+  monitor_handle: Option<MonitorHandle>,
+}
+
+impl WindowHandleBuilder {
+  /// Instantiate an empty builder
+  pub fn new() -> Self {
+    return Self;
+  }
+
+  /// Set the window size for the WindowHandle
+  fn with_window_size(
+    &mut self,
+    window_size: [u32; 2],
+    scale_factor: f64,
+  ) -> self {
+    let logical: LogicalSize<u32> = window_size.into();
+    let physical: PhysicalSize<u32> = logical_size.to_physical(scale_factor);
+
+    let window_size = WindowSize {
+      width: window_size[0],
+      height: window_size[1],
+      logical,
+      physical,
+    };
+
+    self.size = Some(window_size);
+    return self;
+  }
+
+  /// Probably the function that'll be used the most
+  pub fn with_window_properties<E: 'static>(
+    &mut self,
+    window_properties: WindowProperties,
+    lambda_loop: &Loop<E>,
+  ) -> self {
+    let WindowProperties {
+      name,
+      dimensions,
+      monitor_handle,
+    } = window_properties;
+
+    self.with_window_size(dimensions, monitor_handle.scale_factor());
+
+    let window_handle = WindowBuilder::new()
+      .with_title(name)
+      .with_inner_size(self.size.expect("No window size found.").logical)
+      .build(&lambda_loop.event_loop)
+      .expect("Failed creation of window handle");
+
+    self.monitor_handle = Some(monitor_handle);
+    self.window_handle = Some(window_handle);
+    return self;
+  }
+
+  /// Build the WindowHandle
+  pub fn build(&self) -> WindowHandle {
+    return WindowHandle {
+      monitor_handle: self
+        .monitor_handle
+        .expect("Unable to find a MonitorHandle."),
+      size: self.size.expect("Unable to find WindowSize."),
+      window_handle: self.window_handle.expect("Unable to find WindowHandle."),
+    };
+  }
+}
+
+// TODO(ahlawat) = Remove this as well?
 /// Construct WindowSize metdata from the window dimensions and scale factor of
 /// the monitor being rendered to.
 #[inline]
@@ -89,9 +172,15 @@ pub struct LoopPublisher<E: 'static> {
 }
 
 impl<E: 'static> LoopPublisher<E> {
-  /// Instantiate a new EventLoopPublisher from an event loop proxy.
+  /// Instantiate a new LoopPublisher from an event loop proxy.
   #[inline]
   pub fn new(winit_proxy: EventLoopProxy<E>) -> Self {
+    return LoopPublisher { winit_proxy };
+  }
+
+  /// Instantiate a new LoopPublisher from a loop
+  pub fn from<E: 'static>(lambda_loop: &Loop<E>) -> Self {
+    let winit_proxy = lambda_loop.event_loop.create_proxy();
     return LoopPublisher { winit_proxy };
   }
 
@@ -103,6 +192,7 @@ impl<E: 'static> LoopPublisher<E> {
 }
 
 impl<E: 'static> Loop<E> {
+  // TODO(ahlawat) = Possibly remove this?
   pub fn create_publisher(&mut self) -> LoopPublisher<E> {
     let proxy = self.event_loop.create_proxy();
     return LoopPublisher::new(proxy);
@@ -134,6 +224,7 @@ impl<E: 'static> Loop<E> {
     self.event_loop.run(callback);
   }
 
+  // TODO(ahlawat) = Should this be here?
   pub fn create_window_handle(
     &mut self,
     window_properties: WindowProperties,
