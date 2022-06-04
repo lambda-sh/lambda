@@ -1,181 +1,87 @@
 use std::io::Read;
 
-extern crate shaderc as shaderc_lib;
+use shaderc;
+/// Export supported shader kinds.
+pub use shaderc::ShaderKind;
 
-/// Supported Shader kinds.
-#[derive(Clone, Copy)]
-pub enum ShaderKind {
-  Vertex,
-  Fragment,
-  Compute,
-}
+/// Builder for the shaderc platform shader compiler.
+pub struct ShaderCompilerBuilder {}
 
-/// Optional ShaderMetadata that can be used for creating
-struct ShaderMetadata {
-  name: Option<String>,
-  shader_source: Option<String>,
-  file_path: Option<String>,
-  entry: Option<String>,
-}
-
-impl ShaderMetadata {
+impl ShaderCompilerBuilder {
   pub fn new() -> Self {
-    return Self {
-      name: None,
-      shader_source: None,
-      file_path: None,
-      entry: None,
-    };
+    return Self {};
   }
 
-  /// Attach name to the ShaderMetadata.
-  pub fn with_name(self, name: &str) -> Self {
-    return Self {
-      name: Some(String::from(name)),
-      shader_source: self.shader_source,
-      file_path: self.file_path,
-      entry: self.entry,
-    };
-  }
-
-  /// Attach the shader source code to a LambdaShader
-  pub fn with_shader_source(self, shader_source: &str) -> Self {
-    return Self {
-      name: self.name,
-      shader_source: Some(String::from(shader_source)),
-      file_path: self.file_path,
-      entry: self.entry,
+  pub fn build(self) -> ShaderCompiler {
+    let compiler =
+      shaderc::Compiler::new().expect("Failed to create shaderc compiler.");
+    return ShaderCompiler {
+      compiler,
+      default_options: shaderc::CompileOptions::new()
+        .expect("Failed to set the default shaderc compiler options"),
     };
   }
 }
 
-pub struct Shader {
-  binary: Vec<u32>,
-  kind: ShaderKind,
-  metadata: Option<ShaderMetadata>,
-}
-
-pub enum VertexShaders {
-  Triangle,
-}
-
-pub enum FragmentShaders {
-  Triangle,
-}
-
-pub enum PrepackagedShaders {
-  Vertex(VertexShaders),
-  Fragment(FragmentShaders),
-}
-
-impl Shader {
-  /// Creates a shader given a source string.
-  pub fn from_string(name: &str, source: &str, kind: ShaderKind) -> Self {
-    let mut compiler = ShaderCompiler::new();
-    let shader_binary = compiler.compile_string_into_binary(name, source, kind);
-
-    return Self {
-      binary: shader_binary,
-      kind,
-      metadata: None,
-    };
-  }
-
-  /// Creates a shader given a file path.
-  pub fn from_file(path: &str, kind: ShaderKind) -> Self {
-    let mut compiler = ShaderCompiler::new();
-    let shader_binary = compiler.compile_file_into_binary(path, kind);
-
-    return Self {
-      binary: shader_binary,
-      kind,
-      metadata: None,
-    };
-  }
-
-  pub fn from_lambda(shader: PrepackagedShaders) -> Self {
-    let mut compiler = ShaderCompiler::new();
-    let (shader_source, kind) = get_shader_source(shader);
-    let shader_binary = compiler.compile_string_into_binary(
-      "triangle_tests",
-      &shader_source,
-      kind,
-    );
-
-    return Self {
-      binary: shader_binary,
-      kind,
-      metadata: None,
-    };
-  }
-
-  pub fn get_shader_binary(&self) -> &Vec<u32> {
-    return &self.binary;
-  }
-}
-
-pub fn get_shader_source(shader: PrepackagedShaders) -> (String, ShaderKind) {
-  // TODO(vmarcella): Shaders should most certainly not be loaded into the
-  // library like this.
-  return match shader {
-    PrepackagedShaders::Vertex(shader) => {
-      let kind = ShaderKind::Vertex;
-      match shader {
-        VertexShaders::Triangle => (
-          include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/assets/shaders/triangle.vert"
-          ))
-          .to_string(),
-          kind,
-        ),
-      }
-    }
-    PrepackagedShaders::Fragment(shader) => {
-      let kind = ShaderKind::Fragment;
-      return match shader {
-        FragmentShaders::Triangle => (
-          include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/assets/shaders/triangle.frag"
-          ))
-          .to_string(),
-          kind,
-        ),
-      };
-    }
-  };
-}
-
-/// Converts shader::ShaderKind to a corresponding shaderc::ShaderKind
-fn shader_to_shaderc(shader_kind: ShaderKind) -> shaderc::ShaderKind {
-  return match shader_kind {
-    ShaderKind::Vertex => shaderc_lib::ShaderKind::Vertex,
-    ShaderKind::Fragment => shaderc_lib::ShaderKind::Fragment,
-    ShaderKind::Compute => shaderc_lib::ShaderKind::Compute,
-  };
-}
-
+/// A low level shader compiler to be used for compiling shaders into SPIR-V binary.
 pub struct ShaderCompiler {
   compiler: shaderc::Compiler,
   default_options: shaderc::CompileOptions<'static>,
 }
 
-impl ShaderCompiler {
-  pub fn new() -> Self {
-    let compiler = shaderc::Compiler::new().unwrap();
-    let default_options = shaderc::CompileOptions::new().unwrap();
+/// Meta Representations of real shaders to use for easy compilation
+pub enum MetaShader {
+  File {
+    path: String,
+    kind: ShaderKind,
+    name: String,
+    entry_point: String,
+  },
+  Source {
+    source: String,
+    kind: ShaderKind,
+    name: String,
+    entry_point: String,
+  },
+}
 
-    return Self {
-      compiler,
-      default_options,
+impl ShaderCompiler {
+  /// Compiles a shader into SPIR-V binary.
+  pub fn compile_into_binary(&mut self, shader: MetaShader) -> Vec<u32> {
+    return match shader {
+      MetaShader::File {
+        path,
+        kind,
+        name,
+        entry_point,
+      } => {
+        return self.compile_file_into_binary(
+          path.as_str(),
+          name.as_str(),
+          entry_point.as_str(),
+          kind,
+        )
+      }
+      MetaShader::Source {
+        source,
+        kind,
+        name,
+        entry_point,
+      } => self.compile_string_into_binary(
+        source.as_str(),
+        name.as_str(),
+        entry_point.as_str(),
+        kind,
+      ),
     };
   }
 
   /// Compiles a file at the given path into a shader and returns it as binary.
-  pub fn compile_file_into_binary(
+  fn compile_file_into_binary(
     &mut self,
     path: &str,
+    name: &str,
+    entry_point: &str,
     shader_kind: ShaderKind,
   ) -> Vec<u32> {
     // TODO(vmarcella): Investigate into common strategies for reading from files
@@ -186,36 +92,23 @@ impl ShaderCompiler {
       .read_to_string(&mut shader_source)
       .unwrap();
 
-    // TODO(vmarcella): Should we be allow entrypoints to be customized or
-    // enforce that all remain named main?
     let compiled_shader = self
       .compiler
-      .compile_into_spirv(
-        &shader_source,
-        shader_to_shaderc(shader_kind),
-        path,
-        "main",
-        None,
-      )
+      .compile_into_spirv(&shader_source, shader_kind, path, entry_point, None)
       .expect("Failed to compile the shader.");
     return compiled_shader.as_binary().to_vec();
   }
 
-  pub fn compile_string_into_binary(
+  fn compile_string_into_binary(
     &mut self,
-    name: &str,
     shader_source: &str,
+    name: &str,
+    entry_point: &str,
     shader_kind: ShaderKind,
   ) -> Vec<u32> {
     let compiled_shader = self
       .compiler
-      .compile_into_spirv(
-        shader_source,
-        shader_to_shaderc(shader_kind),
-        name,
-        "main",
-        None,
-      )
+      .compile_into_spirv(shader_source, shader_kind, name, entry_point, None)
       .expect("Failed to compile the shader.");
     return compiled_shader.as_binary().to_vec();
   }
