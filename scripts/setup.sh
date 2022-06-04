@@ -1,3 +1,4 @@
+#!/bin/bash
 # setup.sh
 #
 # Setup lambda for development. This currently doesn't do too much, but should
