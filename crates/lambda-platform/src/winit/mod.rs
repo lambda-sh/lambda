@@ -81,14 +81,28 @@ pub struct WindowHandle {
 // Should we take the loop as a field right here? Probably a ref or something? IDK
 pub struct WindowHandleBuilder {
   window_handle: Option<Window>,
-  size: Option<WindowSize>,
+  size: WindowSize,
   monitor_handle: Option<MonitorHandle>,
 }
 
 impl WindowHandleBuilder {
   /// Instantiate an empty builder
   pub fn new() -> Self {
-    return Self;
+    // Initialize the window size with some default values.
+    let logical: LogicalSize<u32> = [0, 0].into();
+    let physical = logical.to_physical(1.0);
+    let size = WindowSize {
+      width: 0,
+      height: 0,
+      logical,
+      physical,
+    };
+
+    return Self {
+      window_handle: None,
+      size,
+      monitor_handle: None,
+    };
   }
 
   /// Set the window size for the WindowHandle
