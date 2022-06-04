@@ -3,28 +3,11 @@ use std::mem::size_of;
 use gfx_hal::{
   adapter::Adapter,
   device::Device,
-  format::Format,
-  image::{
-    Access,
-    Layout,
-  },
-  memory::Dependencies,
-  pass::{
-    Attachment,
-    AttachmentLoadOp,
-    AttachmentOps,
-    AttachmentStoreOp,
-    SubpassDependency,
-    SubpassDesc,
-  },
   prelude::{
     PhysicalDevice,
     QueueFamily,
   },
-  pso::{
-    PipelineStage,
-    ShaderStageFlags,
-  },
+  pso::ShaderStageFlags,
   queue::{
     Queue,
     QueueGroup,
@@ -60,18 +43,21 @@ pub mod internal {
   use super::Gpu;
 
   /// Retrieves the gfx_hal logical device for a given GPU.
+  #[inline]
   pub fn logical_device_for<RenderBackend: gfx_hal::Backend>(
     gpu: &Gpu<RenderBackend>,
   ) -> &RenderBackend::Device {
     return &gpu.gpu.device;
   }
 
+  #[inline]
   pub fn physical_device_for<RenderBackend: gfx_hal::Backend>(
     gpu: &Gpu<RenderBackend>,
   ) -> &RenderBackend::PhysicalDevice {
     return &gpu.adapter.physical_device;
   }
 
+  #[inline]
   pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
     gpu: &Gpu<RenderBackend>,
   ) -> gfx_hal::queue::QueueFamilyId {
@@ -196,26 +182,6 @@ impl<B: gfx_hal::Backend> Gpu<B> {
     pipeline_layout: B::PipelineLayout,
   ) {
     unsafe { self.gpu.device.destroy_pipeline_layout(pipeline_layout) }
-  }
-
-  /// Create a render pass with the current using the current GPU resources.
-  pub fn create_render_pass(
-    &mut self,
-    resource_attachments: Option<Vec<Attachment>>,
-    render_subpasses: Option<Vec<SubpassDesc>>,
-    dependencies: Option<Vec<SubpassDependency>>,
-  ) {
-    // Use attached dependencies or create a stub for pipeline compatibility.
-    let deps = match dependencies {
-      Some(deps) => deps,
-      None => vec![SubpassDependency {
-        accesses: Access::COLOR_ATTACHMENT_READ..Access::COLOR_ATTACHMENT_WRITE,
-        flags: Dependencies::empty(),
-        passes: None..None,
-        stages: PipelineStage::BOTTOM_OF_PIPE
-          ..PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-      }],
-    };
   }
 
   pub fn create_shader_module(&mut self, binary: &Vec<u32>) -> B::ShaderModule {

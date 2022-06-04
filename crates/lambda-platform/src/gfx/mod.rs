@@ -7,6 +7,7 @@ pub mod gpu;
 pub mod pipeline;
 pub mod render_pass;
 pub mod resource;
+pub mod shader;
 pub mod surface;
 
 use api::RenderingAPI;
@@ -55,8 +56,11 @@ pub mod gfx_hal_exports {
 pub mod internal {
   use gfx_hal::Instance as _;
 
-  pub use super::gpu::internal::*;
   use super::Instance;
+  pub use super::{
+    gpu::internal::*,
+    shader::internal::*,
+  };
 
   /// Helper function to create a low level gfx_hal surface. Not meant to be
   /// used outside of lambda-platform.
