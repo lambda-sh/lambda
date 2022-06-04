@@ -47,7 +47,7 @@ pub enum MetaShader {
 
 impl ShaderCompiler {
   /// Compiles a shader into SPIR-V binary.
-  pub fn compile_into_binary(&mut self, shader: MetaShader) -> Vec<u32> {
+  pub fn compile_into_binary(&mut self, shader: &MetaShader) -> Vec<u32> {
     return match shader {
       MetaShader::File {
         path,
@@ -59,7 +59,7 @@ impl ShaderCompiler {
           path.as_str(),
           name.as_str(),
           entry_point.as_str(),
-          kind,
+          kind.clone(),
         )
       }
       MetaShader::Source {
@@ -71,7 +71,7 @@ impl ShaderCompiler {
         source.as_str(),
         name.as_str(),
         entry_point.as_str(),
-        kind,
+        kind.clone(),
       ),
     };
   }

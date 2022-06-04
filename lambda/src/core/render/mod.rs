@@ -11,6 +11,7 @@ use lambda_platform::{
       CommandBuffer,
       PresentationSurface,
     },
+    shader::ShaderModuleBuilder,
   },
   shaderc::ShaderKind,
 };
@@ -46,43 +47,42 @@ impl<B: gfx_hal_exports::Backend> LambdaRenderer<B> {
     vertex_shader: Shader,
     fragment_shader: Shader,
     render_pass: &B::RenderPass,
-  ) -> (B::ShaderModule, B::PipelineLayout, B::GraphicsPipeline) {
-    let vertex_module = self
-      .gpu
-      .create_shader_module(vertex_shader.get_shader_binary());
-    let fragment_module = self
-      .gpu
-      .create_shader_module(fragment_shader.get_shader_binary());
+  ) {
+    let vertex_module = ShaderModuleBuilder::new()
+      .build(&mut self.gpu, &vertex_shader.as_binary());
+
+    let fragment_module = ShaderModuleBuilder::new()
+      .build(&mut self.gpu, &fragment_shader.as_binary());
 
     // TODO(vmarcella): Abstract the gfx hal assembler away from the
     // render module directly.
-    let vertex_entry = gfx_hal_exports::EntryPoint::<B> {
-      entry: "main",
-      module: &vertex_module,
-      specialization: gfx_hal_exports::Specialization::default(),
-    };
+    // let vertex_entry = gfx_hal_exports::EntryPoint::<B> {
+    // entry: "main",
+    // module: &vertex_module,
+    // specialization: gfx_hal_exports::Specialization::default(),
+    // };
 
-    let fragment_entry = gfx_hal_exports::EntryPoint::<B> {
-      entry: "main",
-      module: &fragment_module,
-      specialization: gfx_hal_exports::Specialization::default(),
-    };
+    // let fragment_entry = gfx_hal_exports::EntryPoint::<B> {
+    // entry: "main",
+    // module: &fragment_module,
+    // specialization: gfx_hal_exports::Specialization::default(),
+    // };
 
     // TODO(vmarcella): This process could use a more consistent abstraction
     // for getting a pipeline created.
-    let assembler = create_vertex_assembler(vertex_entry);
-    let pipeline_layout = self.gpu.create_pipeline_layout();
-    let mut logical_pipeline = gfx::pipeline::create_graphics_pipeline(
-      assembler,
-      &pipeline_layout,
-      render_pass,
-      Some(fragment_entry),
-    );
+    // let assembler = create_vertex_assembler(vertex_entry);
+    // let pipeline_layout = self.gpu.create_pipeline_layout();
+    // let mut logical_pipeline = gfx::pipeline::create_graphics_pipeline(
+    // assembler,
+    // &pipeline_layout,
+    // render_pass,
+    // Some(fragment_entry),
+    // );
 
-    let physical_pipeline =
-      self.gpu.create_graphics_pipeline(&mut logical_pipeline);
+    // let physical_pipeline =
+    // self.gpu.create_graphics_pipeline(&mut logical_pipeline);
 
-    return (vertex_module, pipeline_layout, physical_pipeline);
+    // return (vertex_module, pipeline_layout, physical_pipeline);
   }
 }
 
@@ -97,16 +97,6 @@ impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
     println!("The Rendering API has been attached and is being initialized.");
 
     // let render_pass = self.gpu.create_render_pass(None, None, None);
-
-    let vertex_shader = Shader::from_file(
-      "/home/vmarcella/dev/lambda/lambda/assets/shaders/triangle.vert",
-      ShaderKind::Vertex,
-    );
-
-    let fragment_shader = Shader::from_file(
-      "/home/vmarcella/dev/lambda/lambda/assets/shaders/triangle.frag",
-      ShaderKind::Fragment,
-    );
 
     // let (module, pipeline_layout, pipeline) =
     // self.create_gpu_pipeline(vertex_shader, fragment_shader, &render_pass);

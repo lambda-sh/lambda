@@ -1,12 +1,6 @@
 use lambda::{
   core::{
     component::Component,
-    render::shader::{
-      FragmentShaders,
-      PrepackagedShaders,
-      Shader,
-      VertexShaders,
-    },
     runnable::start_runnable,
   },
   runnables::create_lambda_runnable,
@@ -51,13 +45,6 @@ impl Default for DemoComponent {
 fn main() {
   let app = create_lambda_runnable().with_component(
     move |runnable, demo: DemoComponent| {
-      let vertex_shader = Shader::from_lambda(PrepackagedShaders::Vertex(
-        VertexShaders::Triangle,
-      ));
-
-      let fragment_shader = Shader::from_lambda(PrepackagedShaders::Fragment(
-        FragmentShaders::Triangle,
-      ));
       return (runnable, demo);
     },
   );
