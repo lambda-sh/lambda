@@ -50,12 +50,6 @@ pub struct Loop<E: 'static> {
   event_loop: EventLoop<E>,
 }
 
-/// TODO(ahlawat) = Remove this and refactor the code depending directly on it.
-pub fn create_event_loop<Events: 'static>() -> Loop<Events> {
-  let event_loop = EventLoop::<Events>::with_user_event();
-  return Loop { event_loop };
-}
-
 /// Structure that contains properties needed for building a window.
 pub struct WindowProperties {
   pub name: String,
@@ -107,10 +101,10 @@ impl WindowHandleBuilder {
 
   /// Set the window size for the WindowHandle
   fn with_window_size(
-    &mut self,
+    mut self,
     window_size: [u32; 2],
     scale_factor: f64,
-  ) -> self {
+  ) -> Self {
     let logical: LogicalSize<u32> = window_size.into();
     let physical: PhysicalSize<u32> = logical_size.to_physical(scale_factor);
 
@@ -121,27 +115,28 @@ impl WindowHandleBuilder {
       physical,
     };
 
-    self.size = Some(window_size);
+    self.size = window_size;
     return self;
   }
 
   /// Probably the function that'll be used the most
   pub fn with_window_properties<E: 'static>(
-    &mut self,
+    mut self,
     window_properties: WindowProperties,
     lambda_loop: &Loop<E>,
-  ) -> self {
+  ) -> Self {
     let WindowProperties {
       name,
       dimensions,
       monitor_handle,
     } = window_properties;
 
-    self.with_window_size(dimensions, monitor_handle.scale_factor());
+    // TODO(ahlawat) = Find out if there's a better way to do this. Looks kinda ugly.
+    self = self.with_window_size(dimensions, monitor_handle.scale_factor());
 
     let window_handle = WindowBuilder::new()
       .with_title(name)
-      .with_inner_size(self.size.expect("No window size found.").logical)
+      .with_inner_size(self.size.logical)
       .build(&lambda_loop.event_loop)
       .expect("Failed creation of window handle");
 
@@ -156,29 +151,10 @@ impl WindowHandleBuilder {
       monitor_handle: self
         .monitor_handle
         .expect("Unable to find a MonitorHandle."),
-      size: self.size.expect("Unable to find WindowSize."),
+      size: self.size,
       window_handle: self.window_handle.expect("Unable to find WindowHandle."),
     };
   }
-}
-
-// TODO(ahlawat) = Remove this as well?
-/// Construct WindowSize metdata from the window dimensions and scale factor of
-/// the monitor being rendered to.
-#[inline]
-fn construct_window_size(
-  window_size: [u32; 2],
-  scale_factor: f64,
-) -> WindowSize {
-  let logical: LogicalSize<u32> = window_size.into();
-  let physical: PhysicalSize<u32> = logical.to_physical(scale_factor);
-
-  return WindowSize {
-    width: window_size[0],
-    height: window_size[1],
-    logical,
-    physical,
-  };
 }
 
 pub struct LoopPublisher<E: 'static> {
@@ -206,12 +182,6 @@ impl<E: 'static> LoopPublisher<E> {
 }
 
 impl<E: 'static> Loop<E> {
-  // TODO(ahlawat) = Possibly remove this?
-  pub fn create_publisher(&mut self) -> LoopPublisher<E> {
-    let proxy = self.event_loop.create_proxy();
-    return LoopPublisher::new(proxy);
-  }
-
   /// Returns the primary monitor for the current OS if detectable.
   pub fn get_primary_monitor(&self) -> Option<MonitorHandle> {
     return self.event_loop.primary_monitor();
@@ -236,29 +206,5 @@ impl<E: 'static> Loop<E> {
       + FnMut(Event<E>, &EventLoopWindowTarget<E>, &mut ControlFlow) -> (),
   {
     self.event_loop.run(callback);
-  }
-
-  // TODO(ahlawat) = Should this be here?
-  pub fn create_window_handle(
-    &mut self,
-    window_properties: WindowProperties,
-  ) -> WindowHandle {
-    let name = window_properties.name;
-    let dimensions = window_properties.dimensions;
-    let monitor_handle = window_properties.monitor_handle;
-
-    let size = construct_window_size(dimensions, monitor_handle.scale_factor());
-
-    let window_handle = WindowBuilder::new()
-      .with_title(name)
-      .with_inner_size(size.logical)
-      .build(&self.event_loop)
-      .expect("Failed to create a winit handle.");
-
-    return WindowHandle {
-      window_handle,
-      size,
-      monitor_handle,
-    };
   }
 }
