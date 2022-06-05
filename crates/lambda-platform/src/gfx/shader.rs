@@ -4,6 +4,7 @@ use super::gpu;
 
 pub mod internal {
   use super::ShaderModule;
+  #[inline]
   pub fn module_for<RenderBackend: gfx_hal::Backend>(
     shader_module: ShaderModule<RenderBackend>,
   ) -> RenderBackend::ShaderModule {
