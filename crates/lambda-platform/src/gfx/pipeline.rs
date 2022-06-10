@@ -12,19 +12,33 @@ use gfx_hal::{
   Backend,
 };
 
-use super::gpu::Gpu;
+use super::{
+  gpu::Gpu,
+  shader::ShaderModule,
+};
 
 /// Graphical pipeline for use in the lambda renderer.
 pub struct GraphicsPipeline<'a, B: Backend> {
   pipeline_desc: GraphicsPipelineDesc<'a, B>,
 }
 
-pub struct RenderPipelineBuilder {}
+pub struct RenderPipelineBuilder<RenderBackend: gfx_hal::Backend> {
+  shaders: Vec<ShaderModule<RenderBackend>>,
+}
 
-impl RenderPipelineBuilder {
-  pub fn build<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> RenderPipeline<RenderBackend> {
+impl<RenderBackend: gfx_hal::Backend> RenderPipelineBuilder<RenderBackend> {
+  /// Attach shader modules to the pipeline.
+  pub fn with_shader_modules(
+    mut self,
+    shader_modules: Vec<ShaderModule<RenderBackend>>,
+  ) -> Self {
+    self.shaders = shader_modules;
+    return self;
+  }
+
+  /// Builds a render pipeline based on your builder configuration. You can
+  /// configure a render pipeline to be however you'd like it to be.
+  pub fn build(gpu: &Gpu<RenderBackend>) -> RenderPipeline<RenderBackend> {
     let pipeline_layout = unsafe {
       super::internal::logical_device_for(gpu)
         .create_pipeline_layout(vec![].into_iter(), vec![].into_iter())

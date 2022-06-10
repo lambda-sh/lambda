@@ -25,7 +25,7 @@ impl ShaderModuleBuilder {
     shader_binary: &Vec<u32>,
   ) -> ShaderModule<RenderBackend> {
     let shader_module = unsafe {
-      super::internal::logical_device_for(gpu)
+      gpu::internal::logical_device_for(gpu)
         .create_shader_module(&shader_binary)
         .expect("Failed to create a shader module.")
     };
@@ -40,6 +40,8 @@ pub struct ShaderModule<RenderBackend: gfx_hal::Backend> {
 
 impl<RenderBackend: gfx_hal::Backend> ShaderModule<RenderBackend> {
   pub fn destroy(self, gpu: &mut gpu::Gpu<RenderBackend>) {
+    // TODO(vmarcella): Add documentation for the shader module.
+    println!("Destroying shader module.");
     unsafe {
       gpu::internal::logical_device_for(gpu)
         .destroy_shader_module(self.shader_module)
