@@ -2,18 +2,6 @@ use std::time::Instant;
 
 use lambda_platform::{
   gfx,
-  gfx::{
-    command::CommandPoolBuilder,
-    fence::{
-      RenderSemaphoreBuilder,
-      RenderSubmissionFenceBuilder,
-    },
-    gpu::RenderQueueType,
-    pipeline::RenderPipelineBuilder,
-    render_pass::RenderPassBuilder,
-    surface::SurfaceBuilder,
-    GpuBuilder,
-  },
   winit::{
     create_event_loop,
     winit_exports::{
@@ -26,29 +14,34 @@ use lambda_platform::{
 };
 
 use crate::{
-  components::{
-    ComponentStack,
-    Window,
-  },
+  components::ComponentStack,
   core::{
     component::Component,
     events::Event,
+    render::{
+      window::Window,
+      RenderAPIBuilder,
+    },
     runnable::Runnable,
   },
 };
 
+pub struct LambdaKernelBuilder {
+  name: Option<String>,
+  render_api: RenderAPIBuilder,
+}
+
 ///
-/// LambdaRunnable is a pre configured composition of a generic set of
+/// LambdaKernel is a pre configured composition of a generic set of
 /// components from the lambda-rs codebase
-pub struct LambdaRunnable {
+pub struct LambdaKernel {
   name: String,
   event_loop: Loop<Event>,
   window: Window,
   component_stack: ComponentStack,
-  instance: gfx::Instance<gfx::api::RenderingAPI::Backend>,
 }
 
-impl LambdaRunnable {
+impl LambdaKernel {
   /// Set the name for the current runnable
   pub fn with_name(mut self, name: &str) -> Self {
     self.name = String::from(name);
@@ -66,28 +59,26 @@ impl LambdaRunnable {
   }
 }
 
-impl Default for LambdaRunnable {
+impl Default for LambdaKernel {
   /// Constructs a LambdaRunanble with an event loop for publishing events to
   /// the application, a window with a renderable surface, a layer stack for
   /// storing layers into the engine.
   fn default() -> Self {
-    let name = String::from("LambdaRunnable");
+    let name = String::from("LambdaKernel");
     let mut event_loop = create_event_loop::<Event>();
     let window = Window::new(name.as_str(), [480, 360], &mut event_loop);
     let component_stack = ComponentStack::new();
-    let instance = lambda_platform::gfx::create_default_gfx_instance();
 
-    return LambdaRunnable {
+    return LambdaKernel {
       name,
       event_loop,
       window,
       component_stack,
-      instance,
     };
   }
 }
 
-impl Runnable for LambdaRunnable {
+impl Runnable for LambdaKernel {
   /// One setup to initialize the
   fn setup(&mut self) {}
 
@@ -102,48 +93,12 @@ impl Runnable for LambdaRunnable {
     let mut event_loop = app.event_loop;
 
     let mut component_stack = app.component_stack;
-    let mut instance = app.instance;
 
-    let mut surface =
-      Some(SurfaceBuilder::new().build(&instance, window.window_handle()));
-
-    // Build a GPU with a 3D Render queue that can render to our surface.
-    let mut gpu = GpuBuilder::new()
-      .with_render_queue_type(RenderQueueType::Graphical)
-      .build(&mut instance, surface.as_ref())
-      .expect("Failed to build a GPU.");
-
-    // Build command pool and allocate a single buffer named Primary
-    let mut command_pool = Some(CommandPoolBuilder::new().build(&gpu));
-    command_pool
-      .as_mut()
-      .unwrap()
-      .allocate_command_buffer("Primary");
-
-    // Build our rendering submission fence and semaphore.
-    let submission_fence = RenderSubmissionFenceBuilder::new()
-      .with_render_timeout(1_000_000_000)
-      .build(&mut gpu);
-
-    let rendering_semaphore = RenderSemaphoreBuilder::new().build(&mut gpu);
-
-    let mut render_pass = Some(RenderPassBuilder::new().build(&gpu));
-
-    let mut s_fence = Some(submission_fence);
-    let mut r_fence = Some(rendering_semaphore);
-
-    // Create the image extent and initial frame buffer attachment description
-    // for rendering.
-    let dimensions = window.dimensions();
-    let swapchain_config = surface
-      .as_mut()
-      .unwrap()
-      .generate_swapchain_config(&gpu, [dimensions[0], dimensions[1]]);
-
-    let (extent, _frame_buffer_attachment) = surface
-      .as_mut()
-      .unwrap()
-      .apply_swapchain_config(&gpu, swapchain_config);
+    let mut render_api = Some(
+      RenderAPIBuilder::new()
+        .with_name("LambdaKernelRenderAPI")
+        .build(&window),
+    );
 
     let publisher = event_loop.create_publisher();
     publisher.send_event(Event::Initialized);
@@ -244,17 +199,7 @@ impl Runnable for LambdaRunnable {
         WinitEvent::RedrawEventsCleared => {}
         WinitEvent::LoopDestroyed => {
           component_stack.on_detach();
-          println!("Destroying the rendering submission fence & semaphore.");
-          // Destroy the submission fence and rendering semaphore.
-          s_fence.take().unwrap().destroy(&gpu);
-          r_fence.take().unwrap().destroy(&gpu);
-
-          println!("Destroying the command pool.");
-          command_pool.take().unwrap().destroy(&mut gpu);
-          render_pass.take().unwrap().destroy(&gpu);
-
-          surface.as_mut().unwrap().remove_swapchain_config(&gpu);
-          surface.take().unwrap().destroy(&instance);
+          render_api.take().unwrap().destroy();
 
           println!("All resources were successfully deleted.");
         }
@@ -266,6 +211,6 @@ impl Runnable for LambdaRunnable {
 /// Create a generic lambda runnable. This provides you a Runnable
 /// Application Instance that can be hooked into through attaching
 /// a Layer
-pub fn create_lambda_runnable() -> LambdaRunnable {
-  return LambdaRunnable::default();
+pub fn create_lambda_runnable() -> LambdaKernel {
+  return LambdaKernel::default();
 }

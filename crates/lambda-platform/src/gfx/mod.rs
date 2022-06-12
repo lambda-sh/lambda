@@ -101,13 +101,28 @@ pub mod internal {
   }
 }
 
+pub struct InstanceBuilder {}
+
+impl InstanceBuilder {
+  pub fn new() -> Self {
+    return Self {};
+  }
+
+  pub fn build<RenderBackend: internal::Backend>(
+    self,
+    name: &str,
+  ) -> Instance<RenderBackend> {
+    return Instance::new(name);
+  }
+}
+
 pub struct Instance<RenderBackend: gfx_hal::Backend> {
   gfx_hal_instance: RenderBackend::Instance,
 }
 
 impl<RenderBackend: gfx_hal::Backend> Instance<RenderBackend> {
   /// Create a new GfxInstance connected to the platforms primary backend.
-  pub fn new(name: &str) -> Self {
+  fn new(name: &str) -> Self {
     let instance = RenderBackend::Instance::create(name, 1)
       .expect("gfx backend not supported by the current platform");
 
@@ -167,10 +182,4 @@ impl GpuBuilder {
       (_, _) => return Err("Failed to build GPU.".to_string()),
     }
   }
-}
-
-// Create a graphical backend instance using the platforms default installed
-// graphical backend
-pub fn create_default_gfx_instance() -> Instance<RenderingAPI::Backend> {
-  return Instance::<RenderingAPI::Backend>::new("Lambda Application");
 }

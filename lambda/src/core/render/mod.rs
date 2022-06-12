@@ -1,228 +1,268 @@
 pub mod assembler;
 pub mod shader;
+pub mod window;
 
 use std::time::Duration;
 
 use lambda_platform::{
   gfx,
   gfx::{
-    gfx_hal_exports,
-    gfx_hal_exports::{
-      CommandBuffer,
-      PresentationSurface,
+    command::{
+      CommandPool,
+      CommandPoolBuilder,
     },
-    shader::ShaderModuleBuilder,
+    fence::{
+      RenderSemaphore,
+      RenderSemaphoreBuilder,
+      RenderSubmissionFence,
+      RenderSubmissionFenceBuilder,
+    },
+    gpu::RenderQueueType,
+    pipeline::RenderPipelineBuilder,
+    render_pass::{
+      RenderPass,
+      RenderPassBuilder,
+    },
+    surface::SurfaceBuilder,
+    GpuBuilder,
+    InstanceBuilder,
   },
   shaderc::ShaderKind,
 };
 use shader::Shader;
 
 use super::events::Event;
-use crate::core::{
-  component::Component,
-  render::assembler::create_vertex_assembler,
-};
 
-pub struct LambdaRenderer<B: gfx_hal_exports::Backend> {
-  instance: gfx::Instance<B>,
-  gpu: gfx::gpu::Gpu<B>,
-
-  surface: Option<B::Surface>,
-  extent: Option<gfx_hal_exports::Extent2D>,
-  frame_buffer_attachment: Option<gfx_hal_exports::FramebufferAttachment>,
-  command_buffer: Option<B::CommandBuffer>,
-
-  // TODO(vmarcella): Isolate pipeline & render pass management away from
-  // the Renderer.
-  graphic_pipelines: Option<Vec<B::GraphicsPipeline>>,
-  pipeline_layouts: Option<Vec<B::PipelineLayout>>,
-  render_passes: Option<Vec<B::RenderPass>>,
+pub struct RenderAPIBuilder {
+  shaders_to_load: Vec<Shader>,
+  name: String,
 }
 
-impl<B: gfx_hal_exports::Backend> LambdaRenderer<B> {
-  /// Create a graphical pipeline using a single shader with an associated
-  /// render pass. This will currently return all gfx_hal related pipeline assets
-  pub fn create_gpu_pipeline(
-    &mut self,
-    vertex_shader: Shader,
-    fragment_shader: Shader,
-    render_pass: &B::RenderPass,
-  ) {
+impl RenderAPIBuilder {
+  pub fn new() -> Self {
+    return Self {
+      shaders_to_load: vec![],
+      name: "lambda".to_string(),
+    };
+  }
 
-    // TODO(vmarcella): Abstract the gfx hal assembler away from the
-    // render module directly.
-    // let vertex_entry = gfx_hal_exports::EntryPoint::<B> {
-    // entry: "main",
-    // module: &vertex_module,
-    // specialization: gfx_hal_exports::Specialization::default(),
-    // };
+  pub fn with_name(mut self, name: &str) -> Self {
+    self.name = name.to_string();
+    return self;
+  }
 
-    // let fragment_entry = gfx_hal_exports::EntryPoint::<B> {
-    // entry: "main",
-    // module: &fragment_module,
-    // specialization: gfx_hal_exports::Specialization::default(),
-    // };
+  /// Attaches a shader to the renderer to load before being built. This allows
+  /// for shaders to be loaded prior to the renderer being initialized.
+  pub fn with_shader(mut self, shader: Shader) -> Self {
+    self.shaders_to_load.push(shader);
+    return self;
+  }
 
-    // TODO(vmarcella): This process could use a more consistent abstraction
-    // for getting a pipeline created.
-    // let assembler = create_vertex_assembler(vertex_entry);
-    // let pipeline_layout = self.gpu.create_pipeline_layout();
-    // let mut logical_pipeline = gfx::pipeline::create_graphics_pipeline(
-    // assembler,
-    // &pipeline_layout,
-    // render_pass,
-    // Some(fragment_entry),
-    // );
+  /// Builds a RenderAPI that can be used to access the GPU. Currently only
+  /// supports building Graphical Rendering APIs.
+  pub fn build(self, window: &window::Window) -> RenderAPI {
+    let mut instance = InstanceBuilder::new().build::<RenderBackend>("lambda");
+    let mut surface =
+      SurfaceBuilder::new().build(&instance, window.window_handle());
 
-    // let physical_pipeline =
-    // self.gpu.create_graphics_pipeline(&mut logical_pipeline);
+    // Build a GPU with a 3D Render queue that can render to our surface.
+    let mut gpu = GpuBuilder::new()
+      .with_render_queue_type(RenderQueueType::Graphical)
+      .build(&mut instance, Some(&surface))
+      .expect("Failed to build a GPU.");
 
-    // return (vertex_module, pipeline_layout, physical_pipeline);
+    // Build command pool and allocate a single buffer named Primary
+    let mut command_pool = CommandPoolBuilder::new().build(&gpu);
+    command_pool.allocate_command_buffer("Primary");
+
+    // Build our rendering submission fence and semaphore.
+    let submission_fence = RenderSubmissionFenceBuilder::new()
+      .with_render_timeout(1_000_000_000)
+      .build(&mut gpu);
+
+    let render_semaphore = RenderSemaphoreBuilder::new().build(&mut gpu);
+
+    let mut render_pass = RenderPassBuilder::new().build(&gpu);
+
+    // Create the image extent and initial frame buffer attachment description
+    // for rendering.
+    let dimensions = window.dimensions();
+    let swapchain_config =
+      surface.generate_swapchain_config(&gpu, [dimensions[0], dimensions[1]]);
+
+    let (extent, _frame_buffer_attachment) =
+      surface.apply_swapchain_config(&gpu, swapchain_config);
+
+    return RenderAPI {
+      instance,
+      gpu,
+      surface,
+      submission_fence,
+      render_semaphore,
+      command_pool,
+      render_passes: vec![render_pass],
+    };
   }
 }
 
-/// Platform RenderAPI for layers to use for issuing calls to
-/// a LambdaRenderer using the default rendering nackend provided
-/// by the platform.
-pub type RenderAPI = LambdaRenderer<gfx::api::RenderingAPI::Backend>;
+use gfx::api::RenderingAPI as RenderContext;
+type RenderBackend = RenderContext::Backend;
 
-impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
-  /// Allocates resources on the GPU to enable rendering for other
-  fn on_attach(&mut self) {
-    println!("The Rendering API has been attached and is being initialized.");
+pub struct RenderAPI {
+  instance: gfx::Instance<RenderBackend>,
+  gpu: gfx::gpu::Gpu<RenderBackend>,
+  surface: gfx::surface::Surface<RenderBackend>,
+  submission_fence: RenderSubmissionFence<RenderBackend>,
+  render_semaphore: RenderSemaphore<RenderBackend>,
+  command_pool: CommandPool<RenderBackend>,
+  render_passes: Vec<RenderPass<RenderBackend>>,
+}
 
-    // let render_pass = self.gpu.create_render_pass(None, None, None);
+impl RenderAPI {
+  pub fn destroy(self) {
+    println!("Destroying the rendering submission fence & semaphore.");
+    let RenderAPI {
+      submission_fence,
+      instance,
+      mut gpu,
+      mut surface,
+      render_semaphore,
+      command_pool,
+      render_passes,
+    } = self;
 
-    // let (module, pipeline_layout, pipeline) =
-    // self.create_gpu_pipeline(vertex_shader, fragment_shader, &render_pass);
-    // self.gpu.destroy_shader_module(module);
-    // self.pipeline_layouts = Some(vec![pipeline_layout]);
-    // self.graphic_pipelines = Some(vec![pipeline]);
-  }
+    // Destroy the submission fence and rendering semaphore.
+    submission_fence.destroy(&gpu);
+    render_semaphore.destroy(&gpu);
 
-  /// Detaches physical rendering resources that were allocated by this
-  /// component.
-  fn on_detach(&mut self) {
-    println!("Destroying GPU resources allocated during run.");
-
-    for pipeline_layout in self.pipeline_layouts.take().unwrap() {
-      self.gpu.destroy_pipeline_layout(pipeline_layout);
+    println!("Destroying the command pool.");
+    command_pool.destroy(&mut gpu);
+    for render_pass in render_passes {
+      render_pass.destroy(&gpu);
     }
 
-    for pipeline in self.graphic_pipelines.take().unwrap() {
-      self.gpu.destroy_graphics_pipeline(pipeline);
-    }
-
-    println!("Destroyed all GPU resources");
-  }
-
-  fn on_event(&mut self, event: &Event) {
-    match event {
-      Event::Resized {
-        new_width,
-        new_height,
-      } => {}
-      _ => (),
-    };
-  }
-
-  /// Rendering update loop.
-  fn on_update(&mut self, _: &Duration) {
-    let surface = self.surface.as_mut().unwrap();
-
-    let acquire_timeout_ns = 1_000_000_000;
-    let image = unsafe {
-      let i = match surface.acquire_image(acquire_timeout_ns) {
-        Ok((image, _)) => Some(image),
-        Err(_) => None,
-      };
-      i.unwrap()
-    };
-
-    // TODO(vmarcella): This code will fail if there are no render passes
-    // attached to the renderer.
-    use std::borrow::Borrow;
-    let render_pass = &self.render_passes.as_mut().unwrap()[0];
-    let extent = self.extent.as_ref().unwrap();
-    let fba = self.frame_buffer_attachment.as_ref().unwrap();
-
-    // Allocate the framebuffer
-    let framebuffer = {
-      self
-        .gpu
-        .create_frame_buffer(render_pass, fba.clone(), extent)
-    };
-
-    // TODO(vmarcella): Investigate into abstracting the viewport behind a
-    // camera.
-    let viewport = {
-      gfx_hal_exports::Viewport {
-        rect: gfx_hal_exports::Rect {
-          x: 0,
-          y: 0,
-          w: self.extent.as_ref().unwrap().width as i16,
-          h: self.extent.as_ref().unwrap().height as i16,
-        },
-        depth: 0.0..1.0,
-      }
-    };
-
-    unsafe {
-      let command_buffer = self.command_buffer.as_mut().unwrap();
-      command_buffer
-        .begin_primary(gfx_hal_exports::CommandBufferFlags::ONE_TIME_SUBMIT);
-
-      // Configure the vieports & the scissor rectangles for the rasterizer
-      let viewports = vec![viewport.clone()].into_iter();
-      let rect = vec![viewport.rect].into_iter();
-      command_buffer.set_viewports(0, viewports);
-      command_buffer.set_scissors(0, rect);
-
-      // Render attachments to specify for the current render pass.
-      let render_attachments = vec![gfx_hal_exports::RenderAttachmentInfo {
-        image_view: image.borrow(),
-        clear_value: gfx_hal_exports::ClearValue {
-          color: gfx_hal_exports::ClearColor {
-            float32: [0.0, 0.0, 0.0, 1.0],
-          },
-        },
-      }]
-      .into_iter();
-
-      // Initialize the render pass on the command buffer & inline the subpass
-      // contents.
-      command_buffer.begin_render_pass(
-        &render_pass,
-        &framebuffer,
-        viewport.rect,
-        render_attachments,
-        gfx_hal_exports::SubpassContents::Inline,
-      );
-
-      // Bind graphical pipeline and submit commands to the GPU.
-      let pipeline = &self.graphic_pipelines.as_ref().unwrap()[0];
-      command_buffer.bind_graphics_pipeline(pipeline);
-      command_buffer.draw(0..3, 0..1);
-      command_buffer.end_render_pass();
-      command_buffer.finish();
-
-      // Submit the command buffer for rendering on the GPU.
-      // self.gpu.submit_command_buffer(
-      //   &command_buffer,
-      //   self.rendering_complete_semaphore.as_ref().unwrap(),
-      //   self.submission_complete_fence.as_mut().unwrap(),
-      //  );
-
-      // let result = self.gpu.render_to_surface(
-      //   surface,
-      //   image,
-      //   self.rendering_complete_semaphore.as_mut().unwrap(),
-      // );
-      // if result.is_err() {
-      //    todo!("Publish an event from the renderer that the swapchain needs to be reconfigured")
-      // }
-
-      self.gpu.destroy_frame_buffer(framebuffer);
-    }
+    surface.remove_swapchain_config(&gpu);
+    surface.destroy(&instance);
   }
 }
+
+// TODO(vmarcella): Abstract the gfx hal assembler away from the
+// render module directly.
+// let vertex_entry = gfx_hal_exports::EntryPoint::<B> {
+// entry: "main",
+// module: &vertex_module,
+// specialization: gfx_hal_exports::Specialization::default(),
+// };
+
+// let fragment_entry = gfx_hal_exports::EntryPoint::<B> {
+// entry: "main",
+// module: &fragment_module,
+// specialization: gfx_hal_exports::Specialization::default(),
+// };
+
+// TODO(vmarcella): This process could use a more consistent abstraction
+// for getting a pipeline created.
+// let assembler = create_vertex_assembler(vertex_entry);
+// let pipeline_layout = self.gpu.create_pipeline_layout();
+// let mut logical_pipeline = gfx::pipeline::create_graphics_pipeline(
+// assembler,
+// &pipeline_layout,
+// render_pass,
+// Some(fragment_entry),
+// );
+
+// let physical_pipeline =
+// self.gpu.create_graphics_pipeline(&mut logical_pipeline);
+
+// return (vertex_module, pipeline_layout, physical_pipeline);
+
+// let render_pass = self.gpu.create_render_pass(None, None, None);
+
+// let (module, pipeline_layout, pipeline) =
+// self.create_gpu_pipeline(vertex_shader, fragment_shader, &render_pass);
+// self.gpu.destroy_shader_module(module);
+// self.pipeline_layouts = Some(vec![pipeline_layout]);
+// self.graphic_pipelines = Some(vec![pipeline]);
+
+// let surface = self.surface.as_mut().unwrap();
+
+// let acquire_timeout_ns = 1_000_000_000;
+//  let image = unsafe {
+//    let i = match surface.acquire_image(acquire_timeout_ns) {
+//      Ok((image, _)) => Some(image),
+//      Err(_) => None,
+//    };
+//    i.unwrap()
+//  };
+
+// TODO(vmarcella): This code will fail if there are no render passes
+// attached to the renderer.
+
+// TODO(vmarcella): Investigate into abstracting the viewport behind a
+// camera.
+// let viewport = {
+//  gfx_hal_exports::Viewport {
+//    rect: gfx_hal_exports::Rect {
+//      x: 0,
+//      y: 0,
+//      w: self.extent.as_ref().unwrap().width as i16,
+//      h: self.extent.as_ref().unwrap().height as i16,
+//    },
+//    depth: 0.0..1.0,
+//  }
+// };
+
+// unsafe {
+//  let command_buffer = self.command_buffer.as_mut().unwrap();
+//  command_buffer
+//    .begin_primary(gfx_hal_exports::CommandBufferFlags::ONE_TIME_SUBMIT);
+//
+// Configure the vieports & the scissor rectangles for the rasterizer
+//  let viewports = vec![viewport.clone()].into_iter();
+//   let rect = vec![viewport.rect].into_iter();
+// command_buffer.set_viewports(0, viewports);
+// command_buffer.set_scissors(0, rect);
+
+// Render attachments to specify for the current render pass.
+// let render_attachments = vec![gfx_hal_exports::RenderAttachmentInfo {
+// image_view: image.borrow(),
+// clear_value: gfx_hal_exports::ClearValue {
+// color: gfx_hal_exports::ClearColor {
+//   float32: [0.0, 0.0, 0.0, 1.0],
+// },
+//},
+//}]
+//.into_iter();
+
+// Initialize the render pass on the command buffer & inline the subpass
+// contents.
+//   command_buffer.begin_render_pass(
+//    &render_pass,
+//    &framebuffer,
+//    viewport.rect,
+//    render_attachments,
+//    gfx_hal_exports::SubpassContents::Inline,
+//  );
+
+// Bind graphical pipeline and submit commands to the GPU.
+//   let pipeline = &self.graphic_pipelines.as_ref().unwrap()[0];
+//  command_buffer.bind_graphics_pipeline(pipeline);
+//  command_buffer.draw(0..3, 0..1);
+//  command_buffer.end_render_pass();
+//  command_buffer.finish();
+
+// Submit the command buffer for rendering on the GPU.
+// self.gpu.submit_command_buffer(
+//   &command_buffer,
+//   self.rendering_complete_semaphore.as_ref().unwrap(),
+//   self.submission_complete_fence.as_mut().unwrap(),
+//  );
+
+// let result = self.gpu.render_to_surface(
+//   surface,
+//   image,
+//   self.rendering_complete_semaphore.as_mut().unwrap(),
+// );
+// if result.is_err() {
+//    todo!("Publish an event from the renderer that the swapchain needs to be reconfigured")
+// }
