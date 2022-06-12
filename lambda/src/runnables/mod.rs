@@ -22,7 +22,7 @@ use crate::{
       window::Window,
       RenderAPIBuilder,
     },
-    runnable::Runnable,
+    runnable::Kernel,
   },
 };
 
@@ -78,10 +78,7 @@ impl Default for LambdaKernel {
   }
 }
 
-impl Runnable for LambdaKernel {
-  /// One setup to initialize the
-  fn setup(&mut self) {}
-
+impl Kernel for LambdaKernel {
   /// Initiates an event loop that captures the context of the LambdaRunnable
   /// and generates events from the windows event loop until the end of an
   /// applications lifetime.
@@ -206,6 +203,10 @@ impl Runnable for LambdaKernel {
       }
     });
   }
+
+  fn on_start(&mut self) {}
+
+  fn on_stop(&mut self) {}
 }
 
 /// Create a generic lambda runnable. This provides you a Runnable

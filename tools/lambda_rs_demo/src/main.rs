@@ -1,7 +1,7 @@
 use lambda::{
   core::{
     component::Component,
-    runnable::start_runnable,
+    runnable::start_kernel,
   },
   runnables::create_lambda_runnable,
 };
@@ -49,7 +49,7 @@ fn main() {
     },
   );
 
-  start_runnable(app);
+  start_kernel(app);
 }
 
 // These 40 lines of code create what you saw before

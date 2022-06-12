@@ -2,8 +2,6 @@ pub mod assembler;
 pub mod shader;
 pub mod window;
 
-use std::time::Duration;
-
 use lambda_platform::{
   gfx,
   gfx::{
@@ -17,21 +15,26 @@ use lambda_platform::{
       RenderSubmissionFence,
       RenderSubmissionFenceBuilder,
     },
-    gpu::RenderQueueType,
+    gpu::{
+      Gpu,
+      RenderQueueType,
+    },
     pipeline::RenderPipelineBuilder,
     render_pass::{
       RenderPass,
       RenderPassBuilder,
     },
-    surface::SurfaceBuilder,
+    surface::{
+      Surface,
+      SurfaceBuilder,
+    },
     GpuBuilder,
+    Instance,
     InstanceBuilder,
   },
   shaderc::ShaderKind,
 };
 use shader::Shader;
-
-use super::events::Event;
 
 pub struct RenderAPIBuilder {
   shaders_to_load: Vec<Shader>,
@@ -109,9 +112,9 @@ use gfx::api::RenderingAPI as RenderContext;
 type RenderBackend = RenderContext::Backend;
 
 pub struct RenderAPI {
-  instance: gfx::Instance<RenderBackend>,
-  gpu: gfx::gpu::Gpu<RenderBackend>,
-  surface: gfx::surface::Surface<RenderBackend>,
+  instance: Instance<RenderBackend>,
+  gpu: Gpu<RenderBackend>,
+  surface: Surface<RenderBackend>,
   submission_fence: RenderSubmissionFence<RenderBackend>,
   render_semaphore: RenderSemaphore<RenderBackend>,
   command_pool: CommandPool<RenderBackend>,
@@ -135,7 +138,6 @@ impl RenderAPI {
     submission_fence.destroy(&gpu);
     render_semaphore.destroy(&gpu);
 
-    println!("Destroying the command pool.");
     command_pool.destroy(&mut gpu);
     for render_pass in render_passes {
       render_pass.destroy(&gpu);
@@ -144,6 +146,8 @@ impl RenderAPI {
     surface.remove_swapchain_config(&gpu);
     surface.destroy(&instance);
   }
+
+  pub fn render() {}
 }
 
 // TODO(vmarcella): Abstract the gfx hal assembler away from the

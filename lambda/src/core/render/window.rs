@@ -4,10 +4,7 @@ use lambda_platform::winit::{
   WindowProperties,
 };
 
-use crate::core::{
-  component::Component,
-  events::Event,
-};
+use crate::core::events::Event;
 
 pub struct Window {
   window_handle: WindowHandle,
