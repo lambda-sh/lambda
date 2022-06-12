@@ -64,7 +64,9 @@ impl RenderAPIBuilder {
   /// Builds a RenderAPI that can be used to access the GPU. Currently only
   /// supports building Graphical Rendering APIs.
   pub fn build(self, window: &window::Window) -> RenderAPI {
-    let mut instance = InstanceBuilder::new().build::<RenderBackend>("lambda");
+    let name = self.name;
+    let mut instance =
+      InstanceBuilder::new().build::<RenderBackend>(name.as_str());
     let mut surface =
       SurfaceBuilder::new().build(&instance, window.window_handle());
 
@@ -97,6 +99,7 @@ impl RenderAPIBuilder {
       surface.apply_swapchain_config(&gpu, swapchain_config);
 
     return RenderAPI {
+      name,
       instance,
       gpu,
       surface,
@@ -112,6 +115,7 @@ use gfx::api::RenderingAPI as RenderContext;
 type RenderBackend = RenderContext::Backend;
 
 pub struct RenderAPI {
+  name: String,
   instance: Instance<RenderBackend>,
   gpu: Gpu<RenderBackend>,
   surface: Surface<RenderBackend>,
@@ -123,8 +127,8 @@ pub struct RenderAPI {
 
 impl RenderAPI {
   pub fn destroy(self) {
-    println!("Destroying the rendering submission fence & semaphore.");
     let RenderAPI {
+      name,
       submission_fence,
       instance,
       mut gpu,
@@ -133,6 +137,8 @@ impl RenderAPI {
       command_pool,
       render_passes,
     } = self;
+
+    println!("{} will now start destroying resources.", name);
 
     // Destroy the submission fence and rendering semaphore.
     submission_fence.destroy(&gpu);

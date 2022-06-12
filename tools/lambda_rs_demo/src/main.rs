@@ -1,6 +1,7 @@
 use lambda::{
   core::{
     component::Component,
+    render::RenderAPIBuilder,
     runnable::start_kernel,
   },
   runnables::LambdaKernelBuilder,
@@ -42,9 +43,14 @@ impl Default for DemoComponent {
   }
 }
 
+fn configure_renderer(builder: RenderAPIBuilder) -> RenderAPIBuilder {
+  return builder.with_name("2D Demo Renderer");
+}
+
 fn main() {
   let kernel = LambdaKernelBuilder::new()
-    .with_name("Lambda RS 2D Demo")
+    .with_name("Lambda 2D Demo")
+    .configure_renderer(configure_renderer)
     .build()
     .with_component(move |runnable, demo: DemoComponent| {
       return (runnable, demo);
