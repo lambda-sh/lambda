@@ -27,8 +27,47 @@ use crate::{
 };
 
 pub struct LambdaKernelBuilder {
-  name: Option<String>,
+  name: String,
   render_api: RenderAPIBuilder,
+}
+
+impl LambdaKernelBuilder {
+  pub fn new() -> Self {
+    return Self {
+      name: "LambdaKernel".to_string(),
+      render_api: RenderAPIBuilder::new(),
+    };
+  }
+
+  /// Update the name of the LambdaKernel.
+  pub fn with_name(mut self, name: &str) -> Self {
+    self.name = name.to_string();
+    return self;
+  }
+
+  /// Configures the RenderAPIBuilder before the RenderingAPI is built.
+  pub fn configure_renderer(
+    mut self,
+    configure: impl FnOnce(RenderAPIBuilder) -> RenderAPIBuilder,
+  ) -> Self {
+    self.render_api = configure(self.render_api);
+    return self;
+  }
+
+  /// Builds a LambdaKernel equipped with Windowing,
+  pub fn build(self) -> LambdaKernel {
+    let name = self.name;
+    let mut event_loop = create_event_loop::<Event>();
+    let window = Window::new(name.as_str(), [480, 360], &mut event_loop);
+    let component_stack = ComponentStack::new();
+
+    return LambdaKernel {
+      name,
+      event_loop,
+      window,
+      component_stack,
+    };
+  }
 }
 
 ///
@@ -56,25 +95,6 @@ impl LambdaKernel {
     let (mut runnable, component) = configure_component(self, T::default());
     runnable.component_stack.push_component(component);
     return runnable;
-  }
-}
-
-impl Default for LambdaKernel {
-  /// Constructs a LambdaRunanble with an event loop for publishing events to
-  /// the application, a window with a renderable surface, a layer stack for
-  /// storing layers into the engine.
-  fn default() -> Self {
-    let name = String::from("LambdaKernel");
-    let mut event_loop = create_event_loop::<Event>();
-    let window = Window::new(name.as_str(), [480, 360], &mut event_loop);
-    let component_stack = ComponentStack::new();
-
-    return LambdaKernel {
-      name,
-      event_loop,
-      window,
-      component_stack,
-    };
   }
 }
 
@@ -207,11 +227,4 @@ impl Kernel for LambdaKernel {
   fn on_start(&mut self) {}
 
   fn on_stop(&mut self) {}
-}
-
-/// Create a generic lambda runnable. This provides you a Runnable
-/// Application Instance that can be hooked into through attaching
-/// a Layer
-pub fn create_lambda_runnable() -> LambdaKernel {
-  return LambdaKernel::default();
 }

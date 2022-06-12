@@ -3,7 +3,7 @@ use lambda::{
     component::Component,
     runnable::start_kernel,
   },
-  runnables::create_lambda_runnable,
+  runnables::LambdaKernelBuilder,
 };
 
 pub struct DemoComponent {}
@@ -43,13 +43,14 @@ impl Default for DemoComponent {
 }
 
 fn main() {
-  let app = create_lambda_runnable().with_component(
-    move |runnable, demo: DemoComponent| {
+  let kernel = LambdaKernelBuilder::new()
+    .with_name("Lambda RS 2D Demo")
+    .build()
+    .with_component(move |runnable, demo: DemoComponent| {
       return (runnable, demo);
-    },
-  );
+    });
 
-  start_kernel(app);
+  start_kernel(kernel);
 }
 
 // These 40 lines of code create what you saw before
