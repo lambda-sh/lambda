@@ -1,11 +1,7 @@
-use gfx_hal::{
-  device::Device,
-  pass::SubpassDesc,
-};
+use gfx_hal::device::Device;
 
 use super::{
   gpu::Gpu,
-  internal,
   surface::ColorFormat,
 };
 
@@ -221,7 +217,7 @@ impl<'builder> RenderPassBuilder<'builder> {
     };
 
     let render_pass = unsafe {
-      internal::logical_device_for(gpu)
+      super::internal::logical_device_for(gpu)
         .create_render_pass(
           attachments.into_iter(),
           subpasses.into_iter(),
@@ -243,7 +239,19 @@ pub struct RenderPass<RenderBackend: gfx_hal::Backend> {
 impl<RenderBackend: gfx_hal::Backend> RenderPass<RenderBackend> {
   pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
     unsafe {
-      internal::logical_device_for(gpu).destroy_render_pass(self.render_pass);
+      super::internal::logical_device_for(gpu)
+        .destroy_render_pass(self.render_pass);
     }
+  }
+}
+
+pub mod internal {
+  use gfx_hal::Backend;
+
+  #[inline]
+  pub fn render_pass_for<RenderBackend: Backend>(
+    render_pass: &super::RenderPass<RenderBackend>,
+  ) -> &RenderBackend::RenderPass {
+    return &render_pass.render_pass;
   }
 }

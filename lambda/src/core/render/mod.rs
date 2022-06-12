@@ -48,11 +48,6 @@ impl<B: gfx_hal_exports::Backend> LambdaRenderer<B> {
     fragment_shader: Shader,
     render_pass: &B::RenderPass,
   ) {
-    let vertex_module = ShaderModuleBuilder::new()
-      .build(&mut self.gpu, &vertex_shader.as_binary());
-
-    let fragment_module = ShaderModuleBuilder::new()
-      .build(&mut self.gpu, &fragment_shader.as_binary());
 
     // TODO(vmarcella): Abstract the gfx hal assembler away from the
     // render module directly.

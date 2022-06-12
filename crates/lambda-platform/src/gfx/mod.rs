@@ -1,6 +1,7 @@
 // -------------------------- GFX PLATFORM EXPORTS -----------------------------
 
 pub mod api;
+pub mod assembler;
 pub mod command;
 pub mod fence;
 pub mod gpu;
@@ -56,10 +57,13 @@ pub mod gfx_hal_exports {
 pub mod internal {
   use gfx_hal::Instance as _;
 
-  use super::Instance;
   pub use super::{
+    assembler::internal::*,
     gpu::internal::*,
+    pipeline::internal::*,
+    render_pass::internal::*,
     shader::internal::*,
+    Instance,
   };
 
   /// Helper function to create a low level gfx_hal surface. Not meant to be

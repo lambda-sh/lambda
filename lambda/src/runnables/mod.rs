@@ -9,6 +9,7 @@ use lambda_platform::{
       RenderSubmissionFenceBuilder,
     },
     gpu::RenderQueueType,
+    pipeline::RenderPipelineBuilder,
     render_pass::RenderPassBuilder,
     surface::SurfaceBuilder,
     GpuBuilder,

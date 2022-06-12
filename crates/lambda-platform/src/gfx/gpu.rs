@@ -20,8 +20,6 @@ use gfx_hal::{
   },
 };
 
-use super::pipeline::GraphicsPipeline;
-
 ///
 /// Commands oriented around creating resources on & for the GPU.
 ///
@@ -182,39 +180,6 @@ impl<B: gfx_hal::Backend> Gpu<B> {
     pipeline_layout: B::PipelineLayout,
   ) {
     unsafe { self.gpu.device.destroy_pipeline_layout(pipeline_layout) }
-  }
-
-  pub fn create_shader_module(&mut self, binary: &Vec<u32>) -> B::ShaderModule {
-    unsafe {
-      let module = self
-        .gpu
-        .device
-        .create_shader_module(&binary)
-        .expect("Failed to create a shader module.");
-      return module;
-    }
-  }
-
-  /// Destroy a Shader Module created by this GPU.
-  pub fn destroy_shader_module(&mut self, shader_module: B::ShaderModule) {
-    unsafe {
-      self.gpu.device.destroy_shader_module(shader_module);
-    }
-  }
-
-  /// Create a graphics pipeline from the GPU.
-  pub fn create_graphics_pipeline(
-    &self,
-    pipeline: &mut GraphicsPipeline<B>,
-  ) -> B::GraphicsPipeline {
-    unsafe {
-      let pipeline = self
-        .gpu
-        .device
-        .create_graphics_pipeline(&mut pipeline.get_pipeline(), None)
-        .expect("Failed to create a Graphics pipeline on the GPU.");
-      return pipeline;
-    }
   }
 
   /// Destroy a graphics pipeline allocated by this GPU.
