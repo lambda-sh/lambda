@@ -1,5 +1,3 @@
-use super::component::Component;
-
 pub trait Kernel {
   fn on_start(&self);
   fn on_stop(&self);

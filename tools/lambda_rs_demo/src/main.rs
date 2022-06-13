@@ -1,6 +1,7 @@
 use lambda::{
   core::{
     component::Component,
+    events::Event,
     kernel::start_kernel,
     render::RenderAPIBuilder,
   },
@@ -9,7 +10,7 @@ use lambda::{
 
 pub struct DemoComponent {}
 
-impl Component for DemoComponent {
+impl Component<Event> for DemoComponent {
   fn on_attach(&mut self) {
     println!("Attached the first layer to lambda");
   }

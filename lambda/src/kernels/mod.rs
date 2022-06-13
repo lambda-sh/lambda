@@ -85,7 +85,7 @@ pub struct LambdaKernel {
 
 impl LambdaKernel {
   /// Attach a component to the current runnable.
-  pub fn with_component<T: Default + Component + 'static>(
+  pub fn with_component<T: Default + Component<Event> + 'static>(
     self,
     configure_component: impl FnOnce(Self, T) -> (Self, T),
   ) -> Self {

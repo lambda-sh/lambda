@@ -7,10 +7,10 @@ use crate::core::{
 
 /// A stack based Vec that can Push & Pop layers.
 pub struct ComponentStack {
-  components: Vec<Box<dyn Component>>,
+  components: Vec<Box<dyn Component<Event>>>,
 }
 
-impl Component for ComponentStack {
+impl Component<Event> for ComponentStack {
   /// Attaches all the components that are currently on the component graph
   fn on_attach(&mut self) {
     for component in &mut self.components {
@@ -51,7 +51,7 @@ impl ComponentStack {
   /// Push a component on to the component stack.
   pub fn push_component<T>(&mut self, component: T)
   where
-    T: Component + 'static,
+    T: Component<Event> + 'static,
   {
     let component = Box::new(component);
     self.components.push(component);
@@ -59,7 +59,9 @@ impl ComponentStack {
 
   /// Pop a component from the component stack. Doesn't delete or detach
   /// the component.
-  pub fn pop_component(&mut self) -> Option<Box<dyn Component + 'static>> {
+  pub fn pop_component(
+    &mut self,
+  ) -> Option<Box<dyn Component<Event> + 'static>> {
     let component = self.components.pop();
     return component;
   }
