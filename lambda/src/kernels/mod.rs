@@ -222,11 +222,11 @@ impl Kernel for LambdaKernel {
     });
   }
 
-  fn on_start(&mut self) {
+  fn on_start(&self) {
     println!("Starting {}", self.name)
   }
 
-  fn on_stop(&mut self) {
+  fn on_stop(&self) {
     println!("Stopping {}", self.name)
   }
 }

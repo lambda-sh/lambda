@@ -1,8 +1,8 @@
 use super::component::Component;
 
 pub trait Kernel {
-  fn on_start(&mut self);
-  fn on_stop(&mut self);
+  fn on_start(&self);
+  fn on_stop(&self);
   fn run(self);
 }
 
@@ -15,7 +15,7 @@ pub fn build_and_start_kernel<T: Default + Kernel>() {
 }
 
 /// Simple function for starting any prebuilt Runnable.
-pub fn start_kernel<T: Kernel>(mut kernel: T) {
+pub fn start_kernel<T: Kernel>(kernel: T) {
   kernel.on_start();
   kernel.run();
 }
