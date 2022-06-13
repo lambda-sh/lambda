@@ -74,7 +74,6 @@ impl LambdaKernelBuilder {
   }
 }
 
-///
 /// LambdaKernel is a pre configured composition of a generic set of
 /// components from the lambda-rs codebase
 pub struct LambdaKernel {
@@ -109,11 +108,11 @@ impl Kernel for LambdaKernel {
   fn run(self) {
     // Decompose Runnable components for transferring ownership to the
     // closure.
-    let app = self;
-    let mut window = app.window;
-    let mut event_loop = app.event_loop;
+    let kernel = self;
+    let mut window = kernel.window;
+    let mut event_loop = kernel.event_loop;
 
-    let mut component_stack = app.component_stack;
+    let mut component_stack = kernel.component_stack;
 
     let mut render_api = Some(
       RenderAPIBuilder::new()
