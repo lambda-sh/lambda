@@ -59,14 +59,17 @@ impl Window {
     return Self { window_handle };
   }
 
+  /// Redraws the window.
   pub fn redraw(&mut self) {
     self.window_handle.window_handle.request_redraw();
   }
 
+  /// Returns the window handle.
   pub fn window_handle(&self) -> &WindowHandle {
     return &self.window_handle;
   }
 
+  /// Returns the dimensions of the current window.
   pub fn dimensions(&self) -> [u32; 2] {
     return [
       self.window_handle.size.width,

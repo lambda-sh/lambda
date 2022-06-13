@@ -1,16 +1,13 @@
 use std::time::Instant;
 
-use lambda_platform::{
-  gfx,
-  winit::{
-    create_event_loop,
-    winit_exports::{
-      ControlFlow,
-      Event as WinitEvent,
-      WindowEvent,
-    },
-    Loop,
+use lambda_platform::winit::{
+  create_event_loop,
+  winit_exports::{
+    ControlFlow,
+    Event as WinitEvent,
+    WindowEvent,
   },
+  Loop,
 };
 
 use crate::{
@@ -57,7 +54,9 @@ impl LambdaKernelBuilder {
     return self;
   }
 
-  /// Builds a LambdaKernel equipped with Windowing,
+  /// Builds a LambdaKernel equipped with Windowing, an event loop, and a
+  /// component stack that allows components to be dynamically pushed into the
+  /// Kernel to receive events & render access.
   pub fn build(self) -> LambdaKernel {
     let name = self.name;
     let mut event_loop = create_event_loop::<Event>();
@@ -229,7 +228,11 @@ impl Kernel for LambdaKernel {
     });
   }
 
-  fn on_start(&mut self) {}
+  fn on_start(&mut self) {
+    println!("Starting {}", self.name)
+  }
 
-  fn on_stop(&mut self) {}
+  fn on_stop(&mut self) {
+    println!("Stopping {}", self.name)
+  }
 }
