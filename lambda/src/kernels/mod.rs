@@ -84,12 +84,6 @@ pub struct LambdaKernel {
 }
 
 impl LambdaKernel {
-  /// Set the name for the current runnable
-  pub fn with_name(mut self, name: &str) -> Self {
-    self.name = String::from(name);
-    return self;
-  }
-
   /// Attach a component to the current runnable.
   pub fn with_component<T: Default + Component + 'static>(
     self,
@@ -102,21 +96,22 @@ impl LambdaKernel {
 }
 
 impl Kernel for LambdaKernel {
-  /// Initiates an event loop that captures the context of the LambdaRunnable
-  /// and generates events from the windows event loop until the end of an
-  /// applications lifetime.
+  /// Initiates an event loop that captures the context of the LambdaKernel
+  /// and generates events from the windows event loop until the end of the event loops
+  /// lifetime (Whether that be initiated intentionally or via error).
   fn run(self) {
-    // Decompose Runnable components for transferring ownership to the
+    // Decompose Kernel components for transferring ownership to the
     // closure.
-    let kernel = self;
-    let mut window = kernel.window;
-    let mut event_loop = kernel.event_loop;
-
-    let mut component_stack = kernel.component_stack;
+    let LambdaKernel {
+      mut window,
+      mut event_loop,
+      mut component_stack,
+      name,
+    } = self;
 
     let mut render_api = Some(
       RenderAPIBuilder::new()
-        .with_name("LambdaKernelRenderAPI")
+        .with_name(name.as_str())
         .build(&window),
     );
 
