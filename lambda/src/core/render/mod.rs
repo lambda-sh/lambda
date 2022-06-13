@@ -3,47 +3,48 @@ pub mod render_pass;
 pub mod shader;
 pub mod window;
 
-use lambda_platform::{
-  gfx::{
-    command::{
-      CommandPool,
-      CommandPoolBuilder,
-    },
-    fence::{
-      RenderSemaphore,
-      RenderSemaphoreBuilder,
-      RenderSubmissionFence,
-      RenderSubmissionFenceBuilder,
-    },
-    gpu::{
-      Gpu,
-      RenderQueueType,
-    },
-    pipeline::RenderPipelineBuilder,
-    render_pass::{
-      RenderPass,
-      RenderPassBuilder,
-    },
-    surface::{
-      Surface,
-      SurfaceBuilder,
-    },
-    GpuBuilder,
-    Instance,
-    InstanceBuilder,
-  },
-  shaderc::ShaderKind,
-};
-
 pub mod internal {
   use lambda_platform::gfx::api::RenderingAPI as RenderContext;
   pub type RenderBackend = RenderContext::Backend;
+
+  pub use lambda_platform::{
+    gfx::{
+      command::{
+        CommandPool,
+        CommandPoolBuilder,
+      },
+      fence::{
+        RenderSemaphore,
+        RenderSemaphoreBuilder,
+        RenderSubmissionFence,
+        RenderSubmissionFenceBuilder,
+      },
+      gpu::{
+        Gpu,
+        RenderQueueType,
+      },
+      pipeline::RenderPipelineBuilder,
+      render_pass::{
+        RenderPass,
+        RenderPassBuilder,
+      },
+      surface::{
+        Surface,
+        SurfaceBuilder,
+      },
+      GpuBuilder,
+      Instance,
+      InstanceBuilder,
+    },
+    shaderc::ShaderKind,
+  };
 }
 
 use shader::Shader;
 
 pub struct RenderAPIBuilder {
   shaders_to_load: Vec<Shader>,
+  render_passes: Vec<render_pass::RenderPassBuilder>,
   name: String,
 }
 
@@ -52,6 +53,7 @@ impl RenderAPIBuilder {
     return Self {
       shaders_to_load: vec![],
       name: "lambda".to_string(),
+      render_passes: vec![],
     };
   }
 
@@ -67,33 +69,46 @@ impl RenderAPIBuilder {
     return self;
   }
 
+  /// Attach a render pass into the rendering API.
+  pub fn with_render_pass(
+    mut self,
+    configure: impl FnOnce(
+      render_pass::RenderPassBuilder,
+    ) -> render_pass::RenderPassBuilder,
+  ) -> Self {
+    let render_pass = configure(render_pass::RenderPassBuilder::new());
+    self.render_passes.push(render_pass);
+    return self;
+  }
+
   /// Builds a RenderAPI that can be used to access the GPU. Currently only
   /// supports building Graphical Rendering APIs.
   pub fn build(self, window: &window::Window) -> RenderAPI {
     let name = self.name;
-    let mut instance =
-      InstanceBuilder::new().build::<internal::RenderBackend>(name.as_str());
+    let mut instance = internal::InstanceBuilder::new()
+      .build::<internal::RenderBackend>(name.as_str());
     let mut surface =
-      SurfaceBuilder::new().build(&instance, window.window_handle());
+      internal::SurfaceBuilder::new().build(&instance, window.window_handle());
 
     // Build a GPU with a 3D Render queue that can render to our surface.
-    let mut gpu = GpuBuilder::new()
-      .with_render_queue_type(RenderQueueType::Graphical)
+    let mut gpu = internal::GpuBuilder::new()
+      .with_render_queue_type(internal::RenderQueueType::Graphical)
       .build(&mut instance, Some(&surface))
       .expect("Failed to build a GPU.");
 
     // Build command pool and allocate a single buffer named Primary
-    let mut command_pool = CommandPoolBuilder::new().build(&gpu);
+    let mut command_pool = internal::CommandPoolBuilder::new().build(&gpu);
     command_pool.allocate_command_buffer("Primary");
 
     // Build our rendering submission fence and semaphore.
-    let submission_fence = RenderSubmissionFenceBuilder::new()
+    let submission_fence = internal::RenderSubmissionFenceBuilder::new()
       .with_render_timeout(1_000_000_000)
       .build(&mut gpu);
 
-    let render_semaphore = RenderSemaphoreBuilder::new().build(&mut gpu);
+    let render_semaphore =
+      internal::RenderSemaphoreBuilder::new().build(&mut gpu);
 
-    let mut render_pass = RenderPassBuilder::new().build(&gpu);
+    let mut render_pass = internal::RenderPassBuilder::new().build(&gpu);
 
     // Create the image extent and initial frame buffer attachment description
     // for rendering.
@@ -121,13 +136,13 @@ impl RenderAPIBuilder {
 /// Rendering Backend
 pub struct RenderAPI {
   name: String,
-  instance: Instance<internal::RenderBackend>,
-  gpu: Gpu<internal::RenderBackend>,
-  surface: Surface<internal::RenderBackend>,
-  submission_fence: RenderSubmissionFence<internal::RenderBackend>,
-  render_semaphore: RenderSemaphore<internal::RenderBackend>,
-  command_pool: CommandPool<internal::RenderBackend>,
-  render_passes: Vec<RenderPass<internal::RenderBackend>>,
+  instance: internal::Instance<internal::RenderBackend>,
+  gpu: internal::Gpu<internal::RenderBackend>,
+  surface: internal::Surface<internal::RenderBackend>,
+  submission_fence: internal::RenderSubmissionFence<internal::RenderBackend>,
+  render_semaphore: internal::RenderSemaphore<internal::RenderBackend>,
+  command_pool: internal::CommandPool<internal::RenderBackend>,
+  render_passes: Vec<internal::RenderPass<internal::RenderBackend>>,
 }
 
 impl RenderAPI {
