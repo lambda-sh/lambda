@@ -15,6 +15,7 @@ use crate::{
   core::{
     component::Component,
     events::Event,
+    kernel::Kernel,
     render::{
       window::{
         Window,
@@ -22,7 +23,6 @@ use crate::{
       },
       RenderAPIBuilder,
     },
-    runnable::Kernel,
   },
 };
 
@@ -96,9 +96,9 @@ impl LambdaKernel {
     self,
     configure_component: impl FnOnce(Self, T) -> (Self, T),
   ) -> Self {
-    let (mut runnable, component) = configure_component(self, T::default());
-    runnable.component_stack.push_component(component);
-    return runnable;
+    let (mut kernel, component) = configure_component(self, T::default());
+    kernel.component_stack.push_component(component);
+    return kernel;
   }
 }
 

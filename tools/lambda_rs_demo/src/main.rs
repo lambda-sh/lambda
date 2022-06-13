@@ -1,8 +1,8 @@
 use lambda::{
   core::{
     component::Component,
+    kernel::start_kernel,
     render::RenderAPIBuilder,
-    runnable::start_kernel,
   },
   kernels::LambdaKernelBuilder,
 };
@@ -56,8 +56,8 @@ fn main() {
     .with_name("Lambda 2D Demo")
     .configure_renderer(configure_renderer)
     .build()
-    .with_component(move |runnable, demo: DemoComponent| {
-      return (runnable, demo);
+    .with_component(move |kernel, demo: DemoComponent| {
+      return (kernel, demo);
     });
 
   start_kernel(kernel);
