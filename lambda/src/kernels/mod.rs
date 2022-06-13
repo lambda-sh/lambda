@@ -21,6 +21,7 @@ use crate::{
         Window,
         WindowBuilder,
       },
+      RenderAPI,
       RenderAPIBuilder,
     },
   },
@@ -32,10 +33,10 @@ pub struct LambdaKernelBuilder {
 }
 
 impl LambdaKernelBuilder {
-  pub fn new() -> Self {
+  pub fn new(name: &str) -> Self {
     return Self {
-      name: "LambdaKernel".to_string(),
-      render_api: RenderAPIBuilder::new(),
+      name: name.to_string(),
+      render_api: RenderAPIBuilder::new(name),
     };
   }
 
@@ -64,11 +65,13 @@ impl LambdaKernelBuilder {
       .with_name(name.as_str())
       .build(&mut event_loop);
     let component_stack = ComponentStack::new();
+    let render_api = self.render_api.build(&window);
 
     return LambdaKernel {
       name,
       event_loop,
       window,
+      render_api,
       component_stack,
     };
   }
@@ -81,6 +84,7 @@ pub struct LambdaKernel {
   event_loop: Loop<Event>,
   window: Window,
   component_stack: ComponentStack,
+  render_api: RenderAPI,
 }
 
 impl LambdaKernel {
@@ -107,13 +111,10 @@ impl Kernel for LambdaKernel {
       mut event_loop,
       mut component_stack,
       name,
+      render_api,
     } = self;
 
-    let mut render_api = Some(
-      RenderAPIBuilder::new()
-        .with_name(name.as_str())
-        .build(&window),
-    );
+    let mut active_render_api = Some(render_api);
 
     let publisher = event_loop.create_publisher();
     publisher.send_event(Event::Initialized);
@@ -214,7 +215,7 @@ impl Kernel for LambdaKernel {
         WinitEvent::RedrawEventsCleared => {}
         WinitEvent::LoopDestroyed => {
           component_stack.on_detach();
-          render_api.take().unwrap().destroy();
+          active_render_api.take().unwrap().destroy();
 
           println!("All resources were successfully deleted.");
         }

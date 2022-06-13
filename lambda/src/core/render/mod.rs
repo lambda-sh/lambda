@@ -43,48 +43,46 @@ pub mod internal {
 use shader::Shader;
 
 pub struct RenderAPIBuilder {
-  shaders_to_load: Vec<Shader>,
-  render_passes: Vec<render_pass::RenderPassBuilder>,
   name: String,
+  render_passes: Vec<render_pass::RenderPass>,
+  render_pipelines: Vec<pipeline::RenderPipeline>,
 }
 
 impl RenderAPIBuilder {
-  pub fn new() -> Self {
+  pub fn new(name: &str) -> Self {
     return Self {
-      shaders_to_load: vec![],
-      name: "lambda".to_string(),
+      name: name.to_string(),
       render_passes: vec![],
+      render_pipelines: vec![],
     };
-  }
-
-  pub fn with_name(mut self, name: &str) -> Self {
-    self.name = name.to_string();
-    return self;
-  }
-
-  /// Attaches a shader to the renderer to load before being built. This allows
-  /// for shaders to be loaded prior to the renderer being initialized.
-  pub fn with_shader(mut self, shader: Shader) -> Self {
-    self.shaders_to_load.push(shader);
-    return self;
   }
 
   /// Attach a render pass into the rendering API.
   pub fn with_render_pass(
     mut self,
-    configure: impl FnOnce(
-      render_pass::RenderPassBuilder,
-    ) -> render_pass::RenderPassBuilder,
+    render_pass: render_pass::RenderPass,
   ) -> Self {
-    let render_pass = configure(render_pass::RenderPassBuilder::new());
     self.render_passes.push(render_pass);
+    return self;
+  }
+
+  pub fn with_render_pipeline(
+    mut self,
+    render_pipeline: pipeline::RenderPipeline,
+  ) -> Self {
+    self.render_pipelines.push(render_pipeline);
     return self;
   }
 
   /// Builds a RenderAPI that can be used to access the GPU. Currently only
   /// supports building Graphical Rendering APIs.
   pub fn build(self, window: &window::Window) -> RenderAPI {
-    let name = self.name;
+    let RenderAPIBuilder {
+      name,
+      render_pipelines,
+      render_passes,
+    } = self;
+
     let mut instance = internal::InstanceBuilder::new()
       .build::<internal::RenderBackend>(name.as_str());
     let mut surface =
@@ -107,6 +105,8 @@ impl RenderAPIBuilder {
 
     let render_semaphore =
       internal::RenderSemaphoreBuilder::new().build(&mut gpu);
+
+    for render_pass in render_passes {}
 
     let mut render_pass = internal::RenderPassBuilder::new().build(&gpu);
 

@@ -49,12 +49,11 @@ impl Default for DemoComponent {
 /// passes, and generally allocate the resources you need from a completely safe
 /// Rust API.
 fn configure_renderer(builder: RenderAPIBuilder) -> RenderAPIBuilder {
-  return builder.with_name("2D Demo Renderer");
+  return builder;
 }
 
 fn main() {
-  let kernel = LambdaKernelBuilder::new()
-    .with_name("Lambda 2D Demo")
+  let kernel = LambdaKernelBuilder::new("Lambda 2D Demo")
     .configure_renderer(configure_renderer)
     .build()
     .with_component(move |kernel, demo: DemoComponent| {
