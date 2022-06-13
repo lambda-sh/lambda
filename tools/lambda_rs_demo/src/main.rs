@@ -4,7 +4,7 @@ use lambda::{
     render::RenderAPIBuilder,
     runnable::start_kernel,
   },
-  runnables::LambdaKernelBuilder,
+  kernels::LambdaKernelBuilder,
 };
 
 pub struct DemoComponent {}
