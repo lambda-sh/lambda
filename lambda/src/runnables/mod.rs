@@ -19,7 +19,10 @@ use crate::{
     component::Component,
     events::Event,
     render::{
-      window::Window,
+      window::{
+        Window,
+        WindowBuilder,
+      },
       RenderAPIBuilder,
     },
     runnable::Kernel,
@@ -58,7 +61,9 @@ impl LambdaKernelBuilder {
   pub fn build(self) -> LambdaKernel {
     let name = self.name;
     let mut event_loop = create_event_loop::<Event>();
-    let window = Window::new(name.as_str(), [480, 360], &mut event_loop);
+    let window = WindowBuilder::new()
+      .with_name(name.as_str())
+      .build(&mut event_loop);
     let component_stack = ComponentStack::new();
 
     return LambdaKernel {

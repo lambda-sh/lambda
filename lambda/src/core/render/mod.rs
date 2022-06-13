@@ -1,9 +1,9 @@
-pub mod assembler;
+pub mod pipeline;
+pub mod render_pass;
 pub mod shader;
 pub mod window;
 
 use lambda_platform::{
-  gfx,
   gfx::{
     command::{
       CommandPool,
@@ -34,6 +34,12 @@ use lambda_platform::{
   },
   shaderc::ShaderKind,
 };
+
+pub mod internal {
+  use lambda_platform::gfx::api::RenderingAPI as RenderContext;
+  pub type RenderBackend = RenderContext::Backend;
+}
+
 use shader::Shader;
 
 pub struct RenderAPIBuilder {
@@ -66,7 +72,7 @@ impl RenderAPIBuilder {
   pub fn build(self, window: &window::Window) -> RenderAPI {
     let name = self.name;
     let mut instance =
-      InstanceBuilder::new().build::<RenderBackend>(name.as_str());
+      InstanceBuilder::new().build::<internal::RenderBackend>(name.as_str());
     let mut surface =
       SurfaceBuilder::new().build(&instance, window.window_handle());
 
@@ -111,18 +117,17 @@ impl RenderAPIBuilder {
   }
 }
 
-use gfx::api::RenderingAPI as RenderContext;
-type RenderBackend = RenderContext::Backend;
-
+/// Generic Rendering API setup to use the current platforms primary
+/// Rendering Backend
 pub struct RenderAPI {
   name: String,
-  instance: Instance<RenderBackend>,
-  gpu: Gpu<RenderBackend>,
-  surface: Surface<RenderBackend>,
-  submission_fence: RenderSubmissionFence<RenderBackend>,
-  render_semaphore: RenderSemaphore<RenderBackend>,
-  command_pool: CommandPool<RenderBackend>,
-  render_passes: Vec<RenderPass<RenderBackend>>,
+  instance: Instance<internal::RenderBackend>,
+  gpu: Gpu<internal::RenderBackend>,
+  surface: Surface<internal::RenderBackend>,
+  submission_fence: RenderSubmissionFence<internal::RenderBackend>,
+  render_semaphore: RenderSemaphore<internal::RenderBackend>,
+  command_pool: CommandPool<internal::RenderBackend>,
+  render_passes: Vec<RenderPass<internal::RenderBackend>>,
 }
 
 impl RenderAPI {

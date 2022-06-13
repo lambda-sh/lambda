@@ -6,13 +6,40 @@ use lambda_platform::winit::{
 
 use crate::core::events::Event;
 
+pub struct WindowBuilder {
+  name: String,
+  dimensions: [u32; 2],
+}
+
+impl WindowBuilder {
+  pub fn new() -> Self {
+    return Self {
+      name: "Window".to_string(),
+      dimensions: [480, 360],
+    };
+  }
+  pub fn with_name(mut self, name: &str) -> Self {
+    self.name = name.to_string();
+    return self;
+  }
+
+  pub fn with_dimensions(mut self, width: u32, height: u32) -> Self {
+    self.dimensions = [width, height];
+    return self;
+  }
+
+  pub fn build(self, event_loop: &mut Loop<Event>) -> Window {
+    return Window::new(self.name.as_str(), self.dimensions, event_loop);
+  }
+}
+
 pub struct Window {
   window_handle: WindowHandle,
 }
 
 impl Window {
   /// Create a new
-  pub fn new(
+  fn new(
     name: &str,
     dimensions: [u32; 2],
     event_loop: &mut Loop<Event>,
