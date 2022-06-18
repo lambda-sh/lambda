@@ -118,8 +118,7 @@ impl RenderAPIBuilder {
       .with_size(dimensions[0], dimensions[1])
       .build(&gpu, &surface);
 
-    let (extent, _frame_buffer_attachment) =
-      surface.apply_swapchain(&gpu, swapchain);
+    surface.apply_swapchain(&gpu, swapchain);
 
     return RenderAPI {
       name,

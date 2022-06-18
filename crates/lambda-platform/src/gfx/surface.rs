@@ -87,7 +87,7 @@ impl SurfaceBuilder {
 
     return Surface {
       name,
-      active_swapchain: false,
+      extent: None,
       gfx_hal_surface,
     };
   }
@@ -96,12 +96,13 @@ impl SurfaceBuilder {
 /// Defines a surface that can be rendered on to.
 pub struct Surface<RenderBackend: gfx_hal::Backend> {
   name: String,
-  active_swapchain: bool,
   gfx_hal_surface: RenderBackend::Surface,
+  extent: Option<Extent2D>,
 }
 
 pub struct Swapchain {
   config: SwapchainConfig,
+  format: gfx_hal::format::Format,
 }
 
 pub struct SwapchainBuilder {
@@ -141,13 +142,10 @@ impl SwapchainBuilder {
     if caps.image_count.contains(&3) {
       swapchain_config.image_count = 3;
     }
-    let physical_device = super::internal::physical_device_for(gpu);
-
-    let format =
-      internal::get_first_supported_format(&surface, physical_device);
 
     return Swapchain {
       config: swapchain_config,
+      format,
     };
   }
 }
@@ -159,10 +157,9 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     &mut self,
     gpu: &Gpu<RenderBackend>,
     swapchain: Swapchain,
-  ) -> (Extent2D, gfx_hal::image::FramebufferAttachment) {
+  ) {
     let device = gpu::internal::logical_device_for(gpu);
-    let surface_extent = swapchain.config.extent;
-    let fba = swapchain.config.framebuffer_attachment();
+    self.extent = Some(swapchain.config.extent);
 
     unsafe {
       self
@@ -170,8 +167,6 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
         .configure_swapchain(device, swapchain.config)
         .expect("Failed to configure the swapchain");
     }
-
-    return (surface_extent, fba);
   }
 
   /// Remove the swapchain configuration that this surface used on this given
