@@ -10,52 +10,17 @@ pub mod render_pass;
 pub mod resource;
 pub mod shader;
 pub mod surface;
+pub mod viewport;
 
-use api::RenderingAPI;
-use gfx_hal::{
-  queue::QueueFamily,
-  Instance as _,
-};
-
-use self::gpu::RenderQueueType;
-
-// ----------------------------- GFX-HAL EXPORTS -------------------------------
-
-/// Exports directly from the gfx_hal crate to be used while lambda-platform
-/// stabilizes it's API.
-pub mod gfx_hal_exports {
-  pub use gfx_hal::{
-    command::{
-      ClearColor,
-      ClearValue,
-      CommandBuffer,
-      CommandBufferFlags,
-      RenderAttachmentInfo,
-      SubpassContents,
-    },
-    format::Format,
-    image::FramebufferAttachment,
-    pso::{
-      EntryPoint,
-      InputAssemblerDesc,
-      Primitive,
-      PrimitiveAssemblerDesc,
-      Rect,
-      Specialization,
-      Viewport,
-    },
-    window::{
-      Extent2D,
-      PresentationSurface,
-    },
-    Backend,
-  };
-}
+use gfx_hal::Instance as _;
 
 // ----------------------- INTERNAL INSTANCE OPERATIONS ------------------------
 
 pub mod internal {
-  use gfx_hal::Instance as _;
+  use gfx_hal::{
+    adapter::Adapter,
+    Instance as _,
+  };
 
   pub use super::{
     assembler::internal::*,
@@ -73,7 +38,6 @@ pub mod internal {
     instance: &Instance<RenderBackend>,
     window_handle: &crate::winit::WindowHandle,
   ) -> RenderBackend::Surface {
-    // TODO(vmarcella): This should propagate any errors upwards to the caller.
     unsafe {
       let surface = instance
         .gfx_hal_instance
@@ -94,10 +58,15 @@ pub mod internal {
     }
   }
 
+  /// Returns a graphical adapter from an instance.
   pub fn get_adapter<RenderBackend: gfx_hal::Backend>(
     instance: &mut Instance<RenderBackend>,
     adapter_num: usize,
-  ) {
+  ) -> Adapter<RenderBackend> {
+    return instance
+      .gfx_hal_instance
+      .enumerate_adapters()
+      .remove(adapter_num);
   }
 }
 
@@ -116,11 +85,11 @@ impl InstanceBuilder {
   }
 }
 
-pub struct Instance<RenderBackend: gfx_hal::Backend> {
+pub struct Instance<RenderBackend: internal::Backend> {
   gfx_hal_instance: RenderBackend::Instance,
 }
 
-impl<RenderBackend: gfx_hal::Backend> Instance<RenderBackend> {
+impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
   /// Create a new GfxInstance connected to the platforms primary backend.
   fn new(name: &str) -> Self {
     let instance = RenderBackend::Instance::create(name, 1)
@@ -129,57 +98,5 @@ impl<RenderBackend: gfx_hal::Backend> Instance<RenderBackend> {
     return Self {
       gfx_hal_instance: instance,
     };
-  }
-}
-
-/// GpuBuilder for constructing a GPU
-pub struct GpuBuilder {
-  render_queue_type: RenderQueueType,
-}
-
-impl GpuBuilder {
-  #[inline]
-  pub fn new() -> Self {
-    return Self {
-      render_queue_type: RenderQueueType::Graphical,
-    };
-  }
-
-  #[inline]
-  pub fn with_render_queue_type(mut self, queue_type: RenderQueueType) -> Self {
-    self.render_queue_type = queue_type;
-    return self;
-  }
-
-  /// Builds a GPU
-  pub fn build<RenderBackend: gfx_hal::Backend>(
-    self,
-    instance: &mut Instance<RenderBackend>,
-    surface: Option<&surface::Surface<RenderBackend>>,
-  ) -> Result<gpu::Gpu<RenderBackend>, String> {
-    match (surface, self.render_queue_type) {
-      (Some(surface), RenderQueueType::Graphical) => {
-        let adapter = instance.gfx_hal_instance.enumerate_adapters().remove(0);
-
-        let queue_family = adapter
-          .queue_families
-          .iter()
-          .find(|family| {
-            return surface.can_support_queue_family(family)
-              && family.queue_type().supports_graphics();
-          })
-          .expect("No compatible queue family found.")
-          .id();
-
-        let _formats =
-          surface.get_first_supported_format(&adapter.physical_device);
-
-        return Ok(gpu::Gpu::new(adapter, queue_family));
-      }
-      (Some(_surface), RenderQueueType::Compute) => {
-        todo!("Support a Compute based GPU.")
-      }
-      (_, _) => return Err("Failed to build GPU.".to_string()),
-    }
   }
 }

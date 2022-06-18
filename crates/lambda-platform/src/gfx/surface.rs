@@ -8,10 +8,56 @@ use gfx_hal::window::{
 };
 
 use super::{
-  gpu::Gpu,
-  internal,
+  gpu::{
+    self,
+    Gpu,
+  },
   Instance,
 };
+
+/// Internal Surface functions.
+pub mod internal {
+  use gfx_hal::window::Surface;
+
+  /// Checks the queue family if the current Surface can support the GPU.
+  pub fn can_support_queue_family<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+    queue_family: &RenderBackend::QueueFamily,
+  ) -> bool {
+    return surface.gfx_hal_surface.supports_queue_family(queue_family);
+  }
+
+  /// Get the supported gfx_hal color formats for a given format.
+  pub fn get_supported_formats<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+    physical_device: &RenderBackend::PhysicalDevice,
+  ) -> Vec<gfx_hal::format::Format> {
+    return surface
+      .gfx_hal_surface
+      .supported_formats(physical_device)
+      .unwrap_or(vec![]);
+  }
+
+  /// Helper function to retrieve the first supported format given a physical
+  /// GPU device.
+  pub fn get_first_supported_format<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+    physical_device: &RenderBackend::PhysicalDevice,
+  ) -> gfx_hal::format::Format {
+    let supported_formats = get_supported_formats(&surface, physical_device);
+
+    let default_format = *supported_formats
+      .get(0)
+      .unwrap_or(&gfx_hal::format::Format::Rgba8Srgb);
+
+    return supported_formats
+      .into_iter()
+      .find(|format| -> bool {
+        format.base_format().1 == gfx_hal::format::ChannelType::Srgb
+      })
+      .unwrap_or(default_format);
+  }
+}
 
 pub struct SurfaceBuilder {
   name: Option<String>,
@@ -33,7 +79,7 @@ impl SurfaceBuilder {
     instance: &Instance<RenderBackend>,
     window: &crate::winit::WindowHandle,
   ) -> Surface<RenderBackend> {
-    let gfx_hal_surface = internal::create_surface(instance, window);
+    let gfx_hal_surface = super::internal::create_surface(instance, window);
     let name = match self.name {
       Some(name) => name,
       None => "LambdaSurface".to_string(),
@@ -41,69 +87,52 @@ impl SurfaceBuilder {
 
     return Surface {
       name,
+      active_swapchain: false,
       gfx_hal_surface,
     };
   }
 }
 
-/// Defines a surface bound
+/// Defines a surface that can be rendered on to.
 pub struct Surface<RenderBackend: gfx_hal::Backend> {
   name: String,
+  active_swapchain: bool,
   gfx_hal_surface: RenderBackend::Surface,
 }
 
-impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
-  /// Checks if the surface can support
-  pub fn can_support_queue_family(
-    &self,
-    family: &RenderBackend::QueueFamily,
-  ) -> bool {
-    return self.gfx_hal_surface.supports_queue_family(family);
+pub struct Swapchain {
+  config: SwapchainConfig,
+}
+
+pub struct SwapchainBuilder {
+  size: [u32; 2],
+}
+
+impl SwapchainBuilder {
+  pub fn new() -> Self {
+    return Self { size: [480, 360] };
   }
 
-  pub fn get_supported_formats(
-    &self,
-    physical_device: &RenderBackend::PhysicalDevice,
-  ) -> Vec<gfx_hal::format::Format> {
-    return self
-      .gfx_hal_surface
-      .supported_formats(physical_device)
-      .unwrap_or(vec![]);
+  pub fn with_size(mut self, width: u32, height: u32) -> Self {
+    self.size = [width, height];
+    return self;
   }
 
-  pub fn get_first_supported_format(
-    &self,
-    physical_device: &RenderBackend::PhysicalDevice,
-  ) -> ColorFormat {
-    let supported_formats = self.get_supported_formats(physical_device);
-    let default_format = *supported_formats
-      .get(0)
-      .unwrap_or(&gfx_hal::format::Format::Rgba8Srgb);
-
-    return supported_formats
-      .into_iter()
-      .find(|format| -> bool {
-        format.base_format().1 == gfx_hal::format::ChannelType::Srgb
-      })
-      .unwrap_or(default_format);
-  }
-
-  /// Generates a swapchain configuration for a the given GPU.
-  pub fn generate_swapchain_config(
-    &self,
+  pub fn build<RenderBackend: super::internal::Backend>(
+    self,
     gpu: &Gpu<RenderBackend>,
-    size: [u32; 2],
-  ) -> SwapchainConfig {
-    let physical_device = internal::physical_device_for(gpu);
+    surface: &Surface<RenderBackend>,
+  ) -> Swapchain {
+    let physical_device = gpu::internal::physical_device_for(gpu);
+    let caps = surface.gfx_hal_surface.capabilities(physical_device);
+    let format = internal::get_first_supported_format(surface, physical_device);
 
-    let caps = self.gfx_hal_surface.capabilities(physical_device);
-    let format = self.get_first_supported_format(physical_device);
-    let mut swapchain_config = SwapchainConfig::from_caps(
+    let mut swapchain_config = gfx_hal::window::SwapchainConfig::from_caps(
       &caps,
       format,
       Extent2D {
-        width: size[0],
-        height: size[1],
+        width: self.size[0],
+        height: self.size[1],
       },
     );
 
@@ -112,24 +141,33 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     if caps.image_count.contains(&3) {
       swapchain_config.image_count = 3;
     }
+    let physical_device = super::internal::physical_device_for(gpu);
 
-    return swapchain_config;
+    let format =
+      internal::get_first_supported_format(&surface, physical_device);
+
+    return Swapchain {
+      config: swapchain_config,
+    };
   }
+}
 
-  /// Apply a swapchain configuration for any given device.
-  pub fn apply_swapchain_config(
+impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
+  /// Apply a swapchain to the current surface. This is required whenever a
+  /// swapchain has been invalidated (I.E. by window resizing)
+  pub fn apply_swapchain(
     &mut self,
     gpu: &Gpu<RenderBackend>,
-    swapchain_config: SwapchainConfig,
+    swapchain: Swapchain,
   ) -> (Extent2D, gfx_hal::image::FramebufferAttachment) {
-    let device = internal::logical_device_for(gpu);
-    let surface_extent = swapchain_config.extent;
-    let fba = swapchain_config.framebuffer_attachment();
+    let device = gpu::internal::logical_device_for(gpu);
+    let surface_extent = swapchain.config.extent;
+    let fba = swapchain.config.framebuffer_attachment();
 
     unsafe {
       self
         .gfx_hal_surface
-        .configure_swapchain(device, swapchain_config)
+        .configure_swapchain(device, swapchain.config)
         .expect("Failed to configure the swapchain");
     }
 
@@ -138,13 +176,12 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
 
   /// Remove the swapchain configuration that this surface used on this given
   /// GPU.
-  pub fn remove_swapchain_config(&mut self, gpu: &Gpu<RenderBackend>) {
+  pub fn remove_swapchain(&mut self, gpu: &Gpu<RenderBackend>) {
     println!("Removing the swapchain configuration from: {}", self.name);
-
     unsafe {
       self
         .gfx_hal_surface
-        .unconfigure_swapchain(internal::logical_device_for(gpu));
+        .unconfigure_swapchain(gpu::internal::logical_device_for(gpu));
     }
   }
 
@@ -152,6 +189,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   #[inline]
   pub fn destroy(self, instance: &Instance<RenderBackend>) {
     println!("Destroying the surface: {}", self.name);
-    internal::destroy_surface(&instance, self.gfx_hal_surface);
+
+    super::internal::destroy_surface(&instance, self.gfx_hal_surface);
   }
 }

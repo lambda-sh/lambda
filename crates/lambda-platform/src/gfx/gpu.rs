@@ -20,6 +20,63 @@ use gfx_hal::{
   },
 };
 
+use super::surface;
+
+/// GpuBuilder for constructing a GPU
+pub struct GpuBuilder {
+  render_queue_type: RenderQueueType,
+}
+
+impl GpuBuilder {
+  #[inline]
+  pub fn new() -> Self {
+    return Self {
+      render_queue_type: RenderQueueType::Graphical,
+    };
+  }
+
+  #[inline]
+  pub fn with_render_queue_type(mut self, queue_type: RenderQueueType) -> Self {
+    self.render_queue_type = queue_type;
+    return self;
+  }
+
+  /// Builds a GPU
+  pub fn build<RenderBackend: gfx_hal::Backend>(
+    self,
+    instance: &mut super::Instance<RenderBackend>,
+    surface: Option<&surface::Surface<RenderBackend>>,
+  ) -> Result<Gpu<RenderBackend>, String> {
+    match (surface, self.render_queue_type) {
+      (Some(surface), RenderQueueType::Graphical) => {
+        let adapter = super::internal::get_adapter(instance, 0);
+
+        let queue_family = adapter
+          .queue_families
+          .iter()
+          .find(|family| {
+            return surface::internal::can_support_queue_family(
+              surface, family,
+            ) && family.queue_type().supports_graphics();
+          })
+          .expect("No compatible queue family found.")
+          .id();
+
+        let _formats = surface::internal::get_first_supported_format(
+          surface,
+          &adapter.physical_device,
+        );
+
+        return Ok(Gpu::new(adapter, queue_family));
+      }
+      (Some(_surface), RenderQueueType::Compute) => {
+        todo!("Support a Compute based GPU.")
+      }
+      (_, _) => return Err("Failed to build GPU.".to_string()),
+    }
+  }
+}
+
 ///
 /// Commands oriented around creating resources on & for the GPU.
 ///

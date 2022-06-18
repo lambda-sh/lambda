@@ -21,6 +21,7 @@ pub mod internal {
       },
       gpu::{
         Gpu,
+        GpuBuilder,
         RenderQueueType,
       },
       pipeline::RenderPipelineBuilder,
@@ -32,7 +33,6 @@ pub mod internal {
         Surface,
         SurfaceBuilder,
       },
-      GpuBuilder,
       Instance,
       InstanceBuilder,
     },
@@ -40,6 +40,7 @@ pub mod internal {
   };
 }
 
+use lambda_platform::gfx::surface::SwapchainBuilder;
 use shader::Shader;
 
 pub struct RenderAPIBuilder {
@@ -113,11 +114,12 @@ impl RenderAPIBuilder {
     // Create the image extent and initial frame buffer attachment description
     // for rendering.
     let dimensions = window.dimensions();
-    let swapchain_config =
-      surface.generate_swapchain_config(&gpu, [dimensions[0], dimensions[1]]);
+    let swapchain = SwapchainBuilder::new()
+      .with_size(dimensions[0], dimensions[1])
+      .build(&gpu, &surface);
 
     let (extent, _frame_buffer_attachment) =
-      surface.apply_swapchain_config(&gpu, swapchain_config);
+      surface.apply_swapchain(&gpu, swapchain);
 
     return RenderAPI {
       name,
@@ -169,7 +171,7 @@ impl RenderAPI {
       render_pass.destroy(&gpu);
     }
 
-    surface.remove_swapchain_config(&gpu);
+    surface.remove_swapchain(&gpu);
     surface.destroy(&instance);
   }
 
