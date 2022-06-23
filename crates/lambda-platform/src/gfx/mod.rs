@@ -4,6 +4,7 @@ pub mod api;
 pub mod assembler;
 pub mod command;
 pub mod fence;
+pub mod framebuffer;
 pub mod gpu;
 pub mod pipeline;
 pub mod render_pass;

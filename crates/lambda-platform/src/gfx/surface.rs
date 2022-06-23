@@ -1,23 +1,26 @@
 /// ColorFormat for the surface.
 pub use gfx_hal::format::Format as ColorFormat;
 use gfx_hal::window::{
-  Extent2D,
   PresentationSurface,
   Surface as _,
-  SwapchainConfig,
 };
 
 use super::{
-  gpu::{
-    self,
-    Gpu,
-  },
+  gpu::Gpu,
   Instance,
 };
 
 /// Internal Surface functions.
 pub mod internal {
-  use gfx_hal::window::Surface;
+  use std::{
+    borrow::Borrow,
+    fmt::Debug,
+  };
+
+  use gfx_hal::window::{
+    PresentationSurface,
+    Surface as _,
+  };
 
   /// Checks the queue family if the current Surface can support the GPU.
   pub fn can_support_queue_family<RenderBackend: gfx_hal::Backend>(
@@ -57,6 +60,19 @@ pub mod internal {
       })
       .unwrap_or(default_format);
   }
+
+  /// Acquires a surface image for attaching to a framebuffer.
+  pub fn surface_image_from<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+  ) -> Option<&<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
+    return surface.image.as_ref();
+  }
+
+  pub fn frame_buffer_attachment_from<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+  ) -> Option<gfx_hal::image::FramebufferAttachment> {
+    return surface.frame_buffer_attachment.clone();
+  }
 }
 
 pub struct SurfaceBuilder {
@@ -76,7 +92,7 @@ impl SurfaceBuilder {
   /// Build a surface using a graphical instance & active window
   pub fn build<RenderBackend: gfx_hal::Backend>(
     self,
-    instance: &Instance<RenderBackend>,
+    instance: &super::Instance<RenderBackend>,
     window: &crate::winit::WindowHandle,
   ) -> Surface<RenderBackend> {
     let gfx_hal_surface = super::internal::create_surface(instance, window);
@@ -89,6 +105,9 @@ impl SurfaceBuilder {
       name,
       extent: None,
       gfx_hal_surface,
+      swapchain_is_valid: true,
+      image: None,
+      frame_buffer_attachment: None,
     };
   }
 }
@@ -97,13 +116,96 @@ impl SurfaceBuilder {
 pub struct Surface<RenderBackend: gfx_hal::Backend> {
   name: String,
   gfx_hal_surface: RenderBackend::Surface,
-  extent: Option<Extent2D>,
+  extent: Option<gfx_hal::window::Extent2D>,
+  swapchain_is_valid: bool,
+  image: Option<
+    <RenderBackend::Surface as gfx_hal::window::PresentationSurface<
+      RenderBackend,
+    >>::SwapchainImage,
+  >,
+  frame_buffer_attachment: Option<gfx_hal::image::FramebufferAttachment>,
 }
 
 pub struct Swapchain {
-  config: SwapchainConfig,
+  config: gfx_hal::window::SwapchainConfig,
   format: gfx_hal::format::Format,
 }
+
+impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
+  /// Apply a swapchain to the current surface. This is required whenever a
+  /// swapchain has been invalidated (I.E. by window resizing)
+  pub fn apply_swapchain(
+    &mut self,
+    gpu: &Gpu<RenderBackend>,
+    swapchain: Swapchain,
+    timeout_in_nanoseconds: u64,
+  ) -> Result<(), &str> {
+    let device = super::gpu::internal::logical_device_for(gpu);
+    self.extent = Some(swapchain.config.extent);
+
+    unsafe {
+      self
+        .gfx_hal_surface
+        .configure_swapchain(device, swapchain.config)
+        .expect("Failed to configure the swapchain");
+
+      let image =
+        match self.gfx_hal_surface.acquire_image(timeout_in_nanoseconds) {
+          Ok((image, _)) => Some(image),
+          Err(_) => {
+            self.swapchain_is_valid = false;
+            None
+          }
+        };
+
+      match image {
+        Some(image) => {
+          self.image = Some(image);
+          return Ok(());
+        }
+        None => {
+          return Err("Failed to apply the swapchain.");
+        }
+      }
+    }
+  }
+
+  /// Remove the swapchain configuration that this surface used on this given
+  /// GPU.
+  pub fn remove_swapchain(&mut self, gpu: &Gpu<RenderBackend>) {
+    println!("Removing the swapchain configuration from: {}", self.name);
+    unsafe {
+      self
+        .gfx_hal_surface
+        .unconfigure_swapchain(super::gpu::internal::logical_device_for(gpu));
+    }
+  }
+
+  /// private function to invalidate the surface swapchain.
+  #[inline]
+  fn invalidate_swapchain(&mut self) {
+    self.swapchain_is_valid = false;
+  }
+
+  /// Destroy the current surface and it's underlying resources.
+  #[inline]
+  pub fn destroy(self, instance: &Instance<RenderBackend>) {
+    println!("Destroying the surface: {}", self.name);
+
+    super::internal::destroy_surface(&instance, self.gfx_hal_surface);
+  }
+
+  /// Get the size of the surface's extent. Will only return a size if a
+  /// swapchain has been applied to the surface to render with.
+  pub fn size(&self) -> Option<[u32; 2]> {
+    return match self.extent {
+      Some(extent) => Some([extent.width, extent.height]),
+      None => None,
+    };
+  }
+}
+
+// ------------------------------ SWAPCHAIN BUILDER ----------------------------
 
 pub struct SwapchainBuilder {
   size: [u32; 2],
@@ -124,14 +226,14 @@ impl SwapchainBuilder {
     gpu: &Gpu<RenderBackend>,
     surface: &Surface<RenderBackend>,
   ) -> Swapchain {
-    let physical_device = gpu::internal::physical_device_for(gpu);
+    let physical_device = super::gpu::internal::physical_device_for(gpu);
     let caps = surface.gfx_hal_surface.capabilities(physical_device);
     let format = internal::get_first_supported_format(surface, physical_device);
 
     let mut swapchain_config = gfx_hal::window::SwapchainConfig::from_caps(
       &caps,
       format,
-      Extent2D {
+      gfx_hal::window::Extent2D {
         width: self.size[0],
         height: self.size[1],
       },
@@ -147,44 +249,5 @@ impl SwapchainBuilder {
       config: swapchain_config,
       format,
     };
-  }
-}
-
-impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
-  /// Apply a swapchain to the current surface. This is required whenever a
-  /// swapchain has been invalidated (I.E. by window resizing)
-  pub fn apply_swapchain(
-    &mut self,
-    gpu: &Gpu<RenderBackend>,
-    swapchain: Swapchain,
-  ) {
-    let device = gpu::internal::logical_device_for(gpu);
-    self.extent = Some(swapchain.config.extent);
-
-    unsafe {
-      self
-        .gfx_hal_surface
-        .configure_swapchain(device, swapchain.config)
-        .expect("Failed to configure the swapchain");
-    }
-  }
-
-  /// Remove the swapchain configuration that this surface used on this given
-  /// GPU.
-  pub fn remove_swapchain(&mut self, gpu: &Gpu<RenderBackend>) {
-    println!("Removing the swapchain configuration from: {}", self.name);
-    unsafe {
-      self
-        .gfx_hal_surface
-        .unconfigure_swapchain(gpu::internal::logical_device_for(gpu));
-    }
-  }
-
-  /// Destroy the current surface and it's underlying resources.
-  #[inline]
-  pub fn destroy(self, instance: &Instance<RenderBackend>) {
-    println!("Destroying the surface: {}", self.name);
-
-    super::internal::destroy_surface(&instance, self.gfx_hal_surface);
   }
 }

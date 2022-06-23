@@ -41,7 +41,6 @@ pub mod internal {
 }
 
 use lambda_platform::gfx::surface::SwapchainBuilder;
-use shader::Shader;
 
 pub struct RenderAPIBuilder {
   name: String,
@@ -118,7 +117,9 @@ impl RenderAPIBuilder {
       .with_size(dimensions[0], dimensions[1])
       .build(&gpu, &surface);
 
-    surface.apply_swapchain(&gpu, swapchain);
+    surface
+      .apply_swapchain(&gpu, swapchain, 1_000_000_000)
+      .expect("Failed to apply the swapchain to the surface.");
 
     return RenderAPI {
       name,
