@@ -68,6 +68,7 @@ pub mod internal {
     return surface.image.as_ref();
   }
 
+  /// FrameBuffer Attachment
   pub fn frame_buffer_attachment_from<RenderBackend: gfx_hal::Backend>(
     surface: &super::Surface<RenderBackend>,
   ) -> Option<gfx_hal::image::FramebufferAttachment> {
