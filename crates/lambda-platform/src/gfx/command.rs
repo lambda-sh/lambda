@@ -7,6 +7,24 @@ use gfx_hal::{
 
 use super::gpu::Gpu;
 
+/// Command Pool Flag used to define optimizations/properties of the command
+/// pool prior to being built.
+pub enum CommandPoolFlag {
+  ShortLivedBuffers,
+  ResetBuffersIndividually,
+  None,
+  All,
+}
+
+/// Used to define properties of a command buffer
+pub enum CommandBufferFlags {
+  OneTimeSubmit,
+  RenderPassContinue,
+  SimultaneousUse,
+  None,
+  All,
+}
+
 pub struct CommandPoolBuilder {
   command_pool_flags: gfx_hal::pool::CommandPoolCreateFlags,
 }
@@ -21,11 +39,19 @@ impl CommandPoolBuilder {
   }
 
   /// Attach command pool create flags to the command pool builder.
-  pub fn with_flags(
-    mut self,
-    flags: gfx_hal::pool::CommandPoolCreateFlags,
-  ) -> Self {
-    self.command_pool_flags = flags;
+  pub fn with_flag(mut self, flag: CommandPoolFlag) -> Self {
+    let flags = match flag {
+      CommandPoolFlag::ShortLivedBuffers => {
+        gfx_hal::pool::CommandPoolCreateFlags::TRANSIENT
+      }
+      CommandPoolFlag::ResetBuffersIndividually => {
+        gfx_hal::pool::CommandPoolCreateFlags::RESET_INDIVIDUAL
+      }
+      CommandPoolFlag::None => gfx_hal::pool::CommandPoolCreateFlags::empty(),
+      CommandPoolFlag::All => gfx_hal::pool::CommandPoolCreateFlags::all(),
+    };
+
+    self.command_pool_flags.insert(flags);
     return self;
   }
 
