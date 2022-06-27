@@ -10,6 +10,8 @@ pub mod internal {
   pub use lambda_platform::{
     gfx::{
       command::{
+        CommandBuffer,
+        CommandBufferBuilder,
         CommandPool,
         CommandPoolBuilder,
       },
@@ -40,7 +42,10 @@ pub mod internal {
   };
 }
 
-use lambda_platform::gfx::surface::SwapchainBuilder;
+use lambda_platform::gfx::{
+  command::CommandBufferLevel,
+  surface::SwapchainBuilder,
+};
 
 pub struct RenderAPIBuilder {
   name: String,
@@ -96,7 +101,9 @@ impl RenderAPIBuilder {
 
     // Build command pool and allocate a single buffer named Primary
     let mut command_pool = internal::CommandPoolBuilder::new().build(&gpu);
-    command_pool.allocate_command_buffer("Primary");
+    let command_buffer =
+      internal::CommandBufferBuilder::new(CommandBufferLevel::Primary)
+        .build(&mut command_pool, "LambdaPrimary");
 
     // Build our rendering submission fence and semaphore.
     let submission_fence = internal::RenderSubmissionFenceBuilder::new()
