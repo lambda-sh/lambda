@@ -16,7 +16,16 @@ pub mod internal {
     },
     Backend,
   };
+
+  /// Retrieves the underlying gfx_hal pipeline for internal use.
+  pub fn pipeline_for<RenderBackend: gfx_hal::Backend>(
+    pipeline: &super::RenderPipeline<RenderBackend>,
+  ) -> &RenderBackend::GraphicsPipeline {
+    return &pipeline.pipeline;
+  }
 }
+
+use gfx_hal::device::Device;
 
 use super::{
   gpu::Gpu,
@@ -84,10 +93,20 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
         blend: Some(internal::BlendState::ALPHA),
       });
 
-    return RenderPipeline { pipeline_layout };
+    let pipeline = unsafe {
+      super::internal::logical_device_for(gpu)
+        .create_graphics_pipeline(&pipeline_desc, None)
+        .expect("Failed to create graphics pipeline")
+    };
+
+    return RenderPipeline {
+      pipeline_layout,
+      pipeline,
+    };
   }
 }
 
 pub struct RenderPipeline<RenderBackend: internal::Backend> {
   pipeline_layout: RenderBackend::PipelineLayout,
+  pipeline: RenderBackend::GraphicsPipeline,
 }

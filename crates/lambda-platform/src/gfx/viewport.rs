@@ -47,7 +47,7 @@ impl ViewPortBuilder {
 
 pub mod internal {
   /// Return the gfx_hal viewport.
-  pub fn viewport_for(viewport: &super::ViewPort) -> &gfx_hal::pso::Viewport {
-    return &viewport.viewport;
+  pub fn viewport_for(viewport: &super::ViewPort) -> gfx_hal::pso::Viewport {
+    return viewport.viewport.clone();
   }
 }

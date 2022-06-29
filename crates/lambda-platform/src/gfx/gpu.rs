@@ -94,32 +94,6 @@ pub enum RenderQueueType {
   Transfer,
 }
 
-pub mod internal {
-  use super::Gpu;
-
-  /// Retrieves the gfx_hal logical device for a given GPU.
-  #[inline]
-  pub fn logical_device_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::Device {
-    return &gpu.gpu.device;
-  }
-
-  #[inline]
-  pub fn physical_device_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::PhysicalDevice {
-    return &gpu.adapter.physical_device;
-  }
-
-  #[inline]
-  pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> gfx_hal::queue::QueueFamilyId {
-    return gpu.queue_group.family;
-  }
-}
-
 impl<B: gfx_hal::Backend> Gpu<B> {
   /// Instantiates a new GPU given an adapter that is implemented by the GPUs
   /// current rendering backend B. A new GPU does not come with a command pool unless specified.
@@ -244,5 +218,33 @@ impl<B: gfx_hal::Backend> Gpu<B> {
     unsafe {
       self.gpu.device.destroy_graphics_pipeline(pipeline);
     }
+  }
+}
+
+// --------------------------------- GPU INTERNALS -----------------------------
+
+pub mod internal {
+  use super::Gpu;
+
+  /// Retrieves the gfx_hal logical device for a given GPU.
+  #[inline]
+  pub fn logical_device_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> &RenderBackend::Device {
+    return &gpu.gpu.device;
+  }
+
+  #[inline]
+  pub fn physical_device_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> &RenderBackend::PhysicalDevice {
+    return &gpu.adapter.physical_device;
+  }
+
+  #[inline]
+  pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> gfx_hal::queue::QueueFamilyId {
+    return gpu.queue_group.family;
   }
 }

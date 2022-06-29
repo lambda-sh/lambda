@@ -1,17 +1,17 @@
 use std::{
+  borrow::Borrow,
   collections::HashMap,
   ops::Range,
 };
 
 use gfx_hal::{
+  command::ClearValue,
   device::Device,
   pool::CommandPool as _,
 };
 
 use super::{
-  framebuffer::Framebuffer,
-  gpu::Gpu,
-  render_pass::RenderPass,
+  pipeline::RenderPipeline,
   viewport::ViewPort,
 };
 
@@ -51,24 +51,94 @@ pub enum Command<'render_context, RenderBackend: gfx_hal::Backend> {
     viewports: Vec<ViewPort>,
   },
   BeginRenderPass {
-    render_pass: RenderPass<RenderBackend>,
-    frame_buffer: &'render_context Framebuffer,
+    render_pass: super::render_pass::RenderPass<RenderBackend>,
+    surface: &'render_context super::surface::Surface<RenderBackend>,
+    frame_buffer:
+      &'render_context super::framebuffer::Framebuffer<RenderBackend>,
     viewport: ViewPort,
   },
   EndRenderPass,
+  AttachGraphicsPipeline {
+    pipeline: RenderPipeline<RenderBackend>,
+  },
   Draw {
     vertices: Range<u32>,
   },
 }
 
 pub struct CommandBuffer<'command_pool, RenderBackend: gfx_hal::Backend> {
-  command_buffer: &'command_pool RenderBackend::CommandBuffer,
+  command_buffer: &'command_pool mut RenderBackend::CommandBuffer,
+  flags: gfx_hal::command::CommandBufferFlags,
 }
 
 impl<'command_pool, RenderBackend: gfx_hal::Backend>
   CommandBuffer<'command_pool, RenderBackend>
 {
-  pub fn _recording() {}
+  pub fn issue_command<'render_context>(
+    &mut self,
+    command: Command<'render_context, RenderBackend>,
+  ) {
+    use gfx_hal::command::CommandBuffer as _;
+    unsafe {
+      match command {
+        Command::Begin => self.command_buffer.begin_primary(self.flags),
+        Command::SetViewports { first, viewports } => {
+          self.command_buffer.set_viewports(
+            first,
+            viewports.into_iter().map(|viewport| {
+              super::viewport::internal::viewport_for(&viewport)
+            }),
+          )
+        }
+        Command::SetScissors { first, viewports } => {
+          self.command_buffer.set_scissors(
+            first,
+            viewports.into_iter().map(|viewport| {
+              super::viewport::internal::viewport_for(&viewport).rect
+            }),
+          )
+        }
+        Command::BeginRenderPass {
+          render_pass,
+          frame_buffer,
+          surface,
+          viewport,
+        } => self.command_buffer.begin_render_pass(
+          super::render_pass::internal::render_pass_for(&render_pass),
+          super::framebuffer::internal::frame_buffer_for(&frame_buffer),
+          super::viewport::internal::viewport_for(&viewport).rect,
+          vec![gfx_hal::command::RenderAttachmentInfo::<RenderBackend> {
+            image_view: super::surface::internal::surface_image_from(surface)
+              .unwrap()
+              .borrow(),
+            clear_value: ClearValue {
+              color: gfx_hal::command::ClearColor {
+                float32: [0.0, 0.0, 0.0, 1.0],
+              },
+            },
+          }]
+          .into_iter(),
+          gfx_hal::command::SubpassContents::Inline,
+        ),
+        Command::AttachGraphicsPipeline { pipeline } => {
+          self.command_buffer.bind_graphics_pipeline(
+            super::pipeline::internal::pipeline_for(&pipeline),
+          )
+        }
+        Command::EndRenderPass => self.command_buffer.end_render_pass(),
+        Command::Draw { vertices } => todo!(),
+      }
+    }
+  }
+
+  pub fn issue_commands<'render_context>(
+    &mut self,
+    commands: Vec<Command<'render_context, RenderBackend>>,
+  ) {
+    for command in commands {
+      self.issue_command(command);
+    }
+  }
 }
 
 pub struct CommandBufferBuilder {
@@ -82,6 +152,27 @@ impl CommandBufferBuilder {
     return CommandBufferBuilder { flags, level };
   }
 
+  pub fn with_feature(mut self, feature: CommandBufferFeatures) -> Self {
+    let flags = match feature {
+      CommandBufferFeatures::ResetEverySubmission => {
+        gfx_hal::command::CommandBufferFlags::ONE_TIME_SUBMIT
+      }
+      CommandBufferFeatures::TiedToRenderPass => {
+        gfx_hal::command::CommandBufferFlags::RENDER_PASS_CONTINUE
+      }
+      CommandBufferFeatures::SimultaneousRecording => {
+        gfx_hal::command::CommandBufferFlags::SIMULTANEOUS_USE
+      }
+      CommandBufferFeatures::None => {
+        gfx_hal::command::CommandBufferFlags::empty()
+      }
+      CommandBufferFeatures::All => gfx_hal::command::CommandBufferFlags::all(),
+    };
+
+    self.flags.insert(flags);
+    return self;
+  }
+
   /// Build the command buffer and tie it to the lifetime of the command pool
   /// that gets created.
   pub fn build<'command_pool, RenderBackend: gfx_hal::Backend>(
@@ -89,8 +180,15 @@ impl CommandBufferBuilder {
     command_pool: &'command_pool mut CommandPool<RenderBackend>,
     name: &str,
   ) -> CommandBuffer<'command_pool, RenderBackend> {
-    let command_buffer = command_pool.allocate_command_buffer(name, self.level);
-    return CommandBuffer { command_buffer };
+    let mut command_buffer =
+      command_pool.allocate_command_buffer(name, self.level);
+
+    let flags = self.flags;
+
+    return CommandBuffer {
+      command_buffer,
+      flags,
+    };
   }
 }
 
@@ -127,7 +225,10 @@ impl CommandPoolBuilder {
   }
 
   /// Builds a command pool.
-  pub fn build<B: gfx_hal::Backend>(self, gpu: &Gpu<B>) -> CommandPool<B> {
+  pub fn build<B: gfx_hal::Backend>(
+    self,
+    gpu: &super::gpu::Gpu<B>,
+  ) -> CommandPool<B> {
     let command_pool = unsafe {
       super::internal::logical_device_for(gpu)
         .create_command_pool(
@@ -158,7 +259,7 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
     &mut self,
     name: &str,
     level: CommandBufferLevel,
-  ) -> &RenderBackend::CommandBuffer {
+  ) -> &mut RenderBackend::CommandBuffer {
     let buffer = unsafe {
       self
         .command_pool
@@ -207,7 +308,7 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   }
 
   #[inline]
-  pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
+  pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
       super::gpu::internal::logical_device_for(gpu)
         .destroy_command_pool(self.command_pool);
