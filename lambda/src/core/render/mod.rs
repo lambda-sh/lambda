@@ -46,6 +46,7 @@ use lambda_platform::gfx::{
   command::{
     Command,
     CommandBufferBuilder,
+    CommandBufferFeatures,
     CommandBufferLevel,
   },
   surface::SwapchainBuilder,
@@ -191,14 +192,41 @@ impl RenderAPI {
   }
 
   pub fn render(&mut self) {
-    let mut command_buffer = CommandBufferBuilder::new(CommandBufferLevel::Primary).with_feature(lambda_platform::gfx::command::CommandBufferFeatures::ResetEverySubmission).build(&mut self.command_pool, "primary");
+    let mut command_buffer =
+      CommandBufferBuilder::new(CommandBufferLevel::Primary)
+        .with_feature(CommandBufferFeatures::ResetEverySubmission)
+        .build(&mut self.command_pool, "primary");
 
-    let commands = vec![
-      Command::<internal::RenderBackend>::Begin,
-      Command::<internal::RenderBackend>::End,
+    let command_list = vec![
+      PlatformRenderCommand::Begin,
+      PlatformRenderCommand::SetViewports {
+        start_at: 0,
+        viewports: self.viewports.clone(),
+      },
+      PlatformRenderCommand::SetScissors {
+        start_at: 0,
+        viewports: self.viewports.clone(),
+      },
+      PlatformRenderCommand::EndRenderPass,
+      PlatformRenderCommand::End,
     ];
+
+    command_buffer.issue_commands(command_list);
+
+    self.gpu.submit_command_buffer(
+      &mut command_buffer,
+      vec![],
+      &mut self.submission_fence,
+    );
+
+    self
+      .gpu
+      .render_to_surface(&mut self.surface, &mut self.render_semaphore)
+      .expect("Failed to render to the surface");
   }
 }
+
+type PlatformRenderCommand = Command<internal::RenderBackend>;
 
 // TODO(vmarcella): Abstract the gfx hal assembler away from the
 // render module directly.

@@ -56,21 +56,36 @@ pub enum CommandBufferLevel {
   Secondary,
 }
 
-pub enum Command<'render_context, RenderBackend: gfx_hal::Backend> {
+pub struct CommandSetBuilder {
+  viewports: Vec<ViewPort>,
+  scissors: Vec<ViewPort>,
+  recording: bool,
+}
+
+impl CommandSetBuilder {
+  pub fn new() -> Self {
+    return Self {
+      viewports: vec![],
+      scissors: vec![],
+      recording: false,
+    };
+  }
+}
+
+pub enum Command<RenderBackend: gfx_hal::Backend> {
   Begin,
   SetViewports {
-    first: u32,
-    viewports: [ViewPort; 1],
+    start_at: u32,
+    viewports: Vec<ViewPort>,
   },
   SetScissors {
-    first: u32,
-    viewports: [ViewPort; 1],
+    start_at: u32,
+    viewports: Vec<ViewPort>,
   },
   BeginRenderPass {
     render_pass: super::render_pass::RenderPass<RenderBackend>,
-    surface: &'render_context mut super::surface::Surface<RenderBackend>,
-    frame_buffer:
-      &'render_context super::framebuffer::Framebuffer<RenderBackend>,
+    surface: Box<super::surface::Surface<RenderBackend>>,
+    frame_buffer: Box<super::framebuffer::Framebuffer<RenderBackend>>,
     viewport: ViewPort,
   },
   EndRenderPass,
@@ -91,30 +106,29 @@ pub struct CommandBuffer<'command_pool, RenderBackend: gfx_hal::Backend> {
 impl<'command_pool, RenderBackend: gfx_hal::Backend>
   CommandBuffer<'command_pool, RenderBackend>
 {
-  pub fn issue_command<'render_context>(
-    &mut self,
-    command: Command<'render_context, RenderBackend>,
-  ) {
+  pub fn issue_command(&mut self, command: Command<RenderBackend>) {
     use gfx_hal::command::CommandBuffer as _;
     unsafe {
       match command {
         Command::Begin => self.command_buffer.begin_primary(self.flags),
-        Command::SetViewports { first, viewports } => {
-          self.command_buffer.set_viewports(
-            first,
-            viewports.into_iter().map(|viewport| {
-              super::viewport::internal::viewport_for(&viewport)
-            }),
-          )
-        }
-        Command::SetScissors { first, viewports } => {
-          self.command_buffer.set_scissors(
-            first,
-            viewports.into_iter().map(|viewport| {
-              super::viewport::internal::viewport_for(&viewport).rect
-            }),
-          )
-        }
+        Command::SetViewports {
+          start_at,
+          viewports,
+        } => self.command_buffer.set_viewports(
+          start_at,
+          viewports
+            .into_iter()
+            .map(|viewport| super::viewport::internal::viewport_for(&viewport)),
+        ),
+        Command::SetScissors {
+          start_at,
+          viewports,
+        } => self.command_buffer.set_scissors(
+          start_at,
+          viewports.into_iter().map(|viewport| {
+            super::viewport::internal::viewport_for(&viewport).rect
+          }),
+        ),
         Command::BeginRenderPass {
           render_pass,
           frame_buffer,
@@ -153,7 +167,7 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
 
   pub fn issue_commands<'render_context>(
     &mut self,
-    commands: Vec<Command<'render_context, RenderBackend>>,
+    commands: Vec<Command<RenderBackend>>,
   ) {
     for command in commands {
       self.issue_command(command);
