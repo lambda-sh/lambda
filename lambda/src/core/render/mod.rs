@@ -43,8 +43,13 @@ pub mod internal {
 }
 
 use lambda_platform::gfx::{
-  command::CommandBufferLevel,
+  command::{
+    Command,
+    CommandBufferBuilder,
+    CommandBufferLevel,
+  },
   surface::SwapchainBuilder,
+  viewport::ViewPort,
 };
 
 pub struct RenderAPIBuilder {
@@ -136,6 +141,7 @@ impl RenderAPIBuilder {
       submission_fence,
       render_semaphore,
       command_pool,
+      viewports: vec![],
       render_passes: vec![render_pass],
     };
   }
@@ -152,6 +158,7 @@ pub struct RenderAPI {
   render_semaphore: internal::RenderSemaphore<internal::RenderBackend>,
   command_pool: internal::CommandPool<internal::RenderBackend>,
   render_passes: Vec<internal::RenderPass<internal::RenderBackend>>,
+  viewports: Vec<ViewPort>,
 }
 
 impl RenderAPI {
@@ -165,6 +172,7 @@ impl RenderAPI {
       render_semaphore,
       command_pool,
       render_passes,
+      viewports,
     } = self;
 
     println!("{} will now start destroying resources.", name);
@@ -182,7 +190,14 @@ impl RenderAPI {
     surface.destroy(&instance);
   }
 
-  pub fn render() {}
+  pub fn render(&mut self) {
+    let mut command_buffer = CommandBufferBuilder::new(CommandBufferLevel::Primary).with_feature(lambda_platform::gfx::command::CommandBufferFeatures::ResetEverySubmission).build(&mut self.command_pool, "primary");
+
+    let commands = vec![
+      Command::<internal::RenderBackend>::Begin,
+      Command::<internal::RenderBackend>::End,
+    ];
+  }
 }
 
 // TODO(vmarcella): Abstract the gfx hal assembler away from the

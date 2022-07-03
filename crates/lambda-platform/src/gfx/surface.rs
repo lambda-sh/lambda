@@ -1,12 +1,20 @@
+use std::borrow::Borrow;
+
 /// ColorFormat for the surface.
 pub use gfx_hal::format::Format as ColorFormat;
-use gfx_hal::window::{
-  PresentationSurface,
-  Surface as _,
+use gfx_hal::{
+  queue::Queue,
+  window::{
+    PresentationSurface,
+    Surface as _,
+  },
 };
 
 use super::{
-  gpu::Gpu,
+  gpu::{
+    internal::primary_queue_for,
+    Gpu,
+  },
   Instance,
 };
 
@@ -62,7 +70,14 @@ pub mod internal {
   }
 
   /// Acquires a surface image for attaching to a framebuffer.
-  pub fn surface_image_from<RenderBackend: gfx_hal::Backend>(
+  pub fn take_surface_image_for<RenderBackend: gfx_hal::Backend>(
+    surface: &mut super::Surface<RenderBackend>,
+  ) -> Option<<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
+    return surface.image.take();
+  }
+
+  /// Acquires a surface image for attaching to a framebuffer.
+  pub fn borrow_surface_image_for<RenderBackend: gfx_hal::Backend>(
     surface: &super::Surface<RenderBackend>,
   ) -> Option<&<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
     return surface.image.as_ref();
@@ -73,6 +88,23 @@ pub mod internal {
     surface: &super::Surface<RenderBackend>,
   ) -> Option<gfx_hal::image::FramebufferAttachment> {
     return surface.frame_buffer_attachment.clone();
+  }
+
+  pub fn surface_for<RenderBackend: gfx_hal::Backend>(
+    surface: &mut super::Surface<RenderBackend>,
+  ) -> &mut RenderBackend::Surface {
+    return &mut surface.gfx_hal_surface;
+  }
+
+  /// Borrow the surface and take the image. This internal function is used for
+  /// rendering and composes surface_for + take image.
+  pub fn borrow_surface_and_take_image<RenderBackend: gfx_hal::Backend>(
+    surface: &mut super::Surface<RenderBackend>,
+  ) -> (&mut RenderBackend::Surface, <RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage){
+    return (
+      &mut surface.gfx_hal_surface,
+      surface.image.take().expect(""),
+    );
   }
 }
 

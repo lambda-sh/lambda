@@ -3,6 +3,9 @@ use lambda_platform::gfx;
 use super::shader::Shader;
 
 pub struct RenderPipelineBuilder {}
+impl RenderPipeline {
+  pub fn destroy(self) {}
+}
 
 impl RenderPipelineBuilder {
   pub fn new() -> Self {

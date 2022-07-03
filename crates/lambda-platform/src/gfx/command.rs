@@ -1,7 +1,13 @@
 use std::{
-  borrow::Borrow,
+  borrow::{
+    Borrow,
+    Cow,
+  },
   collections::HashMap,
-  ops::Range,
+  ops::{
+    Deref,
+    Range,
+  },
 };
 
 use gfx_hal::{
@@ -18,7 +24,10 @@ use super::{
 /// Command Pool Flag used to define optimizations/properties of the command
 /// pool prior to being built.
 pub enum CommandPoolFeatures {
+  /// Optimizes the command pool for buffers that are expected to have short
+  /// lifetimes (I.E. for constant rendering)
   ShortLivedBuffers,
+  /// Rest
   ResetBuffersIndividually,
   None,
   All,
@@ -27,11 +36,18 @@ pub enum CommandPoolFeatures {
 /// Features that can be used to optimize command buffers for specific
 /// usages/scenarios
 pub enum CommandBufferFeatures {
-  /// This feature specifies that the
+  /// Enable this feature when you would like the command buffer to reset it's
+  /// contents every time its submitted for Rendering.
   ResetEverySubmission,
+  /// Enable this feature if the command buffer lives within the lifetime of a
+  /// render pass.
   TiedToRenderPass,
+  /// Enable this feature if the command buffer allows for silumtaneous
+  /// recording
   SimultaneousRecording,
+  /// Enables no features.
   None,
+  /// Enables all features.
   All,
 }
 
@@ -44,15 +60,15 @@ pub enum Command<'render_context, RenderBackend: gfx_hal::Backend> {
   Begin,
   SetViewports {
     first: u32,
-    viewports: Vec<ViewPort>,
+    viewports: [ViewPort; 1],
   },
   SetScissors {
     first: u32,
-    viewports: Vec<ViewPort>,
+    viewports: [ViewPort; 1],
   },
   BeginRenderPass {
     render_pass: super::render_pass::RenderPass<RenderBackend>,
-    surface: &'render_context super::surface::Surface<RenderBackend>,
+    surface: &'render_context mut super::surface::Surface<RenderBackend>,
     frame_buffer:
       &'render_context super::framebuffer::Framebuffer<RenderBackend>,
     viewport: ViewPort,
@@ -64,6 +80,7 @@ pub enum Command<'render_context, RenderBackend: gfx_hal::Backend> {
   Draw {
     vertices: Range<u32>,
   },
+  End,
 }
 
 pub struct CommandBuffer<'command_pool, RenderBackend: gfx_hal::Backend> {
@@ -108,9 +125,11 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           super::framebuffer::internal::frame_buffer_for(&frame_buffer),
           super::viewport::internal::viewport_for(&viewport).rect,
           vec![gfx_hal::command::RenderAttachmentInfo::<RenderBackend> {
-            image_view: super::surface::internal::surface_image_from(surface)
-              .unwrap()
-              .borrow(),
+            image_view: super::surface::internal::borrow_surface_image_for(
+              &surface,
+            )
+            .unwrap()
+            .borrow(),
             clear_value: ClearValue {
               color: gfx_hal::command::ClearColor {
                 float32: [0.0, 0.0, 0.0, 1.0],
@@ -126,7 +145,8 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           )
         }
         Command::EndRenderPass => self.command_buffer.end_render_pass(),
-        Command::Draw { vertices } => todo!(),
+        Command::Draw { vertices } => self.command_buffer.draw(vertices, 0..1),
+        Command::End => self.command_buffer.finish(),
       }
     }
   }
@@ -196,7 +216,19 @@ pub struct CommandPoolBuilder {
   command_pool_flags: gfx_hal::pool::CommandPoolCreateFlags,
 }
 
-pub mod internal {}
+pub mod internal {
+  pub fn command_buffer_for<
+    'render_context,
+    RenderBackend: gfx_hal::Backend,
+  >(
+    command_buffer: &'render_context super::CommandBuffer<
+      'render_context,
+      RenderBackend,
+    >,
+  ) -> &'render_context RenderBackend::CommandBuffer {
+    return command_buffer.command_buffer;
+  }
+}
 
 impl CommandPoolBuilder {
   pub fn new() -> Self {

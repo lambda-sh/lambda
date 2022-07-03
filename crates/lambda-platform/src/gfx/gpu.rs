@@ -1,4 +1,7 @@
-use std::mem::size_of;
+use std::{
+  borrow::BorrowMut,
+  mem::size_of,
+};
 
 use gfx_hal::{
   adapter::Adapter,
@@ -20,7 +23,14 @@ use gfx_hal::{
   },
 };
 
-use super::surface;
+use super::{
+  command::CommandBuffer,
+  fence::{
+    RenderSemaphore,
+    RenderSubmissionFence,
+  },
+  surface,
+};
 
 /// GpuBuilder for constructing a GPU
 pub struct GpuBuilder {
@@ -94,11 +104,11 @@ pub enum RenderQueueType {
   Transfer,
 }
 
-impl<B: gfx_hal::Backend> Gpu<B> {
+impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   /// Instantiates a new GPU given an adapter that is implemented by the GPUs
   /// current rendering backend B. A new GPU does not come with a command pool unless specified.
   pub fn new(
-    adapter: Adapter<B>,
+    adapter: Adapter<RenderBackend>,
     queue_family: gfx_hal::queue::QueueFamilyId,
   ) -> Self {
     let queue_family = adapter
@@ -124,20 +134,21 @@ impl<B: gfx_hal::Backend> Gpu<B> {
   }
 
   /// Submits a command buffer to the GPU.
-  pub fn submit_command_buffer(
+  pub fn submit_command_buffer<'render_context>(
     &mut self,
-    command_buffer: &B::CommandBuffer,
-    semaphore: &B::Semaphore,
-    fence: &mut B::Fence,
+    command_buffer: &mut CommandBuffer<RenderBackend>,
+    signal_semaphores: Vec<RenderSemaphore<RenderBackend>>,
+    fence: &mut RenderSubmissionFence<RenderBackend>,
   ) {
-    let commands = vec![command_buffer].into_iter();
-    let semaphores = vec![semaphore].into_iter();
+    let commands =
+      vec![super::command::internal::command_buffer_for(command_buffer)]
+        .into_iter();
     unsafe {
       self.queue_group.queues[0].submit(
         commands,
         vec![].into_iter(),
-        semaphores,
-        Some(fence),
+        vec![].into_iter(),
+        Some(super::fence::internal::mutable_fence_for(fence)),
       );
     }
   }
@@ -145,25 +156,37 @@ impl<B: gfx_hal::Backend> Gpu<B> {
   /// Render to the surface and return the result from the GPU.
   pub fn render_to_surface(
     &mut self,
-    surface: &mut B::Surface,
-    image: <B::Surface as PresentationSurface<B>>::SwapchainImage,
-    semaphore: &mut B::Semaphore,
-  ) -> Result<Option<Suboptimal>, PresentError> {
-    unsafe {
-      let result =
-        self.queue_group.queues[0].present(surface, image, Some(semaphore));
+    surface: &mut surface::Surface<RenderBackend>,
+    semaphore: &mut RenderSemaphore<RenderBackend>,
+  ) -> Result<(), &str> {
+    let (render_surface, render_image) =
+      super::surface::internal::borrow_surface_and_take_image(surface);
 
-      return result;
+    let result = unsafe {
+      self.queue_group.queues[0].present(
+        render_surface,
+        render_image,
+        Some(super::fence::internal::mutable_semaphore_for(semaphore)),
+      )
+    };
+
+    if result.is_err() {
+      surface.remove_swapchain(self);
+      return Err(
+        "Rendering failed. Swapchain for the surface needs to be reconfigured.",
+      );
     }
+
+    return Ok(());
   }
 
   /// Create a frame buffer on the GPU.
   pub fn create_frame_buffer(
     &mut self,
-    render_pass: &B::RenderPass,
+    render_pass: &RenderBackend::RenderPass,
     image: gfx_hal::image::FramebufferAttachment,
     dimensions: &Extent2D,
-  ) -> B::Framebuffer {
+  ) -> RenderBackend::Framebuffer {
     unsafe {
       use gfx_hal::image::Extent;
       return self
@@ -183,14 +206,17 @@ impl<B: gfx_hal::Backend> Gpu<B> {
   }
 
   /// Destroy a frame buffer that was created by the GPU.
-  pub fn destroy_frame_buffer(&mut self, frame_buffer: B::Framebuffer) {
+  pub fn destroy_frame_buffer(
+    &mut self,
+    frame_buffer: RenderBackend::Framebuffer,
+  ) {
     unsafe {
       self.gpu.device.destroy_framebuffer(frame_buffer);
     }
   }
 
   /// Create a pipeline layout on the GPU.
-  pub fn create_pipeline_layout(&mut self) -> B::PipelineLayout {
+  pub fn create_pipeline_layout(&mut self) -> RenderBackend::PipelineLayout {
     unsafe {
       // wait, I think I have a hack for this
       let max: u32 = size_of::<u32>() as u32;
@@ -208,13 +234,16 @@ impl<B: gfx_hal::Backend> Gpu<B> {
   /// Destroy a pipeline layout that was allocated by this GPU.
   pub fn destroy_pipeline_layout(
     &mut self,
-    pipeline_layout: B::PipelineLayout,
+    pipeline_layout: RenderBackend::PipelineLayout,
   ) {
     unsafe { self.gpu.device.destroy_pipeline_layout(pipeline_layout) }
   }
 
   /// Destroy a graphics pipeline allocated by this GPU.
-  pub fn destroy_graphics_pipeline(&self, pipeline: B::GraphicsPipeline) {
+  pub fn destroy_graphics_pipeline(
+    &self,
+    pipeline: RenderBackend::GraphicsPipeline,
+  ) {
     unsafe {
       self.gpu.device.destroy_graphics_pipeline(pipeline);
     }
@@ -246,5 +275,13 @@ pub mod internal {
     gpu: &Gpu<RenderBackend>,
   ) -> gfx_hal::queue::QueueFamilyId {
     return gpu.queue_group.family;
+  }
+
+  /// Retrieve the primary queue from the GPU.
+  #[inline]
+  pub fn primary_queue_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> &RenderBackend::Queue {
+    return &gpu.queue_group.queues[0];
   }
 }

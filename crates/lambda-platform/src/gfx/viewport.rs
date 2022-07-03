@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub struct ViewPort {
   viewport: gfx_hal::pso::Viewport,
 }
