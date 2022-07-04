@@ -106,7 +106,21 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
   }
 }
 
+/// Represents a render capable pipeline for graphical
 pub struct RenderPipeline<RenderBackend: internal::Backend> {
   pipeline_layout: RenderBackend::PipelineLayout,
   pipeline: RenderBackend::GraphicsPipeline,
+}
+
+impl<RenderBackend: internal::Backend> RenderPipeline<RenderBackend> {
+  /// Destroys the pipeline layout and graphical pipeline
+  pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
+    unsafe {
+      super::gpu::internal::logical_device_for(gpu)
+        .destroy_pipeline_layout(self.pipeline_layout);
+
+      super::gpu::internal::logical_device_for(gpu)
+        .destroy_graphics_pipeline(self.pipeline);
+    }
+  }
 }

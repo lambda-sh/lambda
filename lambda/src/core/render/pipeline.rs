@@ -1,6 +1,9 @@
 use lambda_platform::gfx;
 
-use super::shader::Shader;
+use super::{
+  shader::Shader,
+  RenderAPI,
+};
 
 pub struct RenderPipelineBuilder {}
 impl RenderPipeline {
@@ -14,6 +17,7 @@ impl RenderPipelineBuilder {
 
   pub fn build(
     self,
+    render_context: &RenderAPI,
     vertex_shader: &Shader,
     fragment_shader: &Shader,
   ) -> RenderPipeline {

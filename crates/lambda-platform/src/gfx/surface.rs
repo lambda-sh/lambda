@@ -108,6 +108,8 @@ pub mod internal {
   }
 }
 
+#[derive(Debug, Clone)]
+/// The API to use for building surfaces from a graphical instance.
 pub struct SurfaceBuilder {
   name: Option<String>,
 }
@@ -146,11 +148,13 @@ impl SurfaceBuilder {
 }
 
 /// Defines a surface that can be rendered on to.
+#[derive(Debug)]
 pub struct Surface<RenderBackend: gfx_hal::Backend> {
   name: String,
   gfx_hal_surface: RenderBackend::Surface,
   extent: Option<gfx_hal::window::Extent2D>,
   swapchain_is_valid: bool,
+  // TODO(vmarcella): the Image type is very large
   image: Option<
     <RenderBackend::Surface as gfx_hal::window::PresentationSurface<
       RenderBackend,
@@ -159,6 +163,7 @@ pub struct Surface<RenderBackend: gfx_hal::Backend> {
   frame_buffer_attachment: Option<gfx_hal::image::FramebufferAttachment>,
 }
 
+///
 pub struct Swapchain {
   config: gfx_hal::window::SwapchainConfig,
   format: gfx_hal::format::Format,

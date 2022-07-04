@@ -26,6 +26,16 @@ pub struct Framebuffer<RenderBackend: gfx_hal::Backend> {
   frame_buffer: RenderBackend::Framebuffer,
 }
 
+impl<RenderBackend: gfx_hal::Backend> Framebuffer<RenderBackend> {
+  /// Destroys the framebuffer from the given GPU.
+  pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
+    unsafe {
+      super::gpu::internal::logical_device_for(gpu)
+        .destroy_framebuffer(self.frame_buffer);
+    }
+  }
+}
+
 pub struct FramebufferBuilder {}
 
 impl FramebufferBuilder {

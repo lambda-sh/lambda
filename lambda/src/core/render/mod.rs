@@ -55,33 +55,20 @@ use lambda_platform::gfx::{
 
 pub struct RenderAPIBuilder {
   name: String,
-  render_passes: Vec<render_pass::RenderPass>,
-  render_pipelines: Vec<pipeline::RenderPipeline>,
+  render_timeout: u64,
 }
 
 impl RenderAPIBuilder {
   pub fn new(name: &str) -> Self {
     return Self {
       name: name.to_string(),
-      render_passes: vec![],
-      render_pipelines: vec![],
+      render_timeout: 1_000_000_000,
     };
   }
 
-  /// Attach a render pass into the rendering API.
-  pub fn with_render_pass(
-    mut self,
-    render_pass: render_pass::RenderPass,
-  ) -> Self {
-    self.render_passes.push(render_pass);
-    return self;
-  }
-
-  pub fn with_render_pipeline(
-    mut self,
-    render_pipeline: pipeline::RenderPipeline,
-  ) -> Self {
-    self.render_pipelines.push(render_pipeline);
+  /// The time rendering has to complete before timing out.
+  pub fn with_render_timeout(mut self, render_timeout: u64) -> Self {
+    self.render_timeout = render_timeout;
     return self;
   }
 
@@ -90,8 +77,7 @@ impl RenderAPIBuilder {
   pub fn build(self, window: &window::Window) -> RenderAPI {
     let RenderAPIBuilder {
       name,
-      render_pipelines,
-      render_passes,
+      render_timeout,
     } = self;
 
     let mut instance = internal::InstanceBuilder::new()
@@ -113,13 +99,11 @@ impl RenderAPIBuilder {
 
     // Build our rendering submission fence and semaphore.
     let submission_fence = internal::RenderSubmissionFenceBuilder::new()
-      .with_render_timeout(1_000_000_000)
+      .with_render_timeout(render_timeout)
       .build(&mut gpu);
 
     let render_semaphore =
       internal::RenderSemaphoreBuilder::new().build(&mut gpu);
-
-    for render_pass in render_passes {}
 
     let mut render_pass = internal::RenderPassBuilder::new().build(&gpu);
 
@@ -161,6 +145,8 @@ pub struct RenderAPI {
   render_passes: Vec<internal::RenderPass<internal::RenderBackend>>,
   viewports: Vec<ViewPort>,
 }
+
+pub enum RenderCommand {}
 
 impl RenderAPI {
   pub fn destroy(self) {

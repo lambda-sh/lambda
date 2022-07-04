@@ -1,7 +1,4 @@
-use std::{
-  borrow::BorrowMut,
-  mem::size_of,
-};
+use std::mem::size_of;
 
 use gfx_hal::{
   adapter::Adapter,
@@ -51,7 +48,8 @@ impl GpuBuilder {
     return self;
   }
 
-  /// Builds a GPU
+  /// If passing in a surface, the gpu will be built using the queue that best
+  /// supports both the render queue & surface.
   pub fn build<RenderBackend: gfx_hal::Backend>(
     self,
     instance: &mut super::Instance<RenderBackend>,
@@ -202,50 +200,6 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
           },
         )
         .unwrap();
-    }
-  }
-
-  /// Destroy a frame buffer that was created by the GPU.
-  pub fn destroy_frame_buffer(
-    &mut self,
-    frame_buffer: RenderBackend::Framebuffer,
-  ) {
-    unsafe {
-      self.gpu.device.destroy_framebuffer(frame_buffer);
-    }
-  }
-
-  /// Create a pipeline layout on the GPU.
-  pub fn create_pipeline_layout(&mut self) -> RenderBackend::PipelineLayout {
-    unsafe {
-      // wait, I think I have a hack for this
-      let max: u32 = size_of::<u32>() as u32;
-      return self
-        .gpu
-        .device
-        .create_pipeline_layout(
-          vec![].iter(),
-          vec![(ShaderStageFlags::VERTEX, 0..max)].into_iter(),
-        )
-        .expect("Out of memory.");
-    }
-  }
-
-  /// Destroy a pipeline layout that was allocated by this GPU.
-  pub fn destroy_pipeline_layout(
-    &mut self,
-    pipeline_layout: RenderBackend::PipelineLayout,
-  ) {
-    unsafe { self.gpu.device.destroy_pipeline_layout(pipeline_layout) }
-  }
-
-  /// Destroy a graphics pipeline allocated by this GPU.
-  pub fn destroy_graphics_pipeline(
-    &self,
-    pipeline: RenderBackend::GraphicsPipeline,
-  ) {
-    unsafe {
-      self.gpu.device.destroy_graphics_pipeline(pipeline);
     }
   }
 }
