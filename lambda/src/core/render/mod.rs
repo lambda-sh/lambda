@@ -184,7 +184,7 @@ impl RenderAPI {
         .build(&mut self.command_pool, "primary");
 
     let command_list = vec![
-      PlatformRenderCommand::Begin,
+      PlatformRenderCommand::BeginRecording,
       PlatformRenderCommand::SetViewports {
         start_at: 0,
         viewports: self.viewports.clone(),
@@ -194,7 +194,7 @@ impl RenderAPI {
         viewports: self.viewports.clone(),
       },
       PlatformRenderCommand::EndRenderPass,
-      PlatformRenderCommand::End,
+      PlatformRenderCommand::EndRecording,
     ];
 
     command_buffer.issue_commands(command_list);

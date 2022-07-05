@@ -1,13 +1,7 @@
 use std::{
-  borrow::{
-    Borrow,
-    Cow,
-  },
+  borrow::Borrow,
   collections::HashMap,
-  ops::{
-    Deref,
-    Range,
-  },
+  ops::Range,
 };
 
 use gfx_hal::{
@@ -25,11 +19,15 @@ use super::{
 /// pool prior to being built.
 pub enum CommandPoolFeatures {
   /// Optimizes the command pool for buffers that are expected to have short
-  /// lifetimes (I.E. for constant rendering)
+  /// lifetimes (I.E. command buffers that continuously need to render data to
+  /// the screen)
   ShortLivedBuffers,
-  /// Rest
+  /// Allows for buffers to be reset individually & manually by the owner of the
+  /// command pool.
   ResetBuffersIndividually,
+  /// Enable no features on the CommandPool.
   None,
+  /// Enable all features for a given CommandPool.
   All,
 }
 
@@ -51,29 +49,24 @@ pub enum CommandBufferFeatures {
   All,
 }
 
+/// This enum is used for specifying the type of command buffer to allocate on
+/// the command pool.
 pub enum CommandBufferLevel {
+  /// Use for allocating a top level primary command buffer on the
+  /// command pool. A command buffer at this level can then be used to create
+  /// other primaries.
   Primary,
+  /// Used
   Secondary,
 }
 
-pub struct CommandSetBuilder {
-  viewports: Vec<ViewPort>,
-  scissors: Vec<ViewPort>,
-  recording: bool,
-}
-
-impl CommandSetBuilder {
-  pub fn new() -> Self {
-    return Self {
-      viewports: vec![],
-      scissors: vec![],
-      recording: false,
-    };
-  }
-}
-
+/// Enumeration for issuing commands to a CommandBuffer allocated on the GPU.
+/// The enumerations are evaluated upon being issued to an active command buffer
+/// and correspond to lower level function calls.
 pub enum Command<RenderBackend: gfx_hal::Backend> {
-  Begin,
+  /// Begins recording commands to the GPU. A primary command buffer can only
+  /// issue this command once.
+  BeginRecording,
   SetViewports {
     start_at: u32,
     viewports: Vec<ViewPort>,
@@ -88,6 +81,7 @@ pub enum Command<RenderBackend: gfx_hal::Backend> {
     frame_buffer: Box<super::framebuffer::Framebuffer<RenderBackend>>,
     viewport: ViewPort,
   },
+  /// Ends a currently active render pass.
   EndRenderPass,
   AttachGraphicsPipeline {
     pipeline: RenderPipeline<RenderBackend>,
@@ -95,9 +89,12 @@ pub enum Command<RenderBackend: gfx_hal::Backend> {
   Draw {
     vertices: Range<u32>,
   },
-  End,
+  EndRecording,
 }
 
+/// Representation of a command buffer allocated on the GPU. The lifetime of
+/// the command is constrained to the lifetime of the command pool that built
+/// it to ensure that it cannot be used while
 pub struct CommandBuffer<'command_pool, RenderBackend: gfx_hal::Backend> {
   command_buffer: &'command_pool mut RenderBackend::CommandBuffer,
   flags: gfx_hal::command::CommandBufferFlags,
@@ -106,11 +103,20 @@ pub struct CommandBuffer<'command_pool, RenderBackend: gfx_hal::Backend> {
 impl<'command_pool, RenderBackend: gfx_hal::Backend>
   CommandBuffer<'command_pool, RenderBackend>
 {
+  /// Validates and issues a command directly to the buffer on the GPU.
+  /// If using a newly created Primary CommandBuffer the first and last commands
+  /// that should be issued are:
+  /// Command<RenderBackend>::BeginRecording
+  /// Command<RenderBackend>::EndRecording
+  /// Once the command buffer has stopped recording, it can be submitted to the
+  /// GPU to start performing work.
   pub fn issue_command(&mut self, command: Command<RenderBackend>) {
     use gfx_hal::command::CommandBuffer as _;
     unsafe {
       match command {
-        Command::Begin => self.command_buffer.begin_primary(self.flags),
+        Command::BeginRecording => {
+          self.command_buffer.begin_primary(self.flags)
+        }
         Command::SetViewports {
           start_at,
           viewports,
@@ -160,21 +166,23 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
         }
         Command::EndRenderPass => self.command_buffer.end_render_pass(),
         Command::Draw { vertices } => self.command_buffer.draw(vertices, 0..1),
-        Command::End => self.command_buffer.finish(),
+        Command::EndRecording => self.command_buffer.finish(),
       }
     }
   }
 
-  pub fn issue_commands<'render_context>(
-    &mut self,
-    commands: Vec<Command<RenderBackend>>,
-  ) {
+  /// Functions exactly like issue_command except over multiple commands at
+  /// once. Command execution is based on the order of commands inside the
+  /// vector.
+  pub fn issue_commands(&mut self, commands: Vec<Command<RenderBackend>>) {
     for command in commands {
       self.issue_command(command);
     }
   }
 }
 
+/// Builder for creating a Command buffer that can issue commands directly to
+/// the GPU.
 pub struct CommandBufferBuilder {
   flags: gfx_hal::command::CommandBufferFlags,
   level: CommandBufferLevel,
@@ -300,7 +308,6 @@ pub struct BufferID;
 
 impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   /// Allocate a command buffer for lambda.
-  // TODO(vmarcella): This should expose the level that will be allocated.
   fn allocate_command_buffer(
     &mut self,
     name: &str,
@@ -337,6 +344,8 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
     return self.command_buffers.get_mut(name);
   }
 
+  /// Retrieves a command buffer that has been allocated by this command pool.
+  /// This function is most likely not
   #[inline]
   pub fn get_command_buffer(
     &self,
@@ -353,6 +362,8 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
     }
   }
 
+  /// Moves the command pool into itself and destroys any command pool and
+  /// buffer resources allocated on the GPU.
   #[inline]
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
