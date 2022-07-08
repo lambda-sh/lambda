@@ -74,7 +74,7 @@ impl RenderAPIBuilder {
 
   /// Builds a RenderAPI that can be used to access the GPU. Currently only
   /// supports building Graphical Rendering APIs.
-  pub fn build(self, window: &window::Window) -> RenderAPI {
+  pub fn build(self, window: &window::Window) -> RenderContext {
     let RenderAPIBuilder {
       name,
       render_timeout,
@@ -118,7 +118,7 @@ impl RenderAPIBuilder {
       .apply_swapchain(&gpu, swapchain, 1_000_000_000)
       .expect("Failed to apply the swapchain to the surface.");
 
-    return RenderAPI {
+    return RenderContext {
       name,
       instance,
       gpu,
@@ -134,7 +134,7 @@ impl RenderAPIBuilder {
 
 /// Generic Rendering API setup to use the current platforms primary
 /// Rendering Backend
-pub struct RenderAPI {
+pub struct RenderContext {
   name: String,
   instance: internal::Instance<internal::RenderBackend>,
   gpu: internal::Gpu<internal::RenderBackend>,
@@ -146,11 +146,9 @@ pub struct RenderAPI {
   viewports: Vec<ViewPort>,
 }
 
-pub enum RenderCommand {}
-
-impl RenderAPI {
+impl RenderContext {
   pub fn destroy(self) {
-    let RenderAPI {
+    let RenderContext {
       name,
       submission_fence,
       instance,

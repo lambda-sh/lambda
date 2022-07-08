@@ -12,22 +12,27 @@ pub struct WindowBuilder {
 }
 
 impl WindowBuilder {
+  /// Construct a new window window builder.
   pub fn new() -> Self {
     return Self {
       name: "Window".to_string(),
       dimensions: [480, 360],
     };
   }
+
+  /// The name of the window (Will also appear as the title of the window/application)
   pub fn with_name(mut self, name: &str) -> Self {
     self.name = name.to_string();
     return self;
   }
 
+  /// Specify the dimensions for the window (Defaults to 480 x 360)
   pub fn with_dimensions(mut self, width: u32, height: u32) -> Self {
     self.dimensions = [width, height];
     return self;
   }
 
+  // TODO(vmarcella): Remove new call for window and construct the window directly.
   pub fn build(self, event_loop: &mut Loop<Event>) -> Window {
     return Window::new(self.name.as_str(), self.dimensions, event_loop);
   }

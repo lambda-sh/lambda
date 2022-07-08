@@ -21,8 +21,8 @@ use crate::{
         Window,
         WindowBuilder,
       },
-      RenderAPI,
       RenderAPIBuilder,
+      RenderContext,
     },
   },
 };
@@ -84,7 +84,7 @@ pub struct LambdaKernel {
   event_loop: Loop<Event>,
   window: Window,
   component_stack: ComponentStack,
-  render_api: RenderAPI,
+  render_api: RenderContext,
 }
 
 impl LambdaKernel {
