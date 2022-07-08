@@ -3,7 +3,7 @@ use lambda::{
     component::Component,
     events::Event,
     kernel::start_kernel,
-    render::RenderAPIBuilder,
+    render::RenderContextBuilder,
   },
   kernels::LambdaKernelBuilder,
 };
@@ -48,7 +48,7 @@ impl Default for DemoComponent {
 /// the LambdaKernel. This is where you can upload shaders, configure render
 /// passes, and generally allocate the resources you need from a completely safe
 /// Rust API.
-fn configure_renderer(builder: RenderAPIBuilder) -> RenderAPIBuilder {
+fn configure_renderer(builder: RenderContextBuilder) -> RenderContextBuilder {
   return builder;
 }
 

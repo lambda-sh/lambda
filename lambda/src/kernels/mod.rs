@@ -21,22 +21,22 @@ use crate::{
         Window,
         WindowBuilder,
       },
-      RenderAPIBuilder,
       RenderContext,
+      RenderContextBuilder,
     },
   },
 };
 
 pub struct LambdaKernelBuilder {
   name: String,
-  render_api: RenderAPIBuilder,
+  render_api: RenderContextBuilder,
 }
 
 impl LambdaKernelBuilder {
   pub fn new(name: &str) -> Self {
     return Self {
       name: name.to_string(),
-      render_api: RenderAPIBuilder::new(name),
+      render_api: RenderContextBuilder::new(name),
     };
   }
 
@@ -49,7 +49,7 @@ impl LambdaKernelBuilder {
   /// Configures the RenderAPIBuilder before the RenderingAPI is built.
   pub fn configure_renderer(
     mut self,
-    configure: impl FnOnce(RenderAPIBuilder) -> RenderAPIBuilder,
+    configure: impl FnOnce(RenderContextBuilder) -> RenderContextBuilder,
   ) -> Self {
     self.render_api = configure(self.render_api);
     return self;

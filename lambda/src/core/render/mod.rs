@@ -53,12 +53,12 @@ use lambda_platform::gfx::{
   viewport::ViewPort,
 };
 
-pub struct RenderAPIBuilder {
+pub struct RenderContextBuilder {
   name: String,
   render_timeout: u64,
 }
 
-impl RenderAPIBuilder {
+impl RenderContextBuilder {
   pub fn new(name: &str) -> Self {
     return Self {
       name: name.to_string(),
@@ -75,7 +75,7 @@ impl RenderAPIBuilder {
   /// Builds a RenderAPI that can be used to access the GPU. Currently only
   /// supports building Graphical Rendering APIs.
   pub fn build(self, window: &window::Window) -> RenderContext {
-    let RenderAPIBuilder {
+    let RenderContextBuilder {
       name,
       render_timeout,
     } = self;
