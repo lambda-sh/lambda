@@ -10,25 +10,29 @@ pub enum RenderCommand {
     start_at: u32,
     viewports: Vec<super::viewport::Viewport>,
   },
+  /// sets the scissor rectangles for the render context.
   SetScissors {
     start_at: u32,
     viewports: Vec<super::viewport::Viewport>,
   },
+  /// Begins the render pass.
   BeginRenderPass {
     render_pass: super::render_pass::RenderPass,
     start_at: u32,
     viewports: Vec<super::viewport::Viewport>,
   },
+  /// Ends the render pass.
   EndRenderPass,
+  /// Attaches a graphical pipeline to the render context.
   AttachGraphicsPipeline {
     pipeline: super::pipeline::RenderPipeline,
   },
-  Draw {
-    vertices: Range<u32>,
-  },
+  /// Draws a graphical primitive.
+  Draw { vertices: Range<u32> },
 }
 
 impl RenderCommand {
+  /// Converts the RenderCommand into a platform compatible render command.
   pub fn into_platform_command(self) -> PlatformRenderCommand {
     return match self {
       Self::SetViewports {
