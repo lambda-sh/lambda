@@ -4,7 +4,6 @@ use lambda_platform::winit::{
   WindowProperties,
 };
 
-use super::internal::RenderBackend;
 use crate::core::events::Event;
 
 pub struct WindowBuilder {
@@ -39,12 +38,12 @@ impl WindowBuilder {
   }
 }
 
+/// Window implementation for rendering applications.
 pub struct Window {
   window_handle: WindowHandle,
 }
 
 impl Window {
-  /// Create a new
   fn new(
     name: &str,
     dimensions: [u32; 2],
