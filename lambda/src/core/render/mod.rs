@@ -1,6 +1,8 @@
+pub mod command;
 pub mod pipeline;
 pub mod render_pass;
 pub mod shader;
+pub mod viewport;
 pub mod window;
 
 pub mod internal {
@@ -59,6 +61,7 @@ pub struct RenderContextBuilder {
 }
 
 impl RenderContextBuilder {
+  /// Create a new localized RenderContext
   pub fn new(name: &str) -> Self {
     return Self {
       name: name.to_string(),
@@ -176,6 +179,7 @@ impl RenderContext {
     surface.destroy(&instance);
   }
 
+  /// Allocates a command buffer and records commands to the GPU.
   pub fn render(&mut self) {
     let mut command_buffer =
       CommandBufferBuilder::new(CommandBufferLevel::Primary)

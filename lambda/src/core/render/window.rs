@@ -4,6 +4,7 @@ use lambda_platform::winit::{
   WindowProperties,
 };
 
+use super::internal::RenderBackend;
 use crate::core::events::Event;
 
 pub struct WindowBuilder {

@@ -15,6 +15,7 @@ impl ViewPortBuilder {
     return ViewPortBuilder { x: 0, y: 0 };
   }
 
+  /// Specify a viewport with specific coordinates
   pub fn with_coordinates(mut self, x: i16, y: i16) -> Self {
     self.x = x;
     self.y = y;
@@ -22,14 +23,7 @@ impl ViewPortBuilder {
   }
 
   /// Build a viewport to use for viewing an entire surface.
-  pub fn build<RenderBackend: gfx_hal::Backend>(
-    self,
-    surface: &super::surface::Surface<RenderBackend>,
-  ) -> ViewPort {
-    let [width, height] = surface
-      .size()
-      .expect("Surface doesn't have a size for the viewport to use!");
-
+  pub fn build(self, width: u32, height: u32) -> ViewPort {
     // The viewport currently renders to the entire size of the surface. and has
     // a non-configurable depth
     return ViewPort {
