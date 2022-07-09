@@ -3,6 +3,13 @@ pub struct Viewport {
   viewport: gfx::viewport::ViewPort,
 }
 
+impl Viewport {
+  /// Convert the viewport into a platform viewport.
+  pub fn into_gfx_viewport(self) -> gfx::viewport::ViewPort {
+    return self.viewport;
+  }
+}
+
 pub struct ViewportBuilder {
   x: i16,
   y: i16,
