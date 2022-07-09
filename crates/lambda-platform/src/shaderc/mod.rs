@@ -30,7 +30,7 @@ pub struct ShaderCompiler {
 }
 
 /// Meta Representations of real shaders to use for easy compilation
-pub enum MetaShader {
+pub enum VirtualShader {
   File {
     path: String,
     kind: ShaderKind,
@@ -47,9 +47,9 @@ pub enum MetaShader {
 
 impl ShaderCompiler {
   /// Compiles a shader into SPIR-V binary.
-  pub fn compile_into_binary(&mut self, shader: &MetaShader) -> Vec<u32> {
+  pub fn compile_into_binary(&mut self, shader: &VirtualShader) -> Vec<u32> {
     return match shader {
-      MetaShader::File {
+      VirtualShader::File {
         path,
         kind,
         name,
@@ -62,7 +62,7 @@ impl ShaderCompiler {
           kind.clone(),
         )
       }
-      MetaShader::Source {
+      VirtualShader::Source {
         source,
         kind,
         name,
@@ -99,6 +99,7 @@ impl ShaderCompiler {
     return compiled_shader.as_binary().to_vec();
   }
 
+  // Compiles a string into SPIR-V binary.
   fn compile_string_into_binary(
     &mut self,
     shader_source: &str,

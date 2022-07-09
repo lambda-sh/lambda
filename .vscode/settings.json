@@ -9,6 +9,6 @@
   "vim.autoindent": false,
   "editor.tabSize": 2,
 	"editor.detectIndentation": false,
-	"rust-analyzer.inlayHints.typeHints": false,
-	"rust-analyzer.inlayHints.chainingHints": false
+	"rust-analyzer.inlayHints.chainingHints.enable": false,
+	"rust-analyzer.inlayHints.typeHints.enable": false
 }

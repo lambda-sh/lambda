@@ -72,8 +72,9 @@ impl RenderContextBuilder {
     return self;
   }
 
-  /// Builds a RenderAPI that can be used to access the GPU. Currently only
-  /// supports building Graphical Rendering APIs.
+  /// Builds a RenderContext and injects it into the application window.
+  /// Currently only supports building a Rendering Context utilizing the
+  /// systems primary GPU.
   pub fn build(self, window: &window::Window) -> RenderContext {
     let RenderContextBuilder {
       name,

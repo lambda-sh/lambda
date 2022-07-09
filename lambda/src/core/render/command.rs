@@ -1,1 +1,1 @@
-pub struct Command;
+pub enum RenderCommand {}
