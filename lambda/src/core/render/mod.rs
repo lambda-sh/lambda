@@ -157,6 +157,7 @@ pub struct RenderContext {
 }
 
 impl RenderContext {
+  /// destroys the RenderContext and all associated resources.
   pub fn destroy(self) {
     let RenderContext {
       name,
@@ -176,6 +177,7 @@ impl RenderContext {
     submission_fence.destroy(&gpu);
     render_semaphore.destroy(&gpu);
 
+    // Destroy the command pool and all associated command buffers.
     command_pool.destroy(&mut gpu);
     for render_pass in render_passes {
       render_pass.destroy(&gpu);

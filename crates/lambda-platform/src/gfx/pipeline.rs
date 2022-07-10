@@ -32,6 +32,7 @@ use super::{
   shader::ShaderModule,
 };
 
+/// Builder for a gfx-hal backed render pipeline.
 pub struct RenderPipelineBuilder<RenderBackend: internal::Backend> {
   pipeline_layout: Option<RenderBackend::PipelineLayout>,
 }

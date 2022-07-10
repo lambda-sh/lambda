@@ -39,6 +39,7 @@ impl Operations {
 
 // ----------------------------- RENDER ATTACHMENT -----------------------------
 
+///
 pub struct AttachmentBuilder {
   samples: u8,
   color_format: Option<ColorFormat>,
@@ -46,6 +47,7 @@ pub struct AttachmentBuilder {
   store_operation: gfx_hal::pass::AttachmentStoreOp,
 }
 
+/// builder for a render attachment
 impl AttachmentBuilder {
   pub fn new() -> Self {
     return Self {
@@ -56,26 +58,31 @@ impl AttachmentBuilder {
     };
   }
 
+  ///  Sets the number of samples to use for the attachment.
   pub fn with_samples(mut self, samples: u8) -> Self {
     self.samples = samples;
     return self;
   }
 
+  /// Sets the color format to use for the attachment.
   pub fn with_color_format(mut self, color_format: ColorFormat) -> Self {
     self.color_format = Some(color_format);
     return self;
   }
 
+  /// Sets the load operation for the attachment.
   pub fn on_load(mut self, operation: Operations) -> Self {
     self.load_operation = operation.to_gfx_hal_load_operation();
     return self;
   }
 
+  ///
   pub fn on_store(mut self, operation: Operations) -> Self {
     self.store_operation = operation.to_gfx_hal_store_operation();
     return self;
   }
 
+  /// Builds a render attachment that can be used within a render pass.
   pub fn build(self) -> Attachment {
     return Attachment {
       attachment: gfx_hal::pass::Attachment {
