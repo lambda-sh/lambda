@@ -54,6 +54,9 @@ impl RenderPipelineBuilder {
         &fragment_shader_module,
       );
 
+    vertex_shader_module.destroy(mut_gpu_from_context(render_context));
+    fragment_shader_module.destroy(mut_gpu_from_context(render_context));
+
     return RenderPipeline {
       pipeline: render_pipeline,
     };
