@@ -115,9 +115,6 @@ impl RenderContextBuilder {
 
     // Build command pool and allocate a single buffer named Primary
     let mut command_pool = internal::CommandPoolBuilder::new().build(&gpu);
-    let command_buffer =
-      internal::CommandBufferBuilder::new(CommandBufferLevel::Primary)
-        .build(&mut command_pool, "LambdaPrimary");
 
     // Build our rendering submission fence and semaphore.
     let submission_fence = internal::RenderSubmissionFenceBuilder::new()
@@ -229,20 +226,6 @@ impl RenderContext {
 }
 
 type PlatformRenderCommand = Command<internal::RenderBackend>;
-
-// TODO(vmarcella): Abstract the gfx hal assembler away from the
-// render module directly.
-// let vertex_entry = gfx_hal_exports::EntryPoint::<B> {
-// entry: "main",
-// module: &vertex_module,
-// specialization: gfx_hal_exports::Specialization::default(),
-// };
-
-// let fragment_entry = gfx_hal_exports::EntryPoint::<B> {
-// entry: "main",
-// module: &fragment_module,
-// specialization: gfx_hal_exports::Specialization::default(),
-// };
 
 // TODO(vmarcella): This process could use a more consistent abstraction
 // for getting a pipeline created.
