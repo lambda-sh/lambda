@@ -135,6 +135,7 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
             super::viewport::internal::viewport_for(&viewport).rect
           }),
         ),
+
         Command::BeginRenderPass {
           render_pass,
           frame_buffer,

@@ -33,9 +33,10 @@ pub enum RenderCommand {
 
 impl RenderCommand {
   /// Converts the RenderCommand into a platform compatible render command.
+  // TODO(vmarcella): implement this using Into<PlatformRenderCommand>
   pub fn into_platform_command(self) -> PlatformRenderCommand {
     return match self {
-      Self::SetViewports {
+      RenderCommand::SetViewports {
         start_at,
         viewports,
       } => PlatformRenderCommand::SetViewports {
@@ -59,7 +60,12 @@ impl RenderCommand {
         render_pass,
         start_at,
         viewports,
-      } => todo!(),
+      } => PlatformRenderCommand::BeginRenderPass {
+        render_pass: todo!("Renderpass"),
+        surface: todo!("Surface"),
+        frame_buffer: todo!(""),
+        viewport: todo!(),
+      },
       RenderCommand::EndRenderPass => todo!(),
       RenderCommand::AttachGraphicsPipeline { pipeline } => todo!(),
       RenderCommand::Draw { vertices } => todo!(),
