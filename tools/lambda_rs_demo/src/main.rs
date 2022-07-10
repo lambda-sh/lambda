@@ -7,7 +7,7 @@ use lambda::{
     events::Event,
     kernel::start_kernel,
     render::{
-      internal::RenderPassBuilder,
+      pipeline,
       shader::{
         ShaderBuilder,
         ShaderKind,
@@ -49,7 +49,32 @@ impl RenderableComponent<lambda::core::events::Event> for DemoComponent {
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
-    println!("Attached the second layer to lambda");
+    // Specify virtual shaders to use for rendering
+    let triangle_vertex = VirtualShader::Source {
+      source: include_str!("../assets/triangle.vert").to_string(),
+      kind: ShaderKind::Vertex,
+      name: "triangle".to_string(),
+      entry_point: "main".to_string(),
+    };
+
+    let triangle_fragment = VirtualShader::Source {
+      source: include_str!("../assets/triangle.frag").to_string(),
+      kind: ShaderKind::Fragment,
+      name: "triangle".to_string(),
+      entry_point: "main".to_string(),
+    };
+
+    // Create a shader builder to compile the shaders.
+    let mut builder = ShaderBuilder::new();
+    let vs = builder.build(triangle_vertex);
+    let fs = builder.build(triangle_fragment);
+
+    let render_pass =
+      lambda::core::render::render_pass::RenderPassBuilder::new()
+        .build(&render_context);
+
+    let pipeline = lambda::core::render::pipeline::RenderPipelineBuilder::new()
+      .build(render_context, &render_pass, &vs, &fs);
   }
 
   fn on_render(
@@ -71,26 +96,6 @@ impl DemoComponent {}
 
 impl Default for DemoComponent {
   fn default() -> Self {
-    // Specify virtual shaders to use for rendering
-    let triangle_vertex = VirtualShader::Source {
-      source: include_str!("../assets/triangle.vert").to_string(),
-      kind: ShaderKind::Vertex,
-      name: "triangle".to_string(),
-      entry_point: "main".to_string(),
-    };
-
-    let triangle_fragment = VirtualShader::Source {
-      source: include_str!("../assets/triangle.frag").to_string(),
-      kind: ShaderKind::Fragment,
-      name: "triangle".to_string(),
-      entry_point: "main".to_string(),
-    };
-
-    // Create a shader builder to compile the shaders.
-    let mut builder = ShaderBuilder::new();
-    let vs = builder.build(triangle_vertex);
-    let fs = builder.build(triangle_fragment);
-
     return DemoComponent {};
   }
 }
