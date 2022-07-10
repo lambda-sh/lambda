@@ -245,6 +245,8 @@ impl<RenderBackend: gfx_hal::Backend> RenderPass<RenderBackend> {
   }
 }
 
+// --------------------------------- INTERNAL ----------------------------------
+
 pub mod internal {
   use gfx_hal::Backend;
 

@@ -42,6 +42,12 @@ pub mod internal {
     },
     shaderc::ShaderKind,
   };
+
+  pub fn gpu_from_context(
+    context: &super::RenderContext,
+  ) -> &Gpu<RenderBackend> {
+    return &context.gpu;
+  }
 }
 
 use lambda_platform::gfx::{
