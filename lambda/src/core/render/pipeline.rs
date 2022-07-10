@@ -1,9 +1,6 @@
-use lambda_platform::gfx::{
-  render_pass,
-  shader::{
-    ShaderModuleBuilder,
-    ShaderModuleType,
-  },
+use lambda_platform::gfx::shader::{
+  ShaderModuleBuilder,
+  ShaderModuleType,
 };
 
 use super::{
@@ -15,11 +12,20 @@ use super::{
   shader::Shader,
   RenderContext,
 };
+pub struct RenderPipeline {
+  pipeline: lambda_platform::gfx::pipeline::RenderPipeline<
+    super::internal::RenderBackend,
+  >,
+}
+
+impl RenderPipeline {
+  /// Destroy the render pipeline with the render context that created it.
+  pub fn destroy(self, render_context: &RenderContext) {
+    self.pipeline.destroy(gpu_from_context(render_context));
+  }
+}
 
 pub struct RenderPipelineBuilder {}
-impl RenderPipeline {
-  pub fn destroy(self) {}
-}
 
 impl RenderPipelineBuilder {
   pub fn new() -> Self {
@@ -61,10 +67,4 @@ impl RenderPipelineBuilder {
       pipeline: render_pipeline,
     };
   }
-}
-
-pub struct RenderPipeline {
-  pipeline: lambda_platform::gfx::pipeline::RenderPipeline<
-    super::internal::RenderBackend,
-  >,
 }

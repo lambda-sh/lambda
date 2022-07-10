@@ -9,6 +9,7 @@ pub struct RenderPass {
 }
 
 impl RenderPass {
+  /// Destroy the render pass with the render context that created it.
   pub fn destroy(self, render_context: &RenderContext) {
     self.render_pass.destroy(gpu_from_context(render_context));
   }

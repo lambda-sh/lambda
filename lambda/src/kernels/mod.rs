@@ -46,7 +46,8 @@ impl LambdaKernelBuilder {
     return self;
   }
 
-  /// Configures the RenderAPIBuilder before the RenderingAPI is built.
+  /// Configures the RenderAPIBuilder before the RenderingAPI is built using a
+  /// callback provided by the user.
   pub fn configure_renderer(
     mut self,
     configure: impl FnOnce(RenderContextBuilder) -> RenderContextBuilder,

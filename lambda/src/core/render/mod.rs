@@ -114,7 +114,7 @@ impl RenderContextBuilder {
       .expect("Failed to build a GPU.");
 
     // Build command pool and allocate a single buffer named Primary
-    let mut command_pool = internal::CommandPoolBuilder::new().build(&gpu);
+    let command_pool = internal::CommandPoolBuilder::new().build(&gpu);
 
     // Build our rendering submission fence and semaphore.
     let submission_fence = internal::RenderSubmissionFenceBuilder::new()

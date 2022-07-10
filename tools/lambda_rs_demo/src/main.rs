@@ -1,9 +1,13 @@
 use lambda::{
   core::{
-    component::Component,
+    component::{
+      Component,
+      RenderableComponent,
+    },
     events::Event,
     kernel::start_kernel,
     render::{
+      internal::RenderPassBuilder,
       shader::{
         ShaderBuilder,
         ShaderKind,
@@ -39,6 +43,30 @@ impl Component<Event> for DemoComponent {
   }
 }
 
+/// Implement rendering for the component.
+impl RenderableComponent<lambda::core::events::Event> for DemoComponent {
+  fn on_attach(
+    &mut self,
+    render_context: &mut lambda::core::render::RenderContext,
+  ) {
+    println!("Attached the second layer to lambda");
+  }
+
+  fn on_render(
+    self: &mut DemoComponent,
+    render_context: &mut lambda::core::render::RenderContext,
+    last_render: &std::time::Duration,
+  ) {
+    println!("Rendering the second layer");
+  }
+
+  fn on_detach(
+    self: &mut DemoComponent,
+    render_context: &mut lambda::core::render::RenderContext,
+  ) {
+  }
+}
+
 impl DemoComponent {}
 
 impl Default for DemoComponent {
@@ -62,6 +90,7 @@ impl Default for DemoComponent {
     let mut builder = ShaderBuilder::new();
     let vs = builder.build(triangle_vertex);
     let fs = builder.build(triangle_fragment);
+
     return DemoComponent {};
   }
 }
