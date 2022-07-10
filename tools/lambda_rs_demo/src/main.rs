@@ -118,5 +118,3 @@ fn main() {
 
   start_kernel(kernel);
 }
-
-// These 40 lines of code create what you saw before
