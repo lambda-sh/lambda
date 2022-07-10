@@ -194,6 +194,8 @@ impl RenderContext {
         .with_feature(CommandBufferFeatures::ResetEverySubmission)
         .build(self.command_pool.as_mut().unwrap(), "primary");
 
+    // TODO(vmarcella): replace this with the render commands gathered from
+    // components.
     let command_list = vec![
       PlatformRenderCommand::BeginRecording,
       PlatformRenderCommand::SetViewports {

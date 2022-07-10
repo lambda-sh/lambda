@@ -3,7 +3,14 @@ use lambda::{
     component::Component,
     events::Event,
     kernel::start_kernel,
-    render::RenderContextBuilder,
+    render::{
+      shader::{
+        ShaderBuilder,
+        ShaderKind,
+        VirtualShader,
+      },
+      RenderContextBuilder,
+    },
   },
   kernels::LambdaKernelBuilder,
 };
@@ -36,6 +43,25 @@ impl DemoComponent {}
 
 impl Default for DemoComponent {
   fn default() -> Self {
+    // Specify virtual shaders to use for rendering
+    let triangle_vertex = VirtualShader::Source {
+      source: include_str!("../assets/triangle.vert").to_string(),
+      kind: ShaderKind::Vertex,
+      name: "triangle".to_string(),
+      entry_point: "main".to_string(),
+    };
+
+    let triangle_fragment = VirtualShader::Source {
+      source: include_str!("../assets/triangle.frag").to_string(),
+      kind: ShaderKind::Fragment,
+      name: "triangle".to_string(),
+      entry_point: "main".to_string(),
+    };
+
+    // Create a shader builder to compile the shaders.
+    let mut builder = ShaderBuilder::new();
+    let vs = builder.build(triangle_vertex);
+    let fs = builder.build(triangle_fragment);
     return DemoComponent {};
   }
 }
