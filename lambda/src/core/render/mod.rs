@@ -43,12 +43,22 @@ pub mod internal {
     shaderc::ShaderKind,
   };
 
+  /// Returns the GPU instance for the given render context.
   pub fn gpu_from_context(
     context: &super::RenderContext,
   ) -> &Gpu<RenderBackend> {
     return &context.gpu;
   }
+
+  /// Returns a mutable GPU instance for the given render context.
+  pub fn mut_gpu_from_context(
+    context: &mut super::RenderContext,
+  ) -> &mut Gpu<RenderBackend> {
+    return &mut context.gpu;
+  }
 }
+
+use std::mem::swap;
 
 use lambda_platform::gfx::{
   command::{
@@ -60,6 +70,8 @@ use lambda_platform::gfx::{
   surface::SwapchainBuilder,
   viewport::ViewPort,
 };
+
+use self::render_pass::RenderPass;
 
 pub struct RenderContextBuilder {
   name: String,
@@ -115,8 +127,6 @@ impl RenderContextBuilder {
     let render_semaphore =
       internal::RenderSemaphoreBuilder::new().build(&mut gpu);
 
-    let mut render_pass = internal::RenderPassBuilder::new().build(&gpu);
-
     // Create the image extent and initial frame buffer attachment description
     // for rendering.
     let dimensions = window.dimensions();
@@ -133,11 +143,11 @@ impl RenderContextBuilder {
       instance,
       gpu,
       surface,
-      submission_fence,
-      render_semaphore,
-      command_pool,
+      submission_fence: Some(submission_fence),
+      render_semaphore: Some(render_semaphore),
+      command_pool: Some(command_pool),
       viewports: vec![],
-      render_passes: vec![render_pass],
+      render_passes: vec![],
     };
   }
 }
@@ -149,42 +159,32 @@ pub struct RenderContext {
   instance: internal::Instance<internal::RenderBackend>,
   gpu: internal::Gpu<internal::RenderBackend>,
   surface: internal::Surface<internal::RenderBackend>,
-  submission_fence: internal::RenderSubmissionFence<internal::RenderBackend>,
-  render_semaphore: internal::RenderSemaphore<internal::RenderBackend>,
-  command_pool: internal::CommandPool<internal::RenderBackend>,
-  render_passes: Vec<internal::RenderPass<internal::RenderBackend>>,
+  submission_fence:
+    Option<internal::RenderSubmissionFence<internal::RenderBackend>>,
+  render_semaphore: Option<internal::RenderSemaphore<internal::RenderBackend>>,
+  command_pool: Option<internal::CommandPool<internal::RenderBackend>>,
+  render_passes: Vec<Option<RenderPass>>,
   viewports: Vec<ViewPort>,
 }
 
 impl RenderContext {
   /// destroys the RenderContext and all associated resources.
-  pub fn destroy(self) {
-    let RenderContext {
-      name,
-      submission_fence,
-      instance,
-      mut gpu,
-      mut surface,
-      render_semaphore,
-      command_pool,
-      render_passes,
-      viewports,
-    } = self;
-
-    println!("{} will now start destroying resources.", name);
+  pub fn destroy(mut self) {
+    println!("{} will now start destroying resources.", self.name);
 
     // Destroy the submission fence and rendering semaphore.
-    submission_fence.destroy(&gpu);
-    render_semaphore.destroy(&gpu);
+    self.submission_fence.take().unwrap().destroy(&self.gpu);
+    self.render_semaphore.take().unwrap().destroy(&self.gpu);
 
-    // Destroy the command pool and all associated command buffers.
-    command_pool.destroy(&mut gpu);
-    for render_pass in render_passes {
-      render_pass.destroy(&gpu);
+    let mut render_passes = vec![];
+    swap(&mut self.render_passes, &mut render_passes);
+
+    for render_pass in &mut render_passes {
+      render_pass.take().unwrap().destroy(&self);
     }
 
-    surface.remove_swapchain(&gpu);
-    surface.destroy(&instance);
+    self.surface.remove_swapchain(&self.gpu);
+    self.surface.destroy(&self.instance);
   }
 
   /// Allocates a command buffer and records commands to the GPU.
@@ -192,7 +192,7 @@ impl RenderContext {
     let mut command_buffer =
       CommandBufferBuilder::new(CommandBufferLevel::Primary)
         .with_feature(CommandBufferFeatures::ResetEverySubmission)
-        .build(&mut self.command_pool, "primary");
+        .build(self.command_pool.as_mut().unwrap(), "primary");
 
     let command_list = vec![
       PlatformRenderCommand::BeginRecording,
@@ -213,12 +213,15 @@ impl RenderContext {
     self.gpu.submit_command_buffer(
       &mut command_buffer,
       vec![],
-      &mut self.submission_fence,
+      self.submission_fence.as_mut().unwrap(),
     );
 
     self
       .gpu
-      .render_to_surface(&mut self.surface, &mut self.render_semaphore)
+      .render_to_surface(
+        &mut self.surface,
+        self.render_semaphore.as_mut().unwrap(),
+      )
       .expect("Failed to render to the surface");
   }
 }

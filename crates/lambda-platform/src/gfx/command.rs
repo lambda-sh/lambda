@@ -223,8 +223,7 @@ impl CommandBufferBuilder {
     command_pool: &'command_pool mut CommandPool<RenderBackend>,
     name: &str,
   ) -> CommandBuffer<'command_pool, RenderBackend> {
-    let mut command_buffer =
-      command_pool.allocate_command_buffer(name, self.level);
+    let command_buffer = command_pool.allocate_command_buffer(name, self.level);
 
     let flags = self.flags;
 
@@ -304,8 +303,6 @@ pub struct CommandPool<RenderBackend: gfx_hal::Backend> {
   command_pool: RenderBackend::CommandPool,
   command_buffers: HashMap<String, RenderBackend::CommandBuffer>,
 }
-
-pub struct BufferID;
 
 impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   /// Allocate a command buffer for lambda.

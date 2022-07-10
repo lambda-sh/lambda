@@ -32,11 +32,7 @@ impl Component<Event> for DemoComponent {
   }
 }
 
-impl DemoComponent {
-  fn new() -> Self {
-    return DemoComponent {};
-  }
-}
+impl DemoComponent {}
 
 impl Default for DemoComponent {
   fn default() -> Self {

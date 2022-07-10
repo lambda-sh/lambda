@@ -48,9 +48,9 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
   pub fn build(
     self,
     gpu: &Gpu<RenderBackend>,
+    render_pass: &super::render_pass::RenderPass<RenderBackend>,
     vertex_shader: &ShaderModule<RenderBackend>,
     fragment_shader: &ShaderModule<RenderBackend>,
-    render_pass: &super::render_pass::RenderPass<RenderBackend>,
   ) -> RenderPipeline<RenderBackend> {
     // TODO(vmarcella): The pipeline layout should be configurable through the
     // RenderPipelineBuilder.
