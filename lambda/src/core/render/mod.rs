@@ -56,6 +56,13 @@ pub mod internal {
   ) -> &mut Gpu<RenderBackend> {
     return &mut context.gpu;
   }
+
+  /// Gets the surface for the given render context.
+  pub fn surface_for_context(
+    context: &super::RenderContext,
+  ) -> &Surface<RenderBackend> {
+    return &context.surface;
+  }
 }
 
 use std::mem::swap;
@@ -139,7 +146,7 @@ impl RenderContextBuilder {
       name,
       instance,
       gpu,
-      surface,
+      surface: Box::new(surface),
       submission_fence: Some(submission_fence),
       render_semaphore: Some(render_semaphore),
       command_pool: Some(command_pool),
@@ -155,7 +162,7 @@ pub struct RenderContext {
   name: String,
   instance: internal::Instance<internal::RenderBackend>,
   gpu: internal::Gpu<internal::RenderBackend>,
-  surface: internal::Surface<internal::RenderBackend>,
+  surface: Box<internal::Surface<internal::RenderBackend>>,
   submission_fence:
     Option<internal::RenderSubmissionFence<internal::RenderBackend>>,
   render_semaphore: Option<internal::RenderSemaphore<internal::RenderBackend>>,

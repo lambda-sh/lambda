@@ -13,6 +13,13 @@ impl RenderPass {
   pub fn destroy(self, render_context: &RenderContext) {
     self.render_pass.destroy(gpu_from_context(render_context));
   }
+
+  /// Converts
+  pub fn into_gfx_render_pass(
+    self,
+  ) -> render_pass::RenderPass<super::internal::RenderBackend> {
+    return self.render_pass;
+  }
 }
 
 pub struct RenderPassBuilder {}

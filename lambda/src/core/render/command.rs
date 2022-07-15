@@ -2,7 +2,11 @@ use std::ops::Range;
 
 use lambda_platform::gfx::viewport::ViewPort as PlatformViewPort;
 
-use super::PlatformRenderCommand;
+use super::{
+  internal::surface_for_context,
+  PlatformRenderCommand,
+  RenderContext,
+};
 /// Commands that are used to render a frame within the RenderContext.
 pub enum RenderCommand {
   /// sets the viewports for the render context.
@@ -18,8 +22,7 @@ pub enum RenderCommand {
   /// Begins the render pass.
   BeginRenderPass {
     render_pass: super::render_pass::RenderPass,
-    start_at: u32,
-    viewports: Vec<super::viewport::Viewport>,
+    viewport: super::viewport::Viewport,
   },
   /// Ends the render pass.
   EndRenderPass,
@@ -34,7 +37,10 @@ pub enum RenderCommand {
 impl RenderCommand {
   /// Converts the RenderCommand into a platform compatible render command.
   // TODO(vmarcella): implement this using Into<PlatformRenderCommand>
-  pub fn into_platform_command(self) -> PlatformRenderCommand {
+  pub fn into_platform_command(
+    self,
+    render_context: &RenderContext,
+  ) -> PlatformRenderCommand {
     return match self {
       RenderCommand::SetViewports {
         start_at,
@@ -58,13 +64,12 @@ impl RenderCommand {
       },
       RenderCommand::BeginRenderPass {
         render_pass,
-        start_at,
-        viewports,
+        viewport,
       } => PlatformRenderCommand::BeginRenderPass {
-        render_pass: todo!("Renderpass"),
-        surface: todo!("Surface"),
-        frame_buffer: todo!(""),
-        viewport: todo!(),
+        render_pass: render_pass.into_gfx_render_pass(),
+        surface: todo!(),
+        frame_buffer: todo!("FrameBuffer"),
+        viewport: viewport.into_gfx_viewport(),
       },
       RenderCommand::EndRenderPass => todo!(),
       RenderCommand::AttachGraphicsPipeline { pipeline } => todo!(),

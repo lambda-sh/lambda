@@ -7,12 +7,15 @@ use lambda::{
     events::Event,
     kernel::start_kernel,
     render::{
+      command::RenderCommand,
       pipeline,
+      render_pass,
       shader::{
         ShaderBuilder,
         ShaderKind,
         VirtualShader,
       },
+      viewport,
       RenderContextBuilder,
     },
   },
@@ -44,7 +47,7 @@ impl Component<Event> for DemoComponent {
 }
 
 /// Implement rendering for the component.
-impl RenderableComponent<lambda::core::events::Event> for DemoComponent {
+impl RenderableComponent<Event> for DemoComponent {
   fn on_attach(
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
@@ -68,13 +71,6 @@ impl RenderableComponent<lambda::core::events::Event> for DemoComponent {
     let mut builder = ShaderBuilder::new();
     let vs = builder.build(triangle_vertex);
     let fs = builder.build(triangle_fragment);
-
-    let render_pass =
-      lambda::core::render::render_pass::RenderPassBuilder::new()
-        .build(&render_context);
-
-    let pipeline = lambda::core::render::pipeline::RenderPipelineBuilder::new()
-      .build(render_context, &render_pass, &vs, &fs);
   }
 
   fn on_render(
@@ -82,7 +78,33 @@ impl RenderableComponent<lambda::core::events::Event> for DemoComponent {
     render_context: &mut lambda::core::render::RenderContext,
     last_render: &std::time::Duration,
   ) {
-    println!("Rendering the second layer");
+    // let viewport = viewport::ViewportBuilder::new().build(800, 600);
+    // let render_pass =
+    //   render_pass::RenderPassBuilder::new().build(&render_context);
+    // let pipeline = pipeline::RenderPipelineBuilder::new().build(
+    //   render_context,
+    //   &render_pass,
+    //   &vs,
+    //   &fs,
+    // );
+
+    // let commands = vec![
+    //   RenderCommand::SetViewports {
+    //     start_at: 0,
+    //     viewports: vec![viewport.clone()],
+    //   },
+    //   RenderCommand::SetScissors {
+    //     start_at: 0,
+    //     viewports: vec![viewport.clone()],
+    //   },
+    //   RenderCommand::SetPipeline {
+    //     pipeline: &render_context.pipeline,
+    //   },
+    //   RenderCommand::BeginRenderPass {
+    //     render_pass,
+    //     viewport: viewport.clone(),
+    //   },
+    // ];
   }
 
   fn on_detach(

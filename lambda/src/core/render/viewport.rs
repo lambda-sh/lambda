@@ -4,12 +4,14 @@ pub struct Viewport {
 }
 
 impl Viewport {
-  /// Convert the viewport into a platform viewport.
+  /// Convert the viewport into a gfx platform viewport.
+  // TODO(vmarcella): implement this using Into<PlatformViewPort>
   pub fn into_gfx_viewport(self) -> gfx::viewport::ViewPort {
     return self.viewport;
   }
 }
 
+/// Builder for viewports that are used to render a frame within the RenderContext.
 pub struct ViewportBuilder {
   x: i16,
   y: i16,
