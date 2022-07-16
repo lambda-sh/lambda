@@ -19,6 +19,9 @@ pub enum RenderCommand {
     start_at: u32,
     viewports: Vec<super::viewport::Viewport>,
   },
+  SetPipeline {
+    pipeline: super::pipeline::RenderPipeline,
+  },
   /// Begins the render pass.
   BeginRenderPass {
     render_pass: super::render_pass::RenderPass,
@@ -26,10 +29,6 @@ pub enum RenderCommand {
   },
   /// Ends the render pass.
   EndRenderPass,
-  /// Attaches a graphical pipeline to the render context.
-  AttachGraphicsPipeline {
-    pipeline: super::pipeline::RenderPipeline,
-  },
   /// Draws a graphical primitive.
   Draw { vertices: Range<u32> },
 }
@@ -72,7 +71,7 @@ impl RenderCommand {
         viewport: viewport.into_gfx_viewport(),
       },
       RenderCommand::EndRenderPass => todo!(),
-      RenderCommand::AttachGraphicsPipeline { pipeline } => todo!(),
+      RenderCommand::SetPipeline { pipeline } => todo!(),
       RenderCommand::Draw { vertices } => todo!(),
     };
   }

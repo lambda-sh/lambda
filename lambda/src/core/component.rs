@@ -17,6 +17,6 @@ pub trait RenderableComponent<E>: Component<E> {
     &mut self,
     render_context: &mut super::render::RenderContext,
     last_render: &Duration,
-  );
+  ) -> Vec<super::render::command::RenderCommand>;
   fn on_detach(&mut self, render_context: &mut super::render::RenderContext);
 }

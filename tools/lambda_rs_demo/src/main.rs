@@ -11,6 +11,7 @@ use lambda::{
       pipeline,
       render_pass,
       shader::{
+        Shader,
         ShaderBuilder,
         ShaderKind,
         VirtualShader,
@@ -22,7 +23,10 @@ use lambda::{
   kernels::LambdaKernelBuilder,
 };
 
-pub struct DemoComponent {}
+pub struct DemoComponent {
+  triangle_vertex: Shader,
+  vertex_shader: Shader,
+}
 
 impl Component<Event> for DemoComponent {
   fn on_attach(&mut self) {
@@ -52,6 +56,53 @@ impl RenderableComponent<Event> for DemoComponent {
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
+  }
+
+  fn on_render(
+    self: &mut DemoComponent,
+    render_context: &mut lambda::core::render::RenderContext,
+    last_render: &std::time::Duration,
+  ) -> Vec<RenderCommand> {
+    let viewport = viewport::ViewportBuilder::new().build(800, 600);
+    let render_pass =
+      render_pass::RenderPassBuilder::new().build(&render_context);
+    let pipeline = pipeline::RenderPipelineBuilder::new().build(
+      render_context,
+      &render_pass,
+      &self.vertex_shader,
+      &self.triangle_vertex,
+    );
+
+    // This array of commands will be executed in linear order
+    return vec![
+      RenderCommand::SetViewports {
+        start_at: 0,
+        viewports: vec![viewport.clone()],
+      },
+      RenderCommand::SetScissors {
+        start_at: 0,
+        viewports: vec![viewport.clone()],
+      },
+      RenderCommand::SetPipeline { pipeline },
+      RenderCommand::BeginRenderPass {
+        render_pass,
+        viewport: viewport.clone(),
+      },
+    ];
+  }
+
+  fn on_detach(
+    self: &mut DemoComponent,
+    render_context: &mut lambda::core::render::RenderContext,
+  ) {
+  }
+}
+
+impl DemoComponent {}
+
+impl Default for DemoComponent {
+  /// Load in shaders upon creation.
+  fn default() -> Self {
     // Specify virtual shaders to use for rendering
     let triangle_vertex = VirtualShader::Source {
       source: include_str!("../assets/triangle.vert").to_string(),
@@ -71,54 +122,11 @@ impl RenderableComponent<Event> for DemoComponent {
     let mut builder = ShaderBuilder::new();
     let vs = builder.build(triangle_vertex);
     let fs = builder.build(triangle_fragment);
-  }
 
-  fn on_render(
-    self: &mut DemoComponent,
-    render_context: &mut lambda::core::render::RenderContext,
-    last_render: &std::time::Duration,
-  ) {
-    // let viewport = viewport::ViewportBuilder::new().build(800, 600);
-    // let render_pass =
-    //   render_pass::RenderPassBuilder::new().build(&render_context);
-    // let pipeline = pipeline::RenderPipelineBuilder::new().build(
-    //   render_context,
-    //   &render_pass,
-    //   &vs,
-    //   &fs,
-    // );
-
-    // let commands = vec![
-    //   RenderCommand::SetViewports {
-    //     start_at: 0,
-    //     viewports: vec![viewport.clone()],
-    //   },
-    //   RenderCommand::SetScissors {
-    //     start_at: 0,
-    //     viewports: vec![viewport.clone()],
-    //   },
-    //   RenderCommand::SetPipeline {
-    //     pipeline: &render_context.pipeline,
-    //   },
-    //   RenderCommand::BeginRenderPass {
-    //     render_pass,
-    //     viewport: viewport.clone(),
-    //   },
-    // ];
-  }
-
-  fn on_detach(
-    self: &mut DemoComponent,
-    render_context: &mut lambda::core::render::RenderContext,
-  ) {
-  }
-}
-
-impl DemoComponent {}
-
-impl Default for DemoComponent {
-  fn default() -> Self {
-    return DemoComponent {};
+    return DemoComponent {
+      vertex_shader: vs,
+      triangle_vertex: fs,
+    };
   }
 }
 

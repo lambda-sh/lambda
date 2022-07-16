@@ -1,4 +1,6 @@
 use lambda_platform::gfx;
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Viewport {
   viewport: gfx::viewport::ViewPort,
 }
