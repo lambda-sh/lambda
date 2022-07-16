@@ -52,7 +52,7 @@ impl Component<Event> for DemoComponent {
 
 /// Implement rendering for the component.
 impl RenderableComponent<Event> for DemoComponent {
-  fn on_attach(
+  fn on_renderer_attached(
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
@@ -91,7 +91,7 @@ impl RenderableComponent<Event> for DemoComponent {
     ];
   }
 
-  fn on_detach(
+  fn on_renderer_detached(
     self: &mut DemoComponent,
     render_context: &mut lambda::core::render::RenderContext,
   ) {

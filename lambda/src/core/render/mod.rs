@@ -65,7 +65,10 @@ pub mod internal {
   }
 }
 
-use std::mem::swap;
+use std::{
+  borrow::Borrow,
+  mem::swap,
+};
 
 use lambda_platform::gfx::{
   command::{
@@ -78,7 +81,10 @@ use lambda_platform::gfx::{
   viewport::ViewPort,
 };
 
-use self::render_pass::RenderPass;
+use self::{
+  command::RenderCommand,
+  render_pass::RenderPass,
+};
 
 pub struct RenderContextBuilder {
   name: String,
@@ -192,29 +198,18 @@ impl RenderContext {
   }
 
   /// Allocates a command buffer and records commands to the GPU.
-  pub fn render(&mut self) {
+  pub fn render(&mut self, commands: Vec<RenderCommand>) {
+    let platform_command_list = commands
+      .into_iter()
+      .map(|command| command.into_platform_command(self))
+      .collect();
+
     let mut command_buffer =
       CommandBufferBuilder::new(CommandBufferLevel::Primary)
         .with_feature(CommandBufferFeatures::ResetEverySubmission)
         .build(self.command_pool.as_mut().unwrap(), "primary");
 
-    // TODO(vmarcella): replace this with the render commands gathered from
-    // components.
-    let command_list = vec![
-      PlatformRenderCommand::BeginRecording,
-      PlatformRenderCommand::SetViewports {
-        start_at: 0,
-        viewports: self.viewports.clone(),
-      },
-      PlatformRenderCommand::SetScissors {
-        start_at: 0,
-        viewports: self.viewports.clone(),
-      },
-      PlatformRenderCommand::EndRenderPass,
-      PlatformRenderCommand::EndRecording,
-    ];
-
-    command_buffer.issue_commands(command_list);
+    command_buffer.issue_commands(platform_command_list);
 
     self.gpu.submit_command_buffer(
       &mut command_buffer,

@@ -12,11 +12,17 @@ pub trait Component<E> {
 
 /// The interface for a Component that can be rendered.
 pub trait RenderableComponent<E>: Component<E> {
-  fn on_attach(&mut self, render_context: &mut super::render::RenderContext);
+  fn on_renderer_attached(
+    &mut self,
+    render_context: &mut super::render::RenderContext,
+  );
   fn on_render(
     &mut self,
     render_context: &mut super::render::RenderContext,
     last_render: &Duration,
   ) -> Vec<super::render::command::RenderCommand>;
-  fn on_detach(&mut self, render_context: &mut super::render::RenderContext);
+  fn on_renderer_detached(
+    &mut self,
+    render_context: &mut super::render::RenderContext,
+  );
 }

@@ -10,20 +10,17 @@ use lambda_platform::winit::{
   Loop,
 };
 
-use crate::{
-  components::ComponentStack,
-  core::{
-    component::Component,
-    events::Event,
-    kernel::Kernel,
-    render::{
-      window::{
-        Window,
-        WindowBuilder,
-      },
-      RenderContext,
-      RenderContextBuilder,
+use crate::core::{
+  component::RenderableComponent,
+  events::Event,
+  kernel::Kernel,
+  render::{
+    window::{
+      Window,
+      WindowBuilder,
     },
+    RenderContext,
+    RenderContextBuilder,
   },
 };
 
@@ -65,7 +62,7 @@ impl LambdaKernelBuilder {
     let window = WindowBuilder::new()
       .with_name(name.as_str())
       .build(&mut event_loop);
-    let component_stack = ComponentStack::new();
+    let component_stack = Vec::new();
     let render_api = self.render_api.build(&window);
 
     return LambdaKernel {
@@ -78,24 +75,25 @@ impl LambdaKernelBuilder {
   }
 }
 
-/// LambdaKernel is a pre configured composition of a generic set of
-/// components from the lambda-rs codebase
+/// A windowed and event-driven kernel that can be used to render a
+/// scene on the primary GPU across Windows, MacOS, and Linux at this point in
+/// time.
 pub struct LambdaKernel {
   name: String,
   event_loop: Loop<Event>,
   window: Window,
-  component_stack: ComponentStack,
+  component_stack: Vec<Box<dyn RenderableComponent<Event>>>,
   render_api: RenderContext,
 }
 
 impl LambdaKernel {
   /// Attach a component to the current runnable.
-  pub fn with_component<T: Default + Component<Event> + 'static>(
+  pub fn with_component<T: Default + RenderableComponent<Event> + 'static>(
     self,
     configure_component: impl FnOnce(Self, T) -> (Self, T),
   ) -> Self {
     let (mut kernel, component) = configure_component(self, T::default());
-    kernel.component_stack.push_component(component);
+    kernel.component_stack.push(Box::new(component));
     return kernel;
   }
 }
@@ -188,7 +186,15 @@ impl Kernel for LambdaKernel {
           last_frame = current_frame.clone();
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
-          component_stack.on_update(duration);
+
+          // Update and render commands.
+          for component in &mut component_stack {
+            component.on_update(duration);
+            let commands = component
+              .on_render(active_render_api.as_mut().unwrap(), duration);
+            active_render_api.as_mut().unwrap().render(commands);
+          }
+
           window.redraw();
         }
         WinitEvent::RedrawRequested(_) => {}
@@ -197,7 +203,11 @@ impl Kernel for LambdaKernel {
         WinitEvent::UserEvent(lambda_event) => {
           match lambda_event {
             Event::Initialized => {
-              component_stack.on_attach();
+              for component in &mut component_stack {
+                component.on_attach();
+                component
+                  .on_renderer_attached(active_render_api.as_mut().unwrap());
+              }
             }
             Event::Shutdown => {
               // Once this has been set, the ControlFlow can no longer be
@@ -207,7 +217,9 @@ impl Kernel for LambdaKernel {
               *control_flow = ControlFlow::Exit;
             }
             _ => {
-              component_stack.on_event(&lambda_event);
+              for component in &mut component_stack {
+                component.on_event(&lambda_event);
+              }
             }
           }
         }
@@ -215,7 +227,10 @@ impl Kernel for LambdaKernel {
         WinitEvent::Resumed => {}
         WinitEvent::RedrawEventsCleared => {}
         WinitEvent::LoopDestroyed => {
-          component_stack.on_detach();
+          for component in &mut component_stack {
+            component.on_detach();
+            component.on_renderer_detached(active_render_api.as_mut().unwrap());
+          }
           active_render_api.take().unwrap().destroy();
 
           println!("All resources were successfully deleted.");
