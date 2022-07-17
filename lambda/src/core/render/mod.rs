@@ -28,6 +28,7 @@ pub mod internal {
         RenderSubmissionFence,
         RenderSubmissionFenceBuilder,
       },
+      framebuffer::Framebuffer,
       gpu::{
         Gpu,
         GpuBuilder,
@@ -82,6 +83,7 @@ use lambda_platform::gfx::{
     CommandBufferFeatures,
     CommandBufferLevel,
   },
+  framebuffer::FramebufferBuilder,
   surface::SwapchainBuilder,
   viewport::ViewPort,
 };
@@ -158,6 +160,7 @@ impl RenderContextBuilder {
       instance,
       gpu,
       surface: Rc::new(surface),
+      frame_buffer: None,
       submission_fence: Some(submission_fence),
       render_semaphore: Some(render_semaphore),
       command_pool: Some(command_pool),
@@ -174,6 +177,7 @@ pub struct RenderContext {
   instance: internal::Instance<internal::RenderBackend>,
   gpu: internal::Gpu<internal::RenderBackend>,
   surface: Rc<internal::Surface<internal::RenderBackend>>,
+  frame_buffer: Option<Rc<internal::Framebuffer<internal::RenderBackend>>>,
   submission_fence:
     Option<internal::RenderSubmissionFence<internal::RenderBackend>>,
   render_semaphore: Option<internal::RenderSemaphore<internal::RenderBackend>>,
@@ -204,6 +208,27 @@ impl RenderContext {
     surface.destroy(&self.instance);
   }
 
+  pub fn allocate_and_get_frame_buffer(
+    &mut self,
+    render_pass: &internal::RenderPass<internal::RenderBackend>,
+  ) -> Rc<
+    lambda_platform::gfx::framebuffer::Framebuffer<
+      lambda_platform::gfx::api::RenderingAPI::Backend,
+    >,
+  > {
+    let frame_buffer = FramebufferBuilder::new().build(
+      &mut self.gpu,
+      &render_pass,
+      &self.surface,
+    );
+
+    // TODO(vmarcella): Update the framebuffer allocation to not be so hacky.
+    // FBAs can only be allocated once a render pass has begun, but must be
+    // cleaned up after commands have been submitted forcing us
+    self.frame_buffer = Some(Rc::new(frame_buffer));
+    return self.frame_buffer.as_ref().unwrap().clone();
+  }
+
   /// Allocates a command buffer and records commands to the GPU.
   pub fn render(&mut self, commands: Vec<RenderCommand>) {
     let platform_command_list = commands
@@ -216,7 +241,12 @@ impl RenderContext {
         .with_feature(CommandBufferFeatures::ResetEverySubmission)
         .build(self.command_pool.as_mut().unwrap(), "primary");
 
+    // Start recording commands, issue the high level render commands
+    // that came from an application, and then submit the commands to the GPU
+    // for rendering.
+    command_buffer.issue_command(PlatformRenderCommand::BeginRecording);
     command_buffer.issue_commands(platform_command_list);
+    command_buffer.issue_command(PlatformRenderCommand::EndRecording);
 
     self.gpu.submit_command_buffer(
       &mut command_buffer,
@@ -231,6 +261,16 @@ impl RenderContext {
         self.render_semaphore.as_mut().unwrap(),
       )
       .expect("Failed to render to the surface");
+
+    match self.frame_buffer {
+      Some(_) => {
+        Rc::try_unwrap(self.frame_buffer.take().unwrap())
+          .ok()
+          .unwrap()
+          .destroy(&self.gpu);
+      }
+      None => {}
+    }
   }
 }
 

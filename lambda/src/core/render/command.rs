@@ -1,9 +1,19 @@
-use std::ops::Range;
+use std::{
+  ops::Range,
+  rc::Rc,
+};
 
-use lambda_platform::gfx::viewport::ViewPort as PlatformViewPort;
+use lambda_platform::gfx::{
+  framebuffer::FramebufferBuilder,
+  viewport::ViewPort as PlatformViewPort,
+};
 
 use super::{
-  internal::surface_for_context,
+  internal::{
+    gpu_from_context,
+    mut_gpu_from_context,
+    surface_for_context,
+  },
   PlatformRenderCommand,
   RenderContext,
 };
@@ -38,7 +48,7 @@ impl RenderCommand {
   // TODO(vmarcella): implement this using Into<PlatformRenderCommand>
   pub fn into_platform_command(
     self,
-    render_context: &RenderContext,
+    render_context: &mut RenderContext,
   ) -> PlatformRenderCommand {
     return match self {
       RenderCommand::SetViewports {
@@ -64,15 +74,24 @@ impl RenderCommand {
       RenderCommand::BeginRenderPass {
         render_pass,
         viewport,
-      } => PlatformRenderCommand::BeginRenderPass {
-        render_pass: render_pass.into_gfx_render_pass(),
-        surface: surface_for_context(render_context),
-        frame_buffer: todo!("FrameBuffer"),
-        viewport: viewport.into_gfx_viewport(),
-      },
-      RenderCommand::EndRenderPass => todo!(),
+      } => {
+        let surface = surface_for_context(render_context);
+        let render_pass = render_pass.into_gfx_render_pass();
+        let frame_buffer =
+          render_context.allocate_and_get_frame_buffer(&render_pass);
+
+        PlatformRenderCommand::BeginRenderPass {
+          render_pass,
+          surface,
+          frame_buffer,
+          viewport: viewport.into_gfx_viewport(),
+        }
+      }
+      RenderCommand::EndRenderPass => PlatformRenderCommand::EndRenderPass,
       RenderCommand::SetPipeline { pipeline } => todo!(),
-      RenderCommand::Draw { vertices } => todo!(),
+      RenderCommand::Draw { vertices } => {
+        PlatformRenderCommand::Draw { vertices }
+      }
     };
   }
 }
