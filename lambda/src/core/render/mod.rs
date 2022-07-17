@@ -6,6 +6,11 @@ pub mod viewport;
 pub mod window;
 
 pub mod internal {
+  use std::{
+    borrow::Borrow,
+    rc::Rc,
+  };
+
   use lambda_platform::gfx::api::RenderingAPI as RenderContext;
   pub type RenderBackend = RenderContext::Backend;
 
@@ -60,14 +65,14 @@ pub mod internal {
   /// Gets the surface for the given render context.
   pub fn surface_for_context(
     context: &super::RenderContext,
-  ) -> &Surface<RenderBackend> {
-    return &context.surface;
+  ) -> Rc<Surface<RenderBackend>> {
+    return context.surface.clone();
   }
 }
 
 use std::{
-  borrow::Borrow,
   mem::swap,
+  rc::Rc,
 };
 
 use lambda_platform::gfx::{
@@ -152,7 +157,7 @@ impl RenderContextBuilder {
       name,
       instance,
       gpu,
-      surface: Box::new(surface),
+      surface: Rc::new(surface),
       submission_fence: Some(submission_fence),
       render_semaphore: Some(render_semaphore),
       command_pool: Some(command_pool),
@@ -168,7 +173,7 @@ pub struct RenderContext {
   name: String,
   instance: internal::Instance<internal::RenderBackend>,
   gpu: internal::Gpu<internal::RenderBackend>,
-  surface: Box<internal::Surface<internal::RenderBackend>>,
+  surface: Rc<internal::Surface<internal::RenderBackend>>,
   submission_fence:
     Option<internal::RenderSubmissionFence<internal::RenderBackend>>,
   render_semaphore: Option<internal::RenderSemaphore<internal::RenderBackend>>,
@@ -193,8 +198,10 @@ impl RenderContext {
       render_pass.take().unwrap().destroy(&self);
     }
 
-    self.surface.remove_swapchain(&self.gpu);
-    self.surface.destroy(&self.instance);
+    // Takes the inner surface and destroys it.
+    let mut surface = Rc::try_unwrap(self.surface).ok().unwrap();
+    surface.remove_swapchain(&self.gpu);
+    surface.destroy(&self.instance);
   }
 
   /// Allocates a command buffer and records commands to the GPU.
@@ -220,7 +227,7 @@ impl RenderContext {
     self
       .gpu
       .render_to_surface(
-        &mut self.surface,
+        Rc::get_mut(&mut self.surface).expect(""),
         self.render_semaphore.as_mut().unwrap(),
       )
       .expect("Failed to render to the surface");

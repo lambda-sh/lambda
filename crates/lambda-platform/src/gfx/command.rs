@@ -2,6 +2,7 @@ use std::{
   borrow::Borrow,
   collections::HashMap,
   ops::Range,
+  rc::Rc,
 };
 
 use gfx_hal::{
@@ -77,8 +78,8 @@ pub enum Command<RenderBackend: gfx_hal::Backend> {
   },
   BeginRenderPass {
     render_pass: super::render_pass::RenderPass<RenderBackend>,
-    surface: Box<super::surface::Surface<RenderBackend>>,
-    frame_buffer: Box<super::framebuffer::Framebuffer<RenderBackend>>,
+    surface: Rc<super::surface::Surface<RenderBackend>>,
+    frame_buffer: Rc<super::framebuffer::Framebuffer<RenderBackend>>,
     viewport: ViewPort,
   },
   /// Ends a currently active render pass.

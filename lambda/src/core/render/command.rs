@@ -66,7 +66,7 @@ impl RenderCommand {
         viewport,
       } => PlatformRenderCommand::BeginRenderPass {
         render_pass: render_pass.into_gfx_render_pass(),
-        surface: todo!(),
+        surface: surface_for_context(render_context),
         frame_buffer: todo!("FrameBuffer"),
         viewport: viewport.into_gfx_viewport(),
       },
