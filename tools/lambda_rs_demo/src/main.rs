@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use lambda::{
   core::{
     component::{
@@ -8,8 +10,14 @@ use lambda::{
     kernel::start_kernel,
     render::{
       command::RenderCommand,
-      pipeline,
-      render_pass,
+      pipeline::{
+        self,
+        RenderPipeline,
+      },
+      render_pass::{
+        self,
+        RenderPass,
+      },
       shader::{
         Shader,
         ShaderBuilder,
@@ -26,6 +34,8 @@ use lambda::{
 pub struct DemoComponent {
   triangle_vertex: Shader,
   vertex_shader: Shader,
+  render_pass: Option<Rc<RenderPass>>,
+  render_pipeline: Option<Rc<RenderPipeline>>,
 }
 
 impl Component<Event> for DemoComponent {
@@ -56,6 +66,20 @@ impl RenderableComponent<Event> for DemoComponent {
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
+    println!("Attached the demo component to the renderer");
+    let render_pass =
+      Rc::new(render_pass::RenderPassBuilder::new().build(&render_context));
+
+    self.render_pass = Some(render_pass.clone());
+
+    let pipeline = Rc::new(pipeline::RenderPipelineBuilder::new().build(
+      render_context,
+      &self.render_pass.as_ref().unwrap(),
+      &self.vertex_shader,
+      &self.triangle_vertex,
+    ));
+
+    self.render_pipeline = Some(pipeline.clone());
   }
 
   fn on_render(
@@ -64,14 +88,6 @@ impl RenderableComponent<Event> for DemoComponent {
     last_render: &std::time::Duration,
   ) -> Vec<RenderCommand> {
     let viewport = viewport::ViewportBuilder::new().build(800, 600);
-    let render_pass =
-      render_pass::RenderPassBuilder::new().build(&render_context);
-    let pipeline = pipeline::RenderPipelineBuilder::new().build(
-      render_context,
-      &render_pass,
-      &self.vertex_shader,
-      &self.triangle_vertex,
-    );
 
     // This array of commands will be executed in linear order
     return vec![
@@ -83,9 +99,17 @@ impl RenderableComponent<Event> for DemoComponent {
         start_at: 0,
         viewports: vec![viewport.clone()],
       },
-      RenderCommand::SetPipeline { pipeline },
+      RenderCommand::SetPipeline {
+        pipeline: self
+          .render_pipeline
+          .as_ref()
+          .expect(
+            "No render pipeline set while trying to issue a render command",
+          )
+          .clone(),
+      },
       RenderCommand::BeginRenderPass {
-        render_pass,
+        render_pass: self.render_pass.as_ref().unwrap().clone(),
         viewport: viewport.clone(),
       },
     ];
@@ -102,6 +126,7 @@ impl DemoComponent {}
 
 impl Default for DemoComponent {
   /// Load in shaders upon creation.
+
   fn default() -> Self {
     // Specify virtual shaders to use for rendering
     let triangle_vertex = VirtualShader::Source {
@@ -126,6 +151,8 @@ impl Default for DemoComponent {
     return DemoComponent {
       vertex_shader: vs,
       triangle_vertex: fs,
+      render_pass: None,
+      render_pipeline: None,
     };
   }
 }

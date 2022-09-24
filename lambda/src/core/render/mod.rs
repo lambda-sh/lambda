@@ -90,6 +90,7 @@ use lambda_platform::gfx::{
 
 use self::{
   command::RenderCommand,
+  pipeline::RenderPipeline,
   render_pass::RenderPass,
 };
 
@@ -124,8 +125,9 @@ impl RenderContextBuilder {
 
     let mut instance = internal::InstanceBuilder::new()
       .build::<internal::RenderBackend>(name.as_str());
-    let mut surface =
-      internal::SurfaceBuilder::new().build(&instance, window.window_handle());
+    let mut surface = Rc::new(
+      internal::SurfaceBuilder::new().build(&instance, window.window_handle()),
+    );
 
     // Build a GPU with a 3D Render queue that can render to our surface.
     let mut gpu = internal::GpuBuilder::new()
@@ -151,21 +153,23 @@ impl RenderContextBuilder {
       .with_size(dimensions[0], dimensions[1])
       .build(&gpu, &surface);
 
-    surface
-      .apply_swapchain(&gpu, swapchain, 1_000_000_000)
+    Rc::get_mut(&mut surface)
+      .expect("Failed to get mutable reference to surface.")
+      .apply_swapchain(&gpu, swapchain, self.render_timeout)
       .expect("Failed to apply the swapchain to the surface.");
 
     return RenderContext {
       name,
       instance,
       gpu,
-      surface: Rc::new(surface),
+      surface: surface.clone(),
       frame_buffer: None,
       submission_fence: Some(submission_fence),
       render_semaphore: Some(render_semaphore),
       command_pool: Some(command_pool),
       viewports: vec![],
       render_passes: vec![],
+      render_pipelines: vec![],
     };
   }
 }
@@ -183,6 +187,7 @@ pub struct RenderContext {
   render_semaphore: Option<internal::RenderSemaphore<internal::RenderBackend>>,
   command_pool: Option<internal::CommandPool<internal::RenderBackend>>,
   render_passes: Vec<Option<RenderPass>>,
+  render_pipelines: Vec<Option<RenderPipeline>>,
   viewports: Vec<ViewPort>,
 }
 
@@ -195,11 +200,20 @@ impl RenderContext {
     self.submission_fence.take().unwrap().destroy(&self.gpu);
     self.render_semaphore.take().unwrap().destroy(&self.gpu);
 
+    // Destroy render passes.
     let mut render_passes = vec![];
     swap(&mut self.render_passes, &mut render_passes);
 
     for render_pass in &mut render_passes {
       render_pass.take().unwrap().destroy(&self);
+    }
+
+    // Destroy render pipelines.
+    let mut render_pipelines = vec![];
+    swap(&mut self.render_pipelines, &mut render_pipelines);
+
+    for render_pipeline in &mut render_pipelines {
+      render_pipeline.take().unwrap().destroy(&self);
     }
 
     // Takes the inner surface and destroys it.
@@ -211,15 +225,12 @@ impl RenderContext {
   pub fn allocate_and_get_frame_buffer(
     &mut self,
     render_pass: &internal::RenderPass<internal::RenderBackend>,
-  ) -> Rc<
-    lambda_platform::gfx::framebuffer::Framebuffer<
-      lambda_platform::gfx::api::RenderingAPI::Backend,
-    >,
-  > {
+  ) -> Rc<lambda_platform::gfx::framebuffer::Framebuffer<internal::RenderBackend>>
+  {
     let frame_buffer = FramebufferBuilder::new().build(
       &mut self.gpu,
       &render_pass,
-      &self.surface,
+      self.surface.as_ref(),
     );
 
     // TODO(vmarcella): Update the framebuffer allocation to not be so hacky.
@@ -231,6 +242,20 @@ impl RenderContext {
 
   /// Allocates a command buffer and records commands to the GPU.
   pub fn render(&mut self, commands: Vec<RenderCommand>) {
+    let dimensions = self
+      .surface
+      .size()
+      .expect("Surface has no size configured.");
+
+    let swapchain = SwapchainBuilder::new()
+      .with_size(dimensions[0], dimensions[1])
+      .build(&self.gpu, &self.surface);
+
+    Rc::get_mut(&mut self.surface)
+      .expect("Failed to get mutable reference to surface.")
+      .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
+      .expect("Failed to apply the swapchain to the surface.");
+
     let platform_command_list = commands
       .into_iter()
       .map(|command| command.into_platform_command(self))

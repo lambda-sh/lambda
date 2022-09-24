@@ -30,11 +30,11 @@ pub enum RenderCommand {
     viewports: Vec<super::viewport::Viewport>,
   },
   SetPipeline {
-    pipeline: super::pipeline::RenderPipeline,
+    pipeline: Rc<super::pipeline::RenderPipeline>,
   },
   /// Begins the render pass.
   BeginRenderPass {
-    render_pass: super::render_pass::RenderPass,
+    render_pass: Rc<super::render_pass::RenderPass>,
     viewport: super::viewport::Viewport,
   },
   /// Ends the render pass.
@@ -78,17 +78,21 @@ impl RenderCommand {
         let surface = surface_for_context(render_context);
         let render_pass = render_pass.into_gfx_render_pass();
         let frame_buffer =
-          render_context.allocate_and_get_frame_buffer(&render_pass);
+          render_context.allocate_and_get_frame_buffer(render_pass.as_ref());
 
         PlatformRenderCommand::BeginRenderPass {
-          render_pass,
-          surface,
-          frame_buffer,
+          render_pass: render_pass.clone(),
+          surface: surface.clone(),
+          frame_buffer: frame_buffer.clone(),
           viewport: viewport.into_gfx_viewport(),
         }
       }
       RenderCommand::EndRenderPass => PlatformRenderCommand::EndRenderPass,
-      RenderCommand::SetPipeline { pipeline } => todo!(),
+      RenderCommand::SetPipeline { pipeline } => {
+        PlatformRenderCommand::AttachGraphicsPipeline {
+          pipeline: pipeline.into_platform_render_pipeline(),
+        }
+      }
       RenderCommand::Draw { vertices } => {
         PlatformRenderCommand::Draw { vertices }
       }

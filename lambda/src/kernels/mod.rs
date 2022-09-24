@@ -202,13 +202,7 @@ impl Kernel for LambdaKernel {
         WinitEvent::DeviceEvent { device_id, event } => {}
         WinitEvent::UserEvent(lambda_event) => {
           match lambda_event {
-            Event::Initialized => {
-              for component in &mut component_stack {
-                component.on_attach();
-                component
-                  .on_renderer_attached(active_render_api.as_mut().unwrap());
-              }
-            }
+            Event::Initialized => {}
             Event::Shutdown => {
               // Once this has been set, the ControlFlow can no longer be
               // modified.
@@ -239,11 +233,15 @@ impl Kernel for LambdaKernel {
     });
   }
 
-  fn on_start(&self) {
-    println!("Starting {}", self.name)
+  fn on_start(&mut self) {
+    println!("Starting {}", self.name);
+    for component in &mut self.component_stack {
+      component.on_attach();
+      component.on_renderer_attached(&mut self.render_api);
+    }
   }
 
-  fn on_stop(&self) {
+  fn on_stop(&mut self) {
     println!("Stopping {}", self.name)
   }
 }

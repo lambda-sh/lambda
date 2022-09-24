@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use lambda_platform::gfx::shader::{
   ShaderModuleBuilder,
   ShaderModuleType,
@@ -7,21 +9,34 @@ use super::{
   internal::{
     gpu_from_context,
     mut_gpu_from_context,
+    RenderBackend,
   },
   render_pass::internal::platform_render_pass_from_render_pass,
   shader::Shader,
   RenderContext,
 };
+
+#[derive(Debug)]
 pub struct RenderPipeline {
-  pipeline: lambda_platform::gfx::pipeline::RenderPipeline<
-    super::internal::RenderBackend,
+  pipeline: Rc<
+    lambda_platform::gfx::pipeline::RenderPipeline<
+      super::internal::RenderBackend,
+    >,
   >,
 }
 
 impl RenderPipeline {
   /// Destroy the render pipeline with the render context that created it.
   pub fn destroy(self, render_context: &RenderContext) {
-    self.pipeline.destroy(gpu_from_context(render_context));
+    Rc::try_unwrap(self.pipeline)
+      .expect("Failed to destroy render pipeline")
+      .destroy(gpu_from_context(render_context));
+  }
+
+  pub fn into_platform_render_pipeline(
+    &self,
+  ) -> Rc<lambda_platform::gfx::pipeline::RenderPipeline<RenderBackend>> {
+    return self.pipeline.clone();
   }
 }
 
@@ -64,7 +79,7 @@ impl RenderPipelineBuilder {
     fragment_shader_module.destroy(mut_gpu_from_context(render_context));
 
     return RenderPipeline {
-      pipeline: render_pipeline,
+      pipeline: Rc::new(render_pipeline),
     };
   }
 }
