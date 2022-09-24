@@ -163,7 +163,7 @@ pub struct Surface<RenderBackend: gfx_hal::Backend> {
   frame_buffer_attachment: Option<gfx_hal::image::FramebufferAttachment>,
 }
 
-///
+#[derive(Debug)]
 pub struct Swapchain {
   config: gfx_hal::window::SwapchainConfig,
   format: gfx_hal::format::Format,
@@ -184,8 +184,11 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     unsafe {
       self
         .gfx_hal_surface
-        .configure_swapchain(device, swapchain.config)
+        .configure_swapchain(device, swapchain.config.clone())
         .expect("Failed to configure the swapchain");
+
+      self.frame_buffer_attachment =
+        Some(swapchain.config.framebuffer_attachment());
 
       let image =
         match self.gfx_hal_surface.acquire_image(timeout_in_nanoseconds) {

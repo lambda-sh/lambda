@@ -77,7 +77,7 @@ pub enum Command<RenderBackend: gfx_hal::Backend> {
     viewports: Vec<ViewPort>,
   },
   BeginRenderPass {
-    render_pass: super::render_pass::RenderPass<RenderBackend>,
+    render_pass: Rc<super::render_pass::RenderPass<RenderBackend>>,
     surface: Rc<super::surface::Surface<RenderBackend>>,
     frame_buffer: Rc<super::framebuffer::Framebuffer<RenderBackend>>,
     viewport: ViewPort,
@@ -85,7 +85,7 @@ pub enum Command<RenderBackend: gfx_hal::Backend> {
   /// Ends a currently active render pass.
   EndRenderPass,
   AttachGraphicsPipeline {
-    pipeline: RenderPipeline<RenderBackend>,
+    pipeline: Rc<RenderPipeline<RenderBackend>>,
   },
   Draw {
     vertices: Range<u32>,
@@ -163,7 +163,7 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
         ),
         Command::AttachGraphicsPipeline { pipeline } => {
           self.command_buffer.bind_graphics_pipeline(
-            super::pipeline::internal::pipeline_for(&pipeline),
+            super::pipeline::internal::pipeline_for(pipeline.as_ref()),
           )
         }
         Command::EndRenderPass => self.command_buffer.end_render_pass(),

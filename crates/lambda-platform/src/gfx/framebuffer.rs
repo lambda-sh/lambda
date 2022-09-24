@@ -51,7 +51,7 @@ impl FramebufferBuilder {
   ) -> Framebuffer<RenderBackend> {
     let [width, height] = surface.size().expect("A surface without a swapchain cannot be used in a framebeen configured with a swapchain");
     let image =
-      super::surface::internal::frame_buffer_attachment_from(&surface).unwrap();
+      super::surface::internal::frame_buffer_attachment_from(surface).unwrap();
 
     let frame_buffer = unsafe {
       super::gpu::internal::logical_device_for(gpu)

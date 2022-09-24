@@ -239,6 +239,7 @@ impl<'builder> RenderPassBuilder<'builder> {
   }
 }
 
+#[derive(Debug)]
 pub struct RenderPass<RenderBackend: gfx_hal::Backend> {
   render_pass: RenderBackend::RenderPass,
 }

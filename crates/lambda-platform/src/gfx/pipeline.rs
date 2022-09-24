@@ -108,6 +108,7 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
 }
 
 /// Represents a render capable pipeline for graphical
+#[derive(Debug)]
 pub struct RenderPipeline<RenderBackend: internal::Backend> {
   pipeline_layout: RenderBackend::PipelineLayout,
   pipeline: RenderBackend::GraphicsPipeline,
