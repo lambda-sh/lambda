@@ -3,17 +3,10 @@ use std::{
   rc::Rc,
 };
 
-use lambda_platform::gfx::{
-  framebuffer::FramebufferBuilder,
-  viewport::ViewPort as PlatformViewPort,
-};
+use lambda_platform::gfx::viewport::ViewPort as PlatformViewPort;
 
 use super::{
-  internal::{
-    gpu_from_context,
-    mut_gpu_from_context,
-    surface_for_context,
-  },
+  internal::surface_for_context,
   PlatformRenderCommand,
   RenderContext,
 };

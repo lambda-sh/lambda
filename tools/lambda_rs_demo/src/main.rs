@@ -112,6 +112,7 @@ impl RenderableComponent<Event> for DemoComponent {
         render_pass: self.render_pass.as_ref().unwrap().clone(),
         viewport: viewport.clone(),
       },
+      RenderCommand::Draw { vertices: 0..3 },
     ];
   }
 

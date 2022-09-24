@@ -61,6 +61,7 @@ impl LambdaKernelBuilder {
     let mut event_loop = create_event_loop::<Event>();
     let window = WindowBuilder::new()
       .with_name(name.as_str())
+      .with_dimensions(800, 600)
       .build(&mut event_loop);
     let component_stack = Vec::new();
     let render_api = self.render_api.build(&window);
