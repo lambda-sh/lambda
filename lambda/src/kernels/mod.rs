@@ -242,6 +242,11 @@ impl Kernel for LambdaKernel {
               }
             }
             KernelEvent::Shutdown => {
+              for component in &mut component_stack {
+                component.on_detach();
+                component
+                  .on_renderer_detached(active_render_api.as_mut().unwrap());
+              }
               *control_flow = ControlFlow::Exit;
             }
           },
@@ -255,10 +260,6 @@ impl Kernel for LambdaKernel {
         WinitEvent::Resumed => {}
         WinitEvent::RedrawEventsCleared => {}
         WinitEvent::LoopDestroyed => {
-          for component in &mut component_stack {
-            component.on_detach();
-            component.on_renderer_detached(active_render_api.as_mut().unwrap());
-          }
           active_render_api.take().unwrap().destroy();
 
           println!("All resources were successfully deleted.");
