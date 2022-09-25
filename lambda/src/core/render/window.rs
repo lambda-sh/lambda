@@ -4,7 +4,7 @@ use lambda_platform::winit::{
   WindowProperties,
 };
 
-use crate::core::events::Event;
+use crate::core::events::Events;
 
 pub struct WindowBuilder {
   name: String,
@@ -33,7 +33,7 @@ impl WindowBuilder {
   }
 
   // TODO(vmarcella): Remove new call for window and construct the window directly.
-  pub fn build(self, event_loop: &mut Loop<Event>) -> Window {
+  pub fn build(self, event_loop: &mut Loop<Events>) -> Window {
     return Window::new(self.name.as_str(), self.dimensions, event_loop);
   }
 }
@@ -47,7 +47,7 @@ impl Window {
   fn new(
     name: &str,
     dimensions: [u32; 2],
-    event_loop: &mut Loop<Event>,
+    event_loop: &mut Loop<Events>,
   ) -> Self {
     let monitor_handle = event_loop
       .get_primary_monitor()

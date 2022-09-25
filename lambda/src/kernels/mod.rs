@@ -5,14 +5,19 @@ use lambda_platform::winit::{
   winit_exports::{
     ControlFlow,
     Event as WinitEvent,
-    WindowEvent,
+    WindowEvent as WinitWindowEvent,
   },
   Loop,
 };
 
 use crate::core::{
   component::RenderableComponent,
-  events::Event,
+  events::{
+    ComponentEvent,
+    Events,
+    KernelEvent,
+    WindowEvent,
+  },
   kernel::Kernel,
   render::{
     window::{
@@ -27,6 +32,7 @@ use crate::core::{
 pub struct LambdaKernelBuilder {
   name: String,
   render_api: RenderContextBuilder,
+  window_size: (u32, u32),
 }
 
 impl LambdaKernelBuilder {
@@ -34,12 +40,18 @@ impl LambdaKernelBuilder {
     return Self {
       name: name.to_string(),
       render_api: RenderContextBuilder::new(name),
+      window_size: (800, 600),
     };
   }
 
   /// Update the name of the LambdaKernel.
   pub fn with_name(mut self, name: &str) -> Self {
     self.name = name.to_string();
+    return self;
+  }
+
+  pub fn with_window_size(mut self, width: u32, height: u32) -> Self {
+    self.window_size = (width, height);
     return self;
   }
 
@@ -58,10 +70,12 @@ impl LambdaKernelBuilder {
   /// Kernel to receive events & render access.
   pub fn build(self) -> LambdaKernel {
     let name = self.name;
-    let mut event_loop = create_event_loop::<Event>();
+    let mut event_loop = create_event_loop::<Events>();
+    let (width, height) = self.window_size;
+
     let window = WindowBuilder::new()
       .with_name(name.as_str())
-      .with_dimensions(800, 600)
+      .with_dimensions(width, height)
       .build(&mut event_loop);
     let component_stack = Vec::new();
     let render_api = self.render_api.build(&window);
@@ -81,15 +95,15 @@ impl LambdaKernelBuilder {
 /// time.
 pub struct LambdaKernel {
   name: String,
-  event_loop: Loop<Event>,
+  event_loop: Loop<Events>,
   window: Window,
-  component_stack: Vec<Box<dyn RenderableComponent<Event>>>,
+  component_stack: Vec<Box<dyn RenderableComponent<Events>>>,
   render_api: RenderContext,
 }
 
 impl LambdaKernel {
   /// Attach a component to the current runnable.
-  pub fn with_component<T: Default + RenderableComponent<Event> + 'static>(
+  pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
     self,
     configure_component: impl FnOnce(Self, T) -> (Self, T),
   ) -> Self {
@@ -117,7 +131,10 @@ impl Kernel for LambdaKernel {
     let mut active_render_api = Some(render_api);
 
     let publisher = event_loop.create_publisher();
-    publisher.send_event(Event::Initialized);
+    publisher.send_event(Events::Kernel {
+      event: KernelEvent::Initialized,
+      issued_at: Instant::now(),
+    });
 
     let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();
@@ -125,63 +142,75 @@ impl Kernel for LambdaKernel {
     event_loop.run_forever(move |event, _, control_flow| {
       match event {
         WinitEvent::WindowEvent { event, .. } => match event {
-          WindowEvent::CloseRequested => {
+          WinitWindowEvent::CloseRequested => {
             // Issue a Shutdown event to deallocate resources and clean up.
-            publisher.send_event(Event::Shutdown);
+            publisher.send_event(Events::Kernel {
+              event: KernelEvent::Shutdown,
+              issued_at: Instant::now(),
+            });
           }
-          WindowEvent::Resized(dims) => publisher.send_event(Event::Resized {
-            new_width: dims.width,
-            new_height: dims.height,
-          }),
-          WindowEvent::ScaleFactorChanged { new_inner_size, .. } => publisher
-            .send_event(Event::Resized {
-              new_width: new_inner_size.width,
-              new_height: new_inner_size.height,
-            }),
-          WindowEvent::Moved(_) => {}
-          WindowEvent::Destroyed => {}
-          WindowEvent::DroppedFile(_) => {}
-          WindowEvent::HoveredFile(_) => {}
-          WindowEvent::HoveredFileCancelled => {}
-          WindowEvent::ReceivedCharacter(_) => {}
-          WindowEvent::Focused(_) => {}
-          WindowEvent::KeyboardInput {
+          WinitWindowEvent::Resized(dims) => {
+            publisher.send_event(Events::Window {
+              event: WindowEvent::Resize {
+                width: dims.width,
+                height: dims.height,
+              },
+              issued_at: Instant::now(),
+            })
+          }
+          WinitWindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+            publisher.send_event(Events::Window {
+              event: WindowEvent::Resize {
+                width: new_inner_size.width,
+                height: new_inner_size.height,
+              },
+              issued_at: Instant::now(),
+            })
+          }
+          WinitWindowEvent::Moved(_) => {}
+          WinitWindowEvent::Destroyed => {}
+          WinitWindowEvent::DroppedFile(_) => {}
+          WinitWindowEvent::HoveredFile(_) => {}
+          WinitWindowEvent::HoveredFileCancelled => {}
+          WinitWindowEvent::ReceivedCharacter(_) => {}
+          WinitWindowEvent::Focused(_) => {}
+          WinitWindowEvent::KeyboardInput {
             device_id,
             input,
             is_synthetic,
           } => {}
-          WindowEvent::ModifiersChanged(_) => {}
-          WindowEvent::CursorMoved {
+          WinitWindowEvent::ModifiersChanged(_) => {}
+          WinitWindowEvent::CursorMoved {
             device_id,
             position,
             modifiers,
           } => {}
-          WindowEvent::CursorEntered { device_id } => {}
-          WindowEvent::CursorLeft { device_id } => {}
-          WindowEvent::MouseWheel {
+          WinitWindowEvent::CursorEntered { device_id } => {}
+          WinitWindowEvent::CursorLeft { device_id } => {}
+          WinitWindowEvent::MouseWheel {
             device_id,
             delta,
             phase,
             modifiers,
           } => {}
-          WindowEvent::MouseInput {
+          WinitWindowEvent::MouseInput {
             device_id,
             state,
             button,
             modifiers,
           } => {}
-          WindowEvent::TouchpadPressure {
+          WinitWindowEvent::TouchpadPressure {
             device_id,
             pressure,
             stage,
           } => {}
-          WindowEvent::AxisMotion {
+          WinitWindowEvent::AxisMotion {
             device_id,
             axis,
             value,
           } => {}
-          WindowEvent::Touch(_) => {}
-          WindowEvent::ThemeChanged(_) => {}
+          WinitWindowEvent::Touch(_) => {}
+          WinitWindowEvent::ThemeChanged(_) => {}
         },
         WinitEvent::MainEventsCleared => {
           last_frame = current_frame.clone();
@@ -201,23 +230,27 @@ impl Kernel for LambdaKernel {
         WinitEvent::RedrawRequested(_) => {}
         WinitEvent::NewEvents(_) => {}
         WinitEvent::DeviceEvent { device_id, event } => {}
-        WinitEvent::UserEvent(lambda_event) => {
-          match lambda_event {
-            Event::Initialized => {}
-            Event::Shutdown => {
-              // Once this has been set, the ControlFlow can no longer be
-              // modified.
-
-              println!("Detaching all components.");
-              *control_flow = ControlFlow::Exit;
-            }
-            _ => {
+        WinitEvent::UserEvent(lambda_event) => match lambda_event {
+          Events::Kernel { event, issued_at } => match event {
+            KernelEvent::Initialized => {
+              println!("Starting the kernel {}", name);
               for component in &mut component_stack {
-                component.on_event(&lambda_event);
+                component.on_attach();
+                component.on_renderer_attached(
+                  &mut active_render_api.as_mut().unwrap(),
+                );
               }
             }
+            KernelEvent::Shutdown => {
+              *control_flow = ControlFlow::Exit;
+            }
+          },
+          _ => {
+            for component in &mut component_stack {
+              component.on_event(&lambda_event);
+            }
           }
-        }
+        },
         WinitEvent::Suspended => {}
         WinitEvent::Resumed => {}
         WinitEvent::RedrawEventsCleared => {}
@@ -234,13 +267,9 @@ impl Kernel for LambdaKernel {
     });
   }
 
-  fn on_start(&mut self) {
-    println!("Starting {}", self.name);
-    for component in &mut self.component_stack {
-      component.on_attach();
-      component.on_renderer_attached(&mut self.render_api);
-    }
-  }
+  /// When the lambda kernel starts, it will attach all of the components that
+  /// have been added to the kernel during the construction phase.
+  fn on_start(&mut self) {}
 
   fn on_stop(&mut self) {
     println!("Stopping {}", self.name)

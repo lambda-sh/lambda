@@ -6,10 +6,7 @@ pub mod viewport;
 pub mod window;
 
 pub mod internal {
-  use std::{
-    borrow::Borrow,
-    rc::Rc,
-  };
+  use std::rc::Rc;
 
   use lambda_platform::gfx::api::RenderingAPI as RenderContext;
   pub type RenderBackend = RenderContext::Backend;
@@ -64,7 +61,7 @@ pub mod internal {
   }
 
   /// Gets the surface for the given render context.
-  pub fn surface_for_context(
+  pub fn surface_from_context(
     context: &super::RenderContext,
   ) -> Rc<Surface<RenderBackend>> {
     return context.surface.clone();
@@ -300,110 +297,3 @@ impl RenderContext {
 }
 
 type PlatformRenderCommand = Command<internal::RenderBackend>;
-
-// TODO(vmarcella): This process could use a more consistent abstraction
-// for getting a pipeline created.
-// let assembler = create_vertex_assembler(vertex_entry);
-// let pipeline_layout = self.gpu.create_pipeline_layout();
-// let mut logical_pipeline = gfx::pipeline::create_graphics_pipeline(
-// assembler,
-// &pipeline_layout,
-// render_pass,
-// Some(fragment_entry),
-// );
-
-// let physical_pipeline =
-// self.gpu.create_graphics_pipeline(&mut logical_pipeline);
-
-// return (vertex_module, pipeline_layout, physical_pipeline);
-
-// let render_pass = self.gpu.create_render_pass(None, None, None);
-
-// let (module, pipeline_layout, pipeline) =
-// self.create_gpu_pipeline(vertex_shader, fragment_shader, &render_pass);
-// self.gpu.destroy_shader_module(module);
-// self.pipeline_layouts = Some(vec![pipeline_layout]);
-// self.graphic_pipelines = Some(vec![pipeline]);
-
-// let surface = self.surface.as_mut().unwrap();
-
-// let acquire_timeout_ns = 1_000_000_000;
-//  let image = unsafe {
-//    let i = match surface.acquire_image(acquire_timeout_ns) {
-//      Ok((image, _)) => Some(image),
-//      Err(_) => None,
-//    };
-//    i.unwrap()
-//  };
-
-// TODO(vmarcella): This code will fail if there are no render passes
-// attached to the renderer.
-
-// TODO(vmarcella): Investigate into abstracting the viewport behind a
-// camera.
-// let viewport = {
-//  gfx_hal_exports::Viewport {
-//    rect: gfx_hal_exports::Rect {
-//      x: 0,
-//      y: 0,
-//      w: self.extent.as_ref().unwrap().width as i16,
-//      h: self.extent.as_ref().unwrap().height as i16,
-//    },
-//    depth: 0.0..1.0,
-//  }
-// };
-
-// unsafe {
-//  let command_buffer = self.command_buffer.as_mut().unwrap();
-//  command_buffer
-//    .begin_primary(gfx_hal_exports::CommandBufferFlags::ONE_TIME_SUBMIT);
-//
-// Configure the vieports & the scissor rectangles for the rasterizer
-//  let viewports = vec![viewport.clone()].into_iter();
-//   let rect = vec![viewport.rect].into_iter();
-// command_buffer.set_viewports(0, viewports);
-// command_buffer.set_scissors(0, rect);
-
-// Render attachments to specify for the current render pass.
-// let render_attachments = vec![gfx_hal_exports::RenderAttachmentInfo {
-// image_view: image.borrow(),
-// clear_value: gfx_hal_exports::ClearValue {
-// color: gfx_hal_exports::ClearColor {
-//   float32: [0.0, 0.0, 0.0, 1.0],
-// },
-//},
-//}]
-//.into_iter();
-
-// Initialize the render pass on the command buffer & inline the subpass
-// contents.
-//   command_buffer.begin_render_pass(
-//    &render_pass,
-//    &framebuffer,
-//    viewport.rect,
-//    render_attachments,
-//    gfx_hal_exports::SubpassContents::Inline,
-//  );
-
-// Bind graphical pipeline and submit commands to the GPU.
-//   let pipeline = &self.graphic_pipelines.as_ref().unwrap()[0];
-//  command_buffer.bind_graphics_pipeline(pipeline);
-//  command_buffer.draw(0..3, 0..1);
-//  command_buffer.end_render_pass();
-//  command_buffer.finish();
-
-// Submit the command buffer for rendering on the GPU.
-// self.gpu.submit_command_buffer(
-//   &command_buffer,
-//   self.rendering_complete_semaphore.as_ref().unwrap(),
-//   self.submission_complete_fence.as_mut().unwrap(),
-//  );
-
-// let result = self.gpu.render_to_surface(
-//   surface,
-//   image,
-//   self.rendering_complete_semaphore.as_mut().unwrap(),
-// );
-// if result.is_err() {
-//    todo!("Publish an event from the renderer that the swapchain needs to be reconfigured")
-// }

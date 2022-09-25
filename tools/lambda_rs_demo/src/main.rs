@@ -6,7 +6,7 @@ use lambda::{
       Component,
       RenderableComponent,
     },
-    events::Event,
+    events::Events,
     kernel::start_kernel,
     render::{
       command::RenderCommand,
@@ -38,14 +38,14 @@ pub struct DemoComponent {
   render_pipeline: Option<Rc<RenderPipeline>>,
 }
 
-impl Component<Event> for DemoComponent {
+impl Component<Events> for DemoComponent {
   fn on_attach(&mut self) {
     println!("Attached the first layer to lambda");
   }
 
   fn on_detach(self: &mut DemoComponent) {}
 
-  fn on_event(self: &mut DemoComponent, event: &lambda::core::events::Event) {}
+  fn on_event(self: &mut DemoComponent, event: &lambda::core::events::Events) {}
 
   fn on_update(self: &mut DemoComponent, last_frame: &std::time::Duration) {
     println!(
@@ -61,7 +61,7 @@ impl Component<Event> for DemoComponent {
 }
 
 /// Implement rendering for the component.
-impl RenderableComponent<Event> for DemoComponent {
+impl RenderableComponent<Events> for DemoComponent {
   fn on_renderer_attached(
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
@@ -120,6 +120,7 @@ impl RenderableComponent<Event> for DemoComponent {
     self: &mut DemoComponent,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
+    println!("Detached the demo component from the renderer");
   }
 }
 

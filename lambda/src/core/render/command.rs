@@ -6,7 +6,7 @@ use std::{
 use lambda_platform::gfx::viewport::ViewPort as PlatformViewPort;
 
 use super::{
-  internal::surface_for_context,
+  internal::surface_from_context,
   PlatformRenderCommand,
   RenderContext,
 };
@@ -68,7 +68,7 @@ impl RenderCommand {
         render_pass,
         viewport,
       } => {
-        let surface = surface_for_context(render_context);
+        let surface = surface_from_context(render_context);
         let render_pass = render_pass.into_gfx_render_pass();
         let frame_buffer =
           render_context.allocate_and_get_frame_buffer(render_pass.as_ref());
