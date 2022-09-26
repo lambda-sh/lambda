@@ -24,4 +24,4 @@ stable-macos-dependencies=["lambda-platform/gfx-with-metal"]
 
 # Linux dev-dependencies.
 [target.'cfg(all(unix, not(target_os = "macos")))'.dev-dependencies]
-cargo-tarpaulin = "=0.18.5"
+cargo-tarpaulin = "=0.19.1"
