@@ -236,9 +236,8 @@ impl Kernel for LambdaKernel {
               println!("Starting the kernel {}", name);
               for component in &mut component_stack {
                 component.on_attach();
-                component.on_renderer_attached(
-                  &mut active_render_api.as_mut().unwrap(),
-                );
+                component
+                  .on_renderer_attached(active_render_api.as_mut().unwrap());
               }
             }
             KernelEvent::Shutdown => {

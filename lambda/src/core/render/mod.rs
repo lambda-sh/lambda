@@ -126,7 +126,7 @@ impl RenderContextBuilder {
       internal::SurfaceBuilder::new().build(&instance, window.window_handle()),
     );
 
-    // Build a GPU with a 3D Render queue that can render to our surface.
+    // Build a GPU with a Graphical Render queue that can render to our surface.
     let mut gpu = internal::GpuBuilder::new()
       .with_render_queue_type(internal::RenderQueueType::Graphical)
       .build(&mut instance, Some(&surface))
