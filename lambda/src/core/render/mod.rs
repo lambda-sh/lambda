@@ -194,15 +194,30 @@ impl RenderContext {
     println!("{} will now start destroying resources.", self.name);
 
     // Destroy the submission fence and rendering semaphore.
-    self.submission_fence.take().unwrap().destroy(&self.gpu);
-    self.render_semaphore.take().unwrap().destroy(&self.gpu);
+    self
+      .submission_fence
+      .take()
+      .expect(
+        "Couldn't take the submission fence from the context and destroy it.",
+      )
+      .destroy(&self.gpu);
+    self
+      .render_semaphore
+      .take()
+      .expect("Couldn't take the rendering semaphore from the context and destroy it.")
+      .destroy(&self.gpu);
 
     // Destroy render passes.
     let mut render_passes = vec![];
     swap(&mut self.render_passes, &mut render_passes);
 
     for render_pass in &mut render_passes {
-      render_pass.take().unwrap().destroy(&self);
+      render_pass
+        .take()
+        .expect(
+          "Couldn't take the render pass from the context and destroy it.",
+        )
+        .destroy(&self);
     }
 
     // Destroy render pipelines.
@@ -210,11 +225,18 @@ impl RenderContext {
     swap(&mut self.render_pipelines, &mut render_pipelines);
 
     for render_pipeline in &mut render_pipelines {
-      render_pipeline.take().unwrap().destroy(&self);
+      render_pipeline
+        .take()
+        .expect(
+          "Couldn't take the render pipeline from the context and destroy it.",
+        )
+        .destroy(&self);
     }
 
     // Takes the inner surface and destroys it.
-    let mut surface = Rc::try_unwrap(self.surface).ok().unwrap();
+    let mut surface = Rc::try_unwrap(self.surface)
+      .expect("Couldn't obtain the surface from the context.");
+
     surface.remove_swapchain(&self.gpu);
     surface.destroy(&self.instance);
   }
@@ -273,13 +295,17 @@ impl RenderContext {
     self.gpu.submit_command_buffer(
       &mut command_buffer,
       vec![],
-      self.submission_fence.as_mut().unwrap(),
+      self
+        .submission_fence
+        .as_mut()
+        .expect("Failed to get mutable reference to submission fence."),
     );
 
     self
       .gpu
       .render_to_surface(
-        Rc::get_mut(&mut self.surface).expect(""),
+        Rc::get_mut(&mut self.surface)
+          .expect("Failed to obtain a surface to render on."),
         self.render_semaphore.as_mut().unwrap(),
       )
       .expect("Failed to render to the surface");

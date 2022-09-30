@@ -136,7 +136,6 @@ impl Kernel for LambdaKernel {
       issued_at: Instant::now(),
     });
 
-    let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();
 
     event_loop.run_forever(move |event, _, control_flow| {
@@ -213,7 +212,7 @@ impl Kernel for LambdaKernel {
           WinitWindowEvent::ThemeChanged(_) => {}
         },
         WinitEvent::MainEventsCleared => {
-          last_frame = current_frame.clone();
+          let last_frame = current_frame.clone();
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
 
