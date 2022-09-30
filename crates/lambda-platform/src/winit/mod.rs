@@ -35,11 +35,11 @@ pub mod winit_exports {
 }
 
 /// Loop wrapping for the winit event loop.
-pub struct Loop<E: 'static> {
+pub struct Loop<E: 'static + std::fmt::Debug> {
   event_loop: EventLoop<E>,
 }
 
-pub fn create_event_loop<Events: 'static>() -> Loop<Events> {
+pub fn create_event_loop<Events: 'static + std::fmt::Debug>() -> Loop<Events> {
   let event_loop = EventLoop::<Events>::with_user_event();
   return Loop { event_loop };
 }
@@ -85,11 +85,12 @@ fn construct_window_size(
   };
 }
 
-pub struct EventLoopPublisher<E: 'static> {
+#[derive(Clone, Debug)]
+pub struct EventLoopPublisher<E: 'static + std::fmt::Debug> {
   winit_proxy: EventLoopProxy<E>,
 }
 
-impl<E: 'static> EventLoopPublisher<E> {
+impl<E: 'static + std::fmt::Debug> EventLoopPublisher<E> {
   /// Instantiate a new EventLoopPublisher from an event loop proxy.
   #[inline]
   pub fn new(winit_proxy: EventLoopProxy<E>) -> Self {
@@ -99,11 +100,14 @@ impl<E: 'static> EventLoopPublisher<E> {
   /// Send an event
   #[inline]
   pub fn send_event(&self, event: E) {
-    self.winit_proxy.send_event(event);
+    self
+      .winit_proxy
+      .send_event(event)
+      .expect("Failed to send event");
   }
 }
 
-impl<E: 'static> Loop<E> {
+impl<E: 'static + std::fmt::Debug> Loop<E> {
   pub fn create_publisher(&mut self) -> EventLoopPublisher<E> {
     let proxy = self.event_loop.create_proxy();
     return EventLoopPublisher::new(proxy);

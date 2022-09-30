@@ -130,7 +130,7 @@ impl RenderContextBuilder {
     let mut gpu = internal::GpuBuilder::new()
       .with_render_queue_type(internal::RenderQueueType::Graphical)
       .build(&mut instance, Some(&surface))
-      .expect("Failed to build a GPU.");
+      .expect("Failed to build a GPU with a graphical render queue.");
 
     // Build command pool and allocate a single buffer named Primary
     let command_pool = internal::CommandPoolBuilder::new().build(&gpu);
