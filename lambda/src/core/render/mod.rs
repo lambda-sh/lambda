@@ -145,9 +145,9 @@ impl RenderContextBuilder {
 
     // Create the image extent and initial frame buffer attachment description
     // for rendering.
-    let dimensions = window.dimensions();
+    let (width, height) = window.dimensions();
     let swapchain = SwapchainBuilder::new()
-      .with_size(dimensions[0], dimensions[1])
+      .with_size(width, height)
       .build(&gpu, &surface);
 
     Rc::get_mut(&mut surface)

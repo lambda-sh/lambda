@@ -47,7 +47,7 @@ pub fn create_event_loop<Events: 'static>() -> Loop<Events> {
 /// Structure that contains properties needed for building a window.
 pub struct WindowProperties {
   pub name: String,
-  pub dimensions: [u32; 2],
+  pub dimensions: (u32, u32),
   pub monitor_handle: MonitorHandle,
 }
 
@@ -70,15 +70,16 @@ pub struct WindowHandle {
 /// the monitor being rendered to.
 #[inline]
 fn construct_window_size(
-  window_size: [u32; 2],
+  window_size: (u32, u32),
   scale_factor: f64,
 ) -> WindowSize {
   let logical: LogicalSize<u32> = window_size.into();
   let physical: PhysicalSize<u32> = logical.to_physical(scale_factor);
 
+  let (width, height) = window_size;
   return WindowSize {
-    width: window_size[0],
-    height: window_size[1],
+    width,
+    height,
     logical,
     physical,
   };
