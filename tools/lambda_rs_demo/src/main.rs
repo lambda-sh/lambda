@@ -159,17 +159,11 @@ impl Default for DemoComponent {
   }
 }
 
-/// This function demonstrates how to configure the renderer that comes with
-/// the LambdaKernel. This is where you can upload shaders, configure render
-/// passes, and generally allocate the resources you need from a completely safe
-/// Rust API.
-fn configure_renderer(builder: RenderContextBuilder) -> RenderContextBuilder {
-  return builder;
-}
-
 fn main() {
   let kernel = LambdaKernelBuilder::new("Lambda 2D Demo")
-    .configure_renderer(configure_renderer)
+    .with_renderer(move |render_context_builder| {
+      return render_context_builder;
+    })
     .with_component(move |kernel, demo: DemoComponent| {
       return (kernel, demo);
     })
