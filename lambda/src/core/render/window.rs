@@ -68,7 +68,7 @@ impl Window {
   }
 
   /// Redraws the window.
-  pub fn redraw(&mut self) {
+  pub fn redraw(&self) {
     self.window_handle.window_handle.request_redraw();
   }
 
