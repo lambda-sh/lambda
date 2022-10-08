@@ -10,6 +10,7 @@ use super::{
   PlatformRenderCommand,
   RenderContext,
 };
+
 /// Commands that are used to render a frame within the RenderContext.
 pub enum RenderCommand {
   /// sets the viewports for the render context.

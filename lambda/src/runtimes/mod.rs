@@ -15,10 +15,9 @@ use crate::core::{
   events::{
     ComponentEvent,
     Events,
-    KernelEvent,
+    RuntimeEvent,
     WindowEvent,
   },
-  kernel::Kernel,
   render::{
     window::{
       Window,
@@ -27,26 +26,29 @@ use crate::core::{
     RenderContext,
     RenderContextBuilder,
   },
+  runtime::Runtime,
 };
 
-pub struct LambdaKernelBuilder {
-  name: String,
+pub struct GenericRuntimeBuilder {
+  app_name: String,
   render_api: RenderContextBuilder,
   window_size: (u32, u32),
+  components: Vec<Box<dyn RenderableComponent<Events>>>,
 }
 
-impl LambdaKernelBuilder {
-  pub fn new(name: &str) -> Self {
+impl GenericRuntimeBuilder {
+  pub fn new(app_name: &str) -> Self {
     return Self {
-      name: name.to_string(),
-      render_api: RenderContextBuilder::new(name),
+      app_name: app_name.to_string(),
+      render_api: RenderContextBuilder::new(app_name),
       window_size: (800, 600),
+      components: Vec::new(),
     };
   }
 
   /// Update the name of the LambdaKernel.
-  pub fn with_name(mut self, name: &str) -> Self {
-    self.name = name.to_string();
+  pub fn with_app_name(mut self, name: &str) -> Self {
+    self.app_name = name.to_string();
     return self;
   }
 
@@ -57,19 +59,29 @@ impl LambdaKernelBuilder {
 
   /// Configures the RenderAPIBuilder before the RenderingAPI is built using a
   /// callback provided by the user.
-  pub fn configure_renderer(
+  pub fn with_renderer(
     mut self,
     configure: impl FnOnce(RenderContextBuilder) -> RenderContextBuilder,
   ) -> Self {
     self.render_api = configure(self.render_api);
     return self;
   }
+  /// Attach a component to the current runnable.
+  pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
+    self,
+    configure_component: impl FnOnce(Self, T) -> (Self, T),
+  ) -> Self {
+    let (mut kernel_builder, component) =
+      configure_component(self, T::default());
+    kernel_builder.components.push(Box::new(component));
+    return kernel_builder;
+  }
 
   /// Builds a LambdaKernel equipped with Windowing, an event loop, and a
   /// component stack that allows components to be dynamically pushed into the
   /// Kernel to receive events & render access.
-  pub fn build(self) -> LambdaKernel {
-    let name = self.name;
+  pub fn build(self) -> GenericRuntime {
+    let name = self.app_name;
     let mut event_loop = create_event_loop::<Events>();
     let (width, height) = self.window_size;
 
@@ -77,10 +89,10 @@ impl LambdaKernelBuilder {
       .with_name(name.as_str())
       .with_dimensions(width, height)
       .build(&mut event_loop);
-    let component_stack = Vec::new();
+    let component_stack = self.components;
     let render_api = self.render_api.build(&window);
 
-    return LambdaKernel {
+    return GenericRuntime {
       name,
       event_loop,
       window,
@@ -93,7 +105,7 @@ impl LambdaKernelBuilder {
 /// A windowed and event-driven kernel that can be used to render a
 /// scene on the primary GPU across Windows, MacOS, and Linux at this point in
 /// time.
-pub struct LambdaKernel {
+pub struct GenericRuntime {
   name: String,
   event_loop: Loop<Events>,
   window: Window,
@@ -101,26 +113,16 @@ pub struct LambdaKernel {
   render_api: RenderContext,
 }
 
-impl LambdaKernel {
-  /// Attach a component to the current runnable.
-  pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
-    self,
-    configure_component: impl FnOnce(Self, T) -> (Self, T),
-  ) -> Self {
-    let (mut kernel, component) = configure_component(self, T::default());
-    kernel.component_stack.push(Box::new(component));
-    return kernel;
-  }
-}
+impl GenericRuntime {}
 
-impl Kernel for LambdaKernel {
+impl Runtime for GenericRuntime {
   /// Initiates an event loop that captures the context of the LambdaKernel
   /// and generates events from the windows event loop until the end of the event loops
   /// lifetime (Whether that be initiated intentionally or via error).
   fn run(self) {
     // Decompose Kernel components for transferring ownership to the
     // closure.
-    let LambdaKernel {
+    let GenericRuntime {
       mut window,
       mut event_loop,
       mut component_stack,
@@ -131,12 +133,11 @@ impl Kernel for LambdaKernel {
     let mut active_render_api = Some(render_api);
 
     let publisher = event_loop.create_publisher();
-    publisher.send_event(Events::Kernel {
-      event: KernelEvent::Initialized,
+    publisher.publish_event(Events::Runtime {
+      event: RuntimeEvent::Initialized,
       issued_at: Instant::now(),
     });
 
-    let mut last_frame = Instant::now();
     let mut current_frame = Instant::now();
 
     event_loop.run_forever(move |event, _, control_flow| {
@@ -144,13 +145,13 @@ impl Kernel for LambdaKernel {
         WinitEvent::WindowEvent { event, .. } => match event {
           WinitWindowEvent::CloseRequested => {
             // Issue a Shutdown event to deallocate resources and clean up.
-            publisher.send_event(Events::Kernel {
-              event: KernelEvent::Shutdown,
+            publisher.publish_event(Events::Runtime {
+              event: RuntimeEvent::Shutdown,
               issued_at: Instant::now(),
             });
           }
           WinitWindowEvent::Resized(dims) => {
-            publisher.send_event(Events::Window {
+            publisher.publish_event(Events::Window {
               event: WindowEvent::Resize {
                 width: dims.width,
                 height: dims.height,
@@ -159,7 +160,7 @@ impl Kernel for LambdaKernel {
             })
           }
           WinitWindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-            publisher.send_event(Events::Window {
+            publisher.publish_event(Events::Window {
               event: WindowEvent::Resize {
                 width: new_inner_size.width,
                 height: new_inner_size.height,
@@ -213,7 +214,7 @@ impl Kernel for LambdaKernel {
           WinitWindowEvent::ThemeChanged(_) => {}
         },
         WinitEvent::MainEventsCleared => {
-          last_frame = current_frame.clone();
+          let last_frame = current_frame.clone();
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
 
@@ -231,17 +232,16 @@ impl Kernel for LambdaKernel {
         WinitEvent::NewEvents(_) => {}
         WinitEvent::DeviceEvent { device_id, event } => {}
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
-          Events::Kernel { event, issued_at } => match event {
-            KernelEvent::Initialized => {
+          Events::Runtime { event, issued_at } => match event {
+            RuntimeEvent::Initialized => {
               println!("Starting the kernel {}", name);
               for component in &mut component_stack {
                 component.on_attach();
-                component.on_renderer_attached(
-                  &mut active_render_api.as_mut().unwrap(),
-                );
+                component
+                  .on_renderer_attached(active_render_api.as_mut().unwrap());
               }
             }
-            KernelEvent::Shutdown => {
+            RuntimeEvent::Shutdown => {
               for component in &mut component_stack {
                 component.on_detach();
                 component
@@ -268,9 +268,11 @@ impl Kernel for LambdaKernel {
     });
   }
 
-  /// When the lambda kernel starts, it will attach all of the components that
-  /// have been added to the kernel during the construction phase.
-  fn on_start(&mut self) {}
+  /// When the generic runtime starts, it will attach all of the components that
+  /// have been added during the construction phase in the users code.
+  fn on_start(&mut self) {
+    println!("Starting the runtime {}", self.name);
+  }
 
   fn on_stop(&mut self) {
     println!("Stopping {}", self.name)

@@ -8,7 +8,7 @@ use crate::core::events::Events;
 
 pub struct WindowBuilder {
   name: String,
-  dimensions: [u32; 2],
+  dimensions: (u32, u32),
 }
 
 impl WindowBuilder {
@@ -16,7 +16,7 @@ impl WindowBuilder {
   pub fn new() -> Self {
     return Self {
       name: "Window".to_string(),
-      dimensions: [480, 360],
+      dimensions: (480, 360),
     };
   }
 
@@ -28,7 +28,7 @@ impl WindowBuilder {
 
   /// Specify the dimensions for the window (Defaults to 480 x 360)
   pub fn with_dimensions(mut self, width: u32, height: u32) -> Self {
-    self.dimensions = [width, height];
+    self.dimensions = (width, height);
     return self;
   }
 
@@ -46,7 +46,7 @@ pub struct Window {
 impl Window {
   fn new(
     name: &str,
-    dimensions: [u32; 2],
+    dimensions: (u32, u32),
     event_loop: &mut Loop<Events>,
   ) -> Self {
     let monitor_handle = event_loop
@@ -75,10 +75,10 @@ impl Window {
   }
 
   /// Returns the dimensions of the current window.
-  pub fn dimensions(&self) -> [u32; 2] {
-    return [
+  pub fn dimensions(&self) -> (u32, u32) {
+    return (
       self.window_handle.size.width,
       self.window_handle.size.height,
-    ];
+    );
   }
 }

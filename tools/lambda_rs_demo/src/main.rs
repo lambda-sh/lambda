@@ -7,7 +7,6 @@ use lambda::{
       RenderableComponent,
     },
     events::Events,
-    kernel::start_kernel,
     render::{
       command::RenderCommand,
       pipeline::{
@@ -25,10 +24,10 @@ use lambda::{
         VirtualShader,
       },
       viewport,
-      RenderContextBuilder,
     },
+    runtime::start_runtime,
   },
-  kernels::LambdaKernelBuilder,
+  runtimes::GenericRuntimeBuilder,
 };
 
 pub struct DemoComponent {
@@ -45,16 +44,13 @@ impl Component<Events> for DemoComponent {
 
   fn on_detach(self: &mut DemoComponent) {}
 
-  fn on_event(self: &mut DemoComponent, event: &lambda::core::events::Events) {}
+  fn on_event(self: &mut DemoComponent, _event: &lambda::core::events::Events) {
+  }
 
   fn on_update(self: &mut DemoComponent, last_frame: &std::time::Duration) {
     println!(
-      "This layer was last updated: {} nanoseconds ago",
-      last_frame.as_nanos()
-    );
-
-    println!(
-      "This layer was last updated: {} milliseconds ago",
+      "This component was last updated: {} nanoseconds/{} milliseconds ago",
+      last_frame.as_nanos(),
       last_frame.as_millis()
     );
   }
@@ -84,8 +80,8 @@ impl RenderableComponent<Events> for DemoComponent {
 
   fn on_render(
     self: &mut DemoComponent,
-    render_context: &mut lambda::core::render::RenderContext,
-    last_render: &std::time::Duration,
+    _render_context: &mut lambda::core::render::RenderContext,
+    _last_render: &std::time::Duration,
   ) -> Vec<RenderCommand> {
     let viewport = viewport::ViewportBuilder::new().build(800, 600);
 
@@ -104,12 +100,16 @@ impl RenderableComponent<Events> for DemoComponent {
           .render_pipeline
           .as_ref()
           .expect(
-            "No render pipeline set while trying to issue a render command",
+            "No render pipeline set while trying to issue a render command.",
           )
           .clone(),
       },
       RenderCommand::BeginRenderPass {
-        render_pass: self.render_pass.as_ref().unwrap().clone(),
+        render_pass: self
+          .render_pass
+          .as_ref()
+          .expect("Cannot begin the render pass when it doesn't exist.")
+          .clone(),
         viewport: viewport.clone(),
       },
       RenderCommand::Draw { vertices: 0..3 },
@@ -118,7 +118,7 @@ impl RenderableComponent<Events> for DemoComponent {
 
   fn on_renderer_detached(
     self: &mut DemoComponent,
-    render_context: &mut lambda::core::render::RenderContext,
+    _render_context: &mut lambda::core::render::RenderContext,
   ) {
     println!("Detached the demo component from the renderer");
   }
@@ -134,15 +134,15 @@ impl Default for DemoComponent {
     let triangle_vertex = VirtualShader::Source {
       source: include_str!("../assets/triangle.vert").to_string(),
       kind: ShaderKind::Vertex,
-      name: "triangle".to_string(),
-      entry_point: "main".to_string(),
+      name: String::from("triangle"),
+      entry_point: String::from("main"),
     };
 
     let triangle_fragment = VirtualShader::Source {
       source: include_str!("../assets/triangle.frag").to_string(),
       kind: ShaderKind::Fragment,
-      name: "triangle".to_string(),
-      entry_point: "main".to_string(),
+      name: String::from("triangle"),
+      entry_point: String::from("main"),
     };
 
     // Create a shader builder to compile the shaders.
@@ -159,21 +159,15 @@ impl Default for DemoComponent {
   }
 }
 
-/// This function demonstrates how to configure the renderer that comes with
-/// the LambdaKernel. This is where you can upload shaders, configure render
-/// passes, and generally allocate the resources you need from a completely safe
-/// Rust API.
-fn configure_renderer(builder: RenderContextBuilder) -> RenderContextBuilder {
-  return builder;
-}
-
 fn main() {
-  let kernel = LambdaKernelBuilder::new("Lambda 2D Demo")
-    .configure_renderer(configure_renderer)
-    .build()
+  let runtime = GenericRuntimeBuilder::new("2D Triangle Demo")
+    .with_renderer(move |render_context_builder| {
+      return render_context_builder;
+    })
     .with_component(move |kernel, demo: DemoComponent| {
       return (kernel, demo);
-    });
+    })
+    .build();
 
-  start_kernel(kernel);
+  start_runtime(runtime);
 }

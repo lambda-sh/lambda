@@ -35,11 +35,11 @@ pub mod winit_exports {
 }
 
 /// Loop wrapping for the winit event loop.
-pub struct Loop<E: 'static> {
+pub struct Loop<E: 'static + std::fmt::Debug> {
   event_loop: EventLoop<E>,
 }
 
-pub fn create_event_loop<Events: 'static>() -> Loop<Events> {
+pub fn create_event_loop<Events: 'static + std::fmt::Debug>() -> Loop<Events> {
   let event_loop = EventLoop::<Events>::with_user_event();
   return Loop { event_loop };
 }
@@ -47,7 +47,7 @@ pub fn create_event_loop<Events: 'static>() -> Loop<Events> {
 /// Structure that contains properties needed for building a window.
 pub struct WindowProperties {
   pub name: String,
-  pub dimensions: [u32; 2],
+  pub dimensions: (u32, u32),
   pub monitor_handle: MonitorHandle,
 }
 
@@ -70,25 +70,27 @@ pub struct WindowHandle {
 /// the monitor being rendered to.
 #[inline]
 fn construct_window_size(
-  window_size: [u32; 2],
+  window_size: (u32, u32),
   scale_factor: f64,
 ) -> WindowSize {
   let logical: LogicalSize<u32> = window_size.into();
   let physical: PhysicalSize<u32> = logical.to_physical(scale_factor);
 
+  let (width, height) = window_size;
   return WindowSize {
-    width: window_size[0],
-    height: window_size[1],
+    width,
+    height,
     logical,
     physical,
   };
 }
 
-pub struct EventLoopPublisher<E: 'static> {
+#[derive(Clone, Debug)]
+pub struct EventLoopPublisher<E: 'static + std::fmt::Debug> {
   winit_proxy: EventLoopProxy<E>,
 }
 
-impl<E: 'static> EventLoopPublisher<E> {
+impl<E: 'static + std::fmt::Debug> EventLoopPublisher<E> {
   /// Instantiate a new EventLoopPublisher from an event loop proxy.
   #[inline]
   pub fn new(winit_proxy: EventLoopProxy<E>) -> Self {
@@ -97,12 +99,15 @@ impl<E: 'static> EventLoopPublisher<E> {
 
   /// Send an event
   #[inline]
-  pub fn send_event(&self, event: E) {
-    self.winit_proxy.send_event(event);
+  pub fn publish_event(&self, event: E) {
+    self
+      .winit_proxy
+      .send_event(event)
+      .expect("Failed to send event");
   }
 }
 
-impl<E: 'static> Loop<E> {
+impl<E: 'static + std::fmt::Debug> Loop<E> {
   pub fn create_publisher(&mut self) -> EventLoopPublisher<E> {
     let proxy = self.event_loop.create_proxy();
     return EventLoopPublisher::new(proxy);
@@ -119,6 +124,7 @@ impl<E: 'static> Loop<E> {
   }
 
   pub fn get_any_available_monitors(&self) -> MonitorHandle {
+    // TODO(vmarcella): Remove the panic from this in favor of returning a result or an error.
     match self.event_loop.available_monitors().next() {
       Some(monitor) => monitor,
       None => panic!("No available monitors found."),
