@@ -13,7 +13,6 @@ use lambda_platform::winit::{
 use crate::core::{
   component::RenderableComponent,
   events::{
-    ComponentEvent,
     Events,
     KernelEvent,
     WindowEvent,
@@ -176,39 +175,39 @@ impl Kernel for LambdaKernel {
           WinitWindowEvent::ReceivedCharacter(_) => {}
           WinitWindowEvent::Focused(_) => {}
           WinitWindowEvent::KeyboardInput {
-            device_id,
-            input,
-            is_synthetic,
+            device_id: _,
+            input: _,
+            is_synthetic: _,
           } => {}
           WinitWindowEvent::ModifiersChanged(_) => {}
           WinitWindowEvent::CursorMoved {
-            device_id,
-            position,
-            modifiers,
+            device_id: _,
+            position: _,
+            modifiers: _,
           } => {}
-          WinitWindowEvent::CursorEntered { device_id } => {}
-          WinitWindowEvent::CursorLeft { device_id } => {}
+          WinitWindowEvent::CursorEntered { device_id: _ } => {}
+          WinitWindowEvent::CursorLeft { device_id: _ } => {}
           WinitWindowEvent::MouseWheel {
-            device_id,
-            delta,
-            phase,
-            modifiers,
+            device_id: _,
+            delta: _,
+            phase: _,
+            modifiers: _,
           } => {}
           WinitWindowEvent::MouseInput {
-            device_id,
-            state,
-            button,
-            modifiers,
+            device_id: _,
+            state: _,
+            button: _,
+            modifiers: _,
           } => {}
           WinitWindowEvent::TouchpadPressure {
-            device_id,
-            pressure,
-            stage,
+            device_id: _,
+            pressure: _,
+            stage: _,
           } => {}
           WinitWindowEvent::AxisMotion {
-            device_id,
-            axis,
-            value,
+            device_id: _,
+            axis: _,
+            value: _,
           } => {}
           WinitWindowEvent::Touch(_) => {}
           WinitWindowEvent::ThemeChanged(_) => {}
@@ -230,9 +229,15 @@ impl Kernel for LambdaKernel {
         }
         WinitEvent::RedrawRequested(_) => {}
         WinitEvent::NewEvents(_) => {}
-        WinitEvent::DeviceEvent { device_id, event } => {}
+        WinitEvent::DeviceEvent {
+          device_id: _,
+          event: _,
+        } => {}
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
-          Events::Kernel { event, issued_at } => match event {
+          Events::Kernel {
+            event,
+            issued_at: _,
+          } => match event {
             KernelEvent::Initialized => {
               println!("Starting the kernel {}", name);
               for component in &mut component_stack {

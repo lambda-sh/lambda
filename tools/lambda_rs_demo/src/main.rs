@@ -44,7 +44,8 @@ impl Component<Events> for DemoComponent {
 
   fn on_detach(self: &mut DemoComponent) {}
 
-  fn on_event(self: &mut DemoComponent, event: &lambda::core::events::Events) {}
+  fn on_event(self: &mut DemoComponent, _event: &lambda::core::events::Events) {
+  }
 
   fn on_update(self: &mut DemoComponent, last_frame: &std::time::Duration) {
     println!(
@@ -79,8 +80,8 @@ impl RenderableComponent<Events> for DemoComponent {
 
   fn on_render(
     self: &mut DemoComponent,
-    render_context: &mut lambda::core::render::RenderContext,
-    last_render: &std::time::Duration,
+    _render_context: &mut lambda::core::render::RenderContext,
+    _last_render: &std::time::Duration,
   ) -> Vec<RenderCommand> {
     let viewport = viewport::ViewportBuilder::new().build(800, 600);
 
@@ -117,7 +118,7 @@ impl RenderableComponent<Events> for DemoComponent {
 
   fn on_renderer_detached(
     self: &mut DemoComponent,
-    render_context: &mut lambda::core::render::RenderContext,
+    _render_context: &mut lambda::core::render::RenderContext,
   ) {
     println!("Detached the demo component from the renderer");
   }
