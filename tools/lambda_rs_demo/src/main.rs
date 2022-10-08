@@ -134,15 +134,15 @@ impl Default for DemoComponent {
     let triangle_vertex = VirtualShader::Source {
       source: include_str!("../assets/triangle.vert").to_string(),
       kind: ShaderKind::Vertex,
-      name: "triangle".to_string(),
-      entry_point: "main".to_string(),
+      name: String::from("triangle"),
+      entry_point: String::from("main"),
     };
 
     let triangle_fragment = VirtualShader::Source {
       source: include_str!("../assets/triangle.frag").to_string(),
       kind: ShaderKind::Fragment,
-      name: "triangle".to_string(),
-      entry_point: "main".to_string(),
+      name: String::from("triangle"),
+      entry_point: String::from("main"),
     };
 
     // Create a shader builder to compile the shaders.
