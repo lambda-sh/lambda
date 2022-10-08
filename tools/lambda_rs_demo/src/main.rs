@@ -25,7 +25,6 @@ use lambda::{
         VirtualShader,
       },
       viewport,
-      RenderContextBuilder,
     },
   },
   kernels::LambdaKernelBuilder,
