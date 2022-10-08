@@ -39,7 +39,11 @@ pub mod winit_exports {
 pub struct LoopBuilder;
 
 impl LoopBuilder {
-  pub fn build<Events: 'static + std::fmt::Debug>() -> Loop<Events> {
+  pub fn new() -> Self {
+    return Self;
+  }
+
+  pub fn build<Events: 'static + std::fmt::Debug>(self) -> Loop<Events> {
     let event_loop = EventLoop::<Events>::with_user_event();
     return Loop { event_loop };
   }
@@ -182,12 +186,8 @@ fn construct_window_size(
   };
 }
 
+/// Event loop publisher wrapper for pushing events into a winit event loop.
 pub struct LoopPublisher<E: 'static> {
-  winit_proxy: EventLoopProxy<E>,
-}
-
-#[derive(Clone, Debug)]
-pub struct EventLoopPublisher<E: 'static + std::fmt::Debug> {
   winit_proxy: EventLoopProxy<E>,
 }
 
@@ -238,7 +238,7 @@ impl<E: 'static + std::fmt::Debug> Loop<E> {
     }
   }
 
-  /// Uses the winit event loop to run forever.
+  /// Uses the winit event loop to run forever
   pub fn run_forever<Callback>(self, callback: Callback)
   where
     Callback: 'static

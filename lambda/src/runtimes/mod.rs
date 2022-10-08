@@ -8,6 +8,7 @@ use lambda_platform::winit::{
     WindowEvent as WinitWindowEvent,
   },
   Loop,
+  LoopBuilder,
 };
 
 use crate::core::{
@@ -82,7 +83,7 @@ impl GenericRuntimeBuilder {
   /// Kernel to receive events & render access.
   pub fn build(self) -> GenericRuntime {
     let name = self.app_name;
-    let mut event_loop = create_event_loop::<Events>();
+    let mut event_loop = LoopBuilder::new().build();
     let (width, height) = self.window_size;
 
     let window = WindowBuilder::new()
