@@ -99,7 +99,7 @@ impl<E: 'static + std::fmt::Debug> EventLoopPublisher<E> {
 
   /// Send an event
   #[inline]
-  pub fn send_event(&self, event: E) {
+  pub fn publish_event(&self, event: E) {
     self
       .winit_proxy
       .send_event(event)
@@ -124,6 +124,7 @@ impl<E: 'static + std::fmt::Debug> Loop<E> {
   }
 
   pub fn get_any_available_monitors(&self) -> MonitorHandle {
+    // TODO(vmarcella): Remove the panic from this in favor of returning a result or an error.
     match self.event_loop.available_monitors().next() {
       Some(monitor) => monitor,
       None => panic!("No available monitors found."),

@@ -131,7 +131,7 @@ impl Kernel for LambdaKernel {
     let mut active_render_api = Some(render_api);
 
     let publisher = event_loop.create_publisher();
-    publisher.send_event(Events::Kernel {
+    publisher.publish_event(Events::Kernel {
       event: KernelEvent::Initialized,
       issued_at: Instant::now(),
     });
@@ -143,13 +143,13 @@ impl Kernel for LambdaKernel {
         WinitEvent::WindowEvent { event, .. } => match event {
           WinitWindowEvent::CloseRequested => {
             // Issue a Shutdown event to deallocate resources and clean up.
-            publisher.send_event(Events::Kernel {
+            publisher.publish_event(Events::Kernel {
               event: KernelEvent::Shutdown,
               issued_at: Instant::now(),
             });
           }
           WinitWindowEvent::Resized(dims) => {
-            publisher.send_event(Events::Window {
+            publisher.publish_event(Events::Window {
               event: WindowEvent::Resize {
                 width: dims.width,
                 height: dims.height,
@@ -158,7 +158,7 @@ impl Kernel for LambdaKernel {
             })
           }
           WinitWindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-            publisher.send_event(Events::Window {
+            publisher.publish_event(Events::Window {
               event: WindowEvent::Resize {
                 width: new_inner_size.width,
                 height: new_inner_size.height,
