@@ -7,7 +7,6 @@ use lambda::{
       RenderableComponent,
     },
     events::Events,
-    kernel::start_runtime,
     render::{
       command::RenderCommand,
       pipeline::{
@@ -26,8 +25,9 @@ use lambda::{
       },
       viewport,
     },
+    runtime::start_runtime,
   },
-  kernels::GenericRuntimeBuilder,
+  runtimes::GenericRuntimeBuilder,
 };
 
 pub struct DemoComponent {

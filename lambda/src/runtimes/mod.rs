@@ -18,7 +18,6 @@ use crate::core::{
     RuntimeEvent,
     WindowEvent,
   },
-  kernel::Runtime,
   render::{
     window::{
       Window,
@@ -27,6 +26,7 @@ use crate::core::{
     RenderContext,
     RenderContextBuilder,
   },
+  runtime::Runtime,
 };
 
 pub struct GenericRuntimeBuilder {
