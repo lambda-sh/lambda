@@ -1,288 +1,325 @@
-pub mod assembler;
+pub mod command;
+pub mod pipeline;
+pub mod render_pass;
 pub mod shader;
+pub mod viewport;
+pub mod window;
 
-use std::time::Duration;
+pub mod internal {
+  use std::rc::Rc;
 
-use lambda_platform::{
-  gfx,
-  gfx::{
-    gfx_hal_exports,
-    gfx_hal_exports::{
-      CommandBuffer,
-      PresentationSurface,
+  use lambda_platform::gfx::api::RenderingAPI as RenderContext;
+  pub type RenderBackend = RenderContext::Backend;
+
+  pub use lambda_platform::{
+    gfx::{
+      command::{
+        CommandBuffer,
+        CommandBufferBuilder,
+        CommandPool,
+        CommandPoolBuilder,
+      },
+      fence::{
+        RenderSemaphore,
+        RenderSemaphoreBuilder,
+        RenderSubmissionFence,
+        RenderSubmissionFenceBuilder,
+      },
+      framebuffer::Framebuffer,
+      gpu::{
+        Gpu,
+        GpuBuilder,
+        RenderQueueType,
+      },
+      pipeline::RenderPipelineBuilder,
+      render_pass::{
+        RenderPass,
+        RenderPassBuilder,
+      },
+      surface::{
+        Surface,
+        SurfaceBuilder,
+      },
+      Instance,
+      InstanceBuilder,
     },
-  },
-};
-use shader::Shader;
+    shaderc::ShaderKind,
+  };
 
-use super::events::Event;
-use crate::core::{
-  component::Component,
-  render::{
-    assembler::create_vertex_assembler,
-    shader::ShaderKind,
-  },
-};
+  /// Returns the GPU instance for the given render context.
+  pub fn gpu_from_context(
+    context: &super::RenderContext,
+  ) -> &Gpu<RenderBackend> {
+    return &context.gpu;
+  }
 
-pub struct LambdaRenderer<B: gfx_hal_exports::Backend> {
-  instance: gfx::GfxInstance<B>,
-  gpu: gfx::gpu::GfxGpu<B>,
-  format: gfx_hal_exports::Format,
-  shader_library: Vec<Shader>,
+  /// Returns a mutable GPU instance for the given render context.
+  pub fn mut_gpu_from_context(
+    context: &mut super::RenderContext,
+  ) -> &mut Gpu<RenderBackend> {
+    return &mut context.gpu;
+  }
 
-  surface: Option<B::Surface>,
-  extent: Option<gfx_hal_exports::Extent2D>,
-  frame_buffer_attachment: Option<gfx_hal_exports::FramebufferAttachment>,
-  submission_complete_fence: Option<B::Fence>,
-  rendering_complete_semaphore: Option<B::Semaphore>,
-  command_buffer: Option<B::CommandBuffer>,
-
-  // TODO(vmarcella): Isolate pipeline & render pass management away from
-  // the Renderer.
-  graphic_pipelines: Option<Vec<B::GraphicsPipeline>>,
-  pipeline_layouts: Option<Vec<B::PipelineLayout>>,
-  render_passes: Option<Vec<B::RenderPass>>,
+  /// Gets the surface for the given render context.
+  pub fn surface_from_context(
+    context: &super::RenderContext,
+  ) -> Rc<Surface<RenderBackend>> {
+    return context.surface.clone();
+  }
 }
 
-impl<B: gfx_hal_exports::Backend> LambdaRenderer<B> {
-  /// Create a graphical pipeline using a single shader with an associated
-  /// render pass. This will currently return all gfx_hal related pipeline assets
-  pub fn create_gpu_pipeline(
+use std::{
+  mem::swap,
+  rc::Rc,
+};
+
+use lambda_platform::gfx::{
+  command::{
+    Command,
+    CommandBufferBuilder,
+    CommandBufferFeatures,
+    CommandBufferLevel,
+  },
+  framebuffer::FramebufferBuilder,
+  surface::SwapchainBuilder,
+  viewport::ViewPort,
+};
+
+use self::{
+  command::RenderCommand,
+  pipeline::RenderPipeline,
+  render_pass::RenderPass,
+};
+
+pub struct RenderContextBuilder {
+  name: String,
+  render_timeout: u64,
+}
+
+impl RenderContextBuilder {
+  /// Create a new localized RenderContext
+  pub fn new(name: &str) -> Self {
+    return Self {
+      name: name.to_string(),
+      render_timeout: 1_000_000_000,
+    };
+  }
+
+  /// The time rendering has to complete before timing out.
+  pub fn with_render_timeout(mut self, render_timeout: u64) -> Self {
+    self.render_timeout = render_timeout;
+    return self;
+  }
+
+  /// Builds a RenderContext and injects it into the application window.
+  /// Currently only supports building a Rendering Context utilizing the
+  /// systems primary GPU.
+  pub fn build(self, window: &window::Window) -> RenderContext {
+    let RenderContextBuilder {
+      name,
+      render_timeout,
+    } = self;
+
+    let mut instance = internal::InstanceBuilder::new()
+      .build::<internal::RenderBackend>(name.as_str());
+    let mut surface = Rc::new(
+      internal::SurfaceBuilder::new().build(&instance, window.window_handle()),
+    );
+
+    // Build a GPU with a Graphical Render queue that can render to our surface.
+    let mut gpu = internal::GpuBuilder::new()
+      .with_render_queue_type(internal::RenderQueueType::Graphical)
+      .build(&mut instance, Some(&surface))
+      .expect("Failed to build a GPU with a graphical render queue.");
+
+    // Build command pool and allocate a single buffer named Primary
+    let command_pool = internal::CommandPoolBuilder::new().build(&gpu);
+
+    // Build our rendering submission fence and semaphore.
+    let submission_fence = internal::RenderSubmissionFenceBuilder::new()
+      .with_render_timeout(render_timeout)
+      .build(&mut gpu);
+
+    let render_semaphore =
+      internal::RenderSemaphoreBuilder::new().build(&mut gpu);
+
+    // Create the image extent and initial frame buffer attachment description
+    // for rendering.
+    let (width, height) = window.dimensions();
+    let swapchain = SwapchainBuilder::new()
+      .with_size(width, height)
+      .build(&gpu, &surface);
+
+    Rc::get_mut(&mut surface)
+      .expect("Failed to get mutable reference to surface.")
+      .apply_swapchain(&gpu, swapchain, self.render_timeout)
+      .expect("Failed to apply the swapchain to the surface.");
+
+    return RenderContext {
+      name,
+      instance,
+      gpu,
+      surface: surface.clone(),
+      frame_buffer: None,
+      submission_fence: Some(submission_fence),
+      render_semaphore: Some(render_semaphore),
+      command_pool: Some(command_pool),
+      viewports: vec![],
+      render_passes: vec![],
+      render_pipelines: vec![],
+    };
+  }
+}
+
+/// Generic Rendering API setup to use the current platforms primary
+/// Rendering Backend
+pub struct RenderContext {
+  name: String,
+  instance: internal::Instance<internal::RenderBackend>,
+  gpu: internal::Gpu<internal::RenderBackend>,
+  surface: Rc<internal::Surface<internal::RenderBackend>>,
+  frame_buffer: Option<Rc<internal::Framebuffer<internal::RenderBackend>>>,
+  submission_fence:
+    Option<internal::RenderSubmissionFence<internal::RenderBackend>>,
+  render_semaphore: Option<internal::RenderSemaphore<internal::RenderBackend>>,
+  command_pool: Option<internal::CommandPool<internal::RenderBackend>>,
+  render_passes: Vec<Option<RenderPass>>,
+  render_pipelines: Vec<Option<RenderPipeline>>,
+  viewports: Vec<ViewPort>,
+}
+
+impl RenderContext {
+  /// destroys the RenderContext and all associated resources.
+  pub fn destroy(mut self) {
+    println!("{} will now start destroying resources.", self.name);
+
+    // Destroy the submission fence and rendering semaphore.
+    self
+      .submission_fence
+      .take()
+      .expect(
+        "Couldn't take the submission fence from the context and destroy it.",
+      )
+      .destroy(&self.gpu);
+    self
+      .render_semaphore
+      .take()
+      .expect("Couldn't take the rendering semaphore from the context and destroy it.")
+      .destroy(&self.gpu);
+
+    // Destroy render passes.
+    let mut render_passes = vec![];
+    swap(&mut self.render_passes, &mut render_passes);
+
+    for render_pass in &mut render_passes {
+      render_pass
+        .take()
+        .expect(
+          "Couldn't take the render pass from the context and destroy it.",
+        )
+        .destroy(&self);
+    }
+
+    // Destroy render pipelines.
+    let mut render_pipelines = vec![];
+    swap(&mut self.render_pipelines, &mut render_pipelines);
+
+    for render_pipeline in &mut render_pipelines {
+      render_pipeline
+        .take()
+        .expect(
+          "Couldn't take the render pipeline from the context and destroy it.",
+        )
+        .destroy(&self);
+    }
+
+    // Takes the inner surface and destroys it.
+    let mut surface = Rc::try_unwrap(self.surface)
+      .expect("Couldn't obtain the surface from the context.");
+
+    surface.remove_swapchain(&self.gpu);
+    surface.destroy(&self.instance);
+  }
+
+  pub fn allocate_and_get_frame_buffer(
     &mut self,
-    vertex_shader: Shader,
-    fragment_shader: Shader,
-    render_pass: &B::RenderPass,
-  ) -> (B::ShaderModule, B::PipelineLayout, B::GraphicsPipeline) {
-    let vertex_module = self
-      .gpu
-      .create_shader_module(vertex_shader.get_shader_binary());
-    let fragment_module = self
-      .gpu
-      .create_shader_module(fragment_shader.get_shader_binary());
-
-    // TODO(vmarcella): Abstract the gfx hal assembler away from the
-    // render module directly.
-    let vertex_entry = gfx_hal_exports::EntryPoint::<B> {
-      entry: "main",
-      module: &vertex_module,
-      specialization: gfx_hal_exports::Specialization::default(),
-    };
-
-    let fragment_entry = gfx_hal_exports::EntryPoint::<B> {
-      entry: "main",
-      module: &fragment_module,
-      specialization: gfx_hal_exports::Specialization::default(),
-    };
-
-    // TODO(vmarcella): This process could use a more consistent abstraction
-    // for getting a pipeline created.
-    let assembler = create_vertex_assembler(vertex_entry);
-    let pipeline_layout = self.gpu.create_pipeline_layout();
-    let mut logical_pipeline = gfx::pipeline::create_graphics_pipeline(
-      assembler,
-      &pipeline_layout,
-      render_pass,
-      Some(fragment_entry),
+    render_pass: &internal::RenderPass<internal::RenderBackend>,
+  ) -> Rc<lambda_platform::gfx::framebuffer::Framebuffer<internal::RenderBackend>>
+  {
+    let frame_buffer = FramebufferBuilder::new().build(
+      &mut self.gpu,
+      &render_pass,
+      self.surface.as_ref(),
     );
 
-    let physical_pipeline =
-      self.gpu.create_graphics_pipeline(&mut logical_pipeline);
-
-    return (vertex_module, pipeline_layout, physical_pipeline);
-  }
-}
-
-/// Platform RenderAPI for layers to use for issuing calls to
-/// a LambdaRenderer using the default rendering nackend provided
-/// by the platform.
-pub type RenderAPI = LambdaRenderer<gfx::api::RenderingAPI::Backend>;
-
-/// A render API that is provided by the lambda runnable.
-pub struct RenderClient<'a> {
-  api: &'a RenderAPI,
-}
-
-impl<'a> RenderClient<'a> {
-  fn new(renderer: &'a RenderAPI) -> Self {
-    return Self { api: renderer };
+    // TODO(vmarcella): Update the framebuffer allocation to not be so hacky.
+    // FBAs can only be allocated once a render pass has begun, but must be
+    // cleaned up after commands have been submitted forcing us
+    self.frame_buffer = Some(Rc::new(frame_buffer));
+    return self.frame_buffer.as_ref().unwrap().clone();
   }
 
-  pub fn upload_shader() {}
-}
+  /// Allocates a command buffer and records commands to the GPU.
+  pub fn render(&mut self, commands: Vec<RenderCommand>) {
+    let dimensions = self
+      .surface
+      .size()
+      .expect("Surface has no size configured.");
 
-impl<B: gfx_hal_exports::Backend> Component for LambdaRenderer<B> {
-  /// Allocates resources on the GPU to enable rendering for other
-  fn on_attach(&mut self) {
-    println!("The Rendering API has been attached and is being initialized.");
+    let swapchain = SwapchainBuilder::new()
+      .with_size(dimensions[0], dimensions[1])
+      .build(&self.gpu, &self.surface);
 
-    let command_buffer = self.gpu.allocate_command_buffer();
-    let render_pass = self.gpu.create_render_pass(None, None, None);
-    let (submission_fence, rendering_semaphore) =
-      self.gpu.create_access_fences();
+    Rc::get_mut(&mut self.surface)
+      .expect("Failed to get mutable reference to surface.")
+      .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
+      .expect("Failed to apply the swapchain to the surface.");
 
-    let vertex_shader = Shader::from_file(
-      "/home/vmarcella/dev/lambda/lambda/assets/shaders/triangle.vert",
-      ShaderKind::Vertex,
-    );
+    let platform_command_list = commands
+      .into_iter()
+      .map(|command| command.into_platform_command(self))
+      .collect();
 
-    let fragment_shader = Shader::from_file(
-      "/home/vmarcella/dev/lambda/lambda/assets/shaders/triangle.frag",
-      ShaderKind::Fragment,
-    );
+    let mut command_buffer =
+      CommandBufferBuilder::new(CommandBufferLevel::Primary)
+        .with_feature(CommandBufferFeatures::ResetEverySubmission)
+        .build(self.command_pool.as_mut().unwrap(), "primary");
 
-    let (module, pipeline_layout, pipeline) =
-      self.create_gpu_pipeline(vertex_shader, fragment_shader, &render_pass);
+    // Start recording commands, issue the high level render commands
+    // that came from an application, and then submit the commands to the GPU
+    // for rendering.
+    command_buffer.issue_command(PlatformRenderCommand::BeginRecording);
+    command_buffer.issue_commands(platform_command_list);
+    command_buffer.issue_command(PlatformRenderCommand::EndRecording);
 
-    self.gpu.destroy_shader_module(module);
-
-    self.render_passes = Some(vec![render_pass]);
-    self.pipeline_layouts = Some(vec![pipeline_layout]);
-    self.graphic_pipelines = Some(vec![pipeline]);
-    self.submission_complete_fence = Some(submission_fence);
-    self.rendering_complete_semaphore = Some(rendering_semaphore);
-    self.command_buffer = Some(command_buffer);
-  }
-
-  /// Detaches physical rendering resources that were allocated by this
-  /// component.
-  fn on_detach(&mut self) {
-    println!("Destroying GPU resources allocated during run.");
-    self.gpu.destroy_access_fences(
-      self.submission_complete_fence.take().unwrap(),
-      self.rendering_complete_semaphore.take().unwrap(),
-    );
-
-    for pipeline_layout in self.pipeline_layouts.take().unwrap() {
-      self.gpu.destroy_pipeline_layout(pipeline_layout);
-    }
-
-    for render_pass in self.render_passes.take().unwrap() {
-      self.gpu.destroy_render_pass(render_pass);
-    }
-
-    for pipeline in self.graphic_pipelines.take().unwrap() {
-      self.gpu.destroy_graphics_pipeline(pipeline);
-    }
-
-    // Destroy command pool allocated on the GPU.
-    self.gpu.destroy_command_pool();
-    let mut surface = self.surface.take().unwrap();
-
-    println!("Destroyed all GPU resources");
-  }
-
-  fn on_event(&mut self, event: &Event) {
-    match event {
-      Event::Resized {
-        new_width,
-        new_height,
-      } => {}
-      _ => (),
-    };
-  }
-
-  /// Rendering update loop.
-  fn on_update(&mut self, _: &Duration) {
-    self.gpu.wait_for_or_reset_fence(
-      self.submission_complete_fence.as_mut().unwrap(),
-    );
-
-    let surface = self.surface.as_mut().unwrap();
-
-    let acquire_timeout_ns = 1_000_000_000;
-    let image = unsafe {
-      let i = match surface.acquire_image(acquire_timeout_ns) {
-        Ok((image, _)) => Some(image),
-        Err(_) => None,
-      };
-      i.unwrap()
-    };
-
-    // TODO(vmarcella): This code will fail if there are no render passes
-    // attached to the renderer.
-    use std::borrow::Borrow;
-    let render_pass = &self.render_passes.as_mut().unwrap()[0];
-    let extent = self.extent.as_ref().unwrap();
-    let fba = self.frame_buffer_attachment.as_ref().unwrap();
-
-    // Allocate the framebuffer
-    let framebuffer = {
+    self.gpu.submit_command_buffer(
+      &mut command_buffer,
+      vec![],
       self
-        .gpu
-        .create_frame_buffer(render_pass, fba.clone(), extent)
-    };
+        .submission_fence
+        .as_mut()
+        .expect("Failed to get mutable reference to submission fence."),
+    );
 
-    // TODO(vmarcella): Investigate into abstracting the viewport behind a
-    // camera.
-    let viewport = {
-      gfx_hal_exports::Viewport {
-        rect: gfx_hal_exports::Rect {
-          x: 0,
-          y: 0,
-          w: self.extent.as_ref().unwrap().width as i16,
-          h: self.extent.as_ref().unwrap().height as i16,
-        },
-        depth: 0.0..1.0,
+    self
+      .gpu
+      .render_to_surface(
+        Rc::get_mut(&mut self.surface)
+          .expect("Failed to obtain a surface to render on."),
+        self.render_semaphore.as_mut().unwrap(),
+      )
+      .expect("Failed to render to the surface");
+
+    match self.frame_buffer {
+      Some(_) => {
+        Rc::try_unwrap(self.frame_buffer.take().unwrap())
+          .ok()
+          .unwrap()
+          .destroy(&self.gpu);
       }
-    };
-
-    unsafe {
-      let command_buffer = self.command_buffer.as_mut().unwrap();
-      command_buffer
-        .begin_primary(gfx_hal_exports::CommandBufferFlags::ONE_TIME_SUBMIT);
-
-      // Configure the vieports & the scissor rectangles for the rasterizer
-      let viewports = vec![viewport.clone()].into_iter();
-      let rect = vec![viewport.rect].into_iter();
-      command_buffer.set_viewports(0, viewports);
-      command_buffer.set_scissors(0, rect);
-
-      // Render attachments to specify for the current render pass.
-      let render_attachments = vec![gfx_hal_exports::RenderAttachmentInfo {
-        image_view: image.borrow(),
-        clear_value: gfx_hal_exports::ClearValue {
-          color: gfx_hal_exports::ClearColor {
-            float32: [0.0, 0.0, 0.0, 1.0],
-          },
-        },
-      }]
-      .into_iter();
-
-      // Initialize the render pass on the command buffer & inline the subpass
-      // contents.
-      command_buffer.begin_render_pass(
-        &render_pass,
-        &framebuffer,
-        viewport.rect,
-        render_attachments,
-        gfx_hal_exports::SubpassContents::Inline,
-      );
-
-      // Bind graphical pipeline and submit commands to the GPU.
-      let pipeline = &self.graphic_pipelines.as_ref().unwrap()[0];
-      command_buffer.bind_graphics_pipeline(pipeline);
-      command_buffer.draw(0..3, 0..1);
-      command_buffer.end_render_pass();
-      command_buffer.finish();
-
-      // Submit the command buffer for rendering on the GPU.
-      self.gpu.submit_command_buffer(
-        &command_buffer,
-        self.rendering_complete_semaphore.as_ref().unwrap(),
-        self.submission_complete_fence.as_mut().unwrap(),
-      );
-
-      let result = self.gpu.render_to_surface(
-        surface,
-        image,
-        self.rendering_complete_semaphore.as_mut().unwrap(),
-      );
-
-      if result.is_err() {
-        todo!("Publish an event from the renderer that the swapchain needs to be reconfigured")
-      }
-
-      self.gpu.destroy_frame_buffer(framebuffer);
+      None => {}
     }
   }
 }
+
+type PlatformRenderCommand = Command<internal::RenderBackend>;

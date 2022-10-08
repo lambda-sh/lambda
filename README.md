@@ -24,19 +24,20 @@ Lambda :
 * Desktop applications
 * Productivity tools
 * Data visualizations
-* Physical simulations
+* Physical system simulations
 * Games
 
-While lambda is still in beta, we're making sure to create a solid
-foundation other projects to build upon. Over the last couple of years, the
-prominence of the web has replaced traditional desktop applications. While
-this has lead to a golden age for developing UI/UX for applications across all
-platforms, it has come at the cost of degraded performance & resource consumption.
+Over the last couple of years, the prominence of the web has replaced
+traditional desktop applications. While this has lead to a golden age for
+developing UI/UX for applications across all platforms, it has come at the
+cost of degraded performance & resource consumption.
 
-Lambda's goal isn't to replace electron, webview, or other similar web based desktop
-frameworks, however; it is to instead create a cross platform ecosystem for
-desktop applications with performance and resource consumption at the forefront
-of it's priorities without sacrificing. Lambda will not be HTML/CSS based and will instead provide
+Lambda's goal isn't to replace electron, webview, or other similar web based
+desktop frameworks, however; it is to instead create a cross platform ecosystem
+for desktop applications with performance and resource consumption at the
+forefront of it's priorities without sacrificing good UI/UX. Lambda may offer
+lightweight HTML/CSS based rendering in the future but we're primarily focused
+on implementing a Rust native UI framework built on top of our rendering engine.
 
 ## Documentation <a name="documentation"></a>
 Documentation to be added soon.
@@ -44,7 +45,7 @@ Documentation to be added soon.
 ## Building <a name="building"></a>
 
 ### From source <a name="source"></a>
-Currently, building from source is the only method to obtain a copy of Lambda. 
+Currently, building from source is the only method to obtain a copy of Lambda.
 
 #### Required external dependencies <a name="ext_deps"></a>
 * All platforms
@@ -56,12 +57,14 @@ Currently, building from source is the only method to obtain a copy of Lambda.
 	* `pre-commit` is used for development git commit hooks and any changes that do not pass the pre-commit checks will not be accepted.
 
 #### Rendering API support
-These are the Rendering APIs that are supported on each platform and must be installed manually. More information on how to choose which backend lambda uses on each platform is provided further below.
+These are the Rendering APIs that are supported on each platform and must be
+installed manually. More information on how to choose which backend lambda
+uses on each platform is provided further below.
 * Windows
 	* `OpenGL`
 	* `Vulkan`
 	* `DirectX11`
-	* `DirectX12` 
+	* `DirectX12`
 * Linux
 	* `OpenGL`
 	* `Vulkan`
@@ -74,7 +77,7 @@ If planning to develop for lambda, you must run the setup script provided by rep
 ```bash
 ./scripts/setup.sh
 ```
-This will initialize pre commit checks for development use and setup git-lfs for asset management. 
+This will initialize pre commit checks for development use and setup git-lfs for asset management.
 
 In order to validate that lambda successfully compiles, you can build the library by performing a build with cargo.
 ```bash
@@ -87,9 +90,9 @@ Coming soon.
 
 
 ## Plans <a name="plans"></a>
-- [ ] Architecture support
+- [x] Architecture support
 	- [x] x86
-	- [ ] arm64
+	- [x] arm64
 - [ ] Operating system support
 	- [x] MacOS
 	- [x] Linux
@@ -105,12 +108,12 @@ Coming soon.
 	- [x] DirectX12
 - [ ] Crates
 	- [ ] lambda-arch -- Architecture support
-	- [ ] (WIP) lambda-platform -- Platform support
+	- [x] (WIP) lambda-platform -- Platform support
 	- [ ] (WIP) lambda-core -- Core library implementations
 	- [ ] lambda-cloud -- Cloud integrations
-	- [ ] (WIP) lambda --  Stable Lambda API
+	- [ ] (WIP) lambda -- The public Lambda API
 - [ ] Tools
-	- [ ] lambda-rs-demo -- 2D rendering demo
+	- [x] lambda-rs-demo -- 2D rendering demo
 	- [ ] lambda-rs-cube -- 3D rendering demo
 	- [ ] lambda-checker -- Checks system specifications against lambda requirements
 - [ ] CI/CD
@@ -128,7 +131,7 @@ This process may take anywhere from 3-7 days depending on the scope of the
 changes made, my schedule, and any other variable factors. They must also pass
 all of the build pipelines are configured to run at merge.
 
-## Resources I used for creating this project. <a name="resources"></a>
+## Resources <a name="resources"></a>
 [The Cherno's playlist for making a game engine](https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT)
 
-[Creator of the repository logo.](https://github.com/RinniSwift)
+[Creator of Logo](https://github.com/RinniSwift)

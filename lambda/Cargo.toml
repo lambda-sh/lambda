@@ -1,7 +1,7 @@
 [package]
 name = "lambda"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 [lib]
 name = "lambda"
@@ -24,4 +24,4 @@ stable-macos-dependencies=["lambda-platform/gfx-with-metal"]
 
 # Linux dev-dependencies.
 [target.'cfg(all(unix, not(target_os = "macos")))'.dev-dependencies]
-cargo-tarpaulin = "=0.18.5"
+cargo-tarpaulin = "=0.19.1"

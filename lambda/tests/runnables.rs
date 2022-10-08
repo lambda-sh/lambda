@@ -1,6 +1,2 @@
-use lambda;
-
 #[test]
-fn lambda_runnable() {
-  use lambda::runnables::LambdaRunnable;
-}
+fn lambda_runnable() {}
