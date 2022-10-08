@@ -49,12 +49,8 @@ impl Component<Events> for DemoComponent {
 
   fn on_update(self: &mut DemoComponent, last_frame: &std::time::Duration) {
     println!(
-      "This layer was last updated: {} nanoseconds ago",
-      last_frame.as_nanos()
-    );
-
-    println!(
-      "This layer was last updated: {} milliseconds ago",
+      "This component was last updated: {} nanoseconds/{} milliseconds ago",
+      last_frame.as_nanos(),
       last_frame.as_millis()
     );
   }
@@ -104,12 +100,16 @@ impl RenderableComponent<Events> for DemoComponent {
           .render_pipeline
           .as_ref()
           .expect(
-            "No render pipeline set while trying to issue a render command",
+            "No render pipeline set while trying to issue a render command.",
           )
           .clone(),
       },
       RenderCommand::BeginRenderPass {
-        render_pass: self.render_pass.as_ref().unwrap().clone(),
+        render_pass: self
+          .render_pass
+          .as_ref()
+          .expect("Cannot begin the render pass when it doesn't exist.")
+          .clone(),
         viewport: viewport.clone(),
       },
       RenderCommand::Draw { vertices: 0..3 },

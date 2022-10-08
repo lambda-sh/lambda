@@ -5,6 +5,7 @@ use std::time::Instant;
 pub enum ComponentEvent {
   Attached { name: String },
   Detached { name: String },
+  Update { delta: Instant },
 }
 
 /// Window events are generated in response to window events coming from
@@ -22,8 +23,8 @@ pub enum KernelEvent {
   Shutdown,
 }
 
-/// Generic Event Enum which encapsulates all possible events that will be emitted
-/// by the LambdaKernel
+/// Generic Event Enum which encapsulates all possible events that will be
+/// emitted by the LambdaKernel
 #[derive(Debug)]
 pub enum Events {
   Component {

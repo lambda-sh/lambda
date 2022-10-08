@@ -66,7 +66,6 @@ impl LambdaKernelBuilder {
     self.render_api = configure(self.render_api);
     return self;
   }
-  /// Jjk
   /// Attach a component to the current runnable.
   pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
     self,
@@ -90,7 +89,7 @@ impl LambdaKernelBuilder {
       .with_name(name.as_str())
       .with_dimensions(width, height)
       .build(&mut event_loop);
-    let component_stack = Vec::new();
+    let component_stack = self.components;
     let render_api = self.render_api.build(&window);
 
     return LambdaKernel {
