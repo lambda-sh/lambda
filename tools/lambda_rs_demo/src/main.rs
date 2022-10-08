@@ -7,7 +7,7 @@ use lambda::{
       RenderableComponent,
     },
     events::Events,
-    kernel::start_kernel,
+    kernel::start_runtime,
     render::{
       command::RenderCommand,
       pipeline::{
@@ -27,7 +27,7 @@ use lambda::{
       viewport,
     },
   },
-  kernels::LambdaKernelBuilder,
+  kernels::GenericRuntimeBuilder,
 };
 
 pub struct DemoComponent {
@@ -160,7 +160,7 @@ impl Default for DemoComponent {
 }
 
 fn main() {
-  let kernel = LambdaKernelBuilder::new("Lambda 2D Demo")
+  let runtime = GenericRuntimeBuilder::new("2D Triangle Demo")
     .with_renderer(move |render_context_builder| {
       return render_context_builder;
     })
@@ -169,5 +169,5 @@ fn main() {
     })
     .build();
 
-  start_kernel(kernel);
+  start_runtime(runtime);
 }

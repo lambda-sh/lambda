@@ -13,11 +13,12 @@ use lambda_platform::winit::{
 use crate::core::{
   component::RenderableComponent,
   events::{
+    ComponentEvent,
     Events,
-    KernelEvent,
+    RuntimeEvent,
     WindowEvent,
   },
-  kernel::Kernel,
+  kernel::Runtime,
   render::{
     window::{
       Window,
@@ -28,14 +29,14 @@ use crate::core::{
   },
 };
 
-pub struct LambdaKernelBuilder {
+pub struct GenericRuntimeBuilder {
   app_name: String,
   render_api: RenderContextBuilder,
   window_size: (u32, u32),
   components: Vec<Box<dyn RenderableComponent<Events>>>,
 }
 
-impl LambdaKernelBuilder {
+impl GenericRuntimeBuilder {
   pub fn new(app_name: &str) -> Self {
     return Self {
       app_name: app_name.to_string(),
@@ -79,7 +80,7 @@ impl LambdaKernelBuilder {
   /// Builds a LambdaKernel equipped with Windowing, an event loop, and a
   /// component stack that allows components to be dynamically pushed into the
   /// Kernel to receive events & render access.
-  pub fn build(self) -> LambdaKernel {
+  pub fn build(self) -> GenericRuntime {
     let name = self.app_name;
     let mut event_loop = create_event_loop::<Events>();
     let (width, height) = self.window_size;
@@ -91,7 +92,7 @@ impl LambdaKernelBuilder {
     let component_stack = self.components;
     let render_api = self.render_api.build(&window);
 
-    return LambdaKernel {
+    return GenericRuntime {
       name,
       event_loop,
       window,
@@ -104,7 +105,7 @@ impl LambdaKernelBuilder {
 /// A windowed and event-driven kernel that can be used to render a
 /// scene on the primary GPU across Windows, MacOS, and Linux at this point in
 /// time.
-pub struct LambdaKernel {
+pub struct GenericRuntime {
   name: String,
   event_loop: Loop<Events>,
   window: Window,
@@ -112,16 +113,16 @@ pub struct LambdaKernel {
   render_api: RenderContext,
 }
 
-impl LambdaKernel {}
+impl GenericRuntime {}
 
-impl Kernel for LambdaKernel {
+impl Runtime for GenericRuntime {
   /// Initiates an event loop that captures the context of the LambdaKernel
   /// and generates events from the windows event loop until the end of the event loops
   /// lifetime (Whether that be initiated intentionally or via error).
   fn run(self) {
     // Decompose Kernel components for transferring ownership to the
     // closure.
-    let LambdaKernel {
+    let GenericRuntime {
       mut window,
       mut event_loop,
       mut component_stack,
@@ -132,8 +133,8 @@ impl Kernel for LambdaKernel {
     let mut active_render_api = Some(render_api);
 
     let publisher = event_loop.create_publisher();
-    publisher.publish_event(Events::Kernel {
-      event: KernelEvent::Initialized,
+    publisher.publish_event(Events::Runtime {
+      event: RuntimeEvent::Initialized,
       issued_at: Instant::now(),
     });
 
@@ -144,8 +145,8 @@ impl Kernel for LambdaKernel {
         WinitEvent::WindowEvent { event, .. } => match event {
           WinitWindowEvent::CloseRequested => {
             // Issue a Shutdown event to deallocate resources and clean up.
-            publisher.publish_event(Events::Kernel {
-              event: KernelEvent::Shutdown,
+            publisher.publish_event(Events::Runtime {
+              event: RuntimeEvent::Shutdown,
               issued_at: Instant::now(),
             });
           }
@@ -175,39 +176,39 @@ impl Kernel for LambdaKernel {
           WinitWindowEvent::ReceivedCharacter(_) => {}
           WinitWindowEvent::Focused(_) => {}
           WinitWindowEvent::KeyboardInput {
-            device_id: _,
-            input: _,
-            is_synthetic: _,
+            device_id,
+            input,
+            is_synthetic,
           } => {}
           WinitWindowEvent::ModifiersChanged(_) => {}
           WinitWindowEvent::CursorMoved {
-            device_id: _,
-            position: _,
-            modifiers: _,
+            device_id,
+            position,
+            modifiers,
           } => {}
-          WinitWindowEvent::CursorEntered { device_id: _ } => {}
-          WinitWindowEvent::CursorLeft { device_id: _ } => {}
+          WinitWindowEvent::CursorEntered { device_id } => {}
+          WinitWindowEvent::CursorLeft { device_id } => {}
           WinitWindowEvent::MouseWheel {
-            device_id: _,
-            delta: _,
-            phase: _,
-            modifiers: _,
+            device_id,
+            delta,
+            phase,
+            modifiers,
           } => {}
           WinitWindowEvent::MouseInput {
-            device_id: _,
-            state: _,
-            button: _,
-            modifiers: _,
+            device_id,
+            state,
+            button,
+            modifiers,
           } => {}
           WinitWindowEvent::TouchpadPressure {
-            device_id: _,
-            pressure: _,
-            stage: _,
+            device_id,
+            pressure,
+            stage,
           } => {}
           WinitWindowEvent::AxisMotion {
-            device_id: _,
-            axis: _,
-            value: _,
+            device_id,
+            axis,
+            value,
           } => {}
           WinitWindowEvent::Touch(_) => {}
           WinitWindowEvent::ThemeChanged(_) => {}
@@ -229,16 +230,10 @@ impl Kernel for LambdaKernel {
         }
         WinitEvent::RedrawRequested(_) => {}
         WinitEvent::NewEvents(_) => {}
-        WinitEvent::DeviceEvent {
-          device_id: _,
-          event: _,
-        } => {}
+        WinitEvent::DeviceEvent { device_id, event } => {}
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
-          Events::Kernel {
-            event,
-            issued_at: _,
-          } => match event {
-            KernelEvent::Initialized => {
+          Events::Runtime { event, issued_at } => match event {
+            RuntimeEvent::Initialized => {
               println!("Starting the kernel {}", name);
               for component in &mut component_stack {
                 component.on_attach();
@@ -246,7 +241,7 @@ impl Kernel for LambdaKernel {
                   .on_renderer_attached(active_render_api.as_mut().unwrap());
               }
             }
-            KernelEvent::Shutdown => {
+            RuntimeEvent::Shutdown => {
               for component in &mut component_stack {
                 component.on_detach();
                 component
@@ -273,9 +268,11 @@ impl Kernel for LambdaKernel {
     });
   }
 
-  /// When the lambda kernel starts, it will attach all of the components that
-  /// have been added to the kernel during the construction phase.
-  fn on_start(&mut self) {}
+  /// When the generic runtime starts, it will attach all of the components that
+  /// have been added during the construction phase in the users code.
+  fn on_start(&mut self) {
+    println!("Starting the runtime {}", self.name);
+  }
 
   fn on_stop(&mut self) {
     println!("Stopping {}", self.name)
