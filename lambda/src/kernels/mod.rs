@@ -30,23 +30,25 @@ use crate::core::{
 };
 
 pub struct LambdaKernelBuilder {
-  name: String,
+  app_name: String,
   render_api: RenderContextBuilder,
   window_size: (u32, u32),
+  components: Vec<Box<dyn RenderableComponent<Events>>>,
 }
 
 impl LambdaKernelBuilder {
-  pub fn new(name: &str) -> Self {
+  pub fn new(app_name: &str) -> Self {
     return Self {
-      name: name.to_string(),
-      render_api: RenderContextBuilder::new(name),
+      app_name: app_name.to_string(),
+      render_api: RenderContextBuilder::new(app_name),
       window_size: (800, 600),
+      components: Vec::new(),
     };
   }
 
   /// Update the name of the LambdaKernel.
-  pub fn with_name(mut self, name: &str) -> Self {
-    self.name = name.to_string();
+  pub fn with_app_name(mut self, name: &str) -> Self {
+    self.app_name = name.to_string();
     return self;
   }
 
@@ -64,12 +66,23 @@ impl LambdaKernelBuilder {
     self.render_api = configure(self.render_api);
     return self;
   }
+  /// Jjk
+  /// Attach a component to the current runnable.
+  pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
+    self,
+    configure_component: impl FnOnce(Self, T) -> (Self, T),
+  ) -> Self {
+    let (mut kernel_builder, component) =
+      configure_component(self, T::default());
+    kernel_builder.components.push(Box::new(component));
+    return kernel_builder;
+  }
 
   /// Builds a LambdaKernel equipped with Windowing, an event loop, and a
   /// component stack that allows components to be dynamically pushed into the
   /// Kernel to receive events & render access.
   pub fn build(self) -> LambdaKernel {
-    let name = self.name;
+    let name = self.app_name;
     let mut event_loop = create_event_loop::<Events>();
     let (width, height) = self.window_size;
 
@@ -101,17 +114,7 @@ pub struct LambdaKernel {
   render_api: RenderContext,
 }
 
-impl LambdaKernel {
-  /// Attach a component to the current runnable.
-  pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
-    self,
-    configure_component: impl FnOnce(Self, T) -> (Self, T),
-  ) -> Self {
-    let (mut kernel, component) = configure_component(self, T::default());
-    kernel.component_stack.push(Box::new(component));
-    return kernel;
-  }
-}
+impl LambdaKernel {}
 
 impl Kernel for LambdaKernel {
   /// Initiates an event loop that captures the context of the LambdaKernel

@@ -170,10 +170,10 @@ fn configure_renderer(builder: RenderContextBuilder) -> RenderContextBuilder {
 fn main() {
   let kernel = LambdaKernelBuilder::new("Lambda 2D Demo")
     .configure_renderer(configure_renderer)
-    .build()
     .with_component(move |kernel, demo: DemoComponent| {
       return (kernel, demo);
-    });
+    })
+    .build();
 
   start_kernel(kernel);
 }
