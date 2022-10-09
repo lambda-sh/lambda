@@ -23,7 +23,9 @@ use winit::{
 pub mod winit_exports {
   pub use winit::{
     event::{
+      ElementState,
       Event,
+      VirtualKeyCode,
       WindowEvent,
     },
     event_loop::{

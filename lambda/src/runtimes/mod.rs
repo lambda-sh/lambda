@@ -3,6 +3,7 @@ use std::time::Instant;
 use lambda_platform::winit::{
   winit_exports::{
     ControlFlow,
+    ElementState,
     Event as WinitEvent,
     WindowEvent as WinitWindowEvent,
   },
@@ -15,6 +16,7 @@ use crate::core::{
   events::{
     ComponentEvent,
     Events,
+    KeyEvent,
     RuntimeEvent,
     WindowEvent,
   },
@@ -176,10 +178,32 @@ impl Runtime for GenericRuntime {
           WinitWindowEvent::ReceivedCharacter(_) => {}
           WinitWindowEvent::Focused(_) => {}
           WinitWindowEvent::KeyboardInput {
-            device_id,
+            device_id: _,
             input,
             is_synthetic,
-          } => {}
+          } => match (input.state, is_synthetic) {
+            (ElementState::Pressed, false) => {
+              publisher.publish_event(Events::Keyboard {
+                event: KeyEvent::KeyPressed {
+                  scan_code: input.scancode,
+                  virtual_key: input.virtual_keycode.unwrap(),
+                },
+                issued_at: Instant::now(),
+              })
+            }
+            (ElementState::Released, false) => {
+              publisher.publish_event(Events::Keyboard {
+                event: KeyEvent::KeyReleased {
+                  scan_code: input.scancode,
+                  virtual_key: input.virtual_keycode.unwrap(),
+                },
+                issued_at: Instant::now(),
+              })
+            }
+            _ => {
+              println!("Unhandled synthetic keyboard event: {:?}", input);
+            }
+          },
           WinitWindowEvent::ModifiersChanged(_) => {}
           WinitWindowEvent::CursorMoved {
             device_id,
