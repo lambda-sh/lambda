@@ -186,7 +186,7 @@ impl Runtime for GenericRuntime {
               publisher.publish_event(Events::Keyboard {
                 event: KeyEvent::KeyPressed {
                   scan_code: input.scancode,
-                  virtual_key: input.virtual_keycode.unwrap(),
+                  virtual_key: input.virtual_keycode,
                 },
                 issued_at: Instant::now(),
               })
@@ -195,7 +195,7 @@ impl Runtime for GenericRuntime {
               publisher.publish_event(Events::Keyboard {
                 event: KeyEvent::KeyReleased {
                   scan_code: input.scancode,
-                  virtual_key: input.virtual_keycode.unwrap(),
+                  virtual_key: input.virtual_keycode,
                 },
                 issued_at: Instant::now(),
               })
