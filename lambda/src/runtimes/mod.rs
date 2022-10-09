@@ -201,7 +201,10 @@ impl Runtime for GenericRuntime {
               })
             }
             _ => {
-              println!("Unhandled synthetic keyboard event: {:?}", input);
+              println!(
+                "[WARN] Unhandled synthetic keyboard event: {:?}",
+                input
+              );
             }
           },
           WinitWindowEvent::ModifiersChanged(_) => {}
@@ -289,7 +292,7 @@ impl Runtime for GenericRuntime {
             .expect("[ERROR] The render API has been already taken.")
             .destroy();
 
-          println!("All resources were successfully deleted.");
+          println!("[INFO] All resources were successfully deleted.");
         }
       }
     });
@@ -298,10 +301,10 @@ impl Runtime for GenericRuntime {
   /// When the generic runtime starts, it will attach all of the components that
   /// have been added during the construction phase in the users code.
   fn on_start(&mut self) {
-    println!("Starting the runtime {}", self.name);
+    println!("[INFO] Starting the runtime {}", self.name);
   }
 
   fn on_stop(&mut self) {
-    println!("Stopping {}", self.name)
+    println!("[INFO] Stopping {}", self.name)
   }
 }
