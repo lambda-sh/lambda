@@ -44,15 +44,60 @@ impl Component<Events> for DemoComponent {
 
   fn on_detach(self: &mut DemoComponent) {}
 
-  fn on_event(self: &mut DemoComponent, _event: &lambda::core::events::Events) {
+  fn on_event(self: &mut DemoComponent, event: &lambda::core::events::Events) {
+    match event {
+      Events::Runtime { event, issued_at } => match event {
+        lambda::core::events::RuntimeEvent::Shutdown => {
+          println!("Shutting down the runtime");
+        }
+        _ => {}
+      },
+      Events::Window { event, issued_at } => match event {
+        lambda::core::events::WindowEvent::Resize { width, height } => {
+          println!("Window resized to {}x{}", width, height);
+        }
+        lambda::core::events::WindowEvent::Close => {
+          println!("Window closed");
+        }
+      },
+      Events::Keyboard { event, issued_at } => match event {
+        lambda::core::events::KeyEvent::KeyPressed {
+          scan_code,
+          virtual_key,
+        } => {
+          println!("Key pressed: {:?}", virtual_key);
+        }
+        lambda::core::events::KeyEvent::KeyReleased {
+          scan_code,
+          virtual_key,
+        } => {
+          println!("Key released: {:?}", virtual_key);
+        }
+        lambda::core::events::KeyEvent::ModifierPressed {
+          modifier,
+          virtual_key,
+        } => {
+          println!("Modifier pressed: {:?}", virtual_key);
+        }
+      },
+      Events::Component { event, issued_at } => match event {
+        lambda::core::events::ComponentEvent::Attached { name } => {
+          println!("Component attached: {:?}", name);
+        }
+        lambda::core::events::ComponentEvent::Detached { name } => {
+          println!("Component detached: {:?}", name);
+        }
+      },
+    }
   }
 
   fn on_update(self: &mut DemoComponent, last_frame: &std::time::Duration) {
-    println!(
-      "This component was last updated: {} nanoseconds/{} milliseconds ago",
-      last_frame.as_nanos(),
-      last_frame.as_millis()
-    );
+    match last_frame.as_millis() > 20 {
+      true => {
+        println!("[WARN] Last frame took {}ms", last_frame.as_millis());
+      }
+      false => {}
+    }
   }
 }
 

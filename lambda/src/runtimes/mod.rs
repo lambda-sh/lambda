@@ -1,13 +1,14 @@
 use std::time::Instant;
 
 use lambda_platform::winit::{
-  create_event_loop,
   winit_exports::{
     ControlFlow,
+    ElementState,
     Event as WinitEvent,
     WindowEvent as WinitWindowEvent,
   },
   Loop,
+  LoopBuilder,
 };
 
 use crate::core::{
@@ -15,6 +16,7 @@ use crate::core::{
   events::{
     ComponentEvent,
     Events,
+    KeyEvent,
     RuntimeEvent,
     WindowEvent,
   },
@@ -82,7 +84,7 @@ impl GenericRuntimeBuilder {
   /// Kernel to receive events & render access.
   pub fn build(self) -> GenericRuntime {
     let name = self.app_name;
-    let mut event_loop = create_event_loop::<Events>();
+    let mut event_loop = LoopBuilder::new().build();
     let (width, height) = self.window_size;
 
     let window = WindowBuilder::new()
@@ -132,7 +134,7 @@ impl Runtime for GenericRuntime {
 
     let mut active_render_api = Some(render_api);
 
-    let publisher = event_loop.create_publisher();
+    let publisher = event_loop.create_event_publisher();
     publisher.publish_event(Events::Runtime {
       event: RuntimeEvent::Initialized,
       issued_at: Instant::now(),
@@ -176,10 +178,32 @@ impl Runtime for GenericRuntime {
           WinitWindowEvent::ReceivedCharacter(_) => {}
           WinitWindowEvent::Focused(_) => {}
           WinitWindowEvent::KeyboardInput {
-            device_id,
+            device_id: _,
             input,
             is_synthetic,
-          } => {}
+          } => match (input.state, is_synthetic) {
+            (ElementState::Pressed, false) => {
+              publisher.publish_event(Events::Keyboard {
+                event: KeyEvent::KeyPressed {
+                  scan_code: input.scancode,
+                  virtual_key: input.virtual_keycode.unwrap(),
+                },
+                issued_at: Instant::now(),
+              })
+            }
+            (ElementState::Released, false) => {
+              publisher.publish_event(Events::Keyboard {
+                event: KeyEvent::KeyReleased {
+                  scan_code: input.scancode,
+                  virtual_key: input.virtual_keycode.unwrap(),
+                },
+                issued_at: Instant::now(),
+              })
+            }
+            _ => {
+              println!("Unhandled synthetic keyboard event: {:?}", input);
+            }
+          },
           WinitWindowEvent::ModifiersChanged(_) => {}
           WinitWindowEvent::CursorMoved {
             device_id,

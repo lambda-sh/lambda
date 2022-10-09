@@ -19,10 +19,13 @@ use winit::{
 
 /// Embedded module for exporting data/types from winit as minimally/controlled
 /// as possible. The exports from this module are not guaranteed to be stable.
+// TODO(ahlawat) = Remove all these except WindowEvent since we're abstracting them already? Double check
 pub mod winit_exports {
   pub use winit::{
     event::{
+      ElementState,
       Event,
+      VirtualKeyCode,
       WindowEvent,
     },
     event_loop::{
@@ -34,14 +37,23 @@ pub mod winit_exports {
   };
 }
 
+/// LoopBuilder - Putting this here for consistency.
+pub struct LoopBuilder;
+
+impl LoopBuilder {
+  pub fn new() -> Self {
+    return Self;
+  }
+
+  pub fn build<Events: 'static + std::fmt::Debug>(self) -> Loop<Events> {
+    let event_loop = EventLoop::<Events>::with_user_event();
+    return Loop { event_loop };
+  }
+}
+
 /// Loop wrapping for the winit event loop.
 pub struct Loop<E: 'static + std::fmt::Debug> {
   event_loop: EventLoop<E>,
-}
-
-pub fn create_event_loop<Events: 'static + std::fmt::Debug>() -> Loop<Events> {
-  let event_loop = EventLoop::<Events>::with_user_event();
-  return Loop { event_loop };
 }
 
 /// Structure that contains properties needed for building a window.
@@ -51,7 +63,7 @@ pub struct WindowProperties {
   pub monitor_handle: MonitorHandle,
 }
 
-/// Metadata for Lambda window sizing that supports Copy and move operations.
+/// Metadata for Lambda window sizing that supports Copy and Move operations.
 #[derive(Clone, Copy)]
 pub struct WindowSize {
   pub width: u32,
@@ -64,6 +76,92 @@ pub struct WindowHandle {
   pub window_handle: Window,
   pub size: WindowSize,
   pub monitor_handle: MonitorHandle,
+}
+
+// Should we take the loop as a field right here? Probably a ref or something? IDK
+pub struct WindowHandleBuilder {
+  window_handle: Option<Window>,
+  size: WindowSize,
+  monitor_handle: Option<MonitorHandle>,
+}
+
+impl WindowHandleBuilder {
+  /// Instantiate an empty builder
+  pub fn new() -> Self {
+    // Initialize the window size with some default values.
+    let logical: LogicalSize<u32> = [0, 0].into();
+    let physical = logical.to_physical(1.0);
+    let size = WindowSize {
+      width: 0,
+      height: 0,
+      logical,
+      physical,
+    };
+
+    return Self {
+      window_handle: None,
+      size,
+      monitor_handle: None,
+    };
+  }
+
+  /// Set the window size for the WindowHandle
+  fn with_window_size(
+    mut self,
+    window_size: (u32, u32),
+    scale_factor: f64,
+  ) -> Self {
+    let logical: LogicalSize<u32> = window_size.into();
+    let physical: PhysicalSize<u32> = logical.to_physical(scale_factor);
+    let (width, height) = window_size;
+
+    let window_size = WindowSize {
+      width,
+      height,
+      logical,
+      physical,
+    };
+
+    self.size = window_size;
+    return self;
+  }
+
+  /// Probably the function that'll be used the most
+  pub fn with_window_properties<E: 'static + std::fmt::Debug>(
+    mut self,
+    window_properties: WindowProperties,
+    lambda_loop: &Loop<E>,
+  ) -> Self {
+    let WindowProperties {
+      name,
+      dimensions,
+      monitor_handle,
+    } = window_properties;
+
+    // TODO(ahlawat) = Find out if there's a better way to do this. Looks kinda ugly.
+    self = self.with_window_size(dimensions, monitor_handle.scale_factor());
+
+    let window_handle = WindowBuilder::new()
+      .with_title(name)
+      .with_inner_size(self.size.logical)
+      .build(&lambda_loop.event_loop)
+      .expect("Failed creation of window handle");
+
+    self.monitor_handle = Some(monitor_handle);
+    self.window_handle = Some(window_handle);
+    return self;
+  }
+
+  /// Build the WindowHandle
+  pub fn build(self) -> WindowHandle {
+    return WindowHandle {
+      monitor_handle: self
+        .monitor_handle
+        .expect("Unable to find a MonitorHandle."),
+      size: self.size,
+      window_handle: self.window_handle.expect("Unable to find WindowHandle."),
+    };
+  }
 }
 
 /// Construct WindowSize metdata from the window dimensions and scale factor of
@@ -85,19 +183,20 @@ fn construct_window_size(
   };
 }
 
-#[derive(Clone, Debug)]
-pub struct EventLoopPublisher<E: 'static + std::fmt::Debug> {
+/// Event loop publisher wrapper for pushing events into a winit event loop.
+pub struct LoopPublisher<E: 'static> {
   winit_proxy: EventLoopProxy<E>,
 }
 
-impl<E: 'static + std::fmt::Debug> EventLoopPublisher<E> {
-  /// Instantiate a new EventLoopPublisher from an event loop proxy.
+impl<E: 'static + std::fmt::Debug> LoopPublisher<E> {
+  /// New LoopPublishers are created from a lambda_loop directly and don't need
   #[inline]
-  pub fn new(winit_proxy: EventLoopProxy<E>) -> Self {
-    return EventLoopPublisher { winit_proxy };
+  pub fn new(lambda_loop: &Loop<E>) -> Self {
+    let winit_proxy = lambda_loop.event_loop.create_proxy();
+    return LoopPublisher { winit_proxy };
   }
 
-  /// Send an event
+  /// Publishes an event into the event loop that created this publisher.
   #[inline]
   pub fn publish_event(&self, event: E) {
     self
@@ -108,9 +207,9 @@ impl<E: 'static + std::fmt::Debug> EventLoopPublisher<E> {
 }
 
 impl<E: 'static + std::fmt::Debug> Loop<E> {
-  pub fn create_publisher(&mut self) -> EventLoopPublisher<E> {
-    let proxy = self.event_loop.create_proxy();
-    return EventLoopPublisher::new(proxy);
+  /// Create an event publisher for this Loop.
+  pub fn create_event_publisher(&mut self) -> LoopPublisher<E> {
+    return LoopPublisher::new(&self);
   }
 
   /// Returns the primary monitor for the current OS if detectable.
@@ -123,43 +222,17 @@ impl<E: 'static + std::fmt::Debug> Loop<E> {
     return self.event_loop.available_monitors();
   }
 
-  pub fn get_any_available_monitors(&self) -> MonitorHandle {
-    // TODO(vmarcella): Remove the panic from this in favor of returning a result or an error.
-    match self.event_loop.available_monitors().next() {
-      Some(monitor) => monitor,
-      None => panic!("No available monitors found."),
-    }
+  /// Gets the first available monitor or panics.
+  pub fn get_any_available_monitors(&self) -> Option<MonitorHandle> {
+    return self.event_loop.available_monitors().next();
   }
 
-  /// Uses the winit event loop to run forever.
+  /// Uses the winit event loop to run forever
   pub fn run_forever<Callback>(self, callback: Callback)
   where
     Callback: 'static
       + FnMut(Event<E>, &EventLoopWindowTarget<E>, &mut ControlFlow) -> (),
   {
     self.event_loop.run(callback);
-  }
-
-  pub fn create_window_handle(
-    &mut self,
-    window_properties: WindowProperties,
-  ) -> WindowHandle {
-    let name = window_properties.name;
-    let dimensions = window_properties.dimensions;
-    let monitor_handle = window_properties.monitor_handle;
-
-    let size = construct_window_size(dimensions, monitor_handle.scale_factor());
-
-    let window_handle = WindowBuilder::new()
-      .with_title(name)
-      .with_inner_size(size.logical)
-      .build(&self.event_loop)
-      .expect("Failed to create a winit handle.");
-
-    return WindowHandle {
-      window_handle,
-      size,
-      monitor_handle,
-    };
   }
 }
