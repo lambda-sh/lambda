@@ -54,11 +54,6 @@ pub struct Loop<E: 'static + std::fmt::Debug> {
   event_loop: EventLoop<E>,
 }
 
-pub fn create_event_loop<Events: 'static + std::fmt::Debug>() -> Loop<Events> {
-  let event_loop = EventLoop::<Events>::with_user_event();
-  return Loop { event_loop };
-}
-
 /// Structure that contains properties needed for building a window.
 pub struct WindowProperties {
   pub name: String,

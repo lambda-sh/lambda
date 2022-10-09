@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use lambda_platform::winit::{
-  create_event_loop,
   winit_exports::{
     ControlFlow,
     Event as WinitEvent,
