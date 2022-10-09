@@ -92,11 +92,12 @@ impl Component<Events> for DemoComponent {
   }
 
   fn on_update(self: &mut DemoComponent, last_frame: &std::time::Duration) {
-    println!(
-      "This component was last updated: {} nanoseconds/{} milliseconds ago",
-      last_frame.as_nanos(),
-      last_frame.as_millis()
-    );
+    match last_frame.as_millis() > 20 {
+      true => {
+        println!("[WARN] Last frame took {}ms", last_frame.as_millis());
+      }
+      false => {}
+    }
   }
 }
 
