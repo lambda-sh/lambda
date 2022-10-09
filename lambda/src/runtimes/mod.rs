@@ -118,14 +118,14 @@ pub struct GenericRuntime {
 impl GenericRuntime {}
 
 impl Runtime for GenericRuntime {
-  /// Initiates an event loop that captures the context of the LambdaKernel
-  /// and generates events from the windows event loop until the end of the event loops
-  /// lifetime (Whether that be initiated intentionally or via error).
+  /// Runs the event loop for the GenericRuntime which takes ownership of all
+  /// components, the windowing the render context, and anything else relevant
+  /// to the runtime.
   fn run(self) {
-    // Decompose Kernel components for transferring ownership to the
-    // closure.
+    // Decompose Runtime components to transfer ownership from the runtime to
+    // the event loop closure which will run until the app is closed.
     let GenericRuntime {
-      mut window,
+      window,
       mut event_loop,
       mut component_stack,
       name,
@@ -242,12 +242,12 @@ impl Runtime for GenericRuntime {
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
 
+          let render_api = active_render_api.as_mut().unwrap();
           // Update and render commands.
           for component in &mut component_stack {
             component.on_update(duration);
-            let commands = component
-              .on_render(active_render_api.as_mut().unwrap(), duration);
-            active_render_api.as_mut().unwrap().render(commands);
+            let commands = component.on_render(render_api, duration);
+            render_api.render(commands);
           }
 
           window.redraw();
