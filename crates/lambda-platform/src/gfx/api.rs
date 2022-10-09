@@ -1,3 +1,6 @@
+//! GPU API exports to set the platforms primary rendering API for rendering
+//! implementations to use.
+
 cfg_if::cfg_if! {
   if #[cfg(feature = "with-gl")] {
     pub use gfx_backend_gl as RenderingAPI;
