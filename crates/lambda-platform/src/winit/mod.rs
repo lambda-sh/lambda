@@ -164,25 +164,6 @@ impl WindowHandleBuilder {
   }
 }
 
-/// Construct WindowSize metdata from the window dimensions and scale factor of
-/// the monitor being rendered to.
-#[inline]
-fn construct_window_size(
-  window_size: (u32, u32),
-  scale_factor: f64,
-) -> WindowSize {
-  let logical: LogicalSize<u32> = window_size.into();
-  let physical: PhysicalSize<u32> = logical.to_physical(scale_factor);
-
-  let (width, height) = window_size;
-  return WindowSize {
-    width,
-    height,
-    logical,
-    physical,
-  };
-}
-
 /// Event loop publisher wrapper for pushing events into a winit event loop.
 pub struct LoopPublisher<E: 'static> {
   winit_proxy: EventLoopProxy<E>,
