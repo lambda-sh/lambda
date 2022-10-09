@@ -1,3 +1,7 @@
+//! GPU fence & semaphore implementations for rendering synchronizations. These
+//! implementations built on top of gfx-hal and are used by the lambda-platform
+//! rendering implementations to synchronize GPU operations.
+
 use gfx_hal::device::Device;
 
 pub struct RenderSemaphoreBuilder {}
@@ -7,6 +11,8 @@ impl RenderSemaphoreBuilder {
     return Self {};
   }
 
+  /// Builds a new render semaphore using the provided GPU. This semaphore can
+  /// only be used with the GPU that it was created with.
   pub fn build<RenderBackend: gfx_hal::Backend>(
     self,
     gpu: &mut super::gpu::Gpu<RenderBackend>,
@@ -18,6 +24,7 @@ impl RenderSemaphoreBuilder {
     return RenderSemaphore { semaphore };
   }
 }
+
 pub struct RenderSemaphore<RenderBackend: gfx_hal::Backend> {
   semaphore: RenderBackend::Semaphore,
 }
@@ -36,6 +43,8 @@ pub struct RenderSubmissionFenceBuilder {
 }
 
 impl RenderSubmissionFenceBuilder {
+  /// Creates a new Render Submission Fence Builder that defaults to a 1 second
+  /// timeout for waiting on the fence.
   pub fn new() -> Self {
     return Self {
       default_render_timeout: 1_000_000_000,
@@ -49,6 +58,8 @@ impl RenderSubmissionFenceBuilder {
     return self;
   }
 
+  /// Builds a new submission fence using the provided GPU. This fence can only
+  /// be used to block operation on the GPU that created it.
   pub fn build<RenderBackend: gfx_hal::Backend>(
     self,
     gpu: &mut super::gpu::Gpu<RenderBackend>,
