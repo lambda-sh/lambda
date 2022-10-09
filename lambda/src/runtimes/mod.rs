@@ -284,7 +284,10 @@ impl Runtime for GenericRuntime {
         WinitEvent::Resumed => {}
         WinitEvent::RedrawEventsCleared => {}
         WinitEvent::LoopDestroyed => {
-          active_render_api.take().unwrap().destroy();
+          active_render_api
+            .take()
+            .expect("[ERROR] The render API has been already taken.")
+            .destroy();
 
           println!("All resources were successfully deleted.");
         }
