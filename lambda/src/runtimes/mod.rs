@@ -132,7 +132,7 @@ impl Runtime for GenericRuntime {
 
     let mut active_render_api = Some(render_api);
 
-    let publisher = event_loop.create_publisher();
+    let publisher = event_loop.create_event_publisher();
     publisher.publish_event(Events::Runtime {
       event: RuntimeEvent::Initialized,
       issued_at: Instant::now(),

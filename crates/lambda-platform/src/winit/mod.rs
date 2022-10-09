@@ -187,19 +187,14 @@ pub struct LoopPublisher<E: 'static> {
 }
 
 impl<E: 'static + std::fmt::Debug> LoopPublisher<E> {
-  /// Instantiate a new EventLoopPublisher from an event loop proxy.
+  /// New LoopPublishers are created from a lambda_loop directly and don't need
   #[inline]
-  pub fn new(winit_proxy: EventLoopProxy<E>) -> Self {
-    return LoopPublisher { winit_proxy };
-  }
-
-  /// Instantiate a new LoopPublisher from a loop
-  pub fn from(lambda_loop: &Loop<E>) -> Self {
+  pub fn new(lambda_loop: &Loop<E>) -> Self {
     let winit_proxy = lambda_loop.event_loop.create_proxy();
     return LoopPublisher { winit_proxy };
   }
 
-  /// Send an event
+  /// Publishes an event into the event loop that created this publisher.
   #[inline]
   pub fn publish_event(&self, event: E) {
     self
@@ -210,9 +205,9 @@ impl<E: 'static + std::fmt::Debug> LoopPublisher<E> {
 }
 
 impl<E: 'static + std::fmt::Debug> Loop<E> {
-  pub fn create_publisher(&mut self) -> LoopPublisher<E> {
-    let proxy = self.event_loop.create_proxy();
-    return LoopPublisher::new(proxy);
+  /// Create an event publisher for this Loop.
+  pub fn create_event_publisher(&mut self) -> LoopPublisher<E> {
+    return LoopPublisher::new(&self);
   }
 
   /// Returns the primary monitor for the current OS if detectable.
@@ -225,12 +220,9 @@ impl<E: 'static + std::fmt::Debug> Loop<E> {
     return self.event_loop.available_monitors();
   }
 
-  pub fn get_any_available_monitors(&self) -> MonitorHandle {
-    // TODO(vmarcella): Remove the panic from this in favor of returning a result or an error.
-    match self.event_loop.available_monitors().next() {
-      Some(monitor) => monitor,
-      None => panic!("No available monitors found."),
-    }
+  /// Gets the first available monitor or panics.
+  pub fn get_any_available_monitors(&self) -> Option<MonitorHandle> {
+    return self.event_loop.available_monitors().next();
   }
 
   /// Uses the winit event loop to run forever
