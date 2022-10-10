@@ -1,21 +1,4 @@
-pub mod internal {
-  pub use gfx_hal::{
-    pso::{
-      EntryPoint,
-      InputAssemblerDesc,
-      Primitive,
-      PrimitiveAssemblerDesc,
-    },
-    Backend,
-  };
-
-  #[inline]
-  pub fn into_primitive_assembler<'shader, RenderBackend: Backend>(
-    primitive_assembler: super::PrimitiveAssembler<'shader, RenderBackend>,
-  ) -> PrimitiveAssemblerDesc<'shader, RenderBackend> {
-    return primitive_assembler.primitive_assembler;
-  }
-}
+use gfx_hal::pso;
 
 /// PrimitiveAssemblerBuilder for preparing PrimitiveAssemblers to use in the
 /// lambda-platform Rendering pipeline.
@@ -32,14 +15,13 @@ impl PrimitiveAssemblerBuilder {
     self,
     vertex_shader: &'shader super::shader::ShaderModule<RenderBackend>,
   ) -> PrimitiveAssembler<'shader, RenderBackend> {
-    // TODO(vmarcella): The builder should expose more fields for the
-    let primitive_assembler = internal::PrimitiveAssemblerDesc::Vertex {
+    let primitive_assembler = pso::PrimitiveAssemblerDesc::Vertex {
       buffers: &[],
       attributes: &[],
-      input_assembler: internal::InputAssemblerDesc::new(
-        internal::Primitive::TriangleList,
+      input_assembler: pso::InputAssemblerDesc::new(
+        pso::Primitive::TriangleList,
       ),
-      vertex: internal::EntryPoint {
+      vertex: pso::EntryPoint {
         entry: vertex_shader.entry(),
         module: super::internal::module_for(vertex_shader),
         specialization: vertex_shader.specializations().clone(),
@@ -57,11 +39,22 @@ impl PrimitiveAssemblerBuilder {
 /// PrimitiveAssembler for used for describing how Vertex Shaders should
 /// construct primitives. Each constructed Primitive Assembler should be alive
 /// for as long as the shader module that created it is.
-pub struct PrimitiveAssembler<'shader, RenderBackend: internal::Backend> {
-  primitive_assembler: internal::PrimitiveAssemblerDesc<'shader, RenderBackend>,
+pub struct PrimitiveAssembler<'shader, RenderBackend: gfx_hal::Backend> {
+  primitive_assembler: pso::PrimitiveAssemblerDesc<'shader, RenderBackend>,
 }
 
-impl<'shader, RenderBackend: internal::Backend>
+impl<'shader, RenderBackend: gfx_hal::Backend>
   PrimitiveAssembler<'shader, RenderBackend>
 {
+}
+
+/// Internal functions for the primitive assembler. User applications most
+/// likely should not use these functions directly nor should they need to.
+pub mod internal {
+  #[inline]
+  pub fn into_primitive_assembler<'shader, RenderBackend: gfx_hal::Backend>(
+    primitive_assembler: super::PrimitiveAssembler<'shader, RenderBackend>,
+  ) -> gfx_hal::pso::PrimitiveAssemblerDesc<'shader, RenderBackend> {
+    return primitive_assembler.primitive_assembler;
+  }
 }

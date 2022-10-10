@@ -5,20 +5,6 @@ use gfx_hal::{
 
 use super::gpu;
 
-pub mod internal {
-  use super::ShaderModule;
-
-  /// Retrieve the underlying gfx-hal shader module given the lambda-platform
-  /// implemented shader module. Useful for creating gfx-hal entry points and
-  /// attaching the shader to rendering pipelines.
-  #[inline]
-  pub fn module_for<RenderBackend: gfx_hal::Backend>(
-    shader_module: &ShaderModule<RenderBackend>,
-  ) -> &RenderBackend::ShaderModule {
-    return &shader_module.shader_module;
-  }
-}
-
 pub enum ShaderModuleType {
   Vertex,
   Fragment,
@@ -87,6 +73,7 @@ pub struct ShaderModule<RenderBackend: gfx_hal::Backend> {
 }
 
 impl<RenderBackend: gfx_hal::Backend> ShaderModule<RenderBackend> {
+  /// Destroy the shader module and free the memory on the GPU.
   pub fn destroy(self, gpu: &mut gpu::Gpu<RenderBackend>) {
     // TODO(vmarcella): Add documentation for the shader module.
     println!("Destroying shader module.");
@@ -104,5 +91,21 @@ impl<RenderBackend: gfx_hal::Backend> ShaderModule<RenderBackend> {
   /// Get the specializations being applied to the current shader module.
   pub fn specializations(&self) -> &ShaderSpecializations {
     return &self.specializations;
+  }
+}
+
+/// Internal functions for the shader module. User applications most likely
+/// should not use these functions directly nor should they need to.
+pub mod internal {
+  use super::ShaderModule;
+
+  /// Retrieve the underlying gfx-hal shader module given the lambda-platform
+  /// implemented shader module. Useful for creating gfx-hal entry points and
+  /// attaching the shader to rendering pipelines.
+  #[inline]
+  pub fn module_for<RenderBackend: gfx_hal::Backend>(
+    shader_module: &ShaderModule<RenderBackend>,
+  ) -> &RenderBackend::ShaderModule {
+    return &shader_module.shader_module;
   }
 }
