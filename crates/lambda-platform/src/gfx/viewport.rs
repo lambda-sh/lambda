@@ -46,3 +46,13 @@ pub mod internal {
     return viewport.viewport.clone();
   }
 }
+
+#[cfg(test)]
+pub mod tests {
+  #[test]
+  fn viewport_builder_defaults() {
+    let viewport_builder = super::ViewPortBuilder::new();
+    assert_eq!(viewport_builder.x, 0);
+    assert_eq!(viewport_builder.y, 0);
+  }
+}

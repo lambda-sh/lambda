@@ -19,7 +19,6 @@ use winit::{
 
 /// Embedded module for exporting data/types from winit as minimally/controlled
 /// as possible. The exports from this module are not guaranteed to be stable.
-// TODO(ahlawat) = Remove all these except WindowEvent since we're abstracting them already? Double check
 pub mod winit_exports {
   pub use winit::{
     event::{

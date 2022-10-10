@@ -1,3 +1,6 @@
+//! High level Rendering API designed for cross platform rendering and
+//! windowing.
+
 pub mod command;
 pub mod pipeline;
 pub mod render_pass;
