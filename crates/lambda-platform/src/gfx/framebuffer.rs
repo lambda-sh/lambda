@@ -9,7 +9,7 @@ use super::{
   surface::Surface,
 };
 
-/// Framebuffer built for the given render backend.
+/// Framebuffer for the given render backend.
 pub struct Framebuffer<RenderBackend: gfx_hal::Backend> {
   frame_buffer: RenderBackend::Framebuffer,
 }

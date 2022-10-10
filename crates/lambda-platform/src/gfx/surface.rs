@@ -1,119 +1,24 @@
-use std::borrow::Borrow;
-
 /// ColorFormat for the surface.
 pub use gfx_hal::format::Format as ColorFormat;
-use gfx_hal::{
-  queue::Queue,
-  window::{
-    PresentationSurface,
-    Surface as _,
-  },
+use gfx_hal::window::{
+  PresentationSurface,
+  Surface as _,
 };
+#[cfg(test)]
+use mockall::automock;
 
 use super::{
-  gpu::{
-    internal::primary_queue_for,
-    Gpu,
-  },
+  gpu::Gpu,
   Instance,
 };
 
-/// Internal Surface functions.
-pub mod internal {
-  use std::{
-    borrow::Borrow,
-    fmt::Debug,
-  };
-
-  use gfx_hal::window::{
-    PresentationSurface,
-    Surface as _,
-  };
-
-  /// Checks the queue family if the current Surface can support the GPU.
-  pub fn can_support_queue_family<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
-    queue_family: &RenderBackend::QueueFamily,
-  ) -> bool {
-    return surface.gfx_hal_surface.supports_queue_family(queue_family);
-  }
-
-  /// Get the supported gfx_hal color formats for a given format.
-  pub fn get_supported_formats<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
-    physical_device: &RenderBackend::PhysicalDevice,
-  ) -> Vec<gfx_hal::format::Format> {
-    return surface
-      .gfx_hal_surface
-      .supported_formats(physical_device)
-      .unwrap_or(vec![]);
-  }
-
-  /// Helper function to retrieve the first supported format given a physical
-  /// GPU device.
-  pub fn get_first_supported_format<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
-    physical_device: &RenderBackend::PhysicalDevice,
-  ) -> gfx_hal::format::Format {
-    let supported_formats = get_supported_formats(&surface, physical_device);
-
-    let default_format = *supported_formats
-      .get(0)
-      .unwrap_or(&gfx_hal::format::Format::Rgba8Srgb);
-
-    return supported_formats
-      .into_iter()
-      .find(|format| -> bool {
-        format.base_format().1 == gfx_hal::format::ChannelType::Srgb
-      })
-      .unwrap_or(default_format);
-  }
-
-  /// Acquires a surface image for attaching to a framebuffer.
-  pub fn take_surface_image_for<RenderBackend: gfx_hal::Backend>(
-    surface: &mut super::Surface<RenderBackend>,
-  ) -> Option<<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
-    return surface.image.take();
-  }
-
-  /// Acquires a surface image for attaching to a framebuffer.
-  pub fn borrow_surface_image_for<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
-  ) -> Option<&<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
-    return surface.image.as_ref();
-  }
-
-  /// FrameBuffer Attachment
-  pub fn frame_buffer_attachment_from<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
-  ) -> Option<gfx_hal::image::FramebufferAttachment> {
-    return surface.frame_buffer_attachment.clone();
-  }
-
-  pub fn surface_for<RenderBackend: gfx_hal::Backend>(
-    surface: &mut super::Surface<RenderBackend>,
-  ) -> &mut RenderBackend::Surface {
-    return &mut surface.gfx_hal_surface;
-  }
-
-  /// Borrow the surface and take the image. This internal function is used for
-  /// rendering and composes surface_for + take image.
-  pub fn borrow_surface_and_take_image<RenderBackend: gfx_hal::Backend>(
-    surface: &mut super::Surface<RenderBackend>,
-  ) -> (&mut RenderBackend::Surface, <RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage){
-    return (
-      &mut surface.gfx_hal_surface,
-      surface.image.take().expect(""),
-    );
-  }
-}
-
-#[derive(Debug, Clone)]
 /// The API to use for building surfaces from a graphical instance.
+#[derive(Debug, Clone)]
 pub struct SurfaceBuilder {
   name: Option<String>,
 }
 
+#[cfg_attr(test, automock)]
 impl SurfaceBuilder {
   pub fn new() -> Self {
     return Self { name: None };
@@ -288,5 +193,104 @@ impl SwapchainBuilder {
       config: swapchain_config,
       format,
     };
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_surface_builder() {
+    let surface_builder = SurfaceBuilder::new();
+    assert_eq!(surface_builder.name, None);
+
+    let surface_builder = SurfaceBuilder::new().with_name("TestSurface");
+    assert_eq!(surface_builder.name, Some("TestSurface".to_string()));
+  }
+}
+
+/// Internal functions to work with the gfx-hal surface components
+pub mod internal {
+  use gfx_hal::window::{
+    PresentationSurface,
+    Surface as _,
+  };
+
+  /// Checks the queue family if the current Surface can support the GPU.
+  pub fn can_support_queue_family<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+    queue_family: &RenderBackend::QueueFamily,
+  ) -> bool {
+    return surface.gfx_hal_surface.supports_queue_family(queue_family);
+  }
+
+  /// Get the supported gfx_hal color formats for a given format.
+  pub fn get_supported_formats<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+    physical_device: &RenderBackend::PhysicalDevice,
+  ) -> Vec<gfx_hal::format::Format> {
+    return surface
+      .gfx_hal_surface
+      .supported_formats(physical_device)
+      .unwrap_or(vec![]);
+  }
+
+  /// Helper function to retrieve the first supported format given a physical
+  /// GPU device.
+  pub fn get_first_supported_format<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+    physical_device: &RenderBackend::PhysicalDevice,
+  ) -> gfx_hal::format::Format {
+    let supported_formats = get_supported_formats(&surface, physical_device);
+
+    let default_format = *supported_formats
+      .get(0)
+      .unwrap_or(&gfx_hal::format::Format::Rgba8Srgb);
+
+    return supported_formats
+      .into_iter()
+      .find(|format| -> bool {
+        format.base_format().1 == gfx_hal::format::ChannelType::Srgb
+      })
+      .unwrap_or(default_format);
+  }
+
+  /// Acquires a surface image for attaching to a framebuffer.
+  pub fn take_surface_image_for<RenderBackend: gfx_hal::Backend>(
+    surface: &mut super::Surface<RenderBackend>,
+  ) -> Option<<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
+    return surface.image.take();
+  }
+
+  /// Acquires a surface image for attaching to a framebuffer.
+  pub fn borrow_surface_image_for<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+  ) -> Option<&<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
+    return surface.image.as_ref();
+  }
+
+  /// FrameBuffer Attachment
+  pub fn frame_buffer_attachment_from<RenderBackend: gfx_hal::Backend>(
+    surface: &super::Surface<RenderBackend>,
+  ) -> Option<gfx_hal::image::FramebufferAttachment> {
+    return surface.frame_buffer_attachment.clone();
+  }
+
+  pub fn surface_for<RenderBackend: gfx_hal::Backend>(
+    surface: &mut super::Surface<RenderBackend>,
+  ) -> &mut RenderBackend::Surface {
+    return &mut surface.gfx_hal_surface;
+  }
+
+  /// Borrow the surface and take the image. This internal function is used for
+  /// rendering and composes surface_for + take image.
+  pub fn borrow_surface_and_take_image<RenderBackend: gfx_hal::Backend>(
+    surface: &mut super::Surface<RenderBackend>,
+  ) -> (&mut RenderBackend::Surface, <RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage){
+    return (
+      &mut surface.gfx_hal_surface,
+      surface.image.take().expect(""),
+    );
   }
 }

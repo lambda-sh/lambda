@@ -1216,6 +1216,7 @@ dependencies = [
  "gfx-backend-metal",
  "gfx-backend-vulkan",
  "gfx-hal",
+ "mockall",
  "shaderc",
  "winit",
 ]
