@@ -9,14 +9,7 @@ use super::{
   surface::Surface,
 };
 
-pub mod internal {
-  pub fn frame_buffer_for<RenderBackend: gfx_hal::Backend>(
-    frame_buffer: &super::Framebuffer<RenderBackend>,
-  ) -> &RenderBackend::Framebuffer {
-    return &frame_buffer.frame_buffer;
-  }
-}
-
+/// Framebuffer built for the given render backend.
 pub struct Framebuffer<RenderBackend: gfx_hal::Backend> {
   frame_buffer: RenderBackend::Framebuffer,
 }
@@ -30,7 +23,6 @@ impl<RenderBackend: gfx_hal::Backend> Framebuffer<RenderBackend> {
     }
   }
 }
-
 pub struct FramebufferBuilder {}
 
 impl FramebufferBuilder {
@@ -64,5 +56,15 @@ impl FramebufferBuilder {
         .expect("Failed to create a framebuffer")
     };
     return Framebuffer { frame_buffer };
+  }
+}
+
+/// Internal functions to work with gfx-hal framebuffers directly. Applications
+/// should not need to use these functions directly.
+pub mod internal {
+  pub fn frame_buffer_for<RenderBackend: gfx_hal::Backend>(
+    frame_buffer: &super::Framebuffer<RenderBackend>,
+  ) -> &RenderBackend::Framebuffer {
+    return &frame_buffer.frame_buffer;
   }
 }
