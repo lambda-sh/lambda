@@ -208,6 +208,15 @@ mod tests {
     let surface_builder = SurfaceBuilder::new().with_name("TestSurface");
     assert_eq!(surface_builder.name, Some("TestSurface".to_string()));
   }
+
+  #[test]
+  fn test_swapchain_builder() {
+    let swapchain_builder = SwapchainBuilder::new();
+    assert_eq!(swapchain_builder.size, (480, 360));
+
+    let swapchain_builder = SwapchainBuilder::new().with_size(1920, 1080);
+    assert_eq!(swapchain_builder.size, (1920, 1080));
+  }
 }
 
 /// Internal functions to work with the gfx-hal surface components
