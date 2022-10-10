@@ -238,9 +238,9 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
 
   /// Get the size of the surface's extent. Will only return a size if a
   /// swapchain has been applied to the surface to render with.
-  pub fn size(&self) -> Option<[u32; 2]> {
+  pub fn size(&self) -> Option<(u32, u32)> {
     return match self.extent {
-      Some(extent) => Some([extent.width, extent.height]),
+      Some(extent) => Some((extent.width, extent.height)),
       None => None,
     };
   }
@@ -249,16 +249,16 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
 // ------------------------------ SWAPCHAIN BUILDER ----------------------------
 
 pub struct SwapchainBuilder {
-  size: [u32; 2],
+  size: (u32, u32),
 }
 
 impl SwapchainBuilder {
   pub fn new() -> Self {
-    return Self { size: [480, 360] };
+    return Self { size: (480, 360) };
   }
 
   pub fn with_size(mut self, width: u32, height: u32) -> Self {
-    self.size = [width, height];
+    self.size = (width, height);
     return self;
   }
 
@@ -270,14 +270,12 @@ impl SwapchainBuilder {
     let physical_device = super::gpu::internal::physical_device_for(gpu);
     let caps = surface.gfx_hal_surface.capabilities(physical_device);
     let format = internal::get_first_supported_format(surface, physical_device);
+    let (width, height) = self.size;
 
     let mut swapchain_config = gfx_hal::window::SwapchainConfig::from_caps(
       &caps,
       format,
-      gfx_hal::window::Extent2D {
-        width: self.size[0],
-        height: self.size[1],
-      },
+      gfx_hal::window::Extent2D { width, height },
     );
 
     // TODO(vmarcella) Profile the performance on MacOS to see if this slows

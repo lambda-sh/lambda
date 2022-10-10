@@ -264,13 +264,13 @@ impl RenderContext {
 
   /// Allocates a command buffer and records commands to the GPU.
   pub fn render(&mut self, commands: Vec<RenderCommand>) {
-    let dimensions = self
+    let (width, height) = self
       .surface
       .size()
       .expect("Surface has no size configured.");
 
     let swapchain = SwapchainBuilder::new()
-      .with_size(dimensions[0], dimensions[1])
+      .with_size(width, height)
       .build(&self.gpu, &self.surface);
 
     Rc::get_mut(&mut self.surface)

@@ -1,11 +1,6 @@
-use std::borrow::Borrow;
-
 use gfx_hal::{
   device::Device,
-  image::{
-    Extent,
-    FramebufferAttachment,
-  },
+  image::Extent,
 };
 
 use super::{
@@ -43,6 +38,7 @@ impl FramebufferBuilder {
     return Self {};
   }
 
+  /// Build a frame buffer on a given GPU for the given surface.
   pub fn build<RenderBackend: gfx_hal::Backend>(
     self,
     gpu: &mut Gpu<RenderBackend>,
@@ -51,7 +47,7 @@ impl FramebufferBuilder {
   ) -> Framebuffer<RenderBackend> {
     use super::surface::internal::frame_buffer_attachment_from;
 
-    let [width, height] = surface.size().expect("A surface without a swapchain cannot be used in a framebeen configured with a swapchain");
+    let (width, height) = surface.size().expect("A surface without a swapchain cannot be used in a framebeen configured with a swapchain");
     let image = frame_buffer_attachment_from(surface).unwrap();
 
     let frame_buffer = unsafe {
