@@ -1,16 +1,22 @@
+//! viewport.rs - Low level viewport management for the render context.
+
+/// Viewport is a rectangle that defines the area of the screen that will be
+/// rendered to. For instance, if the viewport is set to x=0, y=0, width=100,
+/// height=100, then only the top left 100x100 pixels of the screen will be
+/// rendered to.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ViewPort {
   viewport: gfx_hal::pso::Viewport,
 }
 
-impl ViewPort {}
-
+/// A builder for `Viewport`.
 pub struct ViewPortBuilder {
   x: i16,
   y: i16,
 }
 
 impl ViewPortBuilder {
+  /// Create a new `ViewportBuilder`.
   pub fn new() -> Self {
     return ViewPortBuilder { x: 0, y: 0 };
   }
@@ -49,13 +55,16 @@ pub mod internal {
 
 #[cfg(test)]
 pub mod tests {
+  /// Test the viewport builder in it's default state.
   #[test]
-  fn viewport_builder_defaults() {
+  fn viewport_builder_default_initial_state() {
     let viewport_builder = super::ViewPortBuilder::new();
     assert_eq!(viewport_builder.x, 0);
     assert_eq!(viewport_builder.y, 0);
   }
 
+  /// Test that the viewport builder can be configured with specific
+  /// coordinates.
   #[test]
   fn viewport_builder_with_coordinates() {
     let viewport_builder =
@@ -65,7 +74,7 @@ pub mod tests {
   }
 
   #[test]
-  fn viewport_builder_build() {
+  fn viewport_builder_builds_successfully() {
     let viewport_builder =
       super::ViewPortBuilder::new().with_coordinates(10, 10);
     let viewport = viewport_builder.build(100, 100);
