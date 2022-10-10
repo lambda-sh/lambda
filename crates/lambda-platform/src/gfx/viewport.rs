@@ -63,4 +63,15 @@ pub mod tests {
     assert_eq!(viewport_builder.x, 10);
     assert_eq!(viewport_builder.y, 10);
   }
+
+  #[test]
+  fn viewport_builder_build() {
+    let viewport_builder =
+      super::ViewPortBuilder::new().with_coordinates(10, 10);
+    let viewport = viewport_builder.build(100, 100);
+    assert_eq!(viewport.viewport.rect.x, 10);
+    assert_eq!(viewport.viewport.rect.y, 10);
+    assert_eq!(viewport.viewport.rect.w, 100);
+    assert_eq!(viewport.viewport.rect.h, 100);
+  }
 }
