@@ -5,6 +5,8 @@ use gfx_hal::{
 
 use super::gpu;
 
+/// The type of shader that a shader module represents. Different shader types
+/// are used for different operations in the rendering pipeline.
 pub enum ShaderModuleType {
   Vertex,
   Fragment,
@@ -91,6 +93,33 @@ impl<RenderBackend: gfx_hal::Backend> ShaderModule<RenderBackend> {
   /// Get the specializations being applied to the current shader module.
   pub fn specializations(&self) -> &ShaderSpecializations {
     return &self.specializations;
+  }
+}
+
+#[cfg(test)]
+mod tests {
+
+  /// Test that we can create a shader module builder and it has the correct
+  /// defaults.
+  #[test]
+  fn shader_builder_initial_state() {
+    let shader_builder = super::ShaderModuleBuilder::new();
+    assert_eq!(shader_builder.entry_name, "main");
+    assert_eq!(shader_builder.specializations.data.len(), 0);
+  }
+
+  /// Test that we can create a shader module builder with a custom entry point
+  /// & default specializations.
+  #[test]
+  fn shader_builder_with_properties() {
+    let shader_builder = super::ShaderModuleBuilder::new()
+      .with_entry_name("test")
+      .with_specializations(super::ShaderSpecializations::default());
+    assert_eq!(shader_builder.entry_name, "test");
+    assert_eq!(
+      shader_builder.specializations.data,
+      super::ShaderSpecializations::default().data
+    );
   }
 }
 
