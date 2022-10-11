@@ -74,15 +74,16 @@ pub struct Swapchain {
   format: gfx_hal::format::Format,
 }
 
+#[cfg_attr(test, automock)]
 impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   /// Apply a swapchain to the current surface. This is required whenever a
   /// swapchain has been invalidated (I.E. by window resizing)
-  pub fn apply_swapchain(
+  pub fn apply_swapchain<'surface>(
     &mut self,
     gpu: &Gpu<RenderBackend>,
     swapchain: Swapchain,
     timeout_in_nanoseconds: u64,
-  ) -> Result<(), &str> {
+  ) -> Result<(), &'surface str> {
     let device = super::gpu::internal::logical_device_for(gpu);
     self.extent = Some(swapchain.config.extent);
 
@@ -128,13 +129,11 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   }
 
   /// private function to invalidate the surface swapchain.
-  #[inline]
   fn invalidate_swapchain(&mut self) {
     self.swapchain_is_valid = false;
   }
 
   /// Destroy the current surface and it's underlying resources.
-  #[inline]
   pub fn destroy(self, instance: &Instance<RenderBackend>) {
     println!("Destroying the surface: {}", self.name);
 
@@ -199,6 +198,7 @@ impl SwapchainBuilder {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::gfx::MockInstanceBuilder;
 
   #[test]
   fn test_surface_builder() {
@@ -216,6 +216,18 @@ mod tests {
 
     let swapchain_builder = SwapchainBuilder::new().with_size(1920, 1080);
     assert_eq!(swapchain_builder.size, (1920, 1080));
+  }
+
+  #[test]
+  fn test_surface_builder_e2e() {
+    //let instance = MockInstanceBuilder::new().build("TestInstance");
+    let surface_builder = SurfaceBuilder::new().with_name("TestSurface");
+    //let surface = surface_builder.build(&instance);
+
+    //assert_eq!(surface.name, "TestSurface".to_string());
+    //assert_eq!(surface.swapchain_is_valid, false);
+    //assert_eq!(surface.image, None);
+    //assert_eq!(surface.frame_buffer_attachment, None);
   }
 }
 

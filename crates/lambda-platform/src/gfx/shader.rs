@@ -2,6 +2,8 @@ use gfx_hal::{
   device::Device,
   pso::Specialization as ShaderSpecializations,
 };
+#[cfg(test)]
+use mockall::automock;
 
 use super::gpu;
 
@@ -19,6 +21,7 @@ pub struct ShaderModuleBuilder {
   specializations: ShaderSpecializations<'static>,
 }
 
+#[cfg_attr(test, automock)]
 impl ShaderModuleBuilder {
   pub fn new() -> Self {
     return Self {
@@ -74,11 +77,10 @@ pub struct ShaderModule<RenderBackend: gfx_hal::Backend> {
   shader_type: ShaderModuleType,
 }
 
+#[cfg_attr(test, automock)]
 impl<RenderBackend: gfx_hal::Backend> ShaderModule<RenderBackend> {
   /// Destroy the shader module and free the memory on the GPU.
   pub fn destroy(self, gpu: &mut gpu::Gpu<RenderBackend>) {
-    // TODO(vmarcella): Add documentation for the shader module.
-    println!("Destroying shader module.");
     unsafe {
       gpu::internal::logical_device_for(gpu)
         .destroy_shader_module(self.shader_module)
@@ -91,7 +93,7 @@ impl<RenderBackend: gfx_hal::Backend> ShaderModule<RenderBackend> {
   }
 
   /// Get the specializations being applied to the current shader module.
-  pub fn specializations(&self) -> &ShaderSpecializations {
+  pub fn specializations(&self) -> &ShaderSpecializations<'static> {
     return &self.specializations;
   }
 }
@@ -120,6 +122,13 @@ mod tests {
       shader_builder.specializations.data,
       super::ShaderSpecializations::default().data
     );
+  }
+
+  #[test]
+  fn shader_builder_builds_correctly() {
+    let shader_builder = super::ShaderModuleBuilder::new()
+      .with_entry_name("test")
+      .with_specializations(super::ShaderSpecializations::default());
   }
 }
 

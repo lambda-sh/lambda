@@ -19,6 +19,10 @@ use gfx_hal::Instance as _;
 
 pub struct InstanceBuilder {}
 
+#[cfg(test)]
+use mockall::automock;
+
+#[cfg_attr(test, automock)]
 impl InstanceBuilder {
   pub fn new() -> Self {
     return Self {};

@@ -7,18 +7,14 @@ use gfx_hal::{
     PhysicalDevice,
     QueueFamily,
   },
-  pso::ShaderStageFlags,
   queue::{
     Queue,
     QueueGroup,
   },
-  window::{
-    Extent2D,
-    PresentError,
-    PresentationSurface,
-    Suboptimal,
-  },
+  window::Extent2D,
 };
+#[cfg(test)]
+use mockall::automock;
 
 use super::{
   command::CommandBuffer,
@@ -35,14 +31,12 @@ pub struct GpuBuilder {
 }
 
 impl GpuBuilder {
-  #[inline]
   pub fn new() -> Self {
     return Self {
       render_queue_type: RenderQueueType::Graphical,
     };
   }
 
-  #[inline]
   pub fn with_render_queue_type(mut self, queue_type: RenderQueueType) -> Self {
     self.render_queue_type = queue_type;
     return self;
@@ -94,7 +88,7 @@ pub struct Gpu<B: gfx_hal::Backend> {
   queue_group: QueueGroup<B>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum RenderQueueType {
   Compute,
   Graphical,
@@ -201,6 +195,14 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
         )
         .unwrap();
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  #[test]
+  fn test_gpu_builder() {
+    assert_eq!(2 + 2, 4);
   }
 }
 
