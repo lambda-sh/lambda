@@ -79,15 +79,14 @@ impl GpuBuilder {
   }
 }
 
-///
 /// Commands oriented around creating resources on & for the GPU.
-///
 pub struct Gpu<B: gfx_hal::Backend> {
   adapter: gfx_hal::adapter::Adapter<B>,
   gpu: gfx_hal::adapter::Gpu<B>,
   queue_group: QueueGroup<B>,
 }
 
+/// The render queue types that the GPU can use for
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum RenderQueueType {
   Compute,
@@ -98,7 +97,8 @@ pub enum RenderQueueType {
 
 impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   /// Instantiates a new GPU given an adapter that is implemented by the GPUs
-  /// current rendering backend B. A new GPU does not come with a command pool unless specified.
+  /// current rendering backend B. A new GPU does not come with a command pool
+  /// unless specified.
   pub fn new(
     adapter: Adapter<RenderBackend>,
     queue_family: gfx_hal::queue::QueueFamilyId,
