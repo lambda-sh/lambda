@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use gfx_hal::{
   adapter::Adapter,
   device::Device,
@@ -31,12 +29,14 @@ pub struct GpuBuilder {
 }
 
 impl GpuBuilder {
+  /// Create a new GpuBuilder to configure and build a GPU to use for rendering.
   pub fn new() -> Self {
     return Self {
       render_queue_type: RenderQueueType::Graphical,
     };
   }
 
+  /// Set the type of queue to use for rendering. The GPU defaults to graphical.
   pub fn with_render_queue_type(mut self, queue_type: RenderQueueType) -> Self {
     self.render_queue_type = queue_type;
     return self;
@@ -88,7 +88,7 @@ pub struct Gpu<B: gfx_hal::Backend> {
   queue_group: QueueGroup<B>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum RenderQueueType {
   Compute,
   Graphical,
@@ -171,39 +171,37 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
 
     return Ok(());
   }
-
-  /// Create a frame buffer on the GPU.
-  pub fn create_frame_buffer(
-    &mut self,
-    render_pass: &RenderBackend::RenderPass,
-    image: gfx_hal::image::FramebufferAttachment,
-    dimensions: &Extent2D,
-  ) -> RenderBackend::Framebuffer {
-    unsafe {
-      use gfx_hal::image::Extent;
-      return self
-        .gpu
-        .device
-        .create_framebuffer(
-          &render_pass,
-          vec![image].into_iter(),
-          Extent {
-            width: dimensions.width,
-            height: dimensions.height,
-            depth: 1,
-          },
-        )
-        .unwrap();
-    }
-  }
 }
 
 #[cfg(test)]
 mod tests {
   #[test]
-  fn test_gpu_builder() {
-    assert_eq!(2 + 2, 4);
+  fn test_gpu_builder_default_state() {
+    use super::{
+      GpuBuilder,
+      RenderQueueType,
+    };
+
+    let builder = GpuBuilder::new();
+
+    assert_eq!(builder.render_queue_type, RenderQueueType::Graphical);
   }
+
+  #[test]
+  fn test_gpu_builder_with_render_queue_type() {
+    use super::{
+      GpuBuilder,
+      RenderQueueType,
+    };
+
+    let builder =
+      GpuBuilder::new().with_render_queue_type(RenderQueueType::Compute);
+
+    assert_eq!(builder.render_queue_type, RenderQueueType::Compute);
+  }
+
+  #[test]
+  fn test_gpu_builder_build() {}
 }
 
 // --------------------------------- GPU INTERNALS -----------------------------
@@ -219,6 +217,7 @@ pub mod internal {
     return &gpu.gpu.device;
   }
 
+  /// Retrieves the gfx_hal physical device for a given GPU.
   #[inline]
   pub fn physical_device_for<RenderBackend: gfx_hal::Backend>(
     gpu: &Gpu<RenderBackend>,
@@ -226,6 +225,7 @@ pub mod internal {
     return &gpu.adapter.physical_device;
   }
 
+  /// Retrieves the gfx_hal queue group for a given GPU.
   #[inline]
   pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
     gpu: &Gpu<RenderBackend>,
