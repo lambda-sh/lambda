@@ -24,6 +24,7 @@ impl SurfaceBuilder {
     return Self { name: None };
   }
 
+  /// Set the name of the surface.
   pub fn with_name(mut self, name: &str) -> Self {
     self.name = Some(name.to_string());
     return self;
@@ -161,6 +162,7 @@ impl SwapchainBuilder {
     return Self { size: (480, 360) };
   }
 
+  /// Set the size of the swapchain for the surface image.
   pub fn with_size(mut self, width: u32, height: u32) -> Self {
     self.size = (width, height);
     return self;
@@ -298,12 +300,6 @@ pub mod internal {
     return surface.frame_buffer_attachment.clone();
   }
 
-  pub fn surface_for<RenderBackend: gfx_hal::Backend>(
-    surface: &mut super::Surface<RenderBackend>,
-  ) -> &mut RenderBackend::Surface {
-    return &mut surface.gfx_hal_surface;
-  }
-
   /// Borrow the surface and take the image. This internal function is used for
   /// rendering and composes surface_for + take image.
   pub fn borrow_surface_and_take_image<RenderBackend: gfx_hal::Backend>(
@@ -311,7 +307,7 @@ pub mod internal {
   ) -> (&mut RenderBackend::Surface, <RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage){
     return (
       &mut surface.gfx_hal_surface,
-      surface.image.take().expect(""),
+      surface.image.take().expect("Surface image is not present"),
     );
   }
 }

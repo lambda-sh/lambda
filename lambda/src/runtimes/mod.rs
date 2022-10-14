@@ -153,6 +153,11 @@ impl Runtime for GenericRuntime {
             });
           }
           WinitWindowEvent::Resized(dims) => {
+            active_render_api
+              .as_mut()
+              .unwrap()
+              .resize(dims.width, dims.height);
+
             publisher.publish_event(Events::Window {
               event: WindowEvent::Resize {
                 width: dims.width,
@@ -162,6 +167,11 @@ impl Runtime for GenericRuntime {
             })
           }
           WinitWindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+            active_render_api
+              .as_mut()
+              .unwrap()
+              .resize(new_inner_size.width, new_inner_size.height);
+
             publisher.publish_event(Events::Window {
               event: WindowEvent::Resize {
                 width: new_inner_size.width,

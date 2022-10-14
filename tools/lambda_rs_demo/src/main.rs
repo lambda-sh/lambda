@@ -41,6 +41,8 @@ pub struct DemoComponent {
   vertex_shader: Shader,
   render_pass: Option<Rc<RenderPass>>,
   render_pipeline: Option<Rc<RenderPipeline>>,
+  width: u32,
+  height: u32,
 }
 
 impl Component<Events> for DemoComponent {
@@ -61,6 +63,8 @@ impl Component<Events> for DemoComponent {
       Events::Window { event, issued_at } => match event {
         WindowEvent::Resize { width, height } => {
           println!("Window resized to {}x{}", width, height);
+          self.width = *width;
+          self.height = *height;
         }
         WindowEvent::Close => {
           println!("Window closed");
@@ -134,7 +138,8 @@ impl RenderableComponent<Events> for DemoComponent {
     _render_context: &mut lambda::core::render::RenderContext,
     _last_render: &std::time::Duration,
   ) -> Vec<RenderCommand> {
-    let viewport = viewport::ViewportBuilder::new().build(800, 600);
+    let viewport =
+      viewport::ViewportBuilder::new().build(self.width, self.height);
 
     // This array of commands will be executed in linear order
     return vec![
@@ -206,6 +211,8 @@ impl Default for DemoComponent {
       triangle_vertex: fs,
       render_pass: None,
       render_pipeline: None,
+      width: 800,
+      height: 600,
     };
   }
 }

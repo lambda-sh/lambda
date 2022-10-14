@@ -323,6 +323,15 @@ impl RenderContext {
       None => {}
     }
   }
+
+  pub fn resize(&mut self, width: u32, height: u32) {
+    let swapchain = SwapchainBuilder::new()
+      .with_size(width, height)
+      .build(&self.gpu, &self.surface);
+    Rc::get_mut(&mut self.surface)
+      .expect("Failed to acquire the surface to resize during")
+      .apply_swapchain(&self.gpu, swapchain, 1_000_000_000);
+  }
 }
 
 type PlatformRenderCommand = Command<internal::RenderBackend>;

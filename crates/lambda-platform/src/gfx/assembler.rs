@@ -1,3 +1,5 @@
+//! Primitive assembly for the graphics pipeline.
+
 use gfx_hal::pso;
 
 /// PrimitiveAssemblerBuilder for preparing PrimitiveAssemblers to use in the
