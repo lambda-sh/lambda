@@ -33,7 +33,8 @@ use crate::core::{
 
 pub struct GenericRuntimeBuilder {
   app_name: String,
-  render_api: RenderContextBuilder,
+  render_context_builder: RenderContextBuilder,
+  window_builder: WindowBuilder,
   window_size: (u32, u32),
   components: Vec<Box<dyn RenderableComponent<Events>>>,
 }
@@ -42,7 +43,8 @@ impl GenericRuntimeBuilder {
   pub fn new(app_name: &str) -> Self {
     return Self {
       app_name: app_name.to_string(),
-      render_api: RenderContextBuilder::new(app_name),
+      render_context_builder: RenderContextBuilder::new(app_name),
+      window_builder: WindowBuilder::new(),
       window_size: (800, 600),
       components: Vec::new(),
     };
@@ -54,20 +56,29 @@ impl GenericRuntimeBuilder {
     return self;
   }
 
-  pub fn with_window_size(mut self, width: u32, height: u32) -> Self {
-    self.window_size = (width, height);
+  /// Configures the `RenderAPIBuilder` before the `RenderContext` is built
+  /// using a callback provided by the user. The renderer in it's default
+  /// state will be good enough for most applications, but if you need to
+  /// customize the renderer you can do so here.
+  pub fn with_renderer_configured_as(
+    mut self,
+    configuration: impl FnOnce(RenderContextBuilder) -> RenderContextBuilder,
+  ) -> Self {
+    self.render_context_builder = configuration(self.render_context_builder);
     return self;
   }
 
-  /// Configures the RenderAPIBuilder before the RenderingAPI is built using a
-  /// callback provided by the user.
-  pub fn with_renderer(
+  /// Configures the WindowBuilder before the Window is built using a callback
+  /// provided by the user. If you need to customize the window you can do so
+  /// here.
+  pub fn with_window_configured_as(
     mut self,
-    configure: impl FnOnce(RenderContextBuilder) -> RenderContextBuilder,
+    configuration: impl FnOnce(WindowBuilder) -> WindowBuilder,
   ) -> Self {
-    self.render_api = configure(self.render_api);
+    self.window_builder = configuration(self.window_builder);
     return self;
   }
+
   /// Attach a component to the current runnable.
   pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
     self,
@@ -92,7 +103,7 @@ impl GenericRuntimeBuilder {
       .with_dimensions(width, height)
       .build(&mut event_loop);
     let component_stack = self.components;
-    let render_api = self.render_api.build(&window);
+    let render_api = self.render_context_builder.build(&window);
 
     return GenericRuntime {
       name,
@@ -271,7 +282,7 @@ impl Runtime for GenericRuntime {
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
           Events::Runtime { event, issued_at } => match event {
             RuntimeEvent::Initialized => {
-              println!("Starting the kernel {}", name);
+              println!("[INFO] Initializing all of the components for the runtime: {}", name);
               for component in &mut component_stack {
                 component.on_attach();
                 component

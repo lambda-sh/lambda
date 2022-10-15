@@ -1,3 +1,6 @@
+//! Low level shader implementations used by the lambda-platform crate to load
+//! RISC-V compiled shaders into the GPU.
+
 use gfx_hal::{
   device::Device,
   pso::Specialization as ShaderSpecializations,
@@ -15,7 +18,7 @@ pub enum ShaderModuleType {
   Compute,
 }
 
-/// Builder class for
+/// Builder class for creating a shader module.
 pub struct ShaderModuleBuilder {
   entry_name: String,
   specializations: ShaderSpecializations<'static>,
