@@ -1,11 +1,6 @@
-use std::borrow::Borrow;
-
 use gfx_hal::{
   device::Device,
-  image::{
-    Extent,
-    FramebufferAttachment,
-  },
+  image::Extent,
 };
 
 use super::{
@@ -14,14 +9,7 @@ use super::{
   surface::Surface,
 };
 
-pub mod internal {
-  pub fn frame_buffer_for<RenderBackend: gfx_hal::Backend>(
-    frame_buffer: &super::Framebuffer<RenderBackend>,
-  ) -> &RenderBackend::Framebuffer {
-    return &frame_buffer.frame_buffer;
-  }
-}
-
+/// Framebuffer for the given render backend.
 pub struct Framebuffer<RenderBackend: gfx_hal::Backend> {
   frame_buffer: RenderBackend::Framebuffer,
 }
@@ -35,7 +23,6 @@ impl<RenderBackend: gfx_hal::Backend> Framebuffer<RenderBackend> {
     }
   }
 }
-
 pub struct FramebufferBuilder {}
 
 impl FramebufferBuilder {
@@ -43,6 +30,7 @@ impl FramebufferBuilder {
     return Self {};
   }
 
+  /// Build a frame buffer on a given GPU for the given surface.
   pub fn build<RenderBackend: gfx_hal::Backend>(
     self,
     gpu: &mut Gpu<RenderBackend>,
@@ -51,7 +39,7 @@ impl FramebufferBuilder {
   ) -> Framebuffer<RenderBackend> {
     use super::surface::internal::frame_buffer_attachment_from;
 
-    let [width, height] = surface.size().expect("A surface without a swapchain cannot be used in a framebeen configured with a swapchain");
+    let (width, height) = surface.size().expect("A surface without a swapchain cannot be used in a framebeen configured with a swapchain");
     let image = frame_buffer_attachment_from(surface).unwrap();
 
     let frame_buffer = unsafe {
@@ -68,5 +56,15 @@ impl FramebufferBuilder {
         .expect("Failed to create a framebuffer")
     };
     return Framebuffer { frame_buffer };
+  }
+}
+
+/// Internal functions to work with gfx-hal framebuffers directly. Applications
+/// should not need to use these functions directly.
+pub mod internal {
+  pub fn frame_buffer_for<RenderBackend: gfx_hal::Backend>(
+    frame_buffer: &super::Framebuffer<RenderBackend>,
+  ) -> &RenderBackend::Framebuffer {
+    return &frame_buffer.frame_buffer;
   }
 }

@@ -33,8 +33,8 @@ use crate::core::{
 
 pub struct GenericRuntimeBuilder {
   app_name: String,
-  render_api: RenderContextBuilder,
-  window_size: (u32, u32),
+  render_context_builder: RenderContextBuilder,
+  window_builder: WindowBuilder,
   components: Vec<Box<dyn RenderableComponent<Events>>>,
 }
 
@@ -42,8 +42,8 @@ impl GenericRuntimeBuilder {
   pub fn new(app_name: &str) -> Self {
     return Self {
       app_name: app_name.to_string(),
-      render_api: RenderContextBuilder::new(app_name),
-      window_size: (800, 600),
+      render_context_builder: RenderContextBuilder::new(app_name),
+      window_builder: WindowBuilder::new(),
       components: Vec::new(),
     };
   }
@@ -54,20 +54,29 @@ impl GenericRuntimeBuilder {
     return self;
   }
 
-  pub fn with_window_size(mut self, width: u32, height: u32) -> Self {
-    self.window_size = (width, height);
+  /// Configures the `RenderAPIBuilder` before the `RenderContext` is built
+  /// using a callback provided by the user. The renderer in it's default
+  /// state will be good enough for most applications, but if you need to
+  /// customize the renderer you can do so here.
+  pub fn with_renderer_configured_as(
+    mut self,
+    configuration: impl FnOnce(RenderContextBuilder) -> RenderContextBuilder,
+  ) -> Self {
+    self.render_context_builder = configuration(self.render_context_builder);
     return self;
   }
 
-  /// Configures the RenderAPIBuilder before the RenderingAPI is built using a
-  /// callback provided by the user.
-  pub fn with_renderer(
+  /// Configures the WindowBuilder before the Window is built using a callback
+  /// provided by the user. If you need to customize the window you can do so
+  /// here.
+  pub fn with_window_configured_as(
     mut self,
-    configure: impl FnOnce(RenderContextBuilder) -> RenderContextBuilder,
+    configuration: impl FnOnce(WindowBuilder) -> WindowBuilder,
   ) -> Self {
-    self.render_api = configure(self.render_api);
+    self.window_builder = configuration(self.window_builder);
     return self;
   }
+
   /// Attach a component to the current runnable.
   pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
     self,
@@ -85,14 +94,10 @@ impl GenericRuntimeBuilder {
   pub fn build(self) -> GenericRuntime {
     let name = self.app_name;
     let mut event_loop = LoopBuilder::new().build();
-    let (width, height) = self.window_size;
+    let window = self.window_builder.build(&mut event_loop);
 
-    let window = WindowBuilder::new()
-      .with_name(name.as_str())
-      .with_dimensions(width, height)
-      .build(&mut event_loop);
     let component_stack = self.components;
-    let render_api = self.render_api.build(&window);
+    let render_api = self.render_context_builder.build(&window);
 
     return GenericRuntime {
       name,
@@ -118,14 +123,14 @@ pub struct GenericRuntime {
 impl GenericRuntime {}
 
 impl Runtime for GenericRuntime {
-  /// Initiates an event loop that captures the context of the LambdaKernel
-  /// and generates events from the windows event loop until the end of the event loops
-  /// lifetime (Whether that be initiated intentionally or via error).
+  /// Runs the event loop for the GenericRuntime which takes ownership of all
+  /// components, the windowing the render context, and anything else relevant
+  /// to the runtime.
   fn run(self) {
-    // Decompose Kernel components for transferring ownership to the
-    // closure.
+    // Decompose Runtime components to transfer ownership from the runtime to
+    // the event loop closure which will run until the app is closed.
     let GenericRuntime {
-      mut window,
+      window,
       mut event_loop,
       mut component_stack,
       name,
@@ -153,6 +158,11 @@ impl Runtime for GenericRuntime {
             });
           }
           WinitWindowEvent::Resized(dims) => {
+            active_render_api
+              .as_mut()
+              .unwrap()
+              .resize(dims.width, dims.height);
+
             publisher.publish_event(Events::Window {
               event: WindowEvent::Resize {
                 width: dims.width,
@@ -162,6 +172,11 @@ impl Runtime for GenericRuntime {
             })
           }
           WinitWindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+            active_render_api
+              .as_mut()
+              .unwrap()
+              .resize(new_inner_size.width, new_inner_size.height);
+
             publisher.publish_event(Events::Window {
               event: WindowEvent::Resize {
                 width: new_inner_size.width,
@@ -186,7 +201,7 @@ impl Runtime for GenericRuntime {
               publisher.publish_event(Events::Keyboard {
                 event: KeyEvent::KeyPressed {
                   scan_code: input.scancode,
-                  virtual_key: input.virtual_keycode.unwrap(),
+                  virtual_key: input.virtual_keycode,
                 },
                 issued_at: Instant::now(),
               })
@@ -195,13 +210,16 @@ impl Runtime for GenericRuntime {
               publisher.publish_event(Events::Keyboard {
                 event: KeyEvent::KeyReleased {
                   scan_code: input.scancode,
-                  virtual_key: input.virtual_keycode.unwrap(),
+                  virtual_key: input.virtual_keycode,
                 },
                 issued_at: Instant::now(),
               })
             }
             _ => {
-              println!("Unhandled synthetic keyboard event: {:?}", input);
+              println!(
+                "[WARN] Unhandled synthetic keyboard event: {:?}",
+                input
+              );
             }
           },
           WinitWindowEvent::ModifiersChanged(_) => {}
@@ -242,12 +260,12 @@ impl Runtime for GenericRuntime {
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
 
+          let render_api = active_render_api.as_mut().unwrap();
           // Update and render commands.
           for component in &mut component_stack {
             component.on_update(duration);
-            let commands = component
-              .on_render(active_render_api.as_mut().unwrap(), duration);
-            active_render_api.as_mut().unwrap().render(commands);
+            let commands = component.on_render(render_api, duration);
+            render_api.render(commands);
           }
 
           window.redraw();
@@ -258,7 +276,7 @@ impl Runtime for GenericRuntime {
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
           Events::Runtime { event, issued_at } => match event {
             RuntimeEvent::Initialized => {
-              println!("Starting the kernel {}", name);
+              println!("[INFO] Initializing all of the components for the runtime: {}", name);
               for component in &mut component_stack {
                 component.on_attach();
                 component
@@ -284,9 +302,12 @@ impl Runtime for GenericRuntime {
         WinitEvent::Resumed => {}
         WinitEvent::RedrawEventsCleared => {}
         WinitEvent::LoopDestroyed => {
-          active_render_api.take().unwrap().destroy();
+          active_render_api
+            .take()
+            .expect("[ERROR] The render API has been already taken.")
+            .destroy();
 
-          println!("All resources were successfully deleted.");
+          println!("[INFO] All resources were successfully deleted.");
         }
       }
     });
@@ -295,10 +316,10 @@ impl Runtime for GenericRuntime {
   /// When the generic runtime starts, it will attach all of the components that
   /// have been added during the construction phase in the users code.
   fn on_start(&mut self) {
-    println!("Starting the runtime {}", self.name);
+    println!("[INFO] Starting the runtime {}", self.name);
   }
 
   fn on_stop(&mut self) {
-    println!("Stopping {}", self.name)
+    println!("[INFO] Stopping {}", self.name)
   }
 }

@@ -1,36 +1,30 @@
+//! Low level shader implementations used by the lambda-platform crate to load
+//! RISC-V compiled shaders into the GPU.
+
 use gfx_hal::{
   device::Device,
   pso::Specialization as ShaderSpecializations,
 };
+#[cfg(test)]
+use mockall::automock;
 
 use super::gpu;
 
-pub mod internal {
-  use super::ShaderModule;
-
-  /// Retrieve the underlying gfx-hal shader module given the lambda-platform
-  /// implemented shader module. Useful for creating gfx-hal entry points and
-  /// attaching the shader to rendering pipelines.
-  #[inline]
-  pub fn module_for<RenderBackend: gfx_hal::Backend>(
-    shader_module: &ShaderModule<RenderBackend>,
-  ) -> &RenderBackend::ShaderModule {
-    return &shader_module.shader_module;
-  }
-}
-
+/// The type of shader that a shader module represents. Different shader types
+/// are used for different operations in the rendering pipeline.
 pub enum ShaderModuleType {
   Vertex,
   Fragment,
   Compute,
 }
 
-/// Builder class for
+/// Builder class for creating a shader module.
 pub struct ShaderModuleBuilder {
   entry_name: String,
   specializations: ShaderSpecializations<'static>,
 }
 
+#[cfg_attr(test, automock)]
 impl ShaderModuleBuilder {
   pub fn new() -> Self {
     return Self {
@@ -86,10 +80,10 @@ pub struct ShaderModule<RenderBackend: gfx_hal::Backend> {
   shader_type: ShaderModuleType,
 }
 
+#[cfg_attr(test, automock)]
 impl<RenderBackend: gfx_hal::Backend> ShaderModule<RenderBackend> {
+  /// Destroy the shader module and free the memory on the GPU.
   pub fn destroy(self, gpu: &mut gpu::Gpu<RenderBackend>) {
-    // TODO(vmarcella): Add documentation for the shader module.
-    println!("Destroying shader module.");
     unsafe {
       gpu::internal::logical_device_for(gpu)
         .destroy_shader_module(self.shader_module)
@@ -102,7 +96,57 @@ impl<RenderBackend: gfx_hal::Backend> ShaderModule<RenderBackend> {
   }
 
   /// Get the specializations being applied to the current shader module.
-  pub fn specializations(&self) -> &ShaderSpecializations {
+  pub fn specializations(&self) -> &ShaderSpecializations<'static> {
     return &self.specializations;
+  }
+}
+
+#[cfg(test)]
+mod tests {
+
+  /// Test that we can create a shader module builder and it has the correct
+  /// defaults.
+  #[test]
+  fn shader_builder_initial_state() {
+    let shader_builder = super::ShaderModuleBuilder::new();
+    assert_eq!(shader_builder.entry_name, "main");
+    assert_eq!(shader_builder.specializations.data.len(), 0);
+  }
+
+  /// Test that we can create a shader module builder with a custom entry point
+  /// & default specializations.
+  #[test]
+  fn shader_builder_with_properties() {
+    let shader_builder = super::ShaderModuleBuilder::new()
+      .with_entry_name("test")
+      .with_specializations(super::ShaderSpecializations::default());
+    assert_eq!(shader_builder.entry_name, "test");
+    assert_eq!(
+      shader_builder.specializations.data,
+      super::ShaderSpecializations::default().data
+    );
+  }
+
+  #[test]
+  fn shader_builder_builds_correctly() {
+    let shader_builder = super::ShaderModuleBuilder::new()
+      .with_entry_name("test")
+      .with_specializations(super::ShaderSpecializations::default());
+  }
+}
+
+/// Internal functions for the shader module. User applications most likely
+/// should not use these functions directly nor should they need to.
+pub mod internal {
+  use super::ShaderModule;
+
+  /// Retrieve the underlying gfx-hal shader module given the lambda-platform
+  /// implemented shader module. Useful for creating gfx-hal entry points and
+  /// attaching the shader to rendering pipelines.
+  #[inline]
+  pub fn module_for<RenderBackend: gfx_hal::Backend>(
+    shader_module: &ShaderModule<RenderBackend>,
+  ) -> &RenderBackend::ShaderModule {
+    return &shader_module.shader_module;
   }
 }

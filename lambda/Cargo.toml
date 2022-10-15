@@ -12,6 +12,7 @@ lambda-platform = { path = "../crates/lambda-platform", version = "0.1.0" }
 
 [dev-dependencies]
 cargo-audit = "0.16.0"
+mockall = "0.11.2"
 
 [features]
 default = ["lambda-platform/detect-platform"]

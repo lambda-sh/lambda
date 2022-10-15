@@ -19,7 +19,6 @@ use winit::{
 
 /// Embedded module for exporting data/types from winit as minimally/controlled
 /// as possible. The exports from this module are not guaranteed to be stable.
-// TODO(ahlawat) = Remove all these except WindowEvent since we're abstracting them already? Double check
 pub mod winit_exports {
   pub use winit::{
     event::{
@@ -162,25 +161,6 @@ impl WindowHandleBuilder {
       window_handle: self.window_handle.expect("Unable to find WindowHandle."),
     };
   }
-}
-
-/// Construct WindowSize metdata from the window dimensions and scale factor of
-/// the monitor being rendered to.
-#[inline]
-fn construct_window_size(
-  window_size: (u32, u32),
-  scale_factor: f64,
-) -> WindowSize {
-  let logical: LogicalSize<u32> = window_size.into();
-  let physical: PhysicalSize<u32> = logical.to_physical(scale_factor);
-
-  let (width, height) = window_size;
-  return WindowSize {
-    width,
-    height,
-    logical,
-    physical,
-  };
 }
 
 /// Event loop publisher wrapper for pushing events into a winit event loop.

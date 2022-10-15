@@ -1,72 +1,12 @@
+//! High level Rendering API designed for cross platform rendering and
+//! windowing.
+
 pub mod command;
 pub mod pipeline;
 pub mod render_pass;
 pub mod shader;
 pub mod viewport;
 pub mod window;
-
-pub mod internal {
-  use std::rc::Rc;
-
-  use lambda_platform::gfx::api::RenderingAPI as RenderContext;
-  pub type RenderBackend = RenderContext::Backend;
-
-  pub use lambda_platform::{
-    gfx::{
-      command::{
-        CommandBuffer,
-        CommandBufferBuilder,
-        CommandPool,
-        CommandPoolBuilder,
-      },
-      fence::{
-        RenderSemaphore,
-        RenderSemaphoreBuilder,
-        RenderSubmissionFence,
-        RenderSubmissionFenceBuilder,
-      },
-      framebuffer::Framebuffer,
-      gpu::{
-        Gpu,
-        GpuBuilder,
-        RenderQueueType,
-      },
-      pipeline::RenderPipelineBuilder,
-      render_pass::{
-        RenderPass,
-        RenderPassBuilder,
-      },
-      surface::{
-        Surface,
-        SurfaceBuilder,
-      },
-      Instance,
-      InstanceBuilder,
-    },
-    shaderc::ShaderKind,
-  };
-
-  /// Returns the GPU instance for the given render context.
-  pub fn gpu_from_context(
-    context: &super::RenderContext,
-  ) -> &Gpu<RenderBackend> {
-    return &context.gpu;
-  }
-
-  /// Returns a mutable GPU instance for the given render context.
-  pub fn mut_gpu_from_context(
-    context: &mut super::RenderContext,
-  ) -> &mut Gpu<RenderBackend> {
-    return &mut context.gpu;
-  }
-
-  /// Gets the surface for the given render context.
-  pub fn surface_from_context(
-    context: &super::RenderContext,
-  ) -> Rc<Surface<RenderBackend>> {
-    return context.surface.clone();
-  }
-}
 
 use std::{
   mem::swap,
@@ -261,13 +201,13 @@ impl RenderContext {
 
   /// Allocates a command buffer and records commands to the GPU.
   pub fn render(&mut self, commands: Vec<RenderCommand>) {
-    let dimensions = self
+    let (width, height) = self
       .surface
       .size()
       .expect("Surface has no size configured.");
 
     let swapchain = SwapchainBuilder::new()
-      .with_size(dimensions[0], dimensions[1])
+      .with_size(width, height)
       .build(&self.gpu, &self.surface);
 
     Rc::get_mut(&mut self.surface)
@@ -320,6 +260,79 @@ impl RenderContext {
       None => {}
     }
   }
+
+  pub fn resize(&mut self, width: u32, height: u32) {
+    let swapchain = SwapchainBuilder::new()
+      .with_size(width, height)
+      .build(&self.gpu, &self.surface);
+    Rc::get_mut(&mut self.surface)
+      .expect("Failed to acquire the surface while attempting to resize.")
+      .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
+      .expect("Failed to apply the swapchain to the surface while attempting to resize.");
+  }
 }
 
 type PlatformRenderCommand = Command<internal::RenderBackend>;
+
+pub mod internal {
+  use std::rc::Rc;
+
+  use lambda_platform::gfx::api::RenderingAPI as RenderContext;
+  pub type RenderBackend = RenderContext::Backend;
+
+  pub use lambda_platform::{
+    gfx::{
+      command::{
+        CommandBuffer,
+        CommandBufferBuilder,
+        CommandPool,
+        CommandPoolBuilder,
+      },
+      fence::{
+        RenderSemaphore,
+        RenderSemaphoreBuilder,
+        RenderSubmissionFence,
+        RenderSubmissionFenceBuilder,
+      },
+      framebuffer::Framebuffer,
+      gpu::{
+        Gpu,
+        GpuBuilder,
+        RenderQueueType,
+      },
+      pipeline::RenderPipelineBuilder,
+      render_pass::{
+        RenderPass,
+        RenderPassBuilder,
+      },
+      surface::{
+        Surface,
+        SurfaceBuilder,
+      },
+      Instance,
+      InstanceBuilder,
+    },
+    shaderc::ShaderKind,
+  };
+
+  /// Returns the GPU instance for the given render context.
+  pub fn gpu_from_context(
+    context: &super::RenderContext,
+  ) -> &Gpu<RenderBackend> {
+    return &context.gpu;
+  }
+
+  /// Returns a mutable GPU instance for the given render context.
+  pub fn mut_gpu_from_context(
+    context: &mut super::RenderContext,
+  ) -> &mut Gpu<RenderBackend> {
+    return &mut context.gpu;
+  }
+
+  /// Gets the surface for the given render context.
+  pub fn surface_from_context(
+    context: &super::RenderContext,
+  ) -> Rc<Surface<RenderBackend>> {
+    return context.surface.clone();
+  }
+}

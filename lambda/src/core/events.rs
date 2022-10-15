@@ -29,11 +29,11 @@ pub use lambda_platform::winit::winit_exports::VirtualKeyCode as VirtualKey;
 pub enum KeyEvent {
   KeyPressed {
     scan_code: u32,
-    virtual_key: VirtualKey,
+    virtual_key: Option<VirtualKey>,
   },
   KeyReleased {
     scan_code: u32,
-    virtual_key: VirtualKey,
+    virtual_key: Option<VirtualKey>,
   },
   ModifierPressed {
     modifier: u32,

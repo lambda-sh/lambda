@@ -15,6 +15,44 @@ pub mod viewport;
 
 use gfx_hal::Instance as _;
 
+// ----------------------- INSTANCE BUILDER AND INSTANCE -------------------------------
+
+pub struct InstanceBuilder {}
+
+#[cfg(test)]
+use mockall::automock;
+
+#[cfg_attr(test, automock)]
+impl InstanceBuilder {
+  pub fn new() -> Self {
+    return Self {};
+  }
+
+  /// Builds a graphical instance for the current platform.
+  pub fn build<RenderBackend: internal::Backend>(
+    self,
+    name: &str,
+  ) -> Instance<RenderBackend> {
+    return Instance::new(name);
+  }
+}
+
+pub struct Instance<RenderBackend: internal::Backend> {
+  gfx_hal_instance: RenderBackend::Instance,
+}
+
+impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
+  /// Create a new GfxInstance connected to the current platforms primary backend.
+  fn new(name: &str) -> Self {
+    let instance = RenderBackend::Instance::create(name, 1)
+      .expect("gfx backend not supported by the current platform");
+
+    return Self {
+      gfx_hal_instance: instance,
+    };
+  }
+}
+
 // ----------------------- INTERNAL INSTANCE OPERATIONS ------------------------
 
 pub mod internal {
@@ -43,7 +81,7 @@ pub mod internal {
       let surface = instance
         .gfx_hal_instance
         .create_surface(&window_handle.window_handle)
-        .unwrap();
+        .expect("Failed to create a surface using the current instance and window handle.");
 
       return surface;
     };
@@ -68,36 +106,5 @@ pub mod internal {
       .gfx_hal_instance
       .enumerate_adapters()
       .remove(adapter_num);
-  }
-}
-
-pub struct InstanceBuilder {}
-
-impl InstanceBuilder {
-  pub fn new() -> Self {
-    return Self {};
-  }
-
-  pub fn build<RenderBackend: internal::Backend>(
-    self,
-    name: &str,
-  ) -> Instance<RenderBackend> {
-    return Instance::new(name);
-  }
-}
-
-pub struct Instance<RenderBackend: internal::Backend> {
-  gfx_hal_instance: RenderBackend::Instance,
-}
-
-impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
-  /// Create a new GfxInstance connected to the platforms primary backend.
-  fn new(name: &str) -> Self {
-    let instance = RenderBackend::Instance::create(name, 1)
-      .expect("gfx backend not supported by the current platform");
-
-    return Self {
-      gfx_hal_instance: instance,
-    };
   }
 }

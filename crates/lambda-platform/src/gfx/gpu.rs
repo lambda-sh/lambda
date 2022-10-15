@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use gfx_hal::{
   adapter::Adapter,
   device::Device,
@@ -7,18 +5,14 @@ use gfx_hal::{
     PhysicalDevice,
     QueueFamily,
   },
-  pso::ShaderStageFlags,
   queue::{
     Queue,
     QueueGroup,
   },
-  window::{
-    Extent2D,
-    PresentError,
-    PresentationSurface,
-    Suboptimal,
-  },
+  window::Extent2D,
 };
+#[cfg(test)]
+use mockall::automock;
 
 use super::{
   command::CommandBuffer,
@@ -35,14 +29,14 @@ pub struct GpuBuilder {
 }
 
 impl GpuBuilder {
-  #[inline]
+  /// Create a new GpuBuilder to configure and build a GPU to use for rendering.
   pub fn new() -> Self {
     return Self {
       render_queue_type: RenderQueueType::Graphical,
     };
   }
 
-  #[inline]
+  /// Set the type of queue to use for rendering. The GPU defaults to graphical.
   pub fn with_render_queue_type(mut self, queue_type: RenderQueueType) -> Self {
     self.render_queue_type = queue_type;
     return self;
@@ -85,16 +79,15 @@ impl GpuBuilder {
   }
 }
 
-///
 /// Commands oriented around creating resources on & for the GPU.
-///
 pub struct Gpu<B: gfx_hal::Backend> {
   adapter: gfx_hal::adapter::Adapter<B>,
   gpu: gfx_hal::adapter::Gpu<B>,
   queue_group: QueueGroup<B>,
 }
 
-#[derive(Clone, Copy)]
+/// The render queue types that the GPU can use for
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum RenderQueueType {
   Compute,
   Graphical,
@@ -104,7 +97,8 @@ pub enum RenderQueueType {
 
 impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   /// Instantiates a new GPU given an adapter that is implemented by the GPUs
-  /// current rendering backend B. A new GPU does not come with a command pool unless specified.
+  /// current rendering backend B. A new GPU does not come with a command pool
+  /// unless specified.
   pub fn new(
     adapter: Adapter<RenderBackend>,
     queue_family: gfx_hal::queue::QueueFamilyId,
@@ -177,31 +171,37 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
 
     return Ok(());
   }
+}
 
-  /// Create a frame buffer on the GPU.
-  pub fn create_frame_buffer(
-    &mut self,
-    render_pass: &RenderBackend::RenderPass,
-    image: gfx_hal::image::FramebufferAttachment,
-    dimensions: &Extent2D,
-  ) -> RenderBackend::Framebuffer {
-    unsafe {
-      use gfx_hal::image::Extent;
-      return self
-        .gpu
-        .device
-        .create_framebuffer(
-          &render_pass,
-          vec![image].into_iter(),
-          Extent {
-            width: dimensions.width,
-            height: dimensions.height,
-            depth: 1,
-          },
-        )
-        .unwrap();
-    }
+#[cfg(test)]
+mod tests {
+  #[test]
+  fn test_gpu_builder_default_state() {
+    use super::{
+      GpuBuilder,
+      RenderQueueType,
+    };
+
+    let builder = GpuBuilder::new();
+
+    assert_eq!(builder.render_queue_type, RenderQueueType::Graphical);
   }
+
+  #[test]
+  fn test_gpu_builder_with_render_queue_type() {
+    use super::{
+      GpuBuilder,
+      RenderQueueType,
+    };
+
+    let builder =
+      GpuBuilder::new().with_render_queue_type(RenderQueueType::Compute);
+
+    assert_eq!(builder.render_queue_type, RenderQueueType::Compute);
+  }
+
+  #[test]
+  fn test_gpu_builder_build() {}
 }
 
 // --------------------------------- GPU INTERNALS -----------------------------
@@ -217,6 +217,7 @@ pub mod internal {
     return &gpu.gpu.device;
   }
 
+  /// Retrieves the gfx_hal physical device for a given GPU.
   #[inline]
   pub fn physical_device_for<RenderBackend: gfx_hal::Backend>(
     gpu: &Gpu<RenderBackend>,
@@ -224,6 +225,7 @@ pub mod internal {
     return &gpu.adapter.physical_device;
   }
 
+  /// Retrieves the gfx_hal queue group for a given GPU.
   #[inline]
   pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
     gpu: &Gpu<RenderBackend>,

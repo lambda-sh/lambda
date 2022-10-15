@@ -6,7 +6,13 @@ use lambda::{
       Component,
       RenderableComponent,
     },
-    events::Events,
+    events::{
+      ComponentEvent,
+      Events,
+      KeyEvent,
+      RuntimeEvent,
+      WindowEvent,
+    },
     render::{
       command::RenderCommand,
       pipeline::{
@@ -35,11 +41,13 @@ pub struct DemoComponent {
   vertex_shader: Shader,
   render_pass: Option<Rc<RenderPass>>,
   render_pipeline: Option<Rc<RenderPipeline>>,
+  width: u32,
+  height: u32,
 }
 
 impl Component<Events> for DemoComponent {
   fn on_attach(&mut self) {
-    println!("Attached the first layer to lambda");
+    println!("Attached the DemoComponent.");
   }
 
   fn on_detach(self: &mut DemoComponent) {}
@@ -53,27 +61,29 @@ impl Component<Events> for DemoComponent {
         _ => {}
       },
       Events::Window { event, issued_at } => match event {
-        lambda::core::events::WindowEvent::Resize { width, height } => {
+        WindowEvent::Resize { width, height } => {
           println!("Window resized to {}x{}", width, height);
+          self.width = *width;
+          self.height = *height;
         }
-        lambda::core::events::WindowEvent::Close => {
+        WindowEvent::Close => {
           println!("Window closed");
         }
       },
       Events::Keyboard { event, issued_at } => match event {
-        lambda::core::events::KeyEvent::KeyPressed {
+        KeyEvent::KeyPressed {
           scan_code,
           virtual_key,
         } => {
           println!("Key pressed: {:?}", virtual_key);
         }
-        lambda::core::events::KeyEvent::KeyReleased {
+        KeyEvent::KeyReleased {
           scan_code,
           virtual_key,
         } => {
           println!("Key released: {:?}", virtual_key);
         }
-        lambda::core::events::KeyEvent::ModifierPressed {
+        KeyEvent::ModifierPressed {
           modifier,
           virtual_key,
         } => {
@@ -81,10 +91,10 @@ impl Component<Events> for DemoComponent {
         }
       },
       Events::Component { event, issued_at } => match event {
-        lambda::core::events::ComponentEvent::Attached { name } => {
+        ComponentEvent::Attached { name } => {
           println!("Component attached: {:?}", name);
         }
-        lambda::core::events::ComponentEvent::Detached { name } => {
+        ComponentEvent::Detached { name } => {
           println!("Component detached: {:?}", name);
         }
       },
@@ -128,7 +138,8 @@ impl RenderableComponent<Events> for DemoComponent {
     _render_context: &mut lambda::core::render::RenderContext,
     _last_render: &std::time::Duration,
   ) -> Vec<RenderCommand> {
-    let viewport = viewport::ViewportBuilder::new().build(800, 600);
+    let viewport =
+      viewport::ViewportBuilder::new().build(self.width, self.height);
 
     // This array of commands will be executed in linear order
     return vec![
@@ -200,17 +211,24 @@ impl Default for DemoComponent {
       triangle_vertex: fs,
       render_pass: None,
       render_pipeline: None,
+      width: 800,
+      height: 600,
     };
   }
 }
 
 fn main() {
   let runtime = GenericRuntimeBuilder::new("2D Triangle Demo")
-    .with_renderer(move |render_context_builder| {
-      return render_context_builder;
+    .with_renderer_configured_as(move |render_context_builder| {
+      return render_context_builder.with_render_timeout(1_000_000_000);
     })
-    .with_component(move |kernel, demo: DemoComponent| {
-      return (kernel, demo);
+    .with_window_configured_as(move |window_builder| {
+      return window_builder
+        .with_dimensions(1200, 600)
+        .with_name("2D Triangle Window");
+    })
+    .with_component(move |runtime, demo: DemoComponent| {
+      return (runtime, demo);
     })
     .build();
 
