@@ -1,10 +1,10 @@
 [package]
-name = "lambda_rs_demo"
+name = "lambda_rs_minimal"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "demo"
+name = "minimal_demo"
 path = "src/main.rs"
 
 [dependencies]
