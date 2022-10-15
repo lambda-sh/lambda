@@ -35,7 +35,6 @@ pub struct GenericRuntimeBuilder {
   app_name: String,
   render_context_builder: RenderContextBuilder,
   window_builder: WindowBuilder,
-  window_size: (u32, u32),
   components: Vec<Box<dyn RenderableComponent<Events>>>,
 }
 
@@ -45,7 +44,6 @@ impl GenericRuntimeBuilder {
       app_name: app_name.to_string(),
       render_context_builder: RenderContextBuilder::new(app_name),
       window_builder: WindowBuilder::new(),
-      window_size: (800, 600),
       components: Vec::new(),
     };
   }
@@ -96,12 +94,8 @@ impl GenericRuntimeBuilder {
   pub fn build(self) -> GenericRuntime {
     let name = self.app_name;
     let mut event_loop = LoopBuilder::new().build();
-    let (width, height) = self.window_size;
+    let window = self.window_builder.build(&mut event_loop);
 
-    let window = WindowBuilder::new()
-      .with_name(name.as_str())
-      .with_dimensions(width, height)
-      .build(&mut event_loop);
     let component_stack = self.components;
     let render_api = self.render_context_builder.build(&window);
 

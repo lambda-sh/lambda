@@ -222,6 +222,11 @@ fn main() {
     .with_renderer_configured_as(move |render_context_builder| {
       return render_context_builder.with_render_timeout(1_000_000_000);
     })
+    .with_window_configured_as(move |window_builder| {
+      return window_builder
+        .with_dimensions(1200, 600)
+        .with_name("2D Triangle Window");
+    })
     .with_component(move |runtime, demo: DemoComponent| {
       return (runtime, demo);
     })

@@ -8,69 +8,6 @@ pub mod shader;
 pub mod viewport;
 pub mod window;
 
-pub mod internal {
-  use std::rc::Rc;
-
-  use lambda_platform::gfx::api::RenderingAPI as RenderContext;
-  pub type RenderBackend = RenderContext::Backend;
-
-  pub use lambda_platform::{
-    gfx::{
-      command::{
-        CommandBuffer,
-        CommandBufferBuilder,
-        CommandPool,
-        CommandPoolBuilder,
-      },
-      fence::{
-        RenderSemaphore,
-        RenderSemaphoreBuilder,
-        RenderSubmissionFence,
-        RenderSubmissionFenceBuilder,
-      },
-      framebuffer::Framebuffer,
-      gpu::{
-        Gpu,
-        GpuBuilder,
-        RenderQueueType,
-      },
-      pipeline::RenderPipelineBuilder,
-      render_pass::{
-        RenderPass,
-        RenderPassBuilder,
-      },
-      surface::{
-        Surface,
-        SurfaceBuilder,
-      },
-      Instance,
-      InstanceBuilder,
-    },
-    shaderc::ShaderKind,
-  };
-
-  /// Returns the GPU instance for the given render context.
-  pub fn gpu_from_context(
-    context: &super::RenderContext,
-  ) -> &Gpu<RenderBackend> {
-    return &context.gpu;
-  }
-
-  /// Returns a mutable GPU instance for the given render context.
-  pub fn mut_gpu_from_context(
-    context: &mut super::RenderContext,
-  ) -> &mut Gpu<RenderBackend> {
-    return &mut context.gpu;
-  }
-
-  /// Gets the surface for the given render context.
-  pub fn surface_from_context(
-    context: &super::RenderContext,
-  ) -> Rc<Surface<RenderBackend>> {
-    return context.surface.clone();
-  }
-}
-
 use std::{
   mem::swap,
   rc::Rc,
@@ -336,3 +273,66 @@ impl RenderContext {
 }
 
 type PlatformRenderCommand = Command<internal::RenderBackend>;
+
+pub mod internal {
+  use std::rc::Rc;
+
+  use lambda_platform::gfx::api::RenderingAPI as RenderContext;
+  pub type RenderBackend = RenderContext::Backend;
+
+  pub use lambda_platform::{
+    gfx::{
+      command::{
+        CommandBuffer,
+        CommandBufferBuilder,
+        CommandPool,
+        CommandPoolBuilder,
+      },
+      fence::{
+        RenderSemaphore,
+        RenderSemaphoreBuilder,
+        RenderSubmissionFence,
+        RenderSubmissionFenceBuilder,
+      },
+      framebuffer::Framebuffer,
+      gpu::{
+        Gpu,
+        GpuBuilder,
+        RenderQueueType,
+      },
+      pipeline::RenderPipelineBuilder,
+      render_pass::{
+        RenderPass,
+        RenderPassBuilder,
+      },
+      surface::{
+        Surface,
+        SurfaceBuilder,
+      },
+      Instance,
+      InstanceBuilder,
+    },
+    shaderc::ShaderKind,
+  };
+
+  /// Returns the GPU instance for the given render context.
+  pub fn gpu_from_context(
+    context: &super::RenderContext,
+  ) -> &Gpu<RenderBackend> {
+    return &context.gpu;
+  }
+
+  /// Returns a mutable GPU instance for the given render context.
+  pub fn mut_gpu_from_context(
+    context: &mut super::RenderContext,
+  ) -> &mut Gpu<RenderBackend> {
+    return &mut context.gpu;
+  }
+
+  /// Gets the surface for the given render context.
+  pub fn surface_from_context(
+    context: &super::RenderContext,
+  ) -> Rc<Surface<RenderBackend>> {
+    return context.surface.clone();
+  }
+}
