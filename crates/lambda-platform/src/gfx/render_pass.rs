@@ -125,7 +125,7 @@ impl SubpassBuilder {
     };
   }
 
-  pub fn use_color_attachment(
+  pub fn with_color_attachment(
     mut self,
     attachment_index: usize,
     layout: ImageLayoutHint,

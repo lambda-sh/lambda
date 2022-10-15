@@ -136,7 +136,6 @@ impl RenderableComponent<Events> for DemoComponent {
   fn on_render(
     self: &mut DemoComponent,
     _render_context: &mut lambda::core::render::RenderContext,
-    _last_render: &std::time::Duration,
   ) -> Vec<RenderCommand> {
     let viewport =
       viewport::ViewportBuilder::new().build(self.width, self.height);

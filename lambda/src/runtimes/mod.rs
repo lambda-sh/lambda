@@ -260,17 +260,19 @@ impl Runtime for GenericRuntime {
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
 
-          let render_api = active_render_context.as_mut().unwrap();
           // Update and render commands.
           for component in &mut component_stack {
             component.on_update(duration);
-            let commands = component.on_render(render_api, duration);
-            render_api.render(commands);
           }
 
           window.redraw();
         }
-        WinitEvent::RedrawRequested(_) => {}
+        WinitEvent::RedrawRequested(_) => {
+          for component in &mut component_stack {
+            let commands = component.on_render(active_render_context.as_mut().unwrap());
+            active_render_context.as_mut().unwrap().render(commands);
+          }
+        }
         WinitEvent::NewEvents(_) => {}
         WinitEvent::DeviceEvent { device_id, event } => {}
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
