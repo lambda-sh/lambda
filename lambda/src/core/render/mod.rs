@@ -329,8 +329,9 @@ impl RenderContext {
       .with_size(width, height)
       .build(&self.gpu, &self.surface);
     Rc::get_mut(&mut self.surface)
-      .expect("Failed to acquire the surface to resize during")
-      .apply_swapchain(&self.gpu, swapchain, 1_000_000_000);
+      .expect("Failed to acquire the surface while attempting to resize.")
+      .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
+      .expect("Failed to apply the swapchain to the surface while attempting to resize.");
   }
 }
 
