@@ -1,5 +1,5 @@
 //! Low level shader implementations used by the lambda-platform crate to load
-//! RISC-V compiled shaders into the GPU.
+//! SPIR-V compiled shaders into the GPU.
 
 use gfx_hal::{
   device::Device,
