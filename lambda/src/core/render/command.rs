@@ -33,6 +33,12 @@ pub enum RenderCommand {
   },
   /// Ends the render pass.
   EndRenderPass,
+  PushConstants {
+    pipeline: Rc<super::pipeline::RenderPipeline>,
+    stage: super::pipeline::PipelineStage,
+    offset: u32,
+    bytes: &'static [u32],
+  },
   /// Draws a graphical primitive.
   Draw { vertices: Range<u32> },
 }
@@ -87,6 +93,17 @@ impl RenderCommand {
           pipeline: pipeline.into_platform_render_pipeline(),
         }
       }
+      RenderCommand::PushConstants {
+        pipeline,
+        stage,
+        offset,
+        bytes,
+      } => PlatformRenderCommand::PushConstants {
+        pipeline: pipeline.into_platform_render_pipeline(),
+        stage,
+        offset,
+        bytes,
+      },
       RenderCommand::Draw { vertices } => {
         PlatformRenderCommand::Draw { vertices }
       }

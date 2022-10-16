@@ -40,11 +40,27 @@ impl RenderPipeline {
   }
 }
 
-pub struct RenderPipelineBuilder {}
+pub use lambda_platform::gfx::pipeline::PipelineStage;
+use lambda_platform::gfx::pipeline::PushConstantUpload;
+
+pub struct RenderPipelineBuilder {
+  push_constants: Vec<PushConstantUpload>,
+}
 
 impl RenderPipelineBuilder {
   pub fn new() -> Self {
-    return Self {};
+    return Self {
+      push_constants: Vec::new(),
+    };
+  }
+
+  pub fn with_push_constant(
+    mut self,
+    stage: PipelineStage,
+    bytes: u32,
+  ) -> Self {
+    self.push_constants.push((stage, 0..bytes));
+    return self;
   }
 
   /// Builds a render pipeline based on your builder configuration.
@@ -68,12 +84,14 @@ impl RenderPipelineBuilder {
     );
 
     let render_pipeline =
-      lambda_platform::gfx::pipeline::RenderPipelineBuilder::new().build(
-        gpu_from_context(render_context),
-        &platform_render_pass_from_render_pass(render_pass),
-        &vertex_shader_module,
-        &fragment_shader_module,
-      );
+      lambda_platform::gfx::pipeline::RenderPipelineBuilder::new()
+        .with_push_constants(self.push_constants)
+        .build(
+          gpu_from_context(render_context),
+          &platform_render_pass_from_render_pass(render_pass),
+          &vertex_shader_module,
+          &fragment_shader_module,
+        );
 
     vertex_shader_module.destroy(mut_gpu_from_context(render_context));
     fragment_shader_module.destroy(mut_gpu_from_context(render_context));
