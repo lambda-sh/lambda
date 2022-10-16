@@ -23,7 +23,15 @@ pub mod internal {
   ) -> &RenderBackend::GraphicsPipeline {
     return &pipeline.pipeline;
   }
+
+  pub fn pipeline_layout_for<RenderBackend: gfx_hal::Backend>(
+    pipeline: &super::RenderPipeline<RenderBackend>,
+  ) -> &RenderBackend::PipelineLayout {
+    return &pipeline.pipeline_layout;
+  }
 }
+
+use std::ops::Range;
 
 use gfx_hal::device::Device;
 
@@ -35,14 +43,41 @@ use super::{
 /// Builder for a gfx-hal backed render pipeline.
 pub struct RenderPipelineBuilder<RenderBackend: internal::Backend> {
   pipeline_layout: Option<RenderBackend::PipelineLayout>,
+  push_constants: Vec<PushConstantUpload>,
 }
+
+pub type PipelineStage = gfx_hal::pso::ShaderStageFlags;
+
+pub type PushConstantUpload = (PipelineStage, Range<u32>);
 
 impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
   pub fn new() -> Self {
     return Self {
       pipeline_layout: None,
+      push_constants: Vec::new(),
     };
   }
+
+  /// Adds a push constant to the render pipeline at the set PipelineStage(s)
+  pub fn with_push_constant(
+    mut self,
+    stage: PipelineStage,
+    bytes: u32,
+  ) -> Self {
+    self.push_constants.push((stage, 0..bytes));
+    return self;
+  }
+
+  /// Adds multiple push constants to the render pipeline at their
+  /// set PipelineStage(s)
+  pub fn with_push_constants(
+    mut self,
+    push_constants: Vec<PushConstantUpload>,
+  ) -> Self {
+    self.push_constants.extend(push_constants);
+    return self;
+  }
+
   /// Builds a render pipeline based on your builder configuration. You can
   /// configure a render pipeline to be however you'd like it to be.
   pub fn build(
@@ -57,7 +92,10 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
     let pipeline_layout = unsafe {
       use internal::Device;
       super::internal::logical_device_for(gpu)
-        .create_pipeline_layout(vec![].into_iter(), vec![].into_iter())
+        .create_pipeline_layout(
+          vec![].into_iter(),
+          self.push_constants.into_iter(),
+        )
         .expect(
           "The GPU does not have enough memory to allocate a pipeline layout",
         )

@@ -90,6 +90,12 @@ pub enum Command<RenderBackend: gfx_hal::Backend> {
   Draw {
     vertices: Range<u32>,
   },
+  PushConstants {
+    pipeline: Rc<RenderPipeline<RenderBackend>>,
+    stage: super::pipeline::PipelineStage,
+    offset: u32,
+    bytes: &'static [u32],
+  },
   EndRecording,
 }
 
@@ -167,6 +173,17 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           )
         }
         Command::EndRenderPass => self.command_buffer.end_render_pass(),
+        Command::PushConstants {
+          pipeline,
+          stage,
+          offset,
+          bytes,
+        } => self.command_buffer.push_graphics_constants(
+          super::pipeline::internal::pipeline_layout_for(pipeline.as_ref()),
+          stage,
+          offset,
+          bytes,
+        ),
         Command::Draw { vertices } => self.command_buffer.draw(vertices, 0..1),
         Command::EndRecording => self.command_buffer.finish(),
       }
