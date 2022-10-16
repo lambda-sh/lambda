@@ -1,6 +1,6 @@
-//! GPU fence & semaphore implementations for rendering synchronizations. These
-//! implementations built on top of gfx-hal and are used by the lambda-platform
-//! rendering implementations to synchronize GPU operations.
+//! GPU synchronization Implementations that are built on top of gfx-hal and
+//! are used by the lambda-platform rendering implementations to synchronize
+//! GPU operations.
 
 use gfx_hal::device::Device;
 
@@ -25,6 +25,9 @@ impl RenderSemaphoreBuilder {
   }
 }
 
+/// Render semaphores are used to synchronize operations happening within the
+/// GPU. This allows for us to tell the GPU to wait for a frame to finish
+/// rendering before presenting it to the screen.
 pub struct RenderSemaphore<RenderBackend: gfx_hal::Backend> {
   semaphore: RenderBackend::Semaphore,
 }
@@ -75,6 +78,9 @@ impl RenderSubmissionFenceBuilder {
   }
 }
 
+/// A GPU fence is used to synchronize GPU operations. It is used to ensure that
+/// a GPU operation has completed before the CPU attempts to submit commands to
+/// it.
 pub struct RenderSubmissionFence<RenderBackend: gfx_hal::Backend> {
   fence: RenderBackend::Fence,
   default_render_timeout: u64,
@@ -95,12 +101,13 @@ impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
     unsafe {
       super::gpu::internal::logical_device_for(gpu)
         .wait_for_fence(&self.fence, timeout)
-        .expect("The GPU ran out of memory or has become detached from the current context.");
-
-      super::gpu::internal::logical_device_for(gpu)
-        .reset_fence(&mut self.fence)
-        .expect("The fence failed to reset.");
     }
+    .expect("The GPU ran out of memory or has become detached from the current context.");
+
+    unsafe {
+      super::gpu::internal::logical_device_for(gpu).reset_fence(&mut self.fence)
+    }
+    .expect("The fence failed to reset.");
   }
 
   /// Destroy this fence given the GPU that created it.
