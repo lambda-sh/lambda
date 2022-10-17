@@ -254,6 +254,7 @@ impl Runtime for GenericRuntime {
           } => {}
           WinitWindowEvent::Touch(_) => {}
           WinitWindowEvent::ThemeChanged(_) => {}
+          _ => {}
         },
         WinitEvent::MainEventsCleared => {
           let last_frame = current_frame.clone();

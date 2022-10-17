@@ -232,15 +232,17 @@ impl RenderContext {
     command_buffer.issue_commands(platform_command_list);
     command_buffer.issue_command(PlatformRenderCommand::EndRecording);
 
+    println!("[INFO] {} will now submit commands to the GPU.", self.name);
     self.gpu.submit_command_buffer(
       &mut command_buffer,
-      vec![],
+      vec![self.render_semaphore.as_ref().unwrap()],
       self
         .submission_fence
         .as_mut()
         .expect("Failed to get mutable reference to submission fence."),
     );
 
+    println!("[INFO] {} will now render to the surface.", self.name);
     self
       .gpu
       .render_to_surface(
@@ -250,6 +252,10 @@ impl RenderContext {
       )
       .expect("Failed to render to the surface");
 
+    println!(
+      "[INFO] {} will now wait for the GPU to finish rendering.",
+      self.name
+    );
     match self.frame_buffer {
       Some(_) => {
         Rc::try_unwrap(self.frame_buffer.take().unwrap())

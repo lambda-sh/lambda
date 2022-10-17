@@ -37,7 +37,7 @@ pub enum RenderCommand {
     pipeline: Rc<super::pipeline::RenderPipeline>,
     stage: super::pipeline::PipelineStage,
     offset: u32,
-    bytes: &'static [u32],
+    bytes: Vec<u32>,
   },
   /// Draws a graphical primitive.
   Draw { vertices: Range<u32> },
