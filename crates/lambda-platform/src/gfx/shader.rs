@@ -29,7 +29,7 @@ impl ShaderModuleBuilder {
   pub fn new() -> Self {
     return Self {
       entry_name: "main".to_string(),
-      specializations: ShaderSpecializations::default(),
+      specializations: ShaderSpecializations::EMPTY,
     };
   }
 

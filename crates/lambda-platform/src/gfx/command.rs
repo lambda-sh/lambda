@@ -94,7 +94,7 @@ pub enum Command<RenderBackend: gfx_hal::Backend> {
     pipeline: Rc<RenderPipeline<RenderBackend>>,
     stage: super::pipeline::PipelineStage,
     offset: u32,
-    bytes: &'static [u32],
+    bytes: Vec<u32>,
   },
   EndRecording,
 }
@@ -182,7 +182,7 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           super::pipeline::internal::pipeline_layout_for(pipeline.as_ref()),
           stage,
           offset,
-          bytes,
+          bytes.as_slice(),
         ),
         Command::Draw { vertices } => self.command_buffer.draw(vertices, 0..1),
         Command::EndRecording => self.command_buffer.finish(),

@@ -89,13 +89,13 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
   ) -> RenderPipeline<RenderBackend> {
     // TODO(vmarcella): The pipeline layout should be configurable through the
     // RenderPipelineBuilder.
+    let push_constants = self.push_constants.into_iter();
+
     let pipeline_layout = unsafe {
       use internal::Device;
+
       super::internal::logical_device_for(gpu)
-        .create_pipeline_layout(
-          vec![].into_iter(),
-          self.push_constants.into_iter(),
-        )
+        .create_pipeline_layout(vec![].into_iter(), push_constants)
         .expect(
           "The GPU does not have enough memory to allocate a pipeline layout",
         )

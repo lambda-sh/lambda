@@ -15,10 +15,13 @@ impl ShaderCompilerBuilder {
   pub fn build(self) -> ShaderCompiler {
     let compiler =
       shaderc::Compiler::new().expect("Failed to create shaderc compiler.");
+
+    let mut options = shaderc::CompileOptions::new()
+      .expect("Failed to create shaderc compile options.");
+
     return ShaderCompiler {
       compiler,
-      default_options: shaderc::CompileOptions::new()
-        .expect("Failed to set the default shaderc compiler options"),
+      default_options: options,
     };
   }
 }
@@ -84,8 +87,6 @@ impl ShaderCompiler {
     entry_point: &str,
     shader_kind: ShaderKind,
   ) -> Vec<u32> {
-    // TODO(vmarcella): Investigate into common strategies for reading from files
-    // efficiently in Rust.
     let mut opened_shader_file = std::fs::File::open(path).unwrap();
     let mut shader_source = String::new();
     opened_shader_file
@@ -94,7 +95,13 @@ impl ShaderCompiler {
 
     let compiled_shader = self
       .compiler
-      .compile_into_spirv(&shader_source, shader_kind, path, entry_point, None)
+      .compile_into_spirv(
+        &shader_source,
+        shader_kind,
+        path,
+        entry_point,
+        Some(&self.default_options),
+      )
       .expect("Failed to compile the shader.");
     return compiled_shader.as_binary().to_vec();
   }
@@ -109,8 +116,15 @@ impl ShaderCompiler {
   ) -> Vec<u32> {
     let compiled_shader = self
       .compiler
-      .compile_into_spirv(shader_source, shader_kind, name, entry_point, None)
+      .compile_into_spirv(
+        shader_source,
+        shader_kind,
+        name,
+        entry_point,
+        Some(&self.default_options),
+      )
       .expect("Failed to compile the shader.");
+
     return compiled_shader.as_binary().to_vec();
   }
 }

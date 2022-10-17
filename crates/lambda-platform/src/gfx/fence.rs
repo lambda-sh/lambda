@@ -133,4 +133,10 @@ pub mod internal {
   ) -> &mut RenderBackend::Semaphore {
     return &mut semaphore.semaphore;
   }
+
+  pub fn semaphore_for<RenderBackend: gfx_hal::Backend>(
+    semaphore: &super::RenderSemaphore<RenderBackend>,
+  ) -> &RenderBackend::Semaphore {
+    return &semaphore.semaphore;
+  }
 }
