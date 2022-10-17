@@ -86,7 +86,7 @@ impl Component<Events> for TrianglesComponent {
 #[derive(Debug, Copy, Clone)]
 pub struct PushConstant {
   color: [f32; 4],
-  position: [f32; 2],
+  pos: [f32; 2],
   scale: [f32; 2],
 }
 
@@ -98,6 +98,7 @@ pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
     std::slice::from_raw_parts(ptr, size_in_u32)
   };
 
+  println!("Push constants: {:?}", bytes);
   return bytes;
 }
 
@@ -125,6 +126,7 @@ impl RenderableComponent<Events> for TrianglesComponent {
           &self.triangle_vertex,
         ),
     );
+    println!("Created pipeline: {:?}", pipeline);
 
     self.render_pipeline = Some(pipeline.clone());
   }
@@ -136,25 +138,26 @@ impl RenderableComponent<Events> for TrianglesComponent {
     let viewport =
       viewport::ViewportBuilder::new().build(self.width, self.height);
 
+    println!("Rendering the demo component");
     let triangle_data = &[
       PushConstant {
         color: [1.0, 0.0, 0.0, 1.0],
-        position: [0.0, 0.0],
+        pos: [0.0, 0.0],
         scale: [0.3, 0.3],
       },
       PushConstant {
         color: [0.0, 1.0, 0.0, 1.0],
-        position: [0.5, 0.0],
+        pos: [0.5, 0.0],
         scale: [0.4, 0.4],
       },
       PushConstant {
         color: [0.0, 0.0, 1.0, 1.0],
-        position: [0.25, 0.5],
+        pos: [0.25, 0.5],
         scale: [0.5, 0.5],
       },
       PushConstant {
         color: [1.0, 1.0, 1.0, 1.0],
-        position: [0.0, 0.0],
+        pos: [0.0, 0.0],
         scale: [0.5, 0.5],
       },
     ];
@@ -191,7 +194,7 @@ impl RenderableComponent<Events> for TrianglesComponent {
         pipeline: render_pipeline.clone(),
         stage: PipelineStage::VERTEX,
         offset: 0,
-        bytes: push_constants_to_bytes(triangle),
+        bytes: Vec::from(push_constants_to_bytes(triangle)),
       });
       commands.push(RenderCommand::Draw { vertices: 0..3 });
     }
