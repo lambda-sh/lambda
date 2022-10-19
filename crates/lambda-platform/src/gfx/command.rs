@@ -381,8 +381,9 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   /// Moves the command pool into itself and destroys any command pool and
   /// buffer resources allocated on the GPU.
   #[inline]
-  pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
+  pub fn destroy(mut self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
+      self.command_pool.reset(true);
       super::gpu::internal::logical_device_for(gpu)
         .destroy_command_pool(self.command_pool);
     }

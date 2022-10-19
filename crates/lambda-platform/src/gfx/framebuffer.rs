@@ -10,6 +10,7 @@ use super::{
 };
 
 /// Framebuffer for the given render backend.
+#[derive(Debug)]
 pub struct Framebuffer<RenderBackend: gfx_hal::Backend> {
   frame_buffer: RenderBackend::Framebuffer,
 }

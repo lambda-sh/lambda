@@ -158,7 +158,6 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
     let (render_surface, render_image) =
       super::surface::internal::borrow_surface_and_take_image(surface);
 
-    println!("Rendering to surface.");
     let result = unsafe {
       self.queue_group.queues[0].present(
         render_surface,
@@ -173,8 +172,6 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
         "Rendering failed. Swapchain for the surface needs to be reconfigured.",
       );
     }
-
-    println!("Rendered to surface.");
 
     return Ok(());
   }
