@@ -1,14 +1,30 @@
 //! Very simple math types built strictly from primitive types.
 
-pub type Vec2 = (f32, f32);
+//  ------------------------------- VECTOR2 -----------------------------------
+pub type Vector2 = (f32, f32);
 
-pub type Vec3 = (f32, f32, f32);
-
-pub fn dot(a: Vec2, b: Vec2) -> f32 {
+/// Compute the dot product of two `Vec2`.
+pub fn dot(a: Vector2, b: Vector2) -> f32 {
   a.0 * b.0 + a.1 * b.1
 }
 
-pub fn cross(a: Vec3, b: Vec3) -> Vec3 {
+/// Compute the length of a vector.
+fn length(a: Vector2) -> f32 {
+  (a.0 * a.0 + a.1 * a.1).sqrt()
+}
+
+/// Normalized vector.
+fn normalize(a: Vector2) -> Vector2 {
+  let l = length(a);
+  (a.0 / l, a.1 / l)
+}
+
+//  ------------------------------- VECTOR3 -----------------------------------
+
+pub type Vector3 = (f32, f32, f32);
+
+/// Compute the cross product of two `Vec3`.
+pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
   (
     a.1 * b.2 - a.2 * b.1,
     a.2 * b.0 - a.0 * b.2,
@@ -16,14 +32,7 @@ pub fn cross(a: Vec3, b: Vec3) -> Vec3 {
   )
 }
 
-fn length(a: Vec2) -> f32 {
-  (a.0 * a.0 + a.1 * a.1).sqrt()
-}
-
-fn normalize(a: Vec2) -> Vec2 {
-  let l = length(a);
-  (a.0 / l, a.1 / l)
-}
+// ---------------------------------- TESTS -----------------------------------
 
 #[cfg(test)]
 mod tests {
