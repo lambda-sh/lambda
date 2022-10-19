@@ -156,6 +156,7 @@ impl RenderableComponent<Events> for DemoComponent {
         viewport: viewport.clone(),
       },
       RenderCommand::Draw { vertices: 0..3 },
+      RenderCommand::EndRenderPass,
     ];
   }
 
