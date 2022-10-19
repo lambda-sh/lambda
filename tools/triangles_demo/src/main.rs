@@ -73,7 +73,12 @@ impl Component for TrianglesComponent {
 
     let triangle_data = &[
       PushConstant {
-        color: [1.0, 1.0, 0.0, 1.0],
+        color: [
+          1.0,
+          1.0 * self.animation_scalar,
+          0.5 * self.animation_scalar,
+          1.0,
+        ],
         pos: [x, y],
         scale: [0.3, 0.3],
       },
@@ -161,10 +166,10 @@ impl Component for TrianglesComponent {
           virtual_key,
         } => match virtual_key {
           Some(VirtualKey::W) => {
-            self.position.1 += 0.01;
+            self.position.1 -= 0.01;
           }
           Some(VirtualKey::S) => {
-            self.position.1 -= 0.01;
+            self.position.1 += 0.01;
           }
           Some(VirtualKey::A) => {
             self.position.0 -= 0.01;
