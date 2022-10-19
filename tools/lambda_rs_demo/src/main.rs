@@ -15,14 +15,8 @@ use lambda::{
     },
     render::{
       command::RenderCommand,
-      pipeline::{
-        self,
-        RenderPipeline,
-      },
-      render_pass::{
-        self,
-        RenderPass,
-      },
+      pipeline,
+      render_pass,
       shader::{
         Shader,
         ShaderBuilder,
@@ -39,8 +33,8 @@ use lambda::{
 pub struct DemoComponent {
   triangle_vertex: Shader,
   vertex_shader: Shader,
-  render_pass: Option<Rc<RenderPass>>,
-  render_pipeline: Option<Rc<RenderPipeline>>,
+  render_pass_id: Option<lambda::core::render::ResourceId>,
+  render_pipeline_id: Option<lambda::core::render::ResourceId>,
   width: u32,
   height: u32,
 }
@@ -119,18 +113,18 @@ impl RenderableComponent<Events> for DemoComponent {
   ) {
     println!("Attached the demo component to the renderer");
     let render_pass =
-      Rc::new(render_pass::RenderPassBuilder::new().build(&render_context));
+      render_pass::RenderPassBuilder::new().build(&render_context);
 
-    self.render_pass = Some(render_pass.clone());
-
-    let pipeline = Rc::new(pipeline::RenderPipelineBuilder::new().build(
+    let pipeline = pipeline::RenderPipelineBuilder::new().build(
       render_context,
-      &self.render_pass.as_ref().unwrap(),
+      &render_pass,
       &self.vertex_shader,
       &self.triangle_vertex,
-    ));
+    );
 
-    self.render_pipeline = Some(pipeline.clone());
+    // Attach the render pass and pipeline to the render context
+    self.render_pass_id = Some(render_context.attach_render_pass(render_pass));
+    self.render_pipeline_id = Some(render_context.attach_pipeline(pipeline));
   }
 
   fn on_render(
@@ -152,19 +146,13 @@ impl RenderableComponent<Events> for DemoComponent {
       },
       RenderCommand::SetPipeline {
         pipeline: self
-          .render_pipeline
-          .as_ref()
-          .expect(
-            "No render pipeline set while trying to issue a render command.",
-          )
-          .clone(),
+          .render_pipeline_id
+          .expect("No pipeline attached to the component"),
       },
       RenderCommand::BeginRenderPass {
         render_pass: self
-          .render_pass
-          .as_ref()
-          .expect("Cannot begin the render pass when it doesn't exist.")
-          .clone(),
+          .render_pass_id
+          .expect("No render pass attached to the component"),
         viewport: viewport.clone(),
       },
       RenderCommand::Draw { vertices: 0..3 },
@@ -208,8 +196,8 @@ impl Default for DemoComponent {
     return DemoComponent {
       vertex_shader: vs,
       triangle_vertex: fs,
-      render_pass: None,
-      render_pipeline: None,
+      render_pass_id: None,
+      render_pipeline_id: None,
       width: 800,
       height: 600,
     };

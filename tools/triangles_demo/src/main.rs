@@ -37,8 +37,8 @@ use lambda::{
 pub struct TrianglesComponent {
   triangle_vertex: Shader,
   vertex_shader: Shader,
-  render_pass: Option<Rc<RenderPass>>,
-  render_pipeline: Option<Rc<RenderPipeline>>,
+  render_pass: Option<lambda::core::render::ResourceId>,
+  render_pipeline: Option<lambda::core::render::ResourceId>,
   width: u32,
   height: u32,
 }
@@ -108,27 +108,21 @@ impl RenderableComponent<Events> for TrianglesComponent {
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
-    println!("Attached the demo component to the renderer");
     let render_pass =
-      Rc::new(render_pass::RenderPassBuilder::new().build(&render_context));
-
-    self.render_pass = Some(render_pass.clone());
+      render_pass::RenderPassBuilder::new().build(&render_context);
 
     let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
-    println!("Push constant size: {}", push_constants_size);
-    let pipeline = Rc::new(
-      pipeline::RenderPipelineBuilder::new()
-        .with_push_constant(PipelineStage::VERTEX, push_constants_size)
-        .build(
-          render_context,
-          &self.render_pass.as_ref().unwrap(),
-          &self.vertex_shader,
-          &self.triangle_vertex,
-        ),
-    );
-    println!("Created pipeline: {:?}", pipeline);
+    let pipeline = pipeline::RenderPipelineBuilder::new()
+      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+      .build(
+        render_context,
+        &render_pass,
+        &self.vertex_shader,
+        &self.triangle_vertex,
+      );
 
-    self.render_pipeline = Some(pipeline.clone());
+    self.render_pass = Some(render_context.attach_render_pass(render_pass));
+    self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
   }
 
   fn on_render(
@@ -138,7 +132,6 @@ impl RenderableComponent<Events> for TrianglesComponent {
     let viewport =
       viewport::ViewportBuilder::new().build(self.width, self.height);
 
-    println!("Rendering the demo component");
     let triangle_data = &[
       PushConstant {
         color: [1.0, 0.0, 0.0, 1.0],
@@ -164,7 +157,6 @@ impl RenderableComponent<Events> for TrianglesComponent {
 
     let render_pipeline = self
       .render_pipeline
-      .as_ref()
       .expect("No render pipeline actively set for rendering.");
 
     let mut commands = vec![
@@ -182,7 +174,6 @@ impl RenderableComponent<Events> for TrianglesComponent {
       RenderCommand::BeginRenderPass {
         render_pass: self
           .render_pass
-          .as_ref()
           .expect("Cannot begin the render pass when it doesn't exist.")
           .clone(),
         viewport: viewport.clone(),
@@ -198,6 +189,8 @@ impl RenderableComponent<Events> for TrianglesComponent {
       });
       commands.push(RenderCommand::Draw { vertices: 0..3 });
     }
+
+    commands.push(RenderCommand::EndRenderPass);
 
     return commands;
   }

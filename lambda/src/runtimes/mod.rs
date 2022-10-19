@@ -156,6 +156,8 @@ impl Runtime for GenericRuntime {
               event: RuntimeEvent::Shutdown,
               issued_at: Instant::now(),
             });
+
+            *control_flow = ControlFlow::Exit;
           }
           WinitWindowEvent::Resized(dims) => {
             active_render_context
@@ -292,7 +294,6 @@ impl Runtime for GenericRuntime {
                 component
                   .on_renderer_detached(active_render_context.as_mut().unwrap());
               }
-              *control_flow = ControlFlow::Exit;
             }
           },
           _ => {

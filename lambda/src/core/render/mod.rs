@@ -22,7 +22,6 @@ use lambda_platform::gfx::{
   },
   framebuffer::FramebufferBuilder,
   surface::SwapchainBuilder,
-  viewport::ViewPort,
 };
 
 use self::{
@@ -104,7 +103,6 @@ impl RenderContextBuilder {
       submission_fence: Some(submission_fence),
       render_semaphore: Some(render_semaphore),
       command_pool: Some(command_pool),
-      viewports: vec![],
       render_passes: vec![],
       render_pipelines: vec![],
     };
@@ -123,12 +121,29 @@ pub struct RenderContext {
     Option<internal::RenderSubmissionFence<internal::RenderBackend>>,
   render_semaphore: Option<internal::RenderSemaphore<internal::RenderBackend>>,
   command_pool: Option<internal::CommandPool<internal::RenderBackend>>,
-  render_passes: Vec<Option<RenderPass>>,
-  render_pipelines: Vec<Option<RenderPipeline>>,
-  viewports: Vec<ViewPort>,
+  render_passes: Vec<RenderPass>,
+  render_pipelines: Vec<RenderPipeline>,
 }
 
+pub type ResourceId = usize;
+
 impl RenderContext {
+  /// Permanently transfer a render pipeline to the render context in exchange
+  /// for a resource ID that you can use in render commands.
+  pub fn attach_pipeline(&mut self, pipeline: RenderPipeline) -> ResourceId {
+    let index = self.render_pipelines.len();
+    self.render_pipelines.push(pipeline);
+    return index;
+  }
+
+  /// Permanently transfer a render pipeline to the render context in exchange
+  /// for a resource ID that you can use in render commands.
+  pub fn attach_render_pass(&mut self, render_pass: RenderPass) -> ResourceId {
+    let index = self.render_passes.len();
+    self.render_passes.push(render_pass);
+    return index;
+  }
+
   /// destroys the RenderContext and all associated resources.
   pub fn destroy(mut self) {
     println!("{} will now start destroying resources.", self.name);
@@ -147,30 +162,32 @@ impl RenderContext {
       .expect("Couldn't take the rendering semaphore from the context and destroy it.")
       .destroy(&self.gpu);
 
+    self
+      .command_pool
+      .as_mut()
+      .unwrap()
+      .deallocate_command_buffer("primary");
+
+    self
+      .command_pool
+      .take()
+      .expect("Couldn't take the command pool from the context and destroy it.")
+      .destroy(&self.gpu);
+
     // Destroy render passes.
     let mut render_passes = vec![];
     swap(&mut self.render_passes, &mut render_passes);
 
-    for render_pass in &mut render_passes {
-      render_pass
-        .take()
-        .expect(
-          "Couldn't take the render pass from the context and destroy it.",
-        )
-        .destroy(&self);
+    for render_pass in render_passes {
+      render_pass.destroy(&self);
     }
 
     // Destroy render pipelines.
     let mut render_pipelines = vec![];
     swap(&mut self.render_pipelines, &mut render_pipelines);
 
-    for render_pipeline in &mut render_pipelines {
-      render_pipeline
-        .take()
-        .expect(
-          "Couldn't take the render pipeline from the context and destroy it.",
-        )
-        .destroy(&self);
+    for render_pipeline in render_pipelines {
+      render_pipeline.destroy(&self);
     }
 
     // Takes the inner surface and destroys it.
@@ -232,7 +249,6 @@ impl RenderContext {
     command_buffer.issue_commands(platform_command_list);
     command_buffer.issue_command(PlatformRenderCommand::EndRecording);
 
-    println!("[INFO] {} will now submit commands to the GPU.", self.name);
     self.gpu.submit_command_buffer(
       &mut command_buffer,
       vec![self.render_semaphore.as_ref().unwrap()],
@@ -242,7 +258,6 @@ impl RenderContext {
         .expect("Failed to get mutable reference to submission fence."),
     );
 
-    println!("[INFO] {} will now render to the surface.", self.name);
     self
       .gpu
       .render_to_surface(
@@ -252,15 +267,10 @@ impl RenderContext {
       )
       .expect("Failed to render to the surface");
 
-    println!(
-      "[INFO] {} will now wait for the GPU to finish rendering.",
-      self.name
-    );
     match self.frame_buffer {
       Some(_) => {
         Rc::try_unwrap(self.frame_buffer.take().unwrap())
-          .ok()
-          .unwrap()
+          .expect("Failed to unwrap the frame buffer.")
           .destroy(&self.gpu);
       }
       None => {}
@@ -275,6 +285,14 @@ impl RenderContext {
       .expect("Failed to acquire the surface while attempting to resize.")
       .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
       .expect("Failed to apply the swapchain to the surface while attempting to resize.");
+  }
+
+  pub fn get_render_pass(&self, id: ResourceId) -> &RenderPass {
+    return &self.render_passes[id];
+  }
+
+  pub fn get_render_pipeline(&mut self, id: ResourceId) -> &RenderPipeline {
+    return &self.render_pipelines[id];
   }
 }
 
