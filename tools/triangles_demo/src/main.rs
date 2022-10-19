@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use lambda::{
   core::{
     component::{
@@ -15,12 +13,8 @@ use lambda::{
       pipeline::{
         self,
         PipelineStage,
-        RenderPipeline,
       },
-      render_pass::{
-        self,
-        RenderPass,
-      },
+      render_pass,
       shader::{
         Shader,
         ShaderBuilder,
@@ -98,7 +92,6 @@ pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
     std::slice::from_raw_parts(ptr, size_in_u32)
   };
 
-  println!("Push constants: {:?}", bytes);
   return bytes;
 }
 
