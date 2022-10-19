@@ -186,12 +186,6 @@ impl Component for TrianglesComponent {
   }
 
   fn on_update(&mut self, last_frame: &std::time::Duration) {
-    match self.animation_scalar {
-      0.0..=0.5 => self.animation_scalar += last_frame.as_secs_f32(),
-      0.5..=1.0 => self.animation_scalar -= last_frame.as_secs_f32(),
-      _ => self.animation_scalar = 0.0,
-    }
-
     match last_frame.as_millis() > 20 {
       true => {
         println!("[WARN] Last frame took {}ms", last_frame.as_millis());
