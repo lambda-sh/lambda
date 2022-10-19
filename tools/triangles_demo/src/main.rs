@@ -1,11 +1,10 @@
 use lambda::{
   core::{
-    component::{
-      Component,
-      RenderableComponent,
-    },
+    component::Component,
     events::{
       Events,
+      KeyEvent,
+      VirtualKey,
       WindowEvent,
     },
     render::{
@@ -22,6 +21,7 @@ use lambda::{
         VirtualShader,
       },
       viewport,
+      RenderContext,
     },
     runtime::start_runtime,
   },
@@ -35,72 +35,12 @@ pub struct TrianglesComponent {
   render_pipeline: Option<lambda::core::render::ResourceId>,
   width: u32,
   height: u32,
+  animation_scalar: f32,
+  position: (f32, f32),
 }
 
-impl Component<Events> for TrianglesComponent {
-  fn on_attach(&mut self) {
-    println!("Attached the DemoComponent.");
-  }
-
-  fn on_detach(&mut self) {}
-
-  fn on_event(&mut self, event: &lambda::core::events::Events) {
-    match event {
-      Events::Runtime { event, issued_at } => match event {
-        lambda::core::events::RuntimeEvent::Shutdown => {
-          println!("Shutting down the runtime");
-        }
-        _ => {}
-      },
-      Events::Window { event, issued_at } => match event {
-        WindowEvent::Resize { width, height } => {
-          println!("Window resized to {}x{}", width, height);
-          self.width = *width;
-          self.height = *height;
-        }
-        WindowEvent::Close => {
-          println!("Window closed");
-        }
-      },
-      _ => {}
-    }
-  }
-
-  fn on_update(&mut self, last_frame: &std::time::Duration) {
-    match last_frame.as_millis() > 20 {
-      true => {
-        println!("[WARN] Last frame took {}ms", last_frame.as_millis());
-      }
-      false => {}
-    }
-  }
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct PushConstant {
-  color: [f32; 4],
-  pos: [f32; 2],
-  scale: [f32; 2],
-}
-
-pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
-  let bytes = unsafe {
-    let size_in_bytes = std::mem::size_of::<PushConstant>();
-    let size_in_u32 = size_in_bytes / std::mem::size_of::<u32>();
-    let ptr = push_constants as *const PushConstant as *const u32;
-    std::slice::from_raw_parts(ptr, size_in_u32)
-  };
-
-  return bytes;
-}
-
-/// Implement rendering for the component.
-impl RenderableComponent<Events> for TrianglesComponent {
-  fn on_renderer_attached(
-    &mut self,
-    render_context: &mut lambda::core::render::RenderContext,
-  ) {
+impl Component for TrianglesComponent {
+  fn on_attach(&mut self, render_context: &mut RenderContext) {
     let render_pass =
       render_pass::RenderPassBuilder::new().build(&render_context);
 
@@ -116,7 +56,11 @@ impl RenderableComponent<Events> for TrianglesComponent {
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
+
+    println!("Attached the DemoComponent.");
   }
+
+  fn on_detach(&mut self, _render_context: &mut RenderContext) {}
 
   fn on_render(
     &mut self,
@@ -125,10 +69,12 @@ impl RenderableComponent<Events> for TrianglesComponent {
     let viewport =
       viewport::ViewportBuilder::new().build(self.width, self.height);
 
+    let (x, y) = self.position;
+
     let triangle_data = &[
       PushConstant {
-        color: [1.0, 0.0, 0.0, 1.0],
-        pos: [0.0, 0.0],
+        color: [1.0, 1.0, 0.0, 1.0],
+        pos: [x, y],
         scale: [0.3, 0.3],
       },
       PushConstant {
@@ -173,6 +119,8 @@ impl RenderableComponent<Events> for TrianglesComponent {
       },
     ];
 
+    // Upload triangle data into the the GPU at the vertex stage of the pipeline
+    // before requesting to draw each triangle.
     for triangle in triangle_data {
       commands.push(RenderCommand::PushConstants {
         pipeline: render_pipeline.clone(),
@@ -188,12 +136,83 @@ impl RenderableComponent<Events> for TrianglesComponent {
     return commands;
   }
 
-  fn on_renderer_detached(
-    &mut self,
-    _render_context: &mut lambda::core::render::RenderContext,
-  ) {
-    println!("Detached the demo component from the renderer");
+  fn on_event(&mut self, event: Events) {
+    match event {
+      Events::Runtime { event, issued_at } => match event {
+        lambda::core::events::RuntimeEvent::Shutdown => {
+          println!("Shutting down the runtime");
+        }
+        _ => {}
+      },
+      Events::Window { event, issued_at } => match event {
+        WindowEvent::Resize { width, height } => {
+          println!("Window resized to {}x{}", width, height);
+          self.width = width;
+          self.height = height;
+        }
+        WindowEvent::Close => {
+          println!("Window closed");
+        }
+      },
+      Events::Component { event, issued_at } => todo!(),
+      Events::Keyboard { event, issued_at } => match event {
+        KeyEvent::KeyPressed {
+          scan_code,
+          virtual_key,
+        } => match virtual_key {
+          Some(VirtualKey::W) => {
+            self.position.1 += 0.01;
+          }
+          Some(VirtualKey::S) => {
+            self.position.1 -= 0.01;
+          }
+          Some(VirtualKey::A) => {
+            self.position.0 -= 0.01;
+          }
+          Some(VirtualKey::D) => {
+            self.position.0 += 0.01;
+          }
+          _ => {}
+        },
+        _ => {}
+      },
+      _ => {}
+    }
   }
+
+  fn on_update(&mut self, last_frame: &std::time::Duration) {
+    match self.animation_scalar {
+      0.0..=0.5 => self.animation_scalar += last_frame.as_secs_f32(),
+      0.5..=1.0 => self.animation_scalar -= last_frame.as_secs_f32(),
+      _ => self.animation_scalar = 0.0,
+    }
+
+    match last_frame.as_millis() > 20 {
+      true => {
+        println!("[WARN] Last frame took {}ms", last_frame.as_millis());
+      }
+      false => {}
+    }
+  }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct PushConstant {
+  color: [f32; 4],
+  pos: [f32; 2],
+  scale: [f32; 2],
+}
+
+pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
+  let bytes = unsafe {
+    let size_in_bytes = std::mem::size_of::<PushConstant>();
+    let size_in_u32 = size_in_bytes / std::mem::size_of::<u32>();
+    let ptr = push_constants as *const PushConstant as *const u32;
+    std::slice::from_raw_parts(ptr, size_in_u32)
+  };
+
+  return bytes;
 }
 
 impl Default for TrianglesComponent {
@@ -227,6 +246,8 @@ impl Default for TrianglesComponent {
       render_pipeline: None,
       width: 800,
       height: 600,
+      animation_scalar: 0.0,
+      position: (0.0, 0.0),
     };
   }
 }
