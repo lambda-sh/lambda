@@ -12,7 +12,7 @@ use lambda_platform::winit::{
 };
 
 use crate::core::{
-  component::RenderableComponent,
+  component::Component,
   events::{
     ComponentEvent,
     Events,
@@ -35,7 +35,7 @@ pub struct GenericRuntimeBuilder {
   app_name: String,
   render_context_builder: RenderContextBuilder,
   window_builder: WindowBuilder,
-  components: Vec<Box<dyn RenderableComponent<Events>>>,
+  components: Vec<Box<dyn Component>>,
 }
 
 impl GenericRuntimeBuilder {
@@ -78,7 +78,7 @@ impl GenericRuntimeBuilder {
   }
 
   /// Attach a component to the current runnable.
-  pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
+  pub fn with_component<T: Default + Component + 'static>(
     self,
     configure_component: impl FnOnce(Self, T) -> (Self, T),
   ) -> Self {
@@ -88,7 +88,7 @@ impl GenericRuntimeBuilder {
     return kernel_builder;
   }
 
-  /// Builds a LambdaKernel equipped with Windowing, an event loop, and a
+  /// Builds a GenericRuntime equipped with Windowing, an event loop, and a
   /// component stack that allows components to be dynamically pushed into the
   /// Kernel to receive events & render access.
   pub fn build(self) -> GenericRuntime {
@@ -97,13 +97,13 @@ impl GenericRuntimeBuilder {
     let window = self.window_builder.build(&mut event_loop);
 
     let component_stack = self.components;
-    let render_api = self.render_context_builder.build(&window);
+    let render_context = self.render_context_builder.build(&window);
 
     return GenericRuntime {
       name,
       event_loop,
       window,
-      render_api,
+      render_context,
       component_stack,
     };
   }
@@ -116,8 +116,8 @@ pub struct GenericRuntime {
   name: String,
   event_loop: Loop<Events>,
   window: Window,
-  component_stack: Vec<Box<dyn RenderableComponent<Events>>>,
-  render_api: RenderContext,
+  component_stack: Vec<Box<dyn Component>>,
+  render_context: RenderContext,
 }
 
 impl GenericRuntime {}
@@ -134,10 +134,10 @@ impl Runtime for GenericRuntime {
       mut event_loop,
       mut component_stack,
       name,
-      render_api,
+      render_context,
     } = self;
 
-    let mut active_render_api = Some(render_api);
+    let mut active_render_context = Some(render_context);
 
     let publisher = event_loop.create_event_publisher();
     publisher.publish_event(Events::Runtime {
@@ -156,9 +156,11 @@ impl Runtime for GenericRuntime {
               event: RuntimeEvent::Shutdown,
               issued_at: Instant::now(),
             });
+
+            *control_flow = ControlFlow::Exit;
           }
           WinitWindowEvent::Resized(dims) => {
-            active_render_api
+            active_render_context
               .as_mut()
               .unwrap()
               .resize(dims.width, dims.height);
@@ -172,7 +174,7 @@ impl Runtime for GenericRuntime {
             })
           }
           WinitWindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-            active_render_api
+            active_render_context
               .as_mut()
               .unwrap()
               .resize(new_inner_size.width, new_inner_size.height);
@@ -254,23 +256,26 @@ impl Runtime for GenericRuntime {
           } => {}
           WinitWindowEvent::Touch(_) => {}
           WinitWindowEvent::ThemeChanged(_) => {}
+          _ => {}
         },
         WinitEvent::MainEventsCleared => {
           let last_frame = current_frame.clone();
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
 
-          let render_api = active_render_api.as_mut().unwrap();
           // Update and render commands.
           for component in &mut component_stack {
             component.on_update(duration);
-            let commands = component.on_render(render_api, duration);
-            render_api.render(commands);
           }
 
           window.redraw();
         }
-        WinitEvent::RedrawRequested(_) => {}
+        WinitEvent::RedrawRequested(_) => {
+          for component in &mut component_stack {
+            let commands = component.on_render(active_render_context.as_mut().unwrap());
+            active_render_context.as_mut().unwrap().render(commands);
+          }
+        }
         WinitEvent::NewEvents(_) => {}
         WinitEvent::DeviceEvent { device_id, event } => {}
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
@@ -278,23 +283,18 @@ impl Runtime for GenericRuntime {
             RuntimeEvent::Initialized => {
               println!("[INFO] Initializing all of the components for the runtime: {}", name);
               for component in &mut component_stack {
-                component.on_attach();
-                component
-                  .on_renderer_attached(active_render_api.as_mut().unwrap());
+                component.on_attach(active_render_context.as_mut().unwrap());
               }
             }
             RuntimeEvent::Shutdown => {
               for component in &mut component_stack {
-                component.on_detach();
-                component
-                  .on_renderer_detached(active_render_api.as_mut().unwrap());
+                component.on_detach(active_render_context.as_mut().unwrap());
               }
-              *control_flow = ControlFlow::Exit;
             }
           },
           _ => {
             for component in &mut component_stack {
-              component.on_event(&lambda_event);
+              component.on_event(lambda_event.clone());
             }
           }
         },
@@ -302,7 +302,7 @@ impl Runtime for GenericRuntime {
         WinitEvent::Resumed => {}
         WinitEvent::RedrawEventsCleared => {}
         WinitEvent::LoopDestroyed => {
-          active_render_api
+          active_render_context
             .take()
             .expect("[ERROR] The render API has been already taken.")
             .destroy();

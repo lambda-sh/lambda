@@ -90,6 +90,12 @@ pub enum Command<RenderBackend: gfx_hal::Backend> {
   Draw {
     vertices: Range<u32>,
   },
+  PushConstants {
+    pipeline: Rc<RenderPipeline<RenderBackend>>,
+    stage: super::pipeline::PipelineStage,
+    offset: u32,
+    bytes: Vec<u32>,
+  },
   EndRecording,
 }
 
@@ -167,6 +173,17 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           )
         }
         Command::EndRenderPass => self.command_buffer.end_render_pass(),
+        Command::PushConstants {
+          pipeline,
+          stage,
+          offset,
+          bytes,
+        } => self.command_buffer.push_graphics_constants(
+          super::pipeline::internal::pipeline_layout_for(pipeline.as_ref()),
+          stage,
+          offset,
+          bytes.as_slice(),
+        ),
         Command::Draw { vertices } => self.command_buffer.draw(vertices, 0..1),
         Command::EndRecording => self.command_buffer.finish(),
       }
@@ -364,8 +381,9 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   /// Moves the command pool into itself and destroys any command pool and
   /// buffer resources allocated on the GPU.
   #[inline]
-  pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
+  pub fn destroy(mut self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
+      self.command_pool.reset(true);
       super::gpu::internal::logical_device_for(gpu)
         .destroy_command_pool(self.command_pool);
     }

@@ -129,7 +129,7 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   pub fn submit_command_buffer<'render_context>(
     &mut self,
     command_buffer: &mut CommandBuffer<RenderBackend>,
-    signal_semaphores: Vec<RenderSemaphore<RenderBackend>>,
+    signal_semaphores: Vec<&RenderSemaphore<RenderBackend>>,
     fence: &mut RenderSubmissionFence<RenderBackend>,
   ) {
     let commands =
@@ -139,7 +139,11 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
       self.queue_group.queues[0].submit(
         commands,
         vec![].into_iter(),
-        vec![].into_iter(),
+        // TODO(vmarcella): This was needed to allow the push constants to
+        // properly render to the screen. Look into a better way to do this.
+        signal_semaphores.into_iter().map(|semaphore| {
+          return super::fence::internal::semaphore_for(semaphore);
+        }),
         Some(super::fence::internal::mutable_fence_for(fence)),
       );
     }

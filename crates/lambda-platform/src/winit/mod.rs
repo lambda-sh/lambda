@@ -7,6 +7,7 @@ use winit::{
   event_loop::{
     ControlFlow,
     EventLoop,
+    EventLoopBuilder,
     EventLoopProxy,
     EventLoopWindowTarget,
   },
@@ -45,7 +46,7 @@ impl LoopBuilder {
   }
 
   pub fn build<Events: 'static + std::fmt::Debug>(self) -> Loop<Events> {
-    let event_loop = EventLoop::<Events>::with_user_event();
+    let event_loop = EventLoopBuilder::<Events>::with_user_event().build();
     return Loop { event_loop };
   }
 }

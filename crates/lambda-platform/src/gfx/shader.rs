@@ -1,5 +1,5 @@
 //! Low level shader implementations used by the lambda-platform crate to load
-//! RISC-V compiled shaders into the GPU.
+//! SPIR-V compiled shaders into the GPU.
 
 use gfx_hal::{
   device::Device,
@@ -29,7 +29,7 @@ impl ShaderModuleBuilder {
   pub fn new() -> Self {
     return Self {
       entry_name: "main".to_string(),
-      specializations: ShaderSpecializations::default(),
+      specializations: ShaderSpecializations::EMPTY,
     };
   }
 

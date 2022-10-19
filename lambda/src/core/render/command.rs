@@ -24,17 +24,25 @@ pub enum RenderCommand {
     viewports: Vec<super::viewport::Viewport>,
   },
   SetPipeline {
-    pipeline: Rc<super::pipeline::RenderPipeline>,
+    pipeline: super::ResourceId,
   },
   /// Begins the render pass.
   BeginRenderPass {
-    render_pass: Rc<super::render_pass::RenderPass>,
+    render_pass: super::ResourceId,
     viewport: super::viewport::Viewport,
   },
   /// Ends the render pass.
   EndRenderPass,
+  PushConstants {
+    pipeline: super::ResourceId,
+    stage: super::pipeline::PipelineStage,
+    offset: u32,
+    bytes: Vec<u32>,
+  },
   /// Draws a graphical primitive.
-  Draw { vertices: Range<u32> },
+  Draw {
+    vertices: Range<u32>,
+  },
 }
 
 impl RenderCommand {
@@ -70,12 +78,17 @@ impl RenderCommand {
         viewport,
       } => {
         let surface = surface_from_context(render_context);
-        let render_pass = render_pass.into_gfx_render_pass();
-        let frame_buffer =
-          render_context.allocate_and_get_frame_buffer(render_pass.as_ref());
+        let frame_buffer = render_context.allocate_and_get_frame_buffer(
+          render_context
+            .get_render_pass(render_pass)
+            .into_gfx_render_pass()
+            .as_ref(),
+        );
 
         PlatformRenderCommand::BeginRenderPass {
-          render_pass: render_pass.clone(),
+          render_pass: render_context
+            .get_render_pass(render_pass)
+            .into_gfx_render_pass(),
           surface: surface.clone(),
           frame_buffer: frame_buffer.clone(),
           viewport: viewport.into_gfx_viewport(),
@@ -84,9 +97,28 @@ impl RenderCommand {
       RenderCommand::EndRenderPass => PlatformRenderCommand::EndRenderPass,
       RenderCommand::SetPipeline { pipeline } => {
         PlatformRenderCommand::AttachGraphicsPipeline {
-          pipeline: pipeline.into_platform_render_pipeline(),
+          pipeline: render_context
+            .render_pipelines
+            .get(pipeline)
+            .unwrap()
+            .into_platform_render_pipeline(),
         }
       }
+      RenderCommand::PushConstants {
+        pipeline,
+        stage,
+        offset,
+        bytes,
+      } => PlatformRenderCommand::PushConstants {
+        pipeline: render_context
+          .render_pipelines
+          .get(pipeline)
+          .unwrap()
+          .into_platform_render_pipeline(),
+        stage,
+        offset,
+        bytes,
+      },
       RenderCommand::Draw { vertices } => {
         PlatformRenderCommand::Draw { vertices }
       }

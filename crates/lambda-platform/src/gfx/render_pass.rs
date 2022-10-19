@@ -125,7 +125,7 @@ impl SubpassBuilder {
     };
   }
 
-  pub fn use_color_attachment(
+  pub fn with_color_attachment(
     mut self,
     attachment_index: usize,
     layout: ImageLayoutHint,
@@ -224,16 +224,13 @@ impl<'builder> RenderPassBuilder<'builder> {
     };
 
     let render_pass = unsafe {
-      super::internal::logical_device_for(gpu)
-        .create_render_pass(
-          attachments.into_iter(),
-          subpasses.into_iter(),
-          vec![].into_iter(),
-        )
-        .expect(
-          "The GPU does not have enough memory to allocate a render pass.",
-        )
-    };
+      super::internal::logical_device_for(gpu).create_render_pass(
+        attachments.into_iter(),
+        subpasses.into_iter(),
+        vec![].into_iter(),
+      )
+    }
+    .expect("The GPU does not have enough memory to allocate a render pass.");
 
     return RenderPass { render_pass };
   }

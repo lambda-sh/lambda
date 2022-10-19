@@ -20,12 +20,12 @@ impl ShaderBuilder {
 
   /// Compiles the virtual shader into a real shader with SPIR-V binary
   /// representation.
-  pub fn build(&mut self, meta_shader: VirtualShader) -> Shader {
-    let binary = self.compiler.compile_into_binary(&meta_shader);
+  pub fn build(&mut self, virtual_shader: VirtualShader) -> Shader {
+    let binary = self.compiler.compile_into_binary(&virtual_shader);
 
     return Shader {
       binary,
-      virtual_shader: meta_shader,
+      virtual_shader,
     };
   }
 }

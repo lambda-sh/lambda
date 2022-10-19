@@ -1,28 +1,16 @@
-use std::rc::Rc;
-
 use lambda::{
   core::{
-    component::{
-      Component,
-      RenderableComponent,
-    },
+    component::Component,
     events::{
       ComponentEvent,
       Events,
       KeyEvent,
-      RuntimeEvent,
       WindowEvent,
     },
     render::{
       command::RenderCommand,
-      pipeline::{
-        self,
-        RenderPipeline,
-      },
-      render_pass::{
-        self,
-        RenderPass,
-      },
+      pipeline,
+      render_pass,
       shader::{
         Shader,
         ShaderBuilder,
@@ -30,6 +18,7 @@ use lambda::{
         VirtualShader,
       },
       viewport,
+      RenderContext,
     },
     runtime::start_runtime,
   },
@@ -39,20 +28,35 @@ use lambda::{
 pub struct DemoComponent {
   triangle_vertex: Shader,
   vertex_shader: Shader,
-  render_pass: Option<Rc<RenderPass>>,
-  render_pipeline: Option<Rc<RenderPipeline>>,
+  render_pass_id: Option<lambda::core::render::ResourceId>,
+  render_pipeline_id: Option<lambda::core::render::ResourceId>,
   width: u32,
   height: u32,
 }
 
-impl Component<Events> for DemoComponent {
-  fn on_attach(&mut self) {
+impl Component for DemoComponent {
+  fn on_attach(&mut self, render_context: &mut RenderContext) {
+    println!("Attached the demo component to the renderer");
+    let render_pass =
+      render_pass::RenderPassBuilder::new().build(&render_context);
+
+    let pipeline = pipeline::RenderPipelineBuilder::new().build(
+      render_context,
+      &render_pass,
+      &self.vertex_shader,
+      &self.triangle_vertex,
+    );
+
+    // Attach the render pass and pipeline to the render context
+    self.render_pass_id = Some(render_context.attach_render_pass(render_pass));
+    self.render_pipeline_id = Some(render_context.attach_pipeline(pipeline));
+
     println!("Attached the DemoComponent.");
   }
 
-  fn on_detach(self: &mut DemoComponent) {}
+  fn on_detach(self: &mut DemoComponent, render_context: &mut RenderContext) {}
 
-  fn on_event(self: &mut DemoComponent, event: &lambda::core::events::Events) {
+  fn on_event(self: &mut DemoComponent, event: Events) {
     match event {
       Events::Runtime { event, issued_at } => match event {
         lambda::core::events::RuntimeEvent::Shutdown => {
@@ -63,8 +67,8 @@ impl Component<Events> for DemoComponent {
       Events::Window { event, issued_at } => match event {
         WindowEvent::Resize { width, height } => {
           println!("Window resized to {}x{}", width, height);
-          self.width = *width;
-          self.height = *height;
+          self.width = width;
+          self.height = height;
         }
         WindowEvent::Close => {
           println!("Window closed");
@@ -109,34 +113,9 @@ impl Component<Events> for DemoComponent {
       false => {}
     }
   }
-}
-
-/// Implement rendering for the component.
-impl RenderableComponent<Events> for DemoComponent {
-  fn on_renderer_attached(
-    &mut self,
-    render_context: &mut lambda::core::render::RenderContext,
-  ) {
-    println!("Attached the demo component to the renderer");
-    let render_pass =
-      Rc::new(render_pass::RenderPassBuilder::new().build(&render_context));
-
-    self.render_pass = Some(render_pass.clone());
-
-    let pipeline = Rc::new(pipeline::RenderPipelineBuilder::new().build(
-      render_context,
-      &self.render_pass.as_ref().unwrap(),
-      &self.vertex_shader,
-      &self.triangle_vertex,
-    ));
-
-    self.render_pipeline = Some(pipeline.clone());
-  }
-
   fn on_render(
     self: &mut DemoComponent,
     _render_context: &mut lambda::core::render::RenderContext,
-    _last_render: &std::time::Duration,
   ) -> Vec<RenderCommand> {
     let viewport =
       viewport::ViewportBuilder::new().build(self.width, self.height);
@@ -153,30 +132,18 @@ impl RenderableComponent<Events> for DemoComponent {
       },
       RenderCommand::SetPipeline {
         pipeline: self
-          .render_pipeline
-          .as_ref()
-          .expect(
-            "No render pipeline set while trying to issue a render command.",
-          )
-          .clone(),
+          .render_pipeline_id
+          .expect("No pipeline attached to the component"),
       },
       RenderCommand::BeginRenderPass {
         render_pass: self
-          .render_pass
-          .as_ref()
-          .expect("Cannot begin the render pass when it doesn't exist.")
-          .clone(),
+          .render_pass_id
+          .expect("No render pass attached to the component"),
         viewport: viewport.clone(),
       },
       RenderCommand::Draw { vertices: 0..3 },
+      RenderCommand::EndRenderPass,
     ];
-  }
-
-  fn on_renderer_detached(
-    self: &mut DemoComponent,
-    _render_context: &mut lambda::core::render::RenderContext,
-  ) {
-    println!("Detached the demo component from the renderer");
   }
 }
 
@@ -209,8 +176,8 @@ impl Default for DemoComponent {
     return DemoComponent {
       vertex_shader: vs,
       triangle_vertex: fs,
-      render_pass: None,
-      render_pipeline: None,
+      render_pass_id: None,
+      render_pipeline_id: None,
       width: 800,
       height: 600,
     };
