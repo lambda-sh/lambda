@@ -1,16 +1,10 @@
-use std::rc::Rc;
-
 use lambda::{
   core::{
-    component::{
-      Component,
-      RenderableComponent,
-    },
+    component::Component,
     events::{
       ComponentEvent,
       Events,
       KeyEvent,
-      RuntimeEvent,
       WindowEvent,
     },
     render::{
@@ -24,6 +18,7 @@ use lambda::{
         VirtualShader,
       },
       viewport,
+      RenderContext,
     },
     runtime::start_runtime,
   },
@@ -39,14 +34,29 @@ pub struct DemoComponent {
   height: u32,
 }
 
-impl Component<Events> for DemoComponent {
-  fn on_attach(&mut self) {
+impl Component for DemoComponent {
+  fn on_attach(&mut self, render_context: &mut RenderContext) {
+    println!("Attached the demo component to the renderer");
+    let render_pass =
+      render_pass::RenderPassBuilder::new().build(&render_context);
+
+    let pipeline = pipeline::RenderPipelineBuilder::new().build(
+      render_context,
+      &render_pass,
+      &self.vertex_shader,
+      &self.triangle_vertex,
+    );
+
+    // Attach the render pass and pipeline to the render context
+    self.render_pass_id = Some(render_context.attach_render_pass(render_pass));
+    self.render_pipeline_id = Some(render_context.attach_pipeline(pipeline));
+
     println!("Attached the DemoComponent.");
   }
 
-  fn on_detach(self: &mut DemoComponent) {}
+  fn on_detach(self: &mut DemoComponent, render_context: &mut RenderContext) {}
 
-  fn on_event(self: &mut DemoComponent, event: &lambda::core::events::Events) {
+  fn on_event(self: &mut DemoComponent, event: Events) {
     match event {
       Events::Runtime { event, issued_at } => match event {
         lambda::core::events::RuntimeEvent::Shutdown => {
@@ -57,8 +67,8 @@ impl Component<Events> for DemoComponent {
       Events::Window { event, issued_at } => match event {
         WindowEvent::Resize { width, height } => {
           println!("Window resized to {}x{}", width, height);
-          self.width = *width;
-          self.height = *height;
+          self.width = width;
+          self.height = height;
         }
         WindowEvent::Close => {
           println!("Window closed");
@@ -103,30 +113,6 @@ impl Component<Events> for DemoComponent {
       false => {}
     }
   }
-}
-
-/// Implement rendering for the component.
-impl RenderableComponent<Events> for DemoComponent {
-  fn on_renderer_attached(
-    &mut self,
-    render_context: &mut lambda::core::render::RenderContext,
-  ) {
-    println!("Attached the demo component to the renderer");
-    let render_pass =
-      render_pass::RenderPassBuilder::new().build(&render_context);
-
-    let pipeline = pipeline::RenderPipelineBuilder::new().build(
-      render_context,
-      &render_pass,
-      &self.vertex_shader,
-      &self.triangle_vertex,
-    );
-
-    // Attach the render pass and pipeline to the render context
-    self.render_pass_id = Some(render_context.attach_render_pass(render_pass));
-    self.render_pipeline_id = Some(render_context.attach_pipeline(pipeline));
-  }
-
   fn on_render(
     self: &mut DemoComponent,
     _render_context: &mut lambda::core::render::RenderContext,
@@ -158,13 +144,6 @@ impl RenderableComponent<Events> for DemoComponent {
       RenderCommand::Draw { vertices: 0..3 },
       RenderCommand::EndRenderPass,
     ];
-  }
-
-  fn on_renderer_detached(
-    self: &mut DemoComponent,
-    _render_context: &mut lambda::core::render::RenderContext,
-  ) {
-    println!("Detached the demo component from the renderer");
   }
 }
 

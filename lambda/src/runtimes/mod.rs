@@ -12,7 +12,7 @@ use lambda_platform::winit::{
 };
 
 use crate::core::{
-  component::RenderableComponent,
+  component::Component,
   events::{
     ComponentEvent,
     Events,
@@ -35,7 +35,7 @@ pub struct GenericRuntimeBuilder {
   app_name: String,
   render_context_builder: RenderContextBuilder,
   window_builder: WindowBuilder,
-  components: Vec<Box<dyn RenderableComponent<Events>>>,
+  components: Vec<Box<dyn Component>>,
 }
 
 impl GenericRuntimeBuilder {
@@ -78,7 +78,7 @@ impl GenericRuntimeBuilder {
   }
 
   /// Attach a component to the current runnable.
-  pub fn with_component<T: Default + RenderableComponent<Events> + 'static>(
+  pub fn with_component<T: Default + Component + 'static>(
     self,
     configure_component: impl FnOnce(Self, T) -> (Self, T),
   ) -> Self {
@@ -97,13 +97,13 @@ impl GenericRuntimeBuilder {
     let window = self.window_builder.build(&mut event_loop);
 
     let component_stack = self.components;
-    let render_api = self.render_context_builder.build(&window);
+    let render_context = self.render_context_builder.build(&window);
 
     return GenericRuntime {
       name,
       event_loop,
       window,
-      render_context: render_api,
+      render_context,
       component_stack,
     };
   }
@@ -116,7 +116,7 @@ pub struct GenericRuntime {
   name: String,
   event_loop: Loop<Events>,
   window: Window,
-  component_stack: Vec<Box<dyn RenderableComponent<Events>>>,
+  component_stack: Vec<Box<dyn Component>>,
   render_context: RenderContext,
 }
 
@@ -283,22 +283,18 @@ impl Runtime for GenericRuntime {
             RuntimeEvent::Initialized => {
               println!("[INFO] Initializing all of the components for the runtime: {}", name);
               for component in &mut component_stack {
-                component.on_attach();
-                component
-                  .on_renderer_attached(active_render_context.as_mut().unwrap());
+                component.on_attach(active_render_context.as_mut().unwrap());
               }
             }
             RuntimeEvent::Shutdown => {
               for component in &mut component_stack {
-                component.on_detach();
-                component
-                  .on_renderer_detached(active_render_context.as_mut().unwrap());
+                component.on_detach(active_render_context.as_mut().unwrap());
               }
             }
           },
           _ => {
             for component in &mut component_stack {
-              component.on_event(&lambda_event);
+              component.on_event(lambda_event.clone());
             }
           }
         },
