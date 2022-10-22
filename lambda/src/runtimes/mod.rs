@@ -303,7 +303,7 @@ impl Runtime for GenericRuntime {
         },
         WinitEvent::Suspended => {}
         WinitEvent::Resumed => {}
-        WinitEvent::RedrawEventsCleared => {}
+        WinitEvent::RedrawEventsCleared => { }
         WinitEvent::LoopDestroyed => {
           active_render_context
             .take()

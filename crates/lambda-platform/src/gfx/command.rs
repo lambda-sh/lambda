@@ -184,7 +184,9 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           offset,
           bytes.as_slice(),
         ),
-        Command::Draw { vertices } => self.command_buffer.draw(vertices, 0..1),
+        Command::Draw { vertices } => {
+          self.command_buffer.draw(vertices.clone(), 0..1)
+        }
         Command::EndRecording => self.command_buffer.finish(),
       }
     }

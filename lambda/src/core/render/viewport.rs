@@ -8,8 +8,8 @@ pub struct Viewport {
 impl Viewport {
   /// Convert the viewport into a gfx platform viewport.
   // TODO(vmarcella): implement this using Into<PlatformViewPort>
-  pub fn into_gfx_viewport(self) -> gfx::viewport::ViewPort {
-    return self.viewport;
+  pub(crate) fn clone_gfx_viewport(&self) -> gfx::viewport::ViewPort {
+    return self.viewport.clone();
   }
 }
 

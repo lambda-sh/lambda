@@ -170,6 +170,10 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
     };
 
     if result.is_err() {
+      println!(
+        "Failed to present to the surface: {:?}",
+        result.err().unwrap()
+      );
       surface.remove_swapchain(self);
       return Err(
         "Rendering failed. Swapchain for the surface needs to be reconfigured.",

@@ -9,6 +9,7 @@ use super::{
 };
 
 /// Commands that are used to render a frame within the RenderContext.
+#[derive(Debug, Clone)]
 pub enum RenderCommand {
   /// sets the viewports for the render context.
   SetViewports {
@@ -57,7 +58,7 @@ impl RenderCommand {
         start_at,
         viewports: viewports
           .into_iter()
-          .map(|viewport| viewport.into_gfx_viewport())
+          .map(|viewport| viewport.clone_gfx_viewport())
           .collect::<Vec<PlatformViewPort>>(),
       },
       RenderCommand::SetScissors {
@@ -67,7 +68,7 @@ impl RenderCommand {
         start_at,
         viewports: viewports
           .into_iter()
-          .map(|viewport| viewport.into_gfx_viewport())
+          .map(|viewport| viewport.clone_gfx_viewport())
           .collect::<Vec<PlatformViewPort>>(),
       },
       RenderCommand::BeginRenderPass {
@@ -88,7 +89,7 @@ impl RenderCommand {
             .into_gfx_render_pass(),
           surface: surface.clone(),
           frame_buffer: frame_buffer.clone(),
-          viewport: viewport.into_gfx_viewport(),
+          viewport: viewport.clone_gfx_viewport(),
         }
       }
       RenderCommand::EndRenderPass => PlatformRenderCommand::EndRenderPass,
@@ -114,11 +115,11 @@ impl RenderCommand {
           .into_platform_render_pipeline(),
         stage,
         offset,
-        bytes,
+        bytes: bytes.clone(),
       },
-      RenderCommand::Draw { vertices } => {
-        PlatformRenderCommand::Draw { vertices }
-      }
+      RenderCommand::Draw { vertices } => PlatformRenderCommand::Draw {
+        vertices: vertices.clone(),
+      },
     };
   }
 }
