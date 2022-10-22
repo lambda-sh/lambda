@@ -14,6 +14,5 @@ cfg_if::cfg_if! {
     pub use gfx_backend_dx12 as RenderingAPI;
   } else if #[cfg(feature = "detect-platform")] {
       pub use gfx_platform_backend as RenderingAPI;
-  } else {
-  }
+  } else {}
 }

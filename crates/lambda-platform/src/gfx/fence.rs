@@ -119,7 +119,7 @@ impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
   }
 }
 
-pub mod internal {
+pub(crate) mod internal {
   /// Retrieve the underlying submission fence.
   pub fn mutable_fence_for<RenderBackend: gfx_hal::Backend>(
     fence: &mut super::RenderSubmissionFence<RenderBackend>,

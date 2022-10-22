@@ -69,7 +69,7 @@ pub struct Surface<RenderBackend: gfx_hal::Backend> {
   frame_buffer_attachment: Option<gfx_hal::image::FramebufferAttachment>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Swapchain {
   config: gfx_hal::window::SwapchainConfig,
   format: gfx_hal::format::Format,
@@ -118,6 +118,10 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     }
   }
 
+  pub fn needs_swapchain(&self) -> bool {
+    return self.swapchain_is_valid;
+  }
+
   /// Remove the swapchain configuration that this surface used on this given
   /// GPU.
   pub fn remove_swapchain(&mut self, gpu: &Gpu<RenderBackend>) {
@@ -127,11 +131,6 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
         .gfx_hal_surface
         .unconfigure_swapchain(super::gpu::internal::logical_device_for(gpu));
     }
-  }
-
-  /// private function to invalidate the surface swapchain.
-  fn invalidate_swapchain(&mut self) {
-    self.swapchain_is_valid = false;
   }
 
   /// Destroy the current surface and it's underlying resources.

@@ -33,6 +33,10 @@ gfx-with-metal=["dep:gfx-backend-metal"]
 gfx-with-dx11=["dep:gfx-backend-dx11"]
 gfx-with-dx12=["dep:gfx-backend-dx12"]
 
+[profile.dev]
+crate-type = ["cdylib", "rlib"]
+incremental = true
+
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.gfx-platform-backend]
 package = "gfx-backend-gl"
 version = "=0.9.0"

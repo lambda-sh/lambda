@@ -52,7 +52,7 @@ impl<'shader, RenderBackend: gfx_hal::Backend>
 
 /// Internal functions for the primitive assembler. User applications most
 /// likely should not use these functions directly nor should they need to.
-pub mod internal {
+pub(crate) mod internal {
   #[inline]
   pub fn into_primitive_assembler<'shader, RenderBackend: gfx_hal::Backend>(
     primitive_assembler: super::PrimitiveAssembler<'shader, RenderBackend>,
