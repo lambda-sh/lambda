@@ -148,16 +148,15 @@ impl Runtime for GenericRuntime {
     let mut current_frame = Instant::now();
 
     event_loop.run_forever(move |event, _, control_flow| {
-      match event {
+      let mapped_event: Option<Events> = match event {
         WinitEvent::WindowEvent { event, .. } => match event {
           WinitWindowEvent::CloseRequested => {
             // Issue a Shutdown event to deallocate resources and clean up.
-            publisher.publish_event(Events::Runtime {
+            *control_flow = ControlFlow::Exit;
+            Some(Events::Runtime {
               event: RuntimeEvent::Shutdown,
               issued_at: Instant::now(),
-            });
-
-            *control_flow = ControlFlow::Exit;
+            })
           }
           WinitWindowEvent::Resized(dims) => {
             active_render_context
@@ -165,7 +164,7 @@ impl Runtime for GenericRuntime {
               .unwrap()
               .resize(dims.width, dims.height);
 
-            publisher.publish_event(Events::Window {
+            Some(Events::Window {
               event: WindowEvent::Resize {
                 width: dims.width,
                 height: dims.height,
@@ -179,7 +178,7 @@ impl Runtime for GenericRuntime {
               .unwrap()
               .resize(new_inner_size.width, new_inner_size.height);
 
-            publisher.publish_event(Events::Window {
+            Some(Events::Window {
               event: WindowEvent::Resize {
                 width: new_inner_size.width,
                 height: new_inner_size.height,
@@ -187,20 +186,20 @@ impl Runtime for GenericRuntime {
               issued_at: Instant::now(),
             })
           }
-          WinitWindowEvent::Moved(_) => {}
-          WinitWindowEvent::Destroyed => {}
-          WinitWindowEvent::DroppedFile(_) => {}
-          WinitWindowEvent::HoveredFile(_) => {}
-          WinitWindowEvent::HoveredFileCancelled => {}
-          WinitWindowEvent::ReceivedCharacter(_) => {}
-          WinitWindowEvent::Focused(_) => {}
+          WinitWindowEvent::Moved(_) => {None}
+          WinitWindowEvent::Destroyed => {None}
+          WinitWindowEvent::DroppedFile(_) => {None}
+          WinitWindowEvent::HoveredFile(_) => {None}
+          WinitWindowEvent::HoveredFileCancelled => {None}
+          WinitWindowEvent::ReceivedCharacter(_) => {None}
+          WinitWindowEvent::Focused(_) => {None}
           WinitWindowEvent::KeyboardInput {
             device_id: _,
             input,
             is_synthetic,
           } => match (input.state, is_synthetic) {
             (ElementState::Pressed, false) => {
-              publisher.publish_event(Events::Keyboard {
+              Some(Events::Keyboard {
                 event: KeyEvent::KeyPressed {
                   scan_code: input.scancode,
                   virtual_key: input.virtual_keycode,
@@ -209,7 +208,7 @@ impl Runtime for GenericRuntime {
               })
             }
             (ElementState::Released, false) => {
-              publisher.publish_event(Events::Keyboard {
+              Some(Events::Keyboard {
                 event: KeyEvent::KeyReleased {
                   scan_code: input.scancode,
                   virtual_key: input.virtual_keycode,
@@ -222,44 +221,42 @@ impl Runtime for GenericRuntime {
                 "[WARN] Unhandled synthetic keyboard event: {:?}",
                 input
               );
+              None
             }
           },
-          WinitWindowEvent::ModifiersChanged(_) => {}
+          WinitWindowEvent::ModifiersChanged(_) => {None}
           WinitWindowEvent::CursorMoved {
             device_id,
             position,
             modifiers,
-          } => {}
-          WinitWindowEvent::CursorEntered { device_id } => {}
-          WinitWindowEvent::CursorLeft { device_id } => {}
+          } => {None}
+          WinitWindowEvent::CursorEntered { device_id } => {None}
+          WinitWindowEvent::CursorLeft { device_id } => {None}
           WinitWindowEvent::MouseWheel {
             device_id,
             delta,
             phase,
             modifiers,
-          } => {
-
-
-          }
+          } => { None }
           WinitWindowEvent::MouseInput {
             device_id,
             state,
             button,
             modifiers,
-          } => {}
+          } => {None}
           WinitWindowEvent::TouchpadPressure {
             device_id,
             pressure,
             stage,
-          } => {}
+          } => {None}
           WinitWindowEvent::AxisMotion {
             device_id,
             axis,
             value,
-          } => {}
-          WinitWindowEvent::Touch(_) => {}
-          WinitWindowEvent::ThemeChanged(_) => {}
-          _ => {}
+          } => {None}
+          WinitWindowEvent::Touch(_) => {None}
+          WinitWindowEvent::ThemeChanged(_) => {None}
+          _ => {None}
         },
         WinitEvent::MainEventsCleared => {
           let last_frame = current_frame.clone();
@@ -276,11 +273,11 @@ impl Runtime for GenericRuntime {
             let commands = component.on_render(active_render_context);
             active_render_context.render(commands);
           }
+          None
         }
-        WinitEvent::RedrawRequested(_) => {
-        }
-        WinitEvent::NewEvents(_) => {}
-        WinitEvent::DeviceEvent { device_id, event } => {}
+        WinitEvent::RedrawRequested(_) => { None }
+        WinitEvent::NewEvents(_) => {None}
+        WinitEvent::DeviceEvent { device_id, event } => {None}
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
           Events::Runtime { event, issued_at } => match event {
             RuntimeEvent::Initialized => {
@@ -288,22 +285,20 @@ impl Runtime for GenericRuntime {
               for component in &mut component_stack {
                 component.on_attach(active_render_context.as_mut().unwrap());
               }
+              None
             }
             RuntimeEvent::Shutdown => {
               for component in &mut component_stack {
                 component.on_detach(active_render_context.as_mut().unwrap());
               }
+              None
             }
           },
-          _ => {
-            for component in &mut component_stack {
-              component.on_event(lambda_event.clone());
-            }
-          }
+          _ => { None}
         },
-        WinitEvent::Suspended => {}
-        WinitEvent::Resumed => {}
-        WinitEvent::RedrawEventsCleared => { }
+        WinitEvent::Suspended => {None}
+        WinitEvent::Resumed => {None}
+        WinitEvent::RedrawEventsCleared => { None }
         WinitEvent::LoopDestroyed => {
           active_render_context
             .take()
@@ -311,8 +306,22 @@ impl Runtime for GenericRuntime {
             .destroy();
 
           println!("[INFO] All resources were successfully deleted.");
+          None
         }
+      };
+
+      match mapped_event {
+        Some(event) => {
+          for component in &mut component_stack {
+            component.on_event(event.clone());
+          }
+        }
+        None => {}
       }
+
+
+
+
     });
   }
 
