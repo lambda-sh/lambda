@@ -85,14 +85,6 @@ impl RenderContextBuilder {
     // Create the image extent and initial frame buffer attachment description
     // for rendering.
     let (width, height) = window.dimensions();
-    let swapchain = SwapchainBuilder::new()
-      .with_size(width, height)
-      .build(&gpu, &surface);
-
-    Rc::get_mut(&mut surface)
-      .expect("Failed to get mutable reference to surface.")
-      .apply_swapchain(&gpu, swapchain, self.render_timeout)
-      .expect("Failed to apply the swapchain to the surface.");
 
     return RenderContext {
       name,
@@ -227,10 +219,18 @@ impl RenderContext {
       .with_size(width, height)
       .build(&self.gpu, &self.surface);
 
-    Rc::get_mut(&mut self.surface)
-      .expect("Failed to get mutable reference to surface.")
-      .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
-      .expect("Failed to apply the swapchain to the surface.");
+    if self.surface.needs_swapchain() {
+      Rc::get_mut(&mut self.surface)
+        .expect("Failed to get mutable reference to surface.")
+        .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
+        .expect("Failed to apply the swapchain to the surface.");
+    }
+
+    self
+      .submission_fence
+      .as_mut()
+      .expect("Failed to get the submission fence.")
+      .block_until_ready(&mut self.gpu, None);
 
     let platform_command_list = commands
       .into_iter()
@@ -240,7 +240,13 @@ impl RenderContext {
     let mut command_buffer =
       CommandBufferBuilder::new(CommandBufferLevel::Primary)
         .with_feature(CommandBufferFeatures::ResetEverySubmission)
-        .build(self.command_pool.as_mut().unwrap(), "primary");
+        .build(
+          self
+            .command_pool
+            .as_mut()
+            .expect("No command pool to create a buffer from"),
+          "primary",
+        );
 
     // Start recording commands, issue the high level render commands
     // that came from an application, and then submit the commands to the GPU
@@ -252,10 +258,7 @@ impl RenderContext {
     self.gpu.submit_command_buffer(
       &mut command_buffer,
       vec![self.render_semaphore.as_ref().unwrap()],
-      self
-        .submission_fence
-        .as_mut()
-        .expect("Failed to get mutable reference to submission fence."),
+      self.submission_fence.as_mut().unwrap(),
     );
 
     self
@@ -281,10 +284,13 @@ impl RenderContext {
     let swapchain = SwapchainBuilder::new()
       .with_size(width, height)
       .build(&self.gpu, &self.surface);
-    Rc::get_mut(&mut self.surface)
-      .expect("Failed to acquire the surface while attempting to resize.")
-      .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
-      .expect("Failed to apply the swapchain to the surface while attempting to resize.");
+
+    if self.surface.needs_swapchain() {
+      Rc::get_mut(&mut self.surface)
+        .expect("Failed to get mutable reference to surface.")
+        .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
+        .expect("Failed to apply the swapchain to the surface.");
+    }
   }
 
   pub fn get_render_pass(&self, id: ResourceId) -> &RenderPass {
@@ -298,7 +304,7 @@ impl RenderContext {
 
 type PlatformRenderCommand = Command<internal::RenderBackend>;
 
-pub mod internal {
+pub(crate) mod internal {
   use std::rc::Rc;
 
   use lambda_platform::gfx::api::RenderingAPI as RenderContext;

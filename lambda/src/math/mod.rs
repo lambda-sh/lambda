@@ -1,4 +1,4 @@
-//! Very simple math types built strictly from primitive types.
+//! Very simple math types built strictly off of Rust primitive types.
 
 //  ------------------------------- VECTOR2 -----------------------------------
 pub type Vector2 = (f32, f32);

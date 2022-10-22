@@ -102,6 +102,7 @@ impl Component for DemoComponent {
           println!("Component detached: {:?}", name);
         }
       },
+      _ => {}
     }
   }
 

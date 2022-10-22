@@ -1,7 +1,4 @@
-use std::{
-  ops::Range,
-  rc::Rc,
-};
+use std::ops::Range;
 
 use lambda_platform::gfx::viewport::ViewPort as PlatformViewPort;
 

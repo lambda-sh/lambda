@@ -237,7 +237,10 @@ impl Runtime for GenericRuntime {
             delta,
             phase,
             modifiers,
-          } => {}
+          } => {
+
+
+          }
           WinitWindowEvent::MouseInput {
             device_id,
             state,
@@ -268,13 +271,13 @@ impl Runtime for GenericRuntime {
             component.on_update(duration);
           }
 
-          window.redraw();
+          let active_render_context = active_render_context.as_mut().expect("Couldn't get the active render context. ");
+          for component in &mut component_stack {
+            let commands = component.on_render(active_render_context);
+            active_render_context.render(commands);
+          }
         }
         WinitEvent::RedrawRequested(_) => {
-          for component in &mut component_stack {
-            let commands = component.on_render(active_render_context.as_mut().unwrap());
-            active_render_context.as_mut().unwrap().render(commands);
-          }
         }
         WinitEvent::NewEvents(_) => {}
         WinitEvent::DeviceEvent { device_id, event } => {}
