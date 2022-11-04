@@ -32,6 +32,41 @@ pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
   )
 }
 
+//  ------------------------------- VECTOR4 -----------------------------------
+pub type Vector4 = (f32, f32, f32, f32);
+
+//  ------------------------------- MATRIX4 -----------------------------------
+
+pub type Matrix4<Vector> = (Vector, Vector, Vector, Vector);
+
+pub fn translate(
+  matrix: Matrix4<Vector3>,
+  vector: Vector3,
+) -> Matrix4<Vector3> {
+  (
+    (
+      matrix.0 .0 + vector.0,
+      matrix.0 .1 + vector.1,
+      matrix.0 .2 + vector.2,
+    ),
+    (
+      matrix.1 .0 + vector.0,
+      matrix.1 .1 + vector.1,
+      matrix.1 .2 + vector.2,
+    ),
+    (
+      matrix.2 .0 + vector.0,
+      matrix.2 .1 + vector.1,
+      matrix.2 .2 + vector.2,
+    ),
+    (
+      matrix.3 .0 + vector.0,
+      matrix.3 .1 + vector.1,
+      matrix.3 .2 + vector.2,
+    ),
+  )
+}
+
 // ---------------------------------- TESTS -----------------------------------
 
 #[cfg(test)]

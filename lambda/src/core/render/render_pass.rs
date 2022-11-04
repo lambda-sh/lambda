@@ -46,7 +46,7 @@ impl RenderPassBuilder {
   }
 }
 
-pub mod internal {
+pub(crate) mod internal {
   use crate::core::render::internal::RenderBackend;
 
   /// Converts a render pass into a platform render pass.
