@@ -1,5 +1,12 @@
 //! Very simple math types built strictly off of Rust primitive types.
 
+trait Vector {
+  fn dot(&self, other: &Self) -> f64;
+  fn cross(&self, other: &Self) -> Self;
+  fn length(&self) -> f64;
+  fn normalize(&self) -> Self;
+}
+
 //  ------------------------------- VECTOR2 -----------------------------------
 pub type Vector2 = (f32, f32);
 
@@ -10,13 +17,18 @@ pub fn dot(a: Vector2, b: Vector2) -> f32 {
 
 /// Compute the length of a vector.
 fn length(a: Vector2) -> f32 {
-  (a.0 * a.0 + a.1 * a.1).sqrt()
+  return (a.0 * a.0 + a.1 * a.1).sqrt();
 }
 
 /// Normalized vector.
 fn normalize(a: Vector2) -> Vector2 {
   let l = length(a);
-  (a.0 / l, a.1 / l)
+
+  if l == 0.0 {
+    return a;
+  }
+
+  return (a.0 / l, a.1 / l);
 }
 
 //  ------------------------------- VECTOR3 -----------------------------------
@@ -25,11 +37,11 @@ pub type Vector3 = (f32, f32, f32);
 
 /// Compute the cross product of two `Vec3`.
 pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
-  (
+  return (
     a.1 * b.2 - a.2 * b.1,
     a.2 * b.0 - a.0 * b.2,
     a.0 * b.1 - a.1 * b.0,
-  )
+  );
 }
 
 //  ------------------------------- VECTOR4 -----------------------------------
