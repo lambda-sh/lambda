@@ -1,14 +1,86 @@
 //! Very simple math types built strictly off of Rust primitive types.
 
-trait Vector {
-  fn dot(&self, other: &Self) -> f64;
+/// Generalized Vector operations that can be implemented by any vector like
+/// type.
+trait Vector<T> {
+  fn add(&self, other: &Self) -> Self;
+  fn subtract(&self, other: &Self) -> Self;
+  fn multiply(&self, other: &Self) -> Self;
+  fn dot(&self, other: &Self) -> T;
   fn cross(&self, other: &Self) -> Self;
-  fn length(&self) -> f64;
+  fn length(&self) -> T;
   fn normalize(&self) -> Self;
 }
 
 //  ------------------------------- VECTOR2 -----------------------------------
+
 pub type Vector2 = (f32, f32);
+
+impl Vector<f32> for Vector2 {
+  fn add(&self, other: &Self) -> Self {
+    return (self.0 + other.0, self.1 + other.1);
+  }
+
+  fn subtract(&self, other: &Self) -> Self {
+    return (self.0 - other.0, self.1 - other.1);
+  }
+
+  fn multiply(&self, other: &Self) -> Self {
+    return (self.0 * other.0, self.1 * other.1);
+  }
+
+  fn dot(&self, other: &Self) -> f32 {
+    return self.0 * other.0 + self.1 * other.1;
+  }
+
+  fn cross(&self, other: &Self) -> Self {
+    return (self.0 * other.1, self.1 * other.0);
+  }
+
+  fn length(&self) -> f32 {
+    return (self.0 * self.0 + self.1 * self.1).sqrt();
+  }
+
+  fn normalize(&self) -> Self {
+    let length = self.length();
+
+    if length == 0.0 {
+      return (0.0, 0.0);
+    }
+
+    return (self.0 / length, self.1 / length);
+  }
+}
+
+impl Vector<f32> for Vector3 {
+  fn add(&self, other: &Self) -> Self {
+    todo!()
+  }
+
+  fn subtract(&self, other: &Self) -> Self {
+    todo!()
+  }
+
+  fn multiply(&self, other: &Self) -> Self {
+    todo!()
+  }
+
+  fn dot(&self, other: &Self) -> f64 {
+    todo!()
+  }
+
+  fn cross(&self, other: &Self) -> Self {
+    todo!()
+  }
+
+  fn length(&self) -> f64 {
+    todo!()
+  }
+
+  fn normalize(&self) -> Self {
+    todo!()
+  }
+}
 
 /// Compute the dot product of two `Vec2`.
 pub fn dot(a: Vector2, b: Vector2) -> f32 {
@@ -16,19 +88,19 @@ pub fn dot(a: Vector2, b: Vector2) -> f32 {
 }
 
 /// Compute the length of a vector.
-fn length(a: Vector2) -> f32 {
+pub fn length(a: Vector2) -> f32 {
   return (a.0 * a.0 + a.1 * a.1).sqrt();
 }
 
 /// Normalized vector.
-fn normalize(a: Vector2) -> Vector2 {
-  let l = length(a);
+pub fn normalize(a: Vector2) -> Vector2 {
+  let length = length(a);
 
-  if l == 0.0 {
+  if length == 0.0 {
     return a;
   }
 
-  return (a.0 / l, a.1 / l);
+  return (a.0 / length, a.1 / length);
 }
 
 //  ------------------------------- VECTOR3 -----------------------------------
@@ -45,6 +117,7 @@ pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
 }
 
 //  ------------------------------- VECTOR4 -----------------------------------
+
 pub type Vector4 = (f32, f32, f32, f32);
 
 //  ------------------------------- MATRIX4 -----------------------------------
