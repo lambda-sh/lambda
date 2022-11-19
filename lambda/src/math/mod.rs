@@ -102,7 +102,37 @@ pub type Vector4 = (f32, f32, f32, f32);
 
 //  ------------------------------- MATRIX4 -----------------------------------
 
+trait Matrix<T, V: Vector<T>> {
+  fn identity() -> Self;
+  fn translate(&self, translation: &V) -> Self;
+  fn rotate(&self, rotation: &V) -> Self;
+  fn scale(&self, scale: &V) -> Self;
+  fn multiply(&self, other: &Self) -> Self;
+}
+
 pub type Matrix4<Vector> = (Vector, Vector, Vector, Vector);
+
+impl Matrix<f32, Vector3> for Matrix4<Vector3> {
+  fn identity() -> Self {
+    todo!()
+  }
+
+  fn translate(&self, translation: &Vector3) -> Self {
+    todo!()
+  }
+
+  fn rotate(&self, rotation: &Vector3) -> Self {
+    todo!()
+  }
+
+  fn scale(&self, scale: &Vector3) -> Self {
+    todo!()
+  }
+
+  fn multiply(&self, other: &Self) -> Self {
+    todo!()
+  }
+}
 
 pub fn translate(
   matrix: Matrix4<Vector3>,
@@ -135,7 +165,7 @@ pub fn translate(
 // ---------------------------------- TESTS -----------------------------------
 
 #[cfg(test)]
-mod tests {
+mod vector2_tests {
   use super::*;
 
   #[test]
@@ -158,3 +188,6 @@ mod tests {
     assert_eq!((3.0, 4.0).normalize(), (0.6, 0.8));
   }
 }
+
+#[cfg(test)]
+mod vector3_tests {}
