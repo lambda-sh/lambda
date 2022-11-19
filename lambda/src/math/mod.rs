@@ -100,8 +100,75 @@ impl Vector<f32> for Vector3 {
 
 pub type Vector4 = (f32, f32, f32, f32);
 
-//  ------------------------------- MATRIX4 -----------------------------------
+impl Vector<f32> for Vector4 {
+  fn add(&self, other: &Self) -> Self {
+    return (
+      self.0 + other.0,
+      self.1 + other.1,
+      self.2 + other.2,
+      self.3 + other.3,
+    );
+  }
 
+  fn subtract(&self, other: &Self) -> Self {
+    return (
+      self.0 - other.0,
+      self.1 - other.1,
+      self.2 - other.2,
+      self.3 - other.3,
+    );
+  }
+
+  fn multiply(&self, other: &Self) -> Self {
+    return (
+      self.0 * other.0,
+      self.1 * other.1,
+      self.2 * other.2,
+      self.3 * other.3,
+    );
+  }
+
+  fn dot(&self, other: &Self) -> f32 {
+    return self.0 * other.0
+      + self.1 * other.1
+      + self.2 * other.2
+      + self.3 * other.3;
+  }
+
+  fn cross(&self, other: &Self) -> Self {
+    return (
+      self.1 * other.2 - self.2 * other.1,
+      self.2 * other.0 - self.0 * other.2,
+      self.0 * other.1 - self.1 * other.0,
+      0.0,
+    );
+  }
+
+  fn length(&self) -> f32 {
+    return (self.0 * self.0
+      + self.1 * self.1
+      + self.2 * self.2
+      + self.3 * self.3)
+      .sqrt();
+  }
+
+  fn normalize(&self) -> Self {
+    let length = self.length();
+
+    if length == 0.0 {
+      return (0.0, 0.0, 0.0, 0.0);
+    }
+
+    return (
+      self.0 / length,
+      self.1 / length,
+      self.2 / length,
+      self.3 / length,
+    );
+  }
+}
+
+/// Common Matrix operations that can be implemented by any matrix like type.
 trait Matrix<T, V: Vector<T>> {
   fn identity() -> Self;
   fn translate(&self, translation: &V) -> Self;
@@ -110,56 +177,103 @@ trait Matrix<T, V: Vector<T>> {
   fn multiply(&self, other: &Self) -> Self;
 }
 
+//  ------------------------------- MATRIX4 -----------------------------------
+
 pub type Matrix4<Vector> = (Vector, Vector, Vector, Vector);
 
-impl Matrix<f32, Vector3> for Matrix4<Vector3> {
+impl Matrix<f32, Vector4> for Matrix4<Vector4> {
   fn identity() -> Self {
     todo!()
   }
 
-  fn translate(&self, translation: &Vector3) -> Self {
+  fn translate(&self, translation: &Vector4) -> Self {
     todo!()
   }
 
-  fn rotate(&self, rotation: &Vector3) -> Self {
+  fn rotate(&self, rotation: &Vector4) -> Self {
     todo!()
   }
 
-  fn scale(&self, scale: &Vector3) -> Self {
+  fn scale(&self, scale: &Vector4) -> Self {
     todo!()
   }
 
   fn multiply(&self, other: &Self) -> Self {
-    todo!()
+    return (
+      (
+        self.0 .0 * other.0 .0
+          + self.0 .1 * other.1 .0
+          + self.0 .2 * other.2 .0
+          + self.0 .3 * other.3 .0,
+        self.0 .0 * other.0 .1
+          + self.0 .1 * other.1 .1
+          + self.0 .2 * other.2 .1
+          + self.0 .3 * other.3 .1,
+        self.0 .0 * other.0 .2
+          + self.0 .1 * other.1 .2
+          + self.0 .2 * other.2 .2
+          + self.0 .3 * other.3 .2,
+        self.0 .0 * other.0 .3
+          + self.0 .1 * other.1 .3
+          + self.0 .2 * other.2 .3
+          + self.0 .3 * other.3 .3,
+      ),
+      (
+        self.1 .0 * other.0 .0
+          + self.1 .1 * other.1 .0
+          + self.1 .2 * other.2 .0
+          + self.1 .3 * other.3 .0,
+        self.1 .0 * other.0 .1
+          + self.1 .1 * other.1 .1
+          + self.1 .2 * other.2 .1
+          + self.1 .3 * other.3 .1,
+        self.1 .0 * other.0 .2
+          + self.1 .1 * other.1 .2
+          + self.1 .2 * other.2 .2
+          + self.1 .3 * other.3 .2,
+        self.1 .0 * other.0 .3
+          + self.1 .1 * other.1 .3
+          + self.1 .2 * other.2 .3
+          + self.1 .3 * other.3 .3,
+      ),
+      (
+        self.2 .0 * other.0 .0
+          + self.2 .1 * other.1 .0
+          + self.2 .2 * other.2 .0
+          + self.2 .3 * other.3 .0,
+        self.2 .0 * other.0 .1
+          + self.2 .1 * other.1 .1
+          + self.2 .2 * other.2 .1
+          + self.2 .3 * other.3 .1,
+        self.2 .0 * other.0 .2
+          + self.2 .1 * other.1 .2
+          + self.2 .2 * other.2 .2
+          + self.2 .3 * other.3 .2,
+        self.2 .0 * other.0 .3
+          + self.2 .1 * other.1 .3
+          + self.2 .2 * other.2 .3
+          + self.2 .3 * other.3 .3,
+      ),
+      (
+        self.3 .0 * other.0 .0
+          + self.3 .1 * other.1 .0
+          + self.3 .2 * other.2 .0
+          + self.3 .3 * other.3 .0,
+        self.3 .0 * other.0 .1
+          + self.3 .1 * other.1 .1
+          + self.3 .2 * other.2 .1
+          + self.3 .3 * other.3 .1,
+        self.3 .0 * other.0 .2
+          + self.3 .1 * other.1 .2
+          + self.3 .2 * other.2 .2
+          + self.3 .3 * other.3 .2,
+        self.3 .0 * other.0 .3
+          + self.3 .1 * other.1 .3
+          + self.3 .2 * other.2 .3
+          + self.3 .3 * other.3 .3,
+      ),
+    );
   }
-}
-
-pub fn translate(
-  matrix: Matrix4<Vector3>,
-  vector: Vector3,
-) -> Matrix4<Vector3> {
-  (
-    (
-      matrix.0 .0 + vector.0,
-      matrix.0 .1 + vector.1,
-      matrix.0 .2 + vector.2,
-    ),
-    (
-      matrix.1 .0 + vector.0,
-      matrix.1 .1 + vector.1,
-      matrix.1 .2 + vector.2,
-    ),
-    (
-      matrix.2 .0 + vector.0,
-      matrix.2 .1 + vector.1,
-      matrix.2 .2 + vector.2,
-    ),
-    (
-      matrix.3 .0 + vector.0,
-      matrix.3 .1 + vector.1,
-      matrix.3 .2 + vector.2,
-    ),
-  )
 }
 
 // ---------------------------------- TESTS -----------------------------------
