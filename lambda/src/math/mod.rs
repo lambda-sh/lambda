@@ -183,7 +183,12 @@ pub type Matrix4<Vector> = (Vector, Vector, Vector, Vector);
 
 impl Matrix<f32, Vector4> for Matrix4<Vector4> {
   fn identity() -> Self {
-    todo!()
+    return (
+      (1.0, 0.0, 0.0, 0.0),
+      (0.0, 1.0, 0.0, 0.0),
+      (0.0, 0.0, 1.0, 0.0),
+      (0.0, 0.0, 0.0, 1.0),
+    );
   }
 
   fn translate(&self, translation: &Vector4) -> Self {
