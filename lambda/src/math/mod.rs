@@ -166,7 +166,7 @@ pub fn translate(
 
 #[cfg(test)]
 mod vector2_tests {
-  use super::*;
+  use super::Vector;
 
   #[test]
   fn test_dot() {
@@ -190,4 +190,29 @@ mod vector2_tests {
 }
 
 #[cfg(test)]
-mod vector3_tests {}
+mod vector3_tests {
+  use super::Vector;
+
+  #[test]
+  fn test_dot() {
+    assert_eq!((1.0, 2.0, 3.0).dot(&(4.0, 5.0, 6.0)), 32.0);
+  }
+
+  #[test]
+  fn test_cross() {
+    assert_eq!((1.0, 2.0, 3.0).cross(&(4.0, 5.0, 6.0)), (-3.0, 6.0, -3.0));
+  }
+
+  #[test]
+  fn test_length() {
+    assert_eq!((1.0, 2.0, 2.0).length(), 3.0);
+  }
+
+  #[test]
+  fn test_normalize() {
+    assert_eq!(
+      (1.0, 2.0, 2.0).normalize(),
+      (0.33333334, 0.6666667, 0.6666667)
+    );
+  }
+}

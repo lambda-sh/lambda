@@ -2,6 +2,7 @@ use lambda::{
   core::{
     component::Component,
     render::shader,
+    runtime::start_runtime,
   },
   math,
   runtimes::GenericRuntimeBuilder,
@@ -35,7 +36,6 @@ impl Component for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
-    let shader = shader::ShaderBuilder::new().build();
   }
 
   fn on_detach(
