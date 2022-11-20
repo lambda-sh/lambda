@@ -171,7 +171,7 @@ impl Vector<f32> for Vector4 {
 /// Common Matrix operations that can be implemented by any matrix like type.
 trait Matrix<T, V: Vector<T>> {
   fn identity() -> Self;
-  fn translate(&self, vector: &V) -> V;
+  fn transform(&self, vector: &V) -> V;
   fn rotate(&self, vector: &V) -> V;
   fn scale(&self, scale: &V) -> Self;
   fn multiply(&self, other: &Self) -> Self;
@@ -191,7 +191,7 @@ impl Matrix<f32, Vector4> for Matrix4<Vector4> {
     );
   }
 
-  fn translate(&self, vector: &Vector4) -> Vector4 {
+  fn transform(&self, vector: &Vector4) -> Vector4 {
     return (
       vector.0 * self.0 .0
         + vector.1 * self.1 .0
