@@ -1,6 +1,6 @@
 //! Matrix math types and functions.
 
-use rand::thread_rng;
+use lambda_platform::rand::get_uniformally_random_floats_between;
 
 use super::vector::{
   Vector,
@@ -23,13 +23,17 @@ pub trait MatrixProperties<ValueType> {
 }
 
 /// Common Initializers for Matrix
-pub trait CommonMatrixInitializers {
+pub trait MatrixInitializers {
   fn identity() -> Self;
   fn zeroed() -> Self;
   fn random() -> Self;
 }
 
-impl CommonMatrixInitializers for Matrix4x4f {
+pub trait MatrixOperations<OtherMatrix, ResultingMatrix> {
+  fn multiply(&self, other: &OtherMatrix) -> ResultingMatrix;
+}
+
+impl MatrixInitializers for Matrix4x4f {
   fn identity() -> Self {
     return Matrix4x4f::new([
       [1.0, 0.0, 0.0, 0.0],
@@ -44,15 +48,38 @@ impl CommonMatrixInitializers for Matrix4x4f {
   }
 
   fn random() -> Self {
-    todo!();
+    let random_floats = get_uniformally_random_floats_between(0.0, 1.0, 16);
+
+    return Matrix4x4f::new([
+      [
+        random_floats[0],
+        random_floats[1],
+        random_floats[2],
+        random_floats[3],
+      ],
+      [
+        random_floats[4],
+        random_floats[5],
+        random_floats[6],
+        random_floats[7],
+      ],
+      [
+        random_floats[8],
+        random_floats[9],
+        random_floats[10],
+        random_floats[11],
+      ],
+      [
+        random_floats[12],
+        random_floats[13],
+        random_floats[14],
+        random_floats[15],
+      ],
+    ]);
   }
 }
 
-pub trait Operations<OtherMatrix, ResultingMatrix> {
-  fn multiply(&self, other: &OtherMatrix) -> ResultingMatrix;
-}
-
-impl Operations<Matrix4x4f, Matrix4x4f> for Matrix4x4f {
+impl MatrixOperations<Matrix4x4f, Matrix4x4f> for Matrix4x4f {
   fn multiply(&self, other: &Matrix4x4f) -> Matrix4x4f {
     let mut result = Matrix4x4f::zeroed();
     return result;
