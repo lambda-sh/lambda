@@ -2,21 +2,32 @@
 
 use lambda_platform::rand::get_uniformally_random_floats_between;
 
-use super::vector::{
-  Vector,
-  Vector3,
-  Vector4,
-};
+// ------------------------------ MATRIX ---------------------------------------
 
-pub enum Axes {
-  X,
-  Y,
-  Z,
+pub struct Matrix<const columns: usize, const rows: usize, ValueType> {
+  rows: usize,
+  columns: usize,
+  data: [[ValueType; columns]; rows],
 }
 
+impl<const columns: usize, const rows: usize, ValueType>
+  Matrix<columns, rows, ValueType>
+{
+  pub fn new(data: [[ValueType; columns]; rows]) -> Self {
+    Self {
+      rows,
+      columns,
+      data,
+    }
+  }
+}
+
+pub type Matrix2x2f = Matrix<2, 2, f32>;
+pub type Matrix3x3f = Matrix<3, 3, f32>;
+pub type Matrix4x4f = Matrix<4, 4, f32>;
+
 /// Common Matrix operations that can be implemented by any matrix like type.
-pub trait MatrixProperties<ValueType> {
-  fn identity() -> Self;
+pub trait MatrixProperties {
   fn is_square(&self) -> bool;
   fn rows(&self) -> usize;
   fn columns(&self) -> usize;
@@ -29,8 +40,30 @@ pub trait MatrixInitializers {
   fn random() -> Self;
 }
 
-pub trait MatrixOperations<OtherMatrix, ResultingMatrix> {
+/// Common Matrix operations that can be implemented by any matrix like type so
+/// long as it implements the `MatrixProperties` trait.
+pub trait MatrixOperations<
+  OtherMatrix: MatrixProperties,
+  ResultingMatrix: MatrixProperties,
+>
+{
   fn multiply(&self, other: &OtherMatrix) -> ResultingMatrix;
+}
+
+impl<const columns: usize, const rows: usize, ValueType> MatrixProperties
+  for Matrix<columns, rows, ValueType>
+{
+  fn is_square(&self) -> bool {
+    return self.rows == self.columns;
+  }
+
+  fn rows(&self) -> usize {
+    return self.rows;
+  }
+
+  fn columns(&self) -> usize {
+    return self.columns;
+  }
 }
 
 impl MatrixInitializers for Matrix4x4f {
@@ -88,25 +121,3 @@ impl MatrixOperations<Matrix4x4f, Matrix4x4f> for Matrix4x4f {
     return result;
   }
 }
-
-pub struct Matrix<const columns: usize, const rows: usize, ValueType> {
-  rows: usize,
-  columns: usize,
-  data: [[ValueType; columns]; rows],
-}
-
-impl<const columns: usize, const rows: usize, ValueType>
-  Matrix<columns, rows, ValueType>
-{
-  pub fn new(data: [[ValueType; columns]; rows]) -> Self {
-    Self {
-      rows,
-      columns,
-      data,
-    }
-  }
-}
-
-pub type Matrix2x2f = Matrix<2, 2, f32>;
-pub type Matrix3x3f = Matrix<3, 3, f32>;
-pub type Matrix4x4f = Matrix<4, 4, f32>;
