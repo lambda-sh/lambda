@@ -121,3 +121,43 @@ impl MatrixOperations<Matrix4x4f, Matrix4x4f> for Matrix4x4f {
     return result;
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::{
+    Matrix4x4f,
+    MatrixInitializers,
+  };
+
+  #[test]
+  fn test_matrix4x4f_identity() {
+    let identity = Matrix4x4f::identity();
+    assert_eq!(identity.data[0][0], 1.0);
+    assert_eq!(identity.data[0][1], 0.0);
+    assert_eq!(identity.data[0][2], 0.0);
+    assert_eq!(identity.data[0][3], 0.0);
+    assert_eq!(identity.data[1][0], 0.0);
+    assert_eq!(identity.data[1][1], 1.0);
+    assert_eq!(identity.data[1][2], 0.0);
+    assert_eq!(identity.data[1][3], 0.0);
+    assert_eq!(identity.data[2][0], 0.0);
+    assert_eq!(identity.data[2][1], 0.0);
+    assert_eq!(identity.data[2][2], 1.0);
+    assert_eq!(identity.data[2][3], 0.0);
+    assert_eq!(identity.data[3][0], 0.0);
+    assert_eq!(identity.data[3][1], 0.0);
+    assert_eq!(identity.data[3][2], 0.0);
+    assert_eq!(identity.data[3][3], 1.0);
+  }
+
+  #[test]
+  fn test_matrix4x4f_zeroed() {
+    let zeroed = Matrix4x4f::zeroed();
+
+    for row in 0..4 {
+      for column in 0..4 {
+        assert_eq!(zeroed.data[row][column], 0.0);
+      }
+    }
+  }
+}
