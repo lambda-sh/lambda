@@ -1,4 +1,4 @@
-//! Very simple math types built strictly off of Rust primitive types.
+//! Lambda Math Types and operations
 
 pub mod matrix;
 pub mod vector;
