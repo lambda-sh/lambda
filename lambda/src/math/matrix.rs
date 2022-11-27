@@ -1,6 +1,6 @@
 //! Matrix math types and functions.
 
-use lambda_platform::rand::get_uniformally_random_floats_between;
+use lambda_platform::rand::get_uniformly_random_floats_between;
 
 // ------------------------------ MATRIX ---------------------------------------
 
@@ -81,7 +81,7 @@ impl MatrixInitializers for Matrix4x4f {
   }
 
   fn random() -> Self {
-    let random_floats = get_uniformally_random_floats_between(0.0, 1.0, 16);
+    let random_floats = get_uniformly_random_floats_between(0.0, 1.0, 16);
 
     // TODO(vmarcella): Use an iterator over the returned vector to build the
     // matrix as opposed to these accesses. This will currently check every

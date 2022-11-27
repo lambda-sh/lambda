@@ -12,7 +12,7 @@ pub fn get_random_float_between(min: f32, max: f32) -> f32 {
 
 /// Generate a vector of uniformally distributed random floats within any given
 /// range.
-pub fn get_uniformally_random_floats_between(
+pub fn get_uniformly_random_floats_between(
   min: f32,
   max: f32,
   count: usize,
