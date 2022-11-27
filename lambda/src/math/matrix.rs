@@ -50,6 +50,9 @@ impl MatrixInitializers for Matrix4x4f {
   fn random() -> Self {
     let random_floats = get_uniformally_random_floats_between(0.0, 1.0, 16);
 
+    // TODO(vmarcella): Use an iterator over the returned vector to build the
+    // matrix as opposed to these accesses. This will currently check every
+    // array index for safety which incurs a performance penalty.
     return Matrix4x4f::new([
       [
         random_floats[0],
