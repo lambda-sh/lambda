@@ -4,19 +4,19 @@ use lambda_platform::rand::get_uniformly_random_floats_between;
 
 // ------------------------------ MATRIX ---------------------------------------
 
-pub struct Matrix<const columns: usize, const rows: usize, ValueType> {
+pub struct Matrix<const COLUMNS: usize, const ROWS: usize, ValueType> {
   rows: usize,
   columns: usize,
-  data: [[ValueType; columns]; rows],
+  data: [[ValueType; COLUMNS]; ROWS],
 }
 
-impl<const columns: usize, const rows: usize, ValueType>
-  Matrix<columns, rows, ValueType>
+impl<const COLUMNS: usize, const ROWS: usize, ValueType>
+  Matrix<COLUMNS, ROWS, ValueType>
 {
-  pub fn new(data: [[ValueType; columns]; rows]) -> Self {
+  pub fn new(data: [[ValueType; COLUMNS]; ROWS]) -> Self {
     Self {
-      rows,
-      columns,
+      columns: COLUMNS,
+      rows: ROWS,
       data,
     }
   }
@@ -34,10 +34,10 @@ pub trait MatrixProperties {
 }
 
 /// Common Initializers for Matrix
-pub trait MatrixInitializers {
+pub trait MatrixInitializers<ValueType> {
   fn identity() -> Self;
   fn zeroed() -> Self;
-  fn random() -> Self;
+  fn random(start: ValueType, stop: ValueType) -> Self;
 }
 
 /// Common Matrix operations that can be implemented by any matrix like type so
@@ -50,8 +50,8 @@ pub trait MatrixOperations<
   fn multiply(&self, other: &OtherMatrix) -> ResultingMatrix;
 }
 
-impl<const columns: usize, const rows: usize, ValueType> MatrixProperties
-  for Matrix<columns, rows, ValueType>
+impl<const COLUMNS: usize, const ROWS: usize, ValueType> MatrixProperties
+  for Matrix<COLUMNS, ROWS, ValueType>
 {
   fn is_square(&self) -> bool {
     return self.rows == self.columns;
@@ -66,7 +66,7 @@ impl<const columns: usize, const rows: usize, ValueType> MatrixProperties
   }
 }
 
-impl MatrixInitializers for Matrix4x4f {
+impl MatrixInitializers<f32> for Matrix4x4f {
   fn identity() -> Self {
     return Matrix4x4f::new([
       [1.0, 0.0, 0.0, 0.0],
@@ -80,8 +80,8 @@ impl MatrixInitializers for Matrix4x4f {
     return Matrix4x4f::new([[0.0; 4]; 4]);
   }
 
-  fn random() -> Self {
-    let random_floats = get_uniformly_random_floats_between(0.0, 1.0, 16);
+  fn random(start: f32, stop: f32) -> Self {
+    let random_floats = get_uniformly_random_floats_between(start, stop, 16);
 
     // TODO(vmarcella): Use an iterator over the returned vector to build the
     // matrix as opposed to these accesses. This will currently check every
@@ -157,6 +157,18 @@ mod tests {
     for row in 0..4 {
       for column in 0..4 {
         assert_eq!(zeroed.data[row][column], 0.0);
+      }
+    }
+  }
+
+  #[test]
+  fn test_matrix4x4f_random() {
+    let random = Matrix4x4f::random(0.0, 1.0);
+
+    for row in 0..4 {
+      for column in 0..4 {
+        assert!(random.data[row][column] >= 0.0);
+        assert!(random.data[row][column] <= 1.0);
       }
     }
   }
