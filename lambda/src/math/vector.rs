@@ -2,223 +2,152 @@
 
 /// Generalized Vector operations that can be implemented by any vector like
 /// type.
-pub trait Vector<T> {
+pub trait Vector {
+  type Scalar: Copy;
+  fn new(values: &[Self::Scalar]) -> Self;
   fn add(&self, other: &Self) -> Self;
   fn subtract(&self, other: &Self) -> Self;
   fn multiply(&self, other: &Self) -> Self;
-  fn dot(&self, other: &Self) -> T;
+  fn scale(&self, scalar: Self::Scalar) -> Self;
+  fn dot(&self, other: &Self) -> Self::Scalar;
   fn cross(&self, other: &Self) -> Self;
-  fn length(&self) -> T;
+  fn length(&self) -> Self::Scalar;
   fn normalize(&self) -> Self;
 }
 
-//  ------------------------------- VECTOR2 -----------------------------------
+impl<T> Vector for T
+where
+  T: AsMut<[f32]> + AsRef<[f32]> + Default,
+{
+  type Scalar = f32;
 
-pub type Vector2 = (f32, f32);
-
-impl Vector<f32> for Vector2 {
   fn add(&self, other: &Self) -> Self {
-    return (self.0 + other.0, self.1 + other.1);
-  }
+    let mut result = Vec::with_capacity(self.as_ref().len());
 
+    for (a, b) in self.as_ref().iter().zip(other.as_ref().iter()) {
+      result.push(a + b)
+    }
+
+    return Self::new(result.as_slice());
+  }
   fn subtract(&self, other: &Self) -> Self {
-    return (self.0 - other.0, self.1 - other.1);
+    let mut result = Vec::with_capacity(self.as_ref().len());
+
+    for (a, b) in self.as_ref().iter().zip(other.as_ref().iter()) {
+      result.push(a - b)
+    }
+
+    return Self::new(result.as_slice());
   }
 
   fn multiply(&self, other: &Self) -> Self {
-    return (self.0 * other.0, self.1 * other.1);
+    let mut result = Vec::with_capacity(self.as_ref().len());
+
+    for (a, b) in self.as_ref().iter().zip(other.as_ref().iter()) {
+      result.push(a * b);
+    }
+
+    return Self::new(result.as_slice());
   }
 
-  fn dot(&self, other: &Self) -> f32 {
-    return self.0 * other.0 + self.1 * other.1;
+  fn dot(&self, other: &Self) -> Self::Scalar {
+    let mut result = 0.0;
+    for (a, b) in self.as_ref().iter().zip(other.as_ref().iter()) {
+      result += a * b;
+    }
+    return result;
   }
 
   fn cross(&self, other: &Self) -> Self {
-    return (self.0 * other.1, self.1 * other.0);
+    let mut result = Vec::with_capacity(self.as_ref().len());
+    for (a, b) in self.as_ref().iter().zip(other.as_ref().iter()) {
+      result.push(a * b);
+    }
+    return Self::new(result.as_slice());
   }
 
-  fn length(&self) -> f32 {
-    return (self.0 * self.0 + self.1 * self.1).sqrt();
+  fn length(&self) -> Self::Scalar {
+    let mut result = 0.0;
+    for a in self.as_ref().iter() {
+      result += a * a;
+    }
+    result.sqrt()
   }
 
   fn normalize(&self) -> Self {
+    let mut result = Vec::with_capacity(self.as_ref().len());
     let length = self.length();
-
-    if length == 0.0 {
-      return (0.0, 0.0);
+    for a in self.as_ref().iter() {
+      result.push(a / length);
     }
-
-    return (self.0 / length, self.1 / length);
-  }
-}
-
-//  ------------------------------- VECTOR3 -----------------------------------
-
-pub type Vector3 = (f32, f32, f32);
-
-impl Vector<f32> for Vector3 {
-  fn add(&self, other: &Self) -> Self {
-    return (self.0 + other.0, self.1 + other.1, self.2 + other.2);
+    Self::new(result.as_slice())
   }
 
-  fn subtract(&self, other: &Self) -> Self {
-    return (self.0 - other.0, self.1 - other.1, self.2 - other.2);
+  fn new(values: &[Self::Scalar]) -> Self {
+    let mut vector = T::default();
+    vector.as_mut().copy_from_slice(values);
+    return vector;
   }
 
-  fn multiply(&self, other: &Self) -> Self {
-    return (self.0 * other.0, self.1 * other.1, self.2 * other.2);
-  }
-
-  fn dot(&self, other: &Self) -> f32 {
-    return self.0 * other.0 + self.1 * other.1 + self.2 * other.2;
-  }
-
-  fn cross(&self, other: &Self) -> Self {
-    return (
-      self.1 * other.2 - self.2 * other.1,
-      self.2 * other.0 - self.0 * other.2,
-      self.0 * other.1 - self.1 * other.0,
-    );
-  }
-
-  fn length(&self) -> f32 {
-    return (self.0 * self.0 + self.1 * self.1 + self.2 * self.2).sqrt();
-  }
-
-  fn normalize(&self) -> Self {
-    let length = self.length();
-
-    if length == 0.0 {
-      return (0.0, 0.0, 0.0);
+  fn scale(&self, scalar: Self::Scalar) -> Self {
+    let mut result = Vec::with_capacity(self.as_ref().len());
+    for a in self.as_ref().iter() {
+      result.push(a * scalar);
     }
-
-    return (self.0 / length, self.1 / length, self.2 / length);
-  }
-}
-
-//  ------------------------------- VECTOR4 -----------------------------------
-
-pub type Vector4 = (f32, f32, f32, f32);
-
-impl Vector<f32> for Vector4 {
-  fn add(&self, other: &Self) -> Self {
-    return (
-      self.0 + other.0,
-      self.1 + other.1,
-      self.2 + other.2,
-      self.3 + other.3,
-    );
-  }
-
-  fn subtract(&self, other: &Self) -> Self {
-    return (
-      self.0 - other.0,
-      self.1 - other.1,
-      self.2 - other.2,
-      self.3 - other.3,
-    );
-  }
-
-  fn multiply(&self, other: &Self) -> Self {
-    return (
-      self.0 * other.0,
-      self.1 * other.1,
-      self.2 * other.2,
-      self.3 * other.3,
-    );
-  }
-
-  fn dot(&self, other: &Self) -> f32 {
-    return self.0 * other.0
-      + self.1 * other.1
-      + self.2 * other.2
-      + self.3 * other.3;
-  }
-
-  fn cross(&self, other: &Self) -> Self {
-    return (
-      self.1 * other.2 - self.2 * other.1,
-      self.2 * other.0 - self.0 * other.2,
-      self.0 * other.1 - self.1 * other.0,
-      0.0,
-    );
-  }
-
-  fn length(&self) -> f32 {
-    return (self.0 * self.0
-      + self.1 * self.1
-      + self.2 * self.2
-      + self.3 * self.3)
-      .sqrt();
-  }
-
-  fn normalize(&self) -> Self {
-    let length = self.length();
-
-    if length == 0.0 {
-      return (0.0, 0.0, 0.0, 0.0);
-    }
-
-    return (
-      self.0 / length,
-      self.1 / length,
-      self.2 / length,
-      self.3 / length,
-    );
-  }
-}
-
-// ---------------------------------- TESTS -----------------------------------
-
-#[cfg(test)]
-mod vector2_tests {
-  use super::Vector;
-
-  #[test]
-  fn test_dot() {
-    assert_eq!((1.0, 2.0).dot(&(3.0, 4.0)), 11.0);
-  }
-
-  #[test]
-  fn test_cross() {
-    assert_eq!((1.0, 2.0, 3.0).cross(&(4.0, 5.0, 6.0)), (-3.0, 6.0, -3.0));
-  }
-
-  #[test]
-  fn test_length() {
-    assert_eq!((3.0, 4.0).length(), 5.0);
-  }
-
-  #[test]
-  fn test_normalize() {
-    assert_eq!((3.0, 4.0).normalize(), (0.6, 0.8));
+    Self::new(result.as_slice())
   }
 }
 
 #[cfg(test)]
-mod vector3_tests {
+mod tests {
   use super::Vector;
 
   #[test]
-  fn test_dot() {
-    assert_eq!((1.0, 2.0, 3.0).dot(&(4.0, 5.0, 6.0)), 32.0);
+  fn creating_a_vector() {
+    let v: [f32; 3] = Vector::new(&[1.0, 2.0, 3.0]);
+    assert_eq!(v.as_ref(), &[1.0, 2.0, 3.0]);
   }
 
   #[test]
-  fn test_cross() {
-    assert_eq!((1.0, 2.0, 3.0).cross(&(4.0, 5.0, 6.0)), (-3.0, 6.0, -3.0));
+  fn adding_vectors() {
+    let a = [1.0, 2.0, 3.0];
+    let b = [4.0, 5.0, 6.0];
+    let c = [5.0, 7.0, 9.0];
+
+    let result = a.add(&b);
+
+    assert_eq!(result, c);
   }
 
   #[test]
-  fn test_length() {
-    assert_eq!((1.0, 2.0, 2.0).length(), 3.0);
+  fn subtracting_vectors() {
+    let a = [1.0, 2.0, 3.0];
+    let b = [4.0, 5.0, 6.0];
+    let c = [-3.0, -3.0, -3.0];
+
+    let result = a.subtract(&b);
+
+    assert_eq!(result, c);
   }
 
   #[test]
-  fn test_normalize() {
-    assert_eq!(
-      (1.0, 2.0, 2.0).normalize(),
-      (0.33333334, 0.6666667, 0.6666667)
-    );
+  fn multiplying_vectors() {
+    let a = [1.0, 2.0, 3.0];
+    let b = [4.0, 5.0, 6.0];
+    let c = [4.0, 10.0, 18.0];
+
+    let result = a.multiply(&b);
+
+    assert_eq!(result, c);
+  }
+
+  #[test]
+  fn scaling_vectors() {
+    let a = [1.0, 2.0, 3.0];
+    let b = [2.0, 4.0, 6.0];
+    let scalar = 2.0;
+
+    let result = a.scale(scalar);
+    assert_eq!(result, b);
   }
 }
