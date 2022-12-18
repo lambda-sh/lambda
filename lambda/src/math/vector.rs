@@ -4,10 +4,8 @@
 /// type.
 pub trait Vector {
   type Scalar: Copy;
-  fn new(values: &[Self::Scalar]) -> Self;
   fn add(&self, other: &Self) -> Self;
   fn subtract(&self, other: &Self) -> Self;
-  fn multiply(&self, other: &Self) -> Self;
   fn scale(&self, scalar: Self::Scalar) -> Self;
   fn dot(&self, other: &Self) -> Self::Scalar;
   fn cross(&self, other: &Self) -> Self;
@@ -22,32 +20,29 @@ where
   type Scalar = f32;
 
   fn add(&self, other: &Self) -> Self {
-    let mut result = Vec::with_capacity(self.as_ref().len());
+    let mut result = Self::default();
 
-    for (a, b) in self.as_ref().iter().zip(other.as_ref().iter()) {
-      result.push(a + b)
-    }
+    self
+      .as_ref()
+      .iter()
+      .zip(other.as_ref().iter())
+      .enumerate()
+      .for_each(|(i, (a, b))| result.as_mut()[i] = a + b);
 
-    return Self::new(result.as_slice());
+    return result;
   }
+
   fn subtract(&self, other: &Self) -> Self {
-    let mut result = Vec::with_capacity(self.as_ref().len());
+    let mut result = Self::default();
 
-    for (a, b) in self.as_ref().iter().zip(other.as_ref().iter()) {
-      result.push(a - b)
-    }
+    self
+      .as_ref()
+      .iter()
+      .zip(other.as_ref().iter())
+      .enumerate()
+      .for_each(|(i, (a, b))| result.as_mut()[i] = a - b);
 
-    return Self::new(result.as_slice());
-  }
-
-  fn multiply(&self, other: &Self) -> Self {
-    let mut result = Vec::with_capacity(self.as_ref().len());
-
-    for (a, b) in self.as_ref().iter().zip(other.as_ref().iter()) {
-      result.push(a * b);
-    }
-
-    return Self::new(result.as_slice());
+    return result;
   }
 
   fn dot(&self, other: &Self) -> Self::Scalar {
@@ -59,11 +54,16 @@ where
   }
 
   fn cross(&self, other: &Self) -> Self {
-    let mut result = Vec::with_capacity(self.as_ref().len());
-    for (a, b) in self.as_ref().iter().zip(other.as_ref().iter()) {
-      result.push(a * b);
-    }
-    return Self::new(result.as_slice());
+    let mut result = Self::default();
+    self
+      .as_ref()
+      .iter()
+      .zip(other.as_ref().iter())
+      .enumerate()
+      .for_each(|(i, (a, b))| {
+        result.as_mut()[i] = a * b;
+      });
+    return result;
   }
 
   fn length(&self) -> Self::Scalar {
@@ -75,38 +75,29 @@ where
   }
 
   fn normalize(&self) -> Self {
-    let mut result = Vec::with_capacity(self.as_ref().len());
+    let mut result = Self::default();
     let length = self.length();
-    for a in self.as_ref().iter() {
-      result.push(a / length);
-    }
-    Self::new(result.as_slice())
-  }
+    self.as_ref().iter().enumerate().for_each(|(i, a)| {
+      result.as_mut()[i] = a / length;
+    });
 
-  fn new(values: &[Self::Scalar]) -> Self {
-    let mut vector = T::default();
-    vector.as_mut().copy_from_slice(values);
-    return vector;
+    return result;
   }
 
   fn scale(&self, scalar: Self::Scalar) -> Self {
-    let mut result = Vec::with_capacity(self.as_ref().len());
-    for a in self.as_ref().iter() {
-      result.push(a * scalar);
-    }
-    Self::new(result.as_slice())
+    let mut result = Self::default();
+    let length = self.length();
+    self.as_ref().iter().enumerate().for_each(|(i, a)| {
+      result.as_mut()[i] = a * scalar;
+    });
+
+    return result;
   }
 }
 
 #[cfg(test)]
 mod tests {
   use super::Vector;
-
-  #[test]
-  fn creating_a_vector() {
-    let v: [f32; 3] = Vector::new(&[1.0, 2.0, 3.0]);
-    assert_eq!(v.as_ref(), &[1.0, 2.0, 3.0]);
-  }
 
   #[test]
   fn adding_vectors() {
@@ -126,17 +117,6 @@ mod tests {
     let c = [-3.0, -3.0, -3.0];
 
     let result = a.subtract(&b);
-
-    assert_eq!(result, c);
-  }
-
-  #[test]
-  fn multiplying_vectors() {
-    let a = [1.0, 2.0, 3.0];
-    let b = [4.0, 5.0, 6.0];
-    let c = [4.0, 10.0, 18.0];
-
-    let result = a.multiply(&b);
 
     assert_eq!(result, c);
   }
