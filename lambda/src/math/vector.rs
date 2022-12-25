@@ -96,8 +96,10 @@ where
   }
 
   fn normalize(&self) -> Self {
+    assert_ne!(self.length(), 0.0, "Cannot normalize a zero length vector");
     let mut result = Self::default();
     let length = self.length();
+
     self.as_ref().iter().enumerate().for_each(|(i, a)| {
       result.as_mut()[i] = a / length;
     });
@@ -193,5 +195,21 @@ mod tests {
     let d = 5.477225575051661;
     let result = c.length();
     assert_eq!(result, d);
+  }
+
+  #[test]
+  fn normalize() {
+    let a = [4.0, 3.0, 2.0];
+    let b = [0.74278135, 0.55708605, 0.37139067];
+    let result = a.normalize();
+    assert_eq!(result, b);
+  }
+
+  #[test]
+  fn normalize_fails_for_zero_length_vector() {
+    let a = [0.0, 0.0, 0.0];
+
+    let result = std::panic::catch_unwind(|| a.normalize());
+    assert!(result.is_err());
   }
 }
