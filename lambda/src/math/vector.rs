@@ -19,6 +19,7 @@ where
 {
   type Scalar = f32;
 
+  /// Add two vectors of any size together.
   fn add(&self, other: &Self) -> Self {
     let mut result = Self::default();
 
@@ -32,6 +33,7 @@ where
     return result;
   }
 
+  /// Subtract two vectors of any size.
   fn subtract(&self, other: &Self) -> Self {
     let mut result = Self::default();
 
@@ -59,6 +61,7 @@ where
     return result;
   }
 
+  /// Cross product of two 3D vectors. Panics if the vectors are not 3D.
   fn cross(&self, other: &Self) -> Self {
     assert_eq!(
       self.as_ref().len(),
@@ -176,5 +179,19 @@ mod tests {
 
     let result = std::panic::catch_unwind(|| a.cross(&b));
     assert!(result.is_err());
+  }
+
+  #[test]
+  fn length() {
+    let a = [1.0, 2.0, 3.0];
+    let b = 3.7416573867739413;
+
+    let result = a.length();
+    assert_eq!(result, b);
+
+    let c = [1.0, 2.0, 3.0, 4.0];
+    let d = 5.477225575051661;
+    let result = c.length();
+    assert_eq!(result, d);
   }
 }
