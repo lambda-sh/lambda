@@ -3,31 +3,67 @@
 use lambda_platform::rand::get_uniformly_random_floats_between;
 
 use super::vector::Vector;
-pub trait Matrix {
-  type Scalar: Copy;
-  type Vector: Vector<Scalar = Self::Scalar>;
-
-  fn transform(&self, vector: &Self::Vector) -> Self::Vector;
-  fn determinant(&self) -> Self::Scalar;
+pub trait Matrix<V: Vector> {
+  fn add(&self, other: &Self) -> Self;
+  fn subtract(&self, other: &Self) -> Self;
+  fn multiply(&self, other: &Self) -> Self;
+  fn transpose(&self) -> Self;
+  fn inverse(&self) -> Self;
+  fn transform(&self, other: &V) -> V;
 }
 
-impl Matrix for [[f32; 4]; 4] {
-  type Scalar = f32;
-  type Vector = [f32; 4];
+/// Matrix implementations for arrays
+impl<T, V> Matrix<V> for T
+where
+  T: AsMut<[V]> + AsRef<[V]> + Default,
+  V: AsMut<[f32]> + AsRef<[f32]> + Vector<Scalar = f32> + Sized,
+{
+  fn add(&self, other: &Self) -> Self {
+    let mut result = Self::default();
+    for (i, (a, b)) in
+      self.as_ref().iter().zip(other.as_ref().iter()).enumerate()
+    {
+      result.as_mut()[i] = a.add(b);
+    }
+    return result;
+  }
 
-  fn transform(&self, vector: &Self::Vector) -> Self::Vector {
-    let mut result = [0.0; 4];
-    for (i, row) in self.iter().enumerate() {
-      for (j, value) in row.iter().enumerate() {
-        result[i] += value * vector[j];
+  fn subtract(&self, other: &Self) -> Self {
+    let mut result = Self::default();
+
+    for (i, (a, b)) in
+      self.as_ref().iter().zip(other.as_ref().iter()).enumerate()
+    {
+      result.as_mut()[i] = a.subtract(b);
+    }
+    return result;
+  }
+
+  fn multiply(&self, other: &Self) -> Self {
+    let mut result = Self::default();
+    for (i, a) in self.as_ref().iter().enumerate() {
+      for (j, b) in other.as_ref().iter().enumerate() {
+        todo!("Matrix multiplication");
       }
     }
     return result;
   }
 
-  fn determinant(&self) -> Self::Scalar {
-    let mut result = 0.0;
-    for (i, value) in self[0].iter().enumerate() {}
+  fn transpose(&self) -> Self {
+    let mut result = Self::default();
+    for (i, a) in self.as_ref().iter().enumerate() {
+      for (j, b) in a.as_ref().iter().enumerate() {
+        result.as_mut()[i].as_mut()[j] = self.as_ref()[j].as_ref()[i];
+      }
+    }
     return result;
+  }
+
+  fn inverse(&self) -> Self {
+    todo!()
+  }
+
+  fn transform(&self, other: &V) -> V {
+    todo!()
   }
 }

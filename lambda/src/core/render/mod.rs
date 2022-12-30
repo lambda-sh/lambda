@@ -270,6 +270,8 @@ impl RenderContext {
       )
       .expect("Failed to render to the surface");
 
+    // Destroys the frame buffer after the commands have been submitted and the
+    // frame buffer is no longer needed.
     match self.frame_buffer {
       Some(_) => {
         Rc::try_unwrap(self.frame_buffer.take().unwrap())
