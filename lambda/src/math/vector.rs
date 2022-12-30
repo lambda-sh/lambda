@@ -109,7 +109,6 @@ where
 
   fn scale(&self, scalar: Self::Scalar) -> Self {
     let mut result = Self::default();
-    let length = self.length();
     self.as_ref().iter().enumerate().for_each(|(i, a)| {
       result.as_mut()[i] = a * scalar;
     });
@@ -211,5 +210,15 @@ mod tests {
 
     let result = std::panic::catch_unwind(|| a.normalize());
     assert!(result.is_err());
+  }
+
+  #[test]
+  fn scale() {
+    let a = [1.0, 2.0, 3.0];
+    let b = [2.0, 4.0, 6.0];
+    let scalar = 2.0;
+
+    let result = a.scale(scalar);
+    assert_eq!(result, b);
   }
 }
