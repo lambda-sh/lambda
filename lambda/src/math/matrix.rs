@@ -80,6 +80,22 @@ mod tests {
   use super::Matrix;
 
   #[test]
+  fn square_matrix_add() {
+    let a = [[1.0, 2.0], [3.0, 4.0]];
+    let b = [[5.0, 6.0], [7.0, 8.0]];
+    let c = a.add(&b);
+    assert_eq!(c, [[6.0, 8.0], [10.0, 12.0]]);
+  }
+
+  #[test]
+  fn square_matrix_subtract() {
+    let a = [[1.0, 2.0], [3.0, 4.0]];
+    let b = [[5.0, 6.0], [7.0, 8.0]];
+    let c = a.subtract(&b);
+    assert_eq!(c, [[-4.0, -4.0], [-4.0, -4.0]]);
+  }
+
+  #[test]
   // Test square matrix multiplication.
   fn square_matrix_multiply() {
     let m1 = [[1.0, 2.0], [3.0, 4.0]];
