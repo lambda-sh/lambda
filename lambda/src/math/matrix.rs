@@ -107,4 +107,11 @@ mod tests {
     result = m2.multiply(&m1);
     assert_eq!(result, [[2.0, 4.0], [7.0, 10.0]])
   }
+
+  #[test]
+  fn transpose_square_matrix() {
+    let m = [[1.0, 2.0], [5.0, 6.0]];
+    let t = m.transpose();
+    assert_eq!(t, [[1.0, 5.0], [2.0, 6.0]]);
+  }
 }
