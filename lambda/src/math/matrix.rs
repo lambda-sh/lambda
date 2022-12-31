@@ -58,7 +58,7 @@ where
   fn transpose(&self) -> Self {
     let mut result = Self::default();
     for (i, a) in self.as_ref().iter().enumerate() {
-      for (j, b) in a.as_ref().iter().enumerate() {
+      for j in 0..a.as_ref().len() {
         result.as_mut()[i].as_mut()[j] = self.as_ref()[j].as_ref()[i];
       }
     }
