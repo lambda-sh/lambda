@@ -12,10 +12,10 @@ pub trait Matrix<V: Vector> {
   fn transform(&self, other: &V) -> V;
 }
 
-/// Matrix implementations for arrays
-impl<T, V> Matrix<V> for T
+/// Matrix implementations for arrays backed by vectors.
+impl<Array, V> Matrix<V> for Array
 where
-  T: AsMut<[V]> + AsRef<[V]> + Default,
+  Array: AsMut<[V]> + AsRef<[V]> + Default,
   V: AsMut<[f32]> + AsRef<[f32]> + Vector<Scalar = f32> + Sized,
 {
   fn add(&self, other: &Self) -> Self {
@@ -41,9 +41,15 @@ where
 
   fn multiply(&self, other: &Self) -> Self {
     let mut result = Self::default();
+
+    // We transpose the other matrix to convert the columns into rows, allowing
+    // us to compute the new values of each index using the dot product
+    // function.
+    let transposed = other.transpose();
+
     for (i, a) in self.as_ref().iter().enumerate() {
-      for (j, b) in other.as_ref().iter().enumerate() {
-        todo!("Matrix multiplication");
+      for (j, b) in transposed.as_ref().iter().enumerate() {
+        result.as_mut()[i].as_mut()[j] += a.dot(&b);
       }
     }
     return result;
@@ -65,5 +71,24 @@ where
 
   fn transform(&self, other: &V) -> V {
     todo!()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+
+  use super::Matrix;
+
+  #[test]
+  // Test square matrix multiplication.
+  fn square_matrix_multiply() {
+    let m1 = [[1.0, 2.0], [3.0, 4.0]];
+    let m2 = [[2.0, 0.0], [1.0, 2.0]];
+
+    let mut result = m1.multiply(&m2);
+    assert_eq!(result, [[4.0, 4.0], [10.0, 8.0]]);
+
+    result = m2.multiply(&m1);
+    assert_eq!(result, [[2.0, 4.0], [7.0, 10.0]])
   }
 }
