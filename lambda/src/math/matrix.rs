@@ -4,12 +4,15 @@ use lambda_platform::rand::get_uniformly_random_floats_between;
 
 use super::vector::Vector;
 pub trait Matrix<V: Vector> {
+  const WIDTH: usize;
+  const HEIGHT: usize;
   fn add(&self, other: &Self) -> Self;
   fn subtract(&self, other: &Self) -> Self;
   fn multiply(&self, other: &Self) -> Self;
   fn transpose(&self) -> Self;
   fn inverse(&self) -> Self;
   fn transform(&self, other: &V) -> V;
+  fn determinant(&self) -> f32;
 }
 
 /// Matrix implementations for arrays backed by vectors.
@@ -18,6 +21,8 @@ where
   Array: AsMut<[V]> + AsRef<[V]> + Default,
   V: AsMut<[f32]> + AsRef<[f32]> + Vector<Scalar = f32> + Sized,
 {
+  const WIDTH: usize = 0;
+  const HEIGHT: usize = 0;
   fn add(&self, other: &Self) -> Self {
     let mut result = Self::default();
     for (i, (a, b)) in
@@ -72,6 +77,46 @@ where
   fn transform(&self, other: &V) -> V {
     todo!()
   }
+
+  /// Computes the determinant of any square matrix using the Laplace expansion.
+  fn determinant(&self) -> f32 {
+    let (width, height) =
+      (self.as_ref()[0].as_ref().len(), self.as_ref().len());
+
+    if width != height {
+      panic!("Cannot compute determinant of non-square matrix");
+    }
+
+    return match height {
+      1 => self.as_ref()[0].as_ref()[0],
+      2 => {
+        let a = self.as_ref()[0].as_ref()[0];
+        let b = self.as_ref()[0].as_ref()[1];
+        let c = self.as_ref()[1].as_ref()[0];
+        let d = self.as_ref()[1].as_ref()[1];
+        a * d - b * c
+      }
+      _ => {
+        let mut result = 0.0;
+        for i in 0..height {
+          let mut submatrix: Vec<Vec<f32>> = Vec::with_capacity(height - 1);
+          for j in 1..height {
+            let mut row = Vec::new();
+            for k in 0..height {
+              if k != i {
+                row.push(self.as_ref()[j].as_ref()[k]);
+              }
+            }
+            submatrix.push(row);
+          }
+          result += self.as_ref()[0].as_ref()[i]
+            * submatrix.determinant()
+            * (-1.0 as f32).powi(i as i32);
+        }
+        result
+      }
+    };
+  }
 }
 
 #[cfg(test)]
@@ -113,5 +158,14 @@ mod tests {
     let m = [[1.0, 2.0], [5.0, 6.0]];
     let t = m.transpose();
     assert_eq!(t, [[1.0, 5.0], [2.0, 6.0]]);
+  }
+
+  #[test]
+  fn square_matrix_determinant() {
+    let m = [[3.0, 8.0], [4.0, 6.0]];
+    assert_eq!(m.determinant(), -14.0);
+
+    let m2 = [[6.0, 1.0, 1.0], [4.0, -2.0, 5.0], [2.0, 8.0, 7.0]];
+    assert_eq!(m2.determinant(), -306.0);
   }
 }
