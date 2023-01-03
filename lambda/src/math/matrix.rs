@@ -4,8 +4,6 @@ use lambda_platform::rand::get_uniformly_random_floats_between;
 
 use super::vector::Vector;
 pub trait Matrix<V: Vector> {
-  const WIDTH: usize;
-  const HEIGHT: usize;
   fn add(&self, other: &Self) -> Self;
   fn subtract(&self, other: &Self) -> Self;
   fn multiply(&self, other: &Self) -> Self;
@@ -21,8 +19,6 @@ where
   Array: AsMut<[V]> + AsRef<[V]> + Default,
   V: AsMut<[f32]> + AsRef<[f32]> + Vector<Scalar = f32> + Sized,
 {
-  const WIDTH: usize = 0;
-  const HEIGHT: usize = 0;
   fn add(&self, other: &Self) -> Self {
     let mut result = Self::default();
     for (i, (a, b)) in
@@ -167,5 +163,12 @@ mod tests {
 
     let m2 = [[6.0, 1.0, 1.0], [4.0, -2.0, 5.0], [2.0, 8.0, 7.0]];
     assert_eq!(m2.determinant(), -306.0);
+  }
+
+  #[test]
+  fn non_square_matrix_determinant() {
+    let m = [[3.0, 8.0], [4.0, 6.0], [0.0, 1.0]];
+    let result = std::panic::catch_unwind(|| m.determinant());
+    assert_eq!(false, result.is_ok())
   }
 }
