@@ -11,6 +11,32 @@ pub trait Matrix<V: Vector> {
   fn inverse(&self) -> Self;
   fn transform(&self, other: &V) -> V;
   fn determinant(&self) -> f32;
+  fn size(&self) -> (usize, usize);
+  fn row(&self, row: usize) -> &V;
+  fn at(&self, row: usize, column: usize) -> V::Scalar;
+}
+
+/// Obtain the submatrix of the input matrix where the submatrix
+pub fn submatrix<V: Vector<Scalar = f32>, M: Matrix<V>>(
+  matrix: M,
+  row: usize,
+  column: usize,
+) -> Vec<Vec<V::Scalar>> {
+  let mut submatrix = Vec::new();
+  let (rows, columns) = matrix.size();
+
+  for k in 0..rows {
+    if k != row {
+      let mut row = Vec::new();
+      for l in 0..columns {
+        if l != column {
+          row.push(matrix.at(k, l));
+        }
+      }
+      submatrix.push(row);
+    }
+  }
+  return submatrix;
 }
 
 /// Matrix implementations for arrays backed by vectors.
@@ -113,12 +139,30 @@ where
       }
     };
   }
+
+  /// Return the size as a (rows, columns).
+  fn size(&self) -> (usize, usize) {
+    return (self.as_ref().len(), self.as_ref()[0].as_ref().len());
+  }
+
+  /// Return a reference to the row.
+  fn row(&self, row: usize) -> &V {
+    return &self.as_ref()[row];
+  }
+
+  ///
+  fn at(&self, row: usize, column: usize) -> <V as Vector>::Scalar {
+    return self.as_ref()[row].as_ref()[column];
+  }
 }
 
 #[cfg(test)]
 mod tests {
 
-  use super::Matrix;
+  use super::{
+    submatrix,
+    Matrix,
+  };
 
   #[test]
   fn square_matrix_add() {
@@ -169,6 +213,16 @@ mod tests {
   fn non_square_matrix_determinant() {
     let m = [[3.0, 8.0], [4.0, 6.0], [0.0, 1.0]];
     let result = std::panic::catch_unwind(|| m.determinant());
-    assert_eq!(false, result.is_ok())
+    assert_eq!(false, result.is_ok());
+  }
+
+  #[test]
+  fn submatrix_on_matrix_array() {
+    let matrix = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
+
+    let expected_submatrix = vec![vec![2.0, 3.0], vec![8.0, 9.0]];
+    let actual_submatrix = submatrix(matrix, 1, 0);
+
+    assert_eq!(expected_submatrix, actual_submatrix);
   }
 }

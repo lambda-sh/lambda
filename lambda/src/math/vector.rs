@@ -11,6 +11,7 @@ pub trait Vector {
   fn cross(&self, other: &Self) -> Self;
   fn length(&self) -> Self::Scalar;
   fn normalize(&self) -> Self;
+  fn size(&self) -> usize;
 }
 
 impl<T> Vector for T
@@ -114,6 +115,10 @@ where
     });
 
     return result;
+  }
+
+  fn size(&self) -> usize {
+    return self.as_ref().len();
   }
 }
 
