@@ -36,6 +36,7 @@ impl Component for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
+    todo!()
   }
 
   fn on_detach(
