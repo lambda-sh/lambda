@@ -274,19 +274,11 @@ mod tests {
 
   #[test]
   fn translate_matrix() {
-    let matrix = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
     let translation: [[f32; 3]; 3] = translation_matrix([56.0, 5.0]);
     assert_eq!(
       translation,
       [[1.0, 0.0, 56.0], [0.0, 1.0, 5.0], [0.0, 0.0, 1.0]]
     );
-
-    let matrixfour = [
-      [1.0, 2.0, 3.0, 4.0],
-      [4.0, 5.0, 6.0, 7.0],
-      [7.0, 8.0, 9.0, 10.0],
-      [11.0, 12.0, 13.0, 14.0],
-    ];
 
     let translation: [[f32; 4]; 4] = translation_matrix([10.0, 2.0, 3.0]);
     let expected = [
