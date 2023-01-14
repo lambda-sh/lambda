@@ -3,6 +3,9 @@
 use lambda_platform::rand::get_uniformly_random_floats_between;
 
 use super::vector::Vector;
+
+// -------------------------------- MATRIX -------------------------------------
+
 pub trait Matrix<V: Vector> {
   fn add(&self, other: &Self) -> Self;
   fn subtract(&self, other: &Self) -> Self;
@@ -14,11 +17,15 @@ pub trait Matrix<V: Vector> {
   fn size(&self) -> (usize, usize);
   fn row(&self, row: usize) -> &V;
   fn at(&self, row: usize, column: usize) -> V::Scalar;
+  fn update(&mut self, row: usize, column: usize, value: V::Scalar);
 }
 
-/// Obtain the submatrix of the input matrix where the submatrix
-pub fn submatrix<V: Vector<Scalar = f32>, M: Matrix<V>>(
-  matrix: M,
+// -------------------------------- FUNCTIONS ----------------------------------
+
+/// Obtain the submatrix of the input matrix starting from the given row &
+/// column.
+pub fn submatrix<V: Vector<Scalar = f32>, MatrixLike: Matrix<V>>(
+  matrix: MatrixLike,
   row: usize,
   column: usize,
 ) -> Vec<Vec<V::Scalar>> {
@@ -38,6 +45,38 @@ pub fn submatrix<V: Vector<Scalar = f32>, M: Matrix<V>>(
   }
   return submatrix;
 }
+
+pub fn translation_matrix<
+  InputVector: Vector<Scalar = f32>,
+  ResultingVector: Vector<Scalar = f32>,
+  MatrixLike: Matrix<ResultingVector> + Default,
+>(
+  vector: InputVector,
+) -> MatrixLike {
+  let mut result = MatrixLike::default();
+  let (rows, columns) = result.size();
+  assert_eq!(
+    rows - 1,
+    vector.size(),
+    "Vector must contain one less element than the vectors of the input matrix"
+  );
+
+  for i in 0..rows {
+    for j in 0..columns {
+      if i == j {
+        result.update(i, j, 1.0);
+      } else if j == columns - 1 {
+        result.update(i, j, vector.at(i));
+      } else {
+        result.update(i, j, 0.0);
+      }
+    }
+  }
+
+  return result;
+}
+
+// -------------------------- ARRAY IMPLEMENTATION -----------------------------
 
 /// Matrix implementations for arrays backed by vectors.
 impl<Array, V> Matrix<V> for Array
@@ -100,7 +139,7 @@ where
     todo!()
   }
 
-  /// Computes the determinant of any square matrix using the Laplace expansion.
+  /// Computes the determinant of any square matrix using Laplace expansion.
   fn determinant(&self) -> f32 {
     let (width, height) =
       (self.as_ref()[0].as_ref().len(), self.as_ref().len());
@@ -154,7 +193,13 @@ where
   fn at(&self, row: usize, column: usize) -> <V as Vector>::Scalar {
     return self.as_ref()[row].as_ref()[column];
   }
+
+  fn update(&mut self, row: usize, column: usize, new_value: V::Scalar) {
+    self.as_mut()[row].as_mut()[column] = new_value;
+  }
 }
+
+// ---------------------------------- TESTS ------------------------------------
 
 #[cfg(test)]
 mod tests {
@@ -163,6 +208,7 @@ mod tests {
     submatrix,
     Matrix,
   };
+  use crate::math::matrix::translation_matrix;
 
   #[test]
   fn square_matrix_add() {
@@ -217,12 +263,38 @@ mod tests {
   }
 
   #[test]
-  fn submatrix_on_matrix_array() {
+  fn submatrix_for_matrix_array() {
     let matrix = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
 
     let expected_submatrix = vec![vec![2.0, 3.0], vec![8.0, 9.0]];
     let actual_submatrix = submatrix(matrix, 1, 0);
 
     assert_eq!(expected_submatrix, actual_submatrix);
+  }
+
+  #[test]
+  fn translate_matrix() {
+    let matrix = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
+    let translation: [[f32; 3]; 3] = translation_matrix([56.0, 5.0]);
+    assert_eq!(
+      translation,
+      [[1.0, 0.0, 56.0], [0.0, 1.0, 5.0], [0.0, 0.0, 1.0]]
+    );
+
+    let matrixfour = [
+      [1.0, 2.0, 3.0, 4.0],
+      [4.0, 5.0, 6.0, 7.0],
+      [7.0, 8.0, 9.0, 10.0],
+      [11.0, 12.0, 13.0, 14.0],
+    ];
+
+    let translation: [[f32; 4]; 4] = translation_matrix([10.0, 2.0, 3.0]);
+    let expected = [
+      [1.0, 0.0, 0.0, 10.0],
+      [0.0, 1.0, 0.0, 2.0],
+      [0.0, 0.0, 1.0, 3.0],
+      [0.0, 0.0, 0.0, 1.0],
+    ];
+    assert_eq!(translation, expected);
   }
 }

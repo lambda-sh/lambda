@@ -12,6 +12,8 @@ pub trait Vector {
   fn length(&self) -> Self::Scalar;
   fn normalize(&self) -> Self;
   fn size(&self) -> usize;
+  fn at(&self, index: usize) -> Self::Scalar;
+  fn update(&mut self, index: usize, value: Self::Scalar);
 }
 
 impl<T> Vector for T
@@ -119,6 +121,14 @@ where
 
   fn size(&self) -> usize {
     return self.as_ref().len();
+  }
+
+  fn at(&self, index: usize) -> Self::Scalar {
+    return self.as_ref()[index];
+  }
+
+  fn update(&mut self, index: usize, value: Self::Scalar) {
+    self.as_mut()[index] = value;
   }
 }
 
