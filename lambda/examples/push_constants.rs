@@ -57,6 +57,13 @@ impl Component for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) -> Vec<lambda::core::render::command::RenderCommand> {
+    use math::vector::Vector;
+    let mut camera = [0.0, 0.0, -2.0];
+    let view: [[f32; 4]; 4] = math::matrix::translation_matrix(camera);
+    let mut projection: [[f32; 4]; 4] =
+      math::matrix::perspective_matrix(1.0 / 2.0, 1700.0 / 900.0, 0.1, 200.0);
+    projection.as_mut()[1].as_mut()[1] *= -1.0;
+
     todo!()
   }
 }

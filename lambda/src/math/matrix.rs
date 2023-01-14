@@ -46,14 +46,15 @@ pub fn submatrix<V: Vector<Scalar = f32>, MatrixLike: Matrix<V>>(
   return submatrix;
 }
 
+/// Creates a translation matrix with the given translation vector. The output vector
 pub fn translation_matrix<
   InputVector: Vector<Scalar = f32>,
   ResultingVector: Vector<Scalar = f32>,
-  MatrixLike: Matrix<ResultingVector> + Default,
+  OutputMatrix: Matrix<ResultingVector> + Default,
 >(
   vector: InputVector,
-) -> MatrixLike {
-  let mut result = MatrixLike::default();
+) -> OutputMatrix {
+  let mut result = OutputMatrix::default();
   let (rows, columns) = result.size();
   assert_eq!(
     rows - 1,
@@ -76,30 +77,40 @@ pub fn translation_matrix<
   return result;
 }
 
+/// Creates a 4x4 perspective matrix given the fov in turns (unit between
+/// 0..2pi radians), aspect ratio, near clipping plane (also known as z_near),
+/// and far clipping plane (also known as z_far). Enforces that the matrix being
+/// created is square in both debug and release builds, but only enforces that
+/// the output matrix is 4x4 in debug builds.
 pub fn perspective_matrix<
   V: Vector<Scalar = f32>,
   MatrixLike: Matrix<V> + Default,
 >(
   fov: V::Scalar,
-  aspect: V::Scalar,
-  z_near: V::Scalar,
-  z_far: V::Scalar,
+  aspect_ratio: V::Scalar,
+  near_clipping_plane: V::Scalar,
+  far_clipping_plane: V::Scalar,
 ) -> MatrixLike {
   let mut result = MatrixLike::default();
   let (rows, columns) = result.size();
-  debug_assert_eq!(
+  assert_eq!(
     rows, columns,
     "Matrix must be square to be a perspective matrix"
   );
   debug_assert_eq!(rows, 4, "Matrix must be 4x4 to be a perspective matrix");
-  let f = 1.0 / (fov / 2.0).tan();
-  let range = z_near - z_far;
+  let fov_in_radians = fov * std::f32::consts::PI * 2.0;
+  let f = 1.0 / (fov_in_radians / 2.0).tan();
+  let range = near_clipping_plane - far_clipping_plane;
 
-  result.update(0, 0, f / aspect);
+  result.update(0, 0, f / aspect_ratio);
   result.update(1, 1, f);
-  result.update(2, 2, (z_near + z_far) / range);
+  result.update(2, 2, (near_clipping_plane + far_clipping_plane) / range);
   result.update(2, 3, -1.0);
-  result.update(3, 2, (2.0 * z_near * z_far) / range);
+  result.update(
+    3,
+    2,
+    (2.0 * near_clipping_plane * far_clipping_plane) / range,
+  );
 
   return result;
 }
@@ -321,10 +332,15 @@ mod tests {
 
   #[test]
   fn perspective_matrix_test() {
-    let perspective: [[f32; 4]; 4] = perspective_matrix(1.0, 1.0, 1.0, 0.0);
-    let f = 1.0 / (1.0 / 2.0 as f32).tan();
+    let perspective: [[f32; 4]; 4] =
+      perspective_matrix(1.0 / 4.0, 1.0, 1.0, 0.0);
+
+    // Compute the field of view values used by the perspective matrix by hand.
+    let fov_radians = (1.0 / 4.0) * std::f32::consts::PI * 2.0;
+    let f = 1.0 / (fov_radians as f32 / 2.0).tan();
+
     let expected: [[f32; 4]; 4] = [
-      [f / 1.0, 0.0, 0.0, 0.0],
+      [f, 0.0, 0.0, 0.0],
       [0.0, f, 0.0, 0.0],
       [0.0, 0.0, 1.0, -1.0],
       [0.0, 0.0, 0.0, 0.0],
