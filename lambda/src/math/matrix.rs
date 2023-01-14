@@ -76,6 +76,34 @@ pub fn translation_matrix<
   return result;
 }
 
+pub fn perspective_matrix<
+  V: Vector<Scalar = f32>,
+  MatrixLike: Matrix<V> + Default,
+>(
+  fov: V::Scalar,
+  aspect: V::Scalar,
+  z_near: V::Scalar,
+  z_far: V::Scalar,
+) -> MatrixLike {
+  let mut result = MatrixLike::default();
+  let (rows, columns) = result.size();
+  debug_assert_eq!(
+    rows, columns,
+    "Matrix must be square to be a perspective matrix"
+  );
+  debug_assert_eq!(rows, 4, "Matrix must be 4x4 to be a perspective matrix");
+  let f = 1.0 / (fov / 2.0).tan();
+  let range = z_near - z_far;
+
+  result.update(0, 0, f / aspect);
+  result.update(1, 1, f);
+  result.update(2, 2, (z_near + z_far) / range);
+  result.update(2, 3, -1.0);
+  result.update(3, 2, (2.0 * z_near * z_far) / range);
+
+  return result;
+}
+
 // -------------------------- ARRAY IMPLEMENTATION -----------------------------
 
 /// Matrix implementations for arrays backed by vectors.
@@ -205,6 +233,7 @@ where
 mod tests {
 
   use super::{
+    perspective_matrix,
     submatrix,
     Matrix,
   };
@@ -288,5 +317,19 @@ mod tests {
       [0.0, 0.0, 0.0, 1.0],
     ];
     assert_eq!(translation, expected);
+  }
+
+  #[test]
+  fn perspective_matrix_test() {
+    let perspective: [[f32; 4]; 4] = perspective_matrix(1.0, 1.0, 1.0, 0.0);
+    let f = 1.0 / (1.0 / 2.0 as f32).tan();
+    let expected: [[f32; 4]; 4] = [
+      [f / 1.0, 0.0, 0.0, 0.0],
+      [0.0, f, 0.0, 0.0],
+      [0.0, 0.0, 1.0, -1.0],
+      [0.0, 0.0, 0.0, 0.0],
+    ];
+
+    assert_eq!(perspective, expected);
   }
 }
