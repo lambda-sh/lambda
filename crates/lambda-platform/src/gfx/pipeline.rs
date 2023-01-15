@@ -85,7 +85,7 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
     gpu: &Gpu<RenderBackend>,
     render_pass: &super::render_pass::RenderPass<RenderBackend>,
     vertex_shader: &ShaderModule<RenderBackend>,
-    fragment_shader: &ShaderModule<RenderBackend>,
+    fragment_shader: Option<&ShaderModule<RenderBackend>>,
   ) -> RenderPipeline<RenderBackend> {
     // TODO(vmarcella): The pipeline layout should be configurable through the
     // RenderPipelineBuilder.
@@ -104,10 +104,13 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
     let primitive_assembler =
       super::assembler::PrimitiveAssemblerBuilder::new().build(vertex_shader);
 
-    let fragment_entry = internal::EntryPoint {
-      entry: fragment_shader.entry(),
-      module: super::internal::module_for(fragment_shader),
-      specialization: fragment_shader.specializations().clone(),
+    let fragment_entry = match fragment_shader {
+      Some(shader) => Some(internal::EntryPoint::<RenderBackend> {
+        entry: "main",
+        module: super::internal::module_for(shader),
+        specialization: gfx_hal::pso::Specialization::default(),
+      }),
+      None => None,
     };
 
     let mut pipeline_desc = internal::GraphicsPipelineDesc::new(
@@ -116,7 +119,7 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
         cull_face: internal::Face::BACK,
         ..internal::Rasterizer::FILL
       },
-      Some(fragment_entry),
+      fragment_entry,
       &pipeline_layout,
       internal::Subpass {
         index: 0,

@@ -51,7 +51,7 @@ impl Component for TrianglesComponent {
         render_context,
         &render_pass,
         &self.vertex_shader,
-        &self.triangle_vertex,
+        Some(&self.triangle_vertex),
       );
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));

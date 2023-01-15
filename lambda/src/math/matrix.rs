@@ -2,10 +2,9 @@
 
 use lambda_platform::rand::get_uniformly_random_floats_between;
 
-use super::vector::Vector;
-use crate::{
-  assert_approximately_equal,
-  math::turns_to_radians,
+use super::{
+  turns_to_radians,
+  vector::Vector,
 };
 
 // -------------------------------- MATRIX -------------------------------------
@@ -183,6 +182,7 @@ pub fn perspective_matrix<
   return result;
 }
 
+/// Create a matrix of any size that is filled with zeros.
 pub fn zeroed_matrix<
   V: Vector<Scalar = f32>,
   MatrixLike: Matrix<V> + Default,
@@ -218,6 +218,7 @@ pub fn filled_matrix<
   return result;
 }
 
+/// Creates an identity matrix of the given size.
 pub fn identity_matrix<
   V: Vector<Scalar = f32>,
   MatrixLike: Matrix<V> + Default,
@@ -483,12 +484,15 @@ mod tests {
     assert_eq!(perspective, expected);
   }
 
+  /// Test the rotation matrix for a 3D rotation.
   #[test]
   fn rotate_matrices() {
-    let rotation_matrix: [[f32; 4]; 4] = filled_matrix(4, 4, 1.0);
-    let rotated_matrix = rotate_matrix(rotation_matrix, [0.0, 0.0, 1.0], 0.0);
-    assert_eq!(rotated_matrix, rotation_matrix);
+    // Test a zero turn rotation.
+    let matrix: [[f32; 4]; 4] = filled_matrix(4, 4, 1.0);
+    let rotated_matrix = rotate_matrix(matrix, [0.0, 0.0, 1.0], 0.0);
+    assert_eq!(rotated_matrix, matrix);
 
+    // Test a 90 degree rotation.
     let matrix = [
       [1.0, 2.0, 3.0, 4.0],
       [5.0, 6.0, 7.0, 8.0],

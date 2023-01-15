@@ -69,7 +69,7 @@ impl RenderPipelineBuilder {
     render_context: &mut RenderContext,
     render_pass: &super::render_pass::RenderPass,
     vertex_shader: &Shader,
-    fragment_shader: &Shader,
+    fragment_shader: Option<&Shader>,
   ) -> RenderPipeline {
     let vertex_shader_module = ShaderModuleBuilder::new().build(
       mut_gpu_from_context(render_context),
@@ -77,11 +77,14 @@ impl RenderPipelineBuilder {
       ShaderModuleType::Vertex,
     );
 
-    let fragment_shader_module = ShaderModuleBuilder::new().build(
-      mut_gpu_from_context(render_context),
-      &fragment_shader.as_binary(),
-      ShaderModuleType::Fragment,
-    );
+    let fragment_shader_module = match fragment_shader {
+      Some(shader) => Some(ShaderModuleBuilder::new().build(
+        mut_gpu_from_context(render_context),
+        &shader.as_binary(),
+        ShaderModuleType::Fragment,
+      )),
+      None => None,
+    };
 
     let render_pipeline =
       lambda_platform::gfx::pipeline::RenderPipelineBuilder::new()
@@ -90,11 +93,14 @@ impl RenderPipelineBuilder {
           gpu_from_context(render_context),
           &platform_render_pass_from_render_pass(render_pass),
           &vertex_shader_module,
-          &fragment_shader_module,
+          fragment_shader_module.as_ref(),
         );
 
+    // Clean up shader modules.
     vertex_shader_module.destroy(mut_gpu_from_context(render_context));
-    fragment_shader_module.destroy(mut_gpu_from_context(render_context));
+    if let Some(fragment_shader_module) = fragment_shader_module {
+      fragment_shader_module.destroy(mut_gpu_from_context(render_context));
+    }
 
     return RenderPipeline {
       pipeline: Rc::new(render_pipeline),
