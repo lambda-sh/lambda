@@ -3,6 +3,10 @@
 use lambda_platform::rand::get_uniformly_random_floats_between;
 
 use super::vector::Vector;
+use crate::{
+  assert_approximately_equal,
+  math::turns_to_radians,
+};
 
 // -------------------------------- MATRIX -------------------------------------
 
@@ -77,6 +81,70 @@ pub fn translation_matrix<
   return result;
 }
 
+/// Rotates the input matrix by the given number of turns around the given axis.
+/// The axis must be a unit vector and the turns must be in the range [0, 1).
+/// The rotation is counter-clockwise when looking down the axis.
+pub fn rotate_matrix<
+  InputVector: Vector<Scalar = f32>,
+  ResultingVector: Vector<Scalar = f32>,
+  OutputMatrix: Matrix<ResultingVector> + Default + Clone,
+>(
+  matrix_to_rotate: OutputMatrix,
+  axis_to_rotate: InputVector,
+  angle_in_turns: f32,
+) -> OutputMatrix {
+  let (rows, columns) = matrix_to_rotate.size();
+  assert_eq!(rows, columns, "Matrix must be square");
+  assert_eq!(rows, 4, "Matrix must be 4x4");
+  assert_eq!(
+    axis_to_rotate.size(),
+    3,
+    "Axis vector must have 3 elements (x, y, z)"
+  );
+
+  // Convert the angle from turns to radians
+  let angle_in_radians = turns_to_radians(angle_in_turns);
+  let cosine_of_angle = angle_in_radians.cos();
+  let sin_of_angle = -angle_in_radians.sin();
+
+  let t = 1.0 - cosine_of_angle;
+  let x = axis_to_rotate.at(0);
+  let y = axis_to_rotate.at(1);
+  let z = axis_to_rotate.at(2);
+
+  let mut rotation_matrix = OutputMatrix::default();
+
+  let rotation = [
+    [
+      t * x * x + cosine_of_angle,
+      t * x * y - (sin_of_angle * z),
+      t * x * z + (sin_of_angle * y),
+      0.0,
+    ],
+    [
+      t * x * y + (sin_of_angle * z),
+      t * y * y + cosine_of_angle,
+      t * y * z - (sin_of_angle * x),
+      0.0,
+    ],
+    [
+      t * x * z - (sin_of_angle * y),
+      t * y * z - (sin_of_angle * x),
+      t * z * z + cosine_of_angle,
+      0.0,
+    ],
+    [0.0, 0.0, 0.0, 1.0],
+  ];
+
+  for i in 0..rows {
+    for j in 0..columns {
+      rotation_matrix.update(i, j, rotation[i][j]);
+    }
+  }
+
+  return matrix_to_rotate.multiply(&rotation_matrix);
+}
+
 /// Creates a 4x4 perspective matrix given the fov in turns (unit between
 /// 0..2pi radians), aspect ratio, near clipping plane (also known as z_near),
 /// and far clipping plane (also known as z_far). Enforces that the matrix being
@@ -98,7 +166,7 @@ pub fn perspective_matrix<
     "Matrix must be square to be a perspective matrix"
   );
   debug_assert_eq!(rows, 4, "Matrix must be 4x4 to be a perspective matrix");
-  let fov_in_radians = fov * std::f32::consts::PI * 2.0;
+  let fov_in_radians = turns_to_radians(fov);
   let f = 1.0 / (fov_in_radians / 2.0).tan();
   let range = near_clipping_plane - far_clipping_plane;
 
@@ -115,9 +183,70 @@ pub fn perspective_matrix<
   return result;
 }
 
+pub fn zeroed_matrix<
+  V: Vector<Scalar = f32>,
+  MatrixLike: Matrix<V> + Default,
+>(
+  rows: usize,
+  columns: usize,
+) -> MatrixLike {
+  let mut result = MatrixLike::default();
+  for i in 0..rows {
+    for j in 0..columns {
+      result.update(i, j, 0.0);
+    }
+  }
+  return result;
+}
+
+/// Creates a new matrix with the given number of rows and columns, and fills it
+/// with the given value.
+pub fn filled_matrix<
+  V: Vector<Scalar = f32>,
+  MatrixLike: Matrix<V> + Default,
+>(
+  rows: usize,
+  columns: usize,
+  value: V::Scalar,
+) -> MatrixLike {
+  let mut result = MatrixLike::default();
+  for i in 0..rows {
+    for j in 0..columns {
+      result.update(i, j, value);
+    }
+  }
+  return result;
+}
+
+pub fn identity_matrix<
+  V: Vector<Scalar = f32>,
+  MatrixLike: Matrix<V> + Default,
+>(
+  rows: usize,
+  columns: usize,
+) -> MatrixLike {
+  assert_eq!(
+    rows, columns,
+    "Matrix must be square to be an identity matrix"
+  );
+  let mut result = MatrixLike::default();
+  for i in 0..rows {
+    for j in 0..columns {
+      if i == j {
+        result.update(i, j, 1.0);
+      } else {
+        result.update(i, j, 0.0);
+      }
+    }
+  }
+  return result;
+}
+
 // -------------------------- ARRAY IMPLEMENTATION -----------------------------
 
-/// Matrix implementations for arrays backed by vectors.
+/// Matrix implementations for arrays of f32 arrays. Including the trait Matrix into
+/// your code will allow you to use these function implementation for any array
+/// of f32 arrays.
 impl<Array, V> Matrix<V> for Array
 where
   Array: AsMut<[V]> + AsRef<[V]> + Default,
@@ -244,11 +373,16 @@ where
 mod tests {
 
   use super::{
+    filled_matrix,
     perspective_matrix,
+    rotate_matrix,
     submatrix,
     Matrix,
   };
-  use crate::math::matrix::translation_matrix;
+  use crate::math::{
+    matrix::translation_matrix,
+    turns_to_radians,
+  };
 
   #[test]
   fn square_matrix_add() {
@@ -336,8 +470,8 @@ mod tests {
       perspective_matrix(1.0 / 4.0, 1.0, 1.0, 0.0);
 
     // Compute the field of view values used by the perspective matrix by hand.
-    let fov_radians = (1.0 / 4.0) * std::f32::consts::PI * 2.0;
-    let f = 1.0 / (fov_radians as f32 / 2.0).tan();
+    let fov_radians = turns_to_radians(1.0 / 4.0);
+    let f = 1.0 / (fov_radians / 2.0).tan();
 
     let expected: [[f32; 4]; 4] = [
       [f, 0.0, 0.0, 0.0],
@@ -347,5 +481,37 @@ mod tests {
     ];
 
     assert_eq!(perspective, expected);
+  }
+
+  #[test]
+  fn rotate_matrices() {
+    let rotation_matrix: [[f32; 4]; 4] = filled_matrix(4, 4, 1.0);
+    let rotated_matrix = rotate_matrix(rotation_matrix, [0.0, 0.0, 1.0], 0.0);
+    assert_eq!(rotated_matrix, rotation_matrix);
+
+    let matrix = [
+      [1.0, 2.0, 3.0, 4.0],
+      [5.0, 6.0, 7.0, 8.0],
+      [9.0, 10.0, 11.0, 12.0],
+      [13.0, 14.0, 15.0, 16.0],
+    ];
+    let rotated = rotate_matrix(matrix, [0.0, 1.0, 0.0], 0.25);
+    let expected = [
+      [3.0, 1.9999999, -1.0000001, 4.0],
+      [7.0, 5.9999995, -5.0000005, 8.0],
+      [11.0, 9.999999, -9.000001, 12.0],
+      [14.999999, 13.999999, -13.000001, 16.0],
+    ];
+
+    println!("rotated: {:?}", rotated);
+    for i in 0..4 {
+      for j in 0..4 {
+        crate::assert_approximately_equal!(
+          rotated.at(i, j),
+          expected.at(i, j),
+          0.1
+        );
+      }
+    }
   }
 }
