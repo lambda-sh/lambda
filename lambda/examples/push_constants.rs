@@ -123,7 +123,7 @@ impl Component for PushConstantsExample {
 
     // Create a projection matrix.
     let mut projection: [[f32; 4]; 4] =
-      matrix::perspective_matrix(1.0 / 2.0, 1700.0 / 900.0, 0.1, 200.0);
+      matrix::perspective_matrix(0.25, 1700.0 / 900.0, 0.1, 200.0);
     projection.as_mut()[1].as_mut()[1] *= -1.0;
 
     // Rotate model.

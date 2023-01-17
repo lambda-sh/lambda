@@ -1,10 +1,13 @@
 //! High level Rendering API designed for cross platform rendering and
 //! windowing.
 
+// Module Exports
 pub mod command;
+pub mod mesh;
 pub mod pipeline;
 pub mod render_pass;
 pub mod shader;
+pub mod vertex;
 pub mod viewport;
 pub mod window;
 
