@@ -1,29 +1,35 @@
 use super::vertex::Vertex;
 
+// ---------------------------------- Mesh ------------------------------------
+
+/// Collection of vertices and indices that define a 3D object.
 #[derive(Clone, Debug)]
 pub struct Mesh {
   vertices: Vec<Vertex>,
-  indices: Vec<usize>,
+  indices: Vec<u32>,
 }
 
+// ------------------------------ MeshBuilder ---------------------------------
+
+/// Construction for a mesh.
 #[derive(Clone, Debug)]
 pub struct MeshBuilder {
-  size: usize,
+  capacity: usize,
   vertices: Vec<Vertex>,
-  indices: Vec<usize>,
+  indices: Vec<u32>,
 }
 
 impl MeshBuilder {
   pub fn new() -> Self {
     return Self {
-      size: 0,
+      capacity: 0,
       vertices: vec![],
       indices: vec![],
     };
   }
 
   pub fn with_capacity(&mut self, size: usize) -> &mut Self {
-    self.size = size;
+    self.capacity = size;
     return self;
   }
 
@@ -49,7 +55,7 @@ mod tests {
     assert_eq!(mesh.vertices.len(), 0);
     assert_eq!(mesh.indices.len(), 0);
 
-    let mut mesh = mesh
+    let mesh = mesh
       .with_capacity(10)
       .with_vertex(crate::core::render::vertex::VertexBuilder::new().build())
       .build();

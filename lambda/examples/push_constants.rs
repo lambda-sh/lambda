@@ -3,28 +3,22 @@ use lambda::{
     component::Component,
     render::{
       command::RenderCommand,
-      pipeline::{
-        RenderPipeline,
-        RenderPipelineBuilder,
-      },
-      render_pass::{
-        RenderPass,
-        RenderPassBuilder,
-      },
+      mesh::MeshBuilder,
+      pipeline::RenderPipelineBuilder,
+      render_pass::RenderPassBuilder,
       shader::{
         Shader,
         ShaderBuilder,
       },
+      vertex::VertexBuilder,
       viewport,
       ResourceId,
     },
     runtime::start_runtime,
   },
   math::{
-    matrix::{
-      self,
-      Matrix,
-    },
+    matrix,
+    matrix::Matrix,
     vector::Vector,
   },
   runtimes::GenericRuntimeBuilder,
@@ -96,6 +90,30 @@ impl Component for PushConstantsExample {
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
+
+    // Create triangle mesh.
+    let vertices = [
+      VertexBuilder::new()
+        .with_position([0.0, 0.5, 0.0])
+        .with_normal([0.0, 0.0, 0.0])
+        .with_color([1.0, 0.0, 0.0])
+        .build(),
+      VertexBuilder::new()
+        .with_position([-0.5, -0.5, 0.0])
+        .with_normal([0.0, 0.0, 0.0])
+        .with_color([0.0, 1.0, 0.0])
+        .build(),
+      VertexBuilder::new()
+        .with_position([0.5, -0.5, 0.0])
+        .with_normal([0.0, 0.0, 0.0])
+        .with_color([0.0, 0.0, 1.0])
+        .build(),
+    ];
+
+    let mut mesh_builder = MeshBuilder::new();
+    vertices.iter().for_each(|vertex| {
+      mesh_builder.with_vertex(vertex.clone());
+    });
   }
 
   fn on_detach(
@@ -201,14 +219,11 @@ impl Default for PushConstantsExample {
 }
 
 fn main() {
-  let runtime = GenericRuntimeBuilder::new("Multiple Triangles Demo")
-    .with_renderer_configured_as(move |render_context_builder| {
-      return render_context_builder.with_render_timeout(1_000_000_000);
-    })
+  let runtime = GenericRuntimeBuilder::new("3D Push Constants Example")
     .with_window_configured_as(move |window_builder| {
       return window_builder
         .with_dimensions(800, 600)
-        .with_name("Triangles");
+        .with_name("3D Push Constants Example");
     })
     .with_component(move |runtime, triangles: PushConstantsExample| {
       return (runtime, triangles);
