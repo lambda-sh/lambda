@@ -45,6 +45,8 @@ impl BufferBuilder {
     return self;
   }
 
+  /// Builds & binds a buffer of memory to the GPU. If the buffer cannot be
+  /// bound to the GPU, the buffer memory is freed before the error is returned.
   pub fn build<RenderBackend: super::internal::Backend>(
     self,
     gpu: &mut Gpu<RenderBackend>,
@@ -57,8 +59,9 @@ impl BufferBuilder {
     let logical_device = super::internal::logical_device_for(gpu);
     let physical_device = super::internal::physical_device_for(gpu);
 
-    // Allocate buffer
-    let mut buffer_result = unsafe {
+    // TODO(vmarcella): Add the ability for the user to specify the memory
+    // properties (I.E. SparseFlags::SPARSE_MEMORY).
+    let buffer_result = unsafe {
       logical_device.create_buffer(
         self.buffer_length as u64,
         self.usage,
@@ -87,6 +90,7 @@ impl BufferBuilder {
       .map(|(id, _)| MemoryTypeId(id))
       .unwrap();
 
+    // Allocates the memory on the GPU for the buffer.
     let buffer_memory_allocation =
       unsafe { logical_device.allocate_memory(memory_type, requirements.size) };
 
@@ -96,6 +100,7 @@ impl BufferBuilder {
 
     let buffer_memory = buffer_memory_allocation.unwrap();
 
+    // Bind the buffer to the GPU memory
     let buffer_binding = unsafe {
       logical_device.bind_buffer_memory(&buffer_memory, 0, &mut buffer)
     };

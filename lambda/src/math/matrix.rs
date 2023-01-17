@@ -289,6 +289,7 @@ where
     return result;
   }
 
+  /// Transposes the matrix, swapping the rows and columns.
   fn transpose(&self) -> Self {
     let mut result = Self::default();
     for (i, a) in self.as_ref().iter().enumerate() {
