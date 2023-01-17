@@ -1,5 +1,8 @@
 use gfx_hal::{
-  memory::SparseFlags,
+  memory::{
+    Segment,
+    SparseFlags,
+  },
   Backend,
 };
 
@@ -11,10 +14,13 @@ pub type Properties = gfx_hal::memory::Properties;
 
 /// A buffer is a block of memory that can be used to store data that can be
 /// accessed by the GPU.
+#[derive(Debug, Clone, Copy)]
 pub struct Buffer<RenderBackend: super::internal::Backend> {
   buffer: RenderBackend::Buffer,
   memory: RenderBackend::Memory,
 }
+
+impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {}
 
 pub struct BufferBuilder {
   buffer_length: usize,
@@ -47,9 +53,12 @@ impl BufferBuilder {
 
   /// Builds & binds a buffer of memory to the GPU. If the buffer cannot be
   /// bound to the GPU, the buffer memory is freed before the error is returned.
-  pub fn build<RenderBackend: super::internal::Backend>(
-    self,
+  /// Data must represent the data that will be stored in the buffer, meaning
+  /// it must repr C and be the same size as the buffer length.
+  pub fn build<RenderBackend: super::internal::Backend, Data: Sized>(
+    &self,
     gpu: &mut Gpu<RenderBackend>,
+    data: Vec<Data>,
   ) -> Result<Buffer<RenderBackend>, &'static str> {
     use gfx_hal::{
       adapter::PhysicalDevice,
@@ -98,7 +107,7 @@ impl BufferBuilder {
       return Err("Failed to allocate memory for buffer.");
     }
 
-    let buffer_memory = buffer_memory_allocation.unwrap();
+    let mut buffer_memory = buffer_memory_allocation.unwrap();
 
     // Bind the buffer to the GPU memory
     let buffer_binding = unsafe {
@@ -110,6 +119,43 @@ impl BufferBuilder {
       unsafe { logical_device.destroy_buffer(buffer) };
       return Err("Failed to bind buffer memory.");
     }
+
+    // Get address of the buffer memory on the GPU so that we can write to it.
+    let get_mapping_to_memory =
+      unsafe { logical_device.map_memory(&mut buffer_memory, Segment::ALL) };
+
+    if get_mapping_to_memory.is_err() {
+      unsafe { logical_device.destroy_buffer(buffer) };
+      return Err("Failed to map memory.");
+    }
+    let mapped_memory = get_mapping_to_memory.unwrap();
+
+    // Copy the data to the GPU memory.
+    unsafe {
+      std::ptr::copy_nonoverlapping(
+        data.as_ptr() as *const u8,
+        mapped_memory,
+        self.buffer_length,
+      );
+    };
+
+    // Flush the data to ensure it is written to the GPU memory.
+    let memory_flush = unsafe {
+      logical_device
+        .flush_mapped_memory_ranges(std::iter::once((
+          &buffer_memory,
+          Segment::ALL,
+        )))
+        .map_err(|_| "Failed to flush memory.")
+    };
+
+    if memory_flush.is_err() {
+      unsafe { logical_device.destroy_buffer(buffer) };
+      return Err("No memory available on the GPU.");
+    }
+
+    // Unmap the memory now that it's no longer needed by the CPU.
+    unsafe { logical_device.unmap_memory(&mut buffer_memory) };
 
     return Ok(Buffer {
       buffer,

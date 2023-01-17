@@ -1,12 +1,24 @@
-use super::vertex::Vertex;
+use lambda_platform::gfx::buffer::{
+  Buffer,
+  BufferBuilder,
+  Properties,
+  Usage,
+};
+
+use super::{
+  vertex::Vertex,
+  RenderContext,
+};
+use crate::core::render::internal::mut_gpu_from_context;
 
 // ---------------------------------- Mesh ------------------------------------
 
 /// Collection of vertices and indices that define a 3D object.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Mesh {
   vertices: Vec<Vertex>,
   indices: Vec<u32>,
+  buffer: Buffer<super::internal::RenderBackend>,
 }
 
 // ------------------------------ MeshBuilder ---------------------------------
@@ -38,11 +50,38 @@ impl MeshBuilder {
     return self;
   }
 
-  pub fn build(&self) -> Mesh {
-    return Mesh {
-      vertices: self.vertices.clone(),
-      indices: self.indices.clone(),
-    };
+  /// Builds a mesh from the vertices and indices that have been added to the
+  /// builder and allocates the memory for the mesh on the GPU.
+  pub fn build(
+    &self,
+    render_context: &mut RenderContext,
+  ) -> Result<Mesh, &'static str> {
+    let gpu_memory_required =
+      self.vertices.len() * std::mem::size_of::<Vertex>();
+    println!(
+      "Allocating {} bytes of GPU memory for mesh.",
+      gpu_memory_required
+    );
+
+    // Allocate memory for the mesh on the GPU.
+    let buffer_allocation = BufferBuilder::new()
+      .with_length(gpu_memory_required)
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE | Properties::COHERENT)
+      .build(mut_gpu_from_context(render_context), self.vertices.clone());
+
+    match buffer_allocation {
+      Ok(buffer) => {
+        return Ok(Mesh {
+          vertices: self.vertices.clone(),
+          indices: self.indices.clone(),
+          buffer,
+        });
+      }
+      Err(error) => {
+        return Err(error);
+      }
+    }
   }
 }
 
@@ -54,16 +93,9 @@ mod tests {
 
     assert_eq!(mesh.vertices.len(), 0);
     assert_eq!(mesh.indices.len(), 0);
-
-    let mesh = mesh
-      .with_capacity(10)
-      .with_vertex(crate::core::render::vertex::VertexBuilder::new().build())
-      .build();
-
-    assert_eq!(mesh.vertices.len(), 1);
-    assert_eq!(mesh.indices.len(), 0);
-    assert_eq!(mesh.vertices[0].position, [0.0, 0.0, 0.0]);
-    assert_eq!(mesh.vertices[0].normal, [0.0, 0.0, 0.0]);
-    assert_eq!(mesh.vertices[0].color, [0.0, 0.0, 0.0]);
   }
+
+  // TODO(vmarcella): Add more tests for mesh building once the render context
+  // is mockable. As of right now, testing would require the creation of a real
+  // render context to perform the GPU memory allocation & binding for the mesh.
 }
