@@ -101,7 +101,6 @@ pub fn rotate_matrix<
     "Axis vector must have 3 elements (x, y, z)"
   );
 
-  // Convert the angle from turns to radians
   let angle_in_radians = turns_to_radians(angle_in_turns);
   let cosine_of_angle = angle_in_radians.cos();
   let sin_of_angle = -angle_in_radians.sin();
@@ -284,7 +283,7 @@ where
 
     for (i, a) in self.as_ref().iter().enumerate() {
       for (j, b) in transposed.as_ref().iter().enumerate() {
-        result.as_mut()[i].as_mut()[j] += a.dot(&b);
+        result.update(i, j, a.dot(b));
       }
     }
     return result;
@@ -294,7 +293,7 @@ where
     let mut result = Self::default();
     for (i, a) in self.as_ref().iter().enumerate() {
       for j in 0..a.as_ref().len() {
-        result.as_mut()[i].as_mut()[j] = self.as_ref()[j].as_ref()[i];
+        result.update(i, j, self.at(j, i));
       }
     }
     return result;
@@ -320,10 +319,10 @@ where
     return match height {
       1 => self.as_ref()[0].as_ref()[0],
       2 => {
-        let a = self.as_ref()[0].as_ref()[0];
-        let b = self.as_ref()[0].as_ref()[1];
-        let c = self.as_ref()[1].as_ref()[0];
-        let d = self.as_ref()[1].as_ref()[1];
+        let a = self.at(0, 0);
+        let b = self.at(0, 1);
+        let c = self.at(1, 0);
+        let d = self.at(1, 1);
         a * d - b * c
       }
       _ => {
@@ -334,12 +333,12 @@ where
             let mut row = Vec::new();
             for k in 0..height {
               if k != i {
-                row.push(self.as_ref()[j].as_ref()[k]);
+                row.push(self.at(j, k));
               }
             }
             submatrix.push(row);
           }
-          result += self.as_ref()[0].as_ref()[i]
+          result += self.at(0, i)
             * submatrix.determinant()
             * (-1.0 as f32).powi(i as i32);
         }
@@ -350,7 +349,7 @@ where
 
   /// Return the size as a (rows, columns).
   fn size(&self) -> (usize, usize) {
-    return (self.as_ref().len(), self.as_ref()[0].as_ref().len());
+    return (self.as_ref().len(), self.row(0).size());
   }
 
   /// Return a reference to the row.
