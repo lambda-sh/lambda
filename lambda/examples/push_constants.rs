@@ -128,14 +128,13 @@ impl Component for PushConstantsExample {
   }
 
   /// Update the frame number every frame.
-  fn on_update(&mut self, last_frame: &std::time::Duration) {
-    self.frame_number += 1;
-  }
+  fn on_update(&mut self, last_frame: &std::time::Duration) {}
 
   fn on_render(
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) -> Vec<lambda::core::render::command::RenderCommand> {
+    self.frame_number += 1;
     let mut camera = [0.0, 0.0, -2.0];
     let view: [[f32; 4]; 4] = matrix::translation_matrix(camera);
 
