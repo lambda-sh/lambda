@@ -1,15 +1,13 @@
-use lambda_platform::gfx::buffer::{
-  Buffer,
-  BufferBuilder,
-  Properties,
-  Usage,
-};
-
 use super::{
+  buffer::{
+    Buffer,
+    BufferBuilder,
+    Properties,
+    Usage,
+  },
   vertex::Vertex,
   RenderContext,
 };
-use crate::core::render::internal::mut_gpu_from_context;
 
 // ---------------------------------- Mesh ------------------------------------
 
@@ -18,7 +16,7 @@ use crate::core::render::internal::mut_gpu_from_context;
 pub struct Mesh {
   vertices: Vec<Vertex>,
   indices: Vec<u32>,
-  buffer: Buffer<super::internal::RenderBackend>,
+  buffer: Buffer,
 }
 
 // ------------------------------ MeshBuilder ---------------------------------
@@ -68,7 +66,7 @@ impl MeshBuilder {
       .with_length(gpu_memory_required)
       .with_usage(Usage::VERTEX)
       .with_properties(Properties::CPU_VISIBLE | Properties::COHERENT)
-      .build(mut_gpu_from_context(render_context), self.vertices.clone());
+      .build(render_context, self.vertices.clone());
 
     match buffer_allocation {
       Ok(buffer) => {

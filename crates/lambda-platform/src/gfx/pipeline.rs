@@ -36,6 +36,7 @@ use std::ops::Range;
 use gfx_hal::device::Device;
 
 use super::{
+  buffer::Buffer,
   gpu::Gpu,
   shader::ShaderModule,
 };
@@ -56,6 +57,10 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
       pipeline_layout: None,
       push_constants: Vec::new(),
     };
+  }
+
+  pub fn with_buffer(&mut self, buffer: &Buffer<RenderBackend>) -> &mut Self {
+    todo!()
   }
 
   /// Adds a push constant to the render pipeline at the set PipelineStage(s)

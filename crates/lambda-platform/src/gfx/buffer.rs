@@ -1,9 +1,6 @@
-use gfx_hal::{
-  memory::{
-    Segment,
-    SparseFlags,
-  },
-  Backend,
+use gfx_hal::memory::{
+  Segment,
+  SparseFlags,
 };
 
 use super::gpu::Gpu;
@@ -12,12 +9,21 @@ use super::gpu::Gpu;
 pub type Usage = gfx_hal::buffer::Usage;
 pub type Properties = gfx_hal::memory::Properties;
 
+/// A buffer is a block of memory that can be used to store data that is accessed
+#[derive(Debug, Clone, Copy)]
+pub enum BufferType {
+  Vertex,
+  Index,
+}
+
 /// A buffer is a block of memory that can be used to store data that can be
 /// accessed by the GPU.
 #[derive(Debug, Clone, Copy)]
 pub struct Buffer<RenderBackend: super::internal::Backend> {
   buffer: RenderBackend::Buffer,
   memory: RenderBackend::Memory,
+  stride: usize,
+  buffer_type: BufferType,
 }
 
 impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {}
@@ -26,14 +32,16 @@ pub struct BufferBuilder {
   buffer_length: usize,
   usage: Usage,
   properties: Properties,
+  buffer_type: BufferType,
 }
 
 impl BufferBuilder {
   pub fn new() -> Self {
     return Self {
       buffer_length: 0,
-      usage: gfx_hal::buffer::Usage::empty(),
-      properties: gfx_hal::memory::Properties::empty(),
+      usage: Usage::empty(),
+      properties: Properties::empty(),
+      buffer_type: BufferType::Vertex,
     };
   }
 
@@ -48,6 +56,12 @@ impl BufferBuilder {
   }
 
   pub fn with_properties(&mut self, properties: Properties) -> &mut Self {
+    self.properties = properties;
+    return self;
+  }
+
+  pub fn with_buffer_type(&mut self, buffer_type: BufferType) -> &mut Self {
+    self.buffer_type = buffer_type;
     return self;
   }
 
@@ -160,6 +174,8 @@ impl BufferBuilder {
     return Ok(Buffer {
       buffer,
       memory: buffer_memory,
+      stride: std::mem::size_of::<Data>(),
+      buffer_type: self.buffer_type,
     });
   }
 }

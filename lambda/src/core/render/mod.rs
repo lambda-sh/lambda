@@ -2,6 +2,7 @@
 //! windowing.
 
 // Module Exports
+pub mod buffer;
 pub mod command;
 pub mod mesh;
 pub mod pipeline;

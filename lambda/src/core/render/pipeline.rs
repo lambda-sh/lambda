@@ -6,6 +6,7 @@ use lambda_platform::gfx::shader::{
 };
 
 use super::{
+  buffer::Buffer,
   internal::{
     gpu_from_context,
     mut_gpu_from_context,
@@ -45,27 +46,35 @@ use lambda_platform::gfx::pipeline::PushConstantUpload;
 
 pub struct RenderPipelineBuilder {
   push_constants: Vec<PushConstantUpload>,
+  buffers: Vec<Buffer>,
 }
 
 impl RenderPipelineBuilder {
   pub fn new() -> Self {
     return Self {
       push_constants: Vec::new(),
+      buffers: Vec::new(),
     };
   }
 
+  /// Adds a buffer to the render pipeline.
+  pub fn with_buffer(&mut self, buffer: Buffer) -> &mut Self {
+    self.buffers.push(buffer);
+    return self;
+  }
+
   pub fn with_push_constant(
-    mut self,
+    &mut self,
     stage: PipelineStage,
     bytes: u32,
-  ) -> Self {
+  ) -> &mut Self {
     self.push_constants.push((stage, 0..bytes));
     return self;
   }
 
   /// Builds a render pipeline based on your builder configuration.
   pub fn build(
-    self,
+    &self,
     render_context: &mut RenderContext,
     render_pass: &super::render_pass::RenderPass,
     vertex_shader: &Shader,
@@ -88,7 +97,7 @@ impl RenderPipelineBuilder {
 
     let render_pipeline =
       lambda_platform::gfx::pipeline::RenderPipelineBuilder::new()
-        .with_push_constants(self.push_constants)
+        .with_push_constants(self.push_constants.clone())
         .build(
           gpu_from_context(render_context),
           &platform_render_pass_from_render_pass(render_pass),
