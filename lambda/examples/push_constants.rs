@@ -4,7 +4,10 @@ use lambda::{
     render::{
       buffer::BufferBuilder,
       command::RenderCommand,
-      mesh::MeshBuilder,
+      mesh::{
+        Mesh,
+        MeshBuilder,
+      },
       pipeline::RenderPipelineBuilder,
       render_pass::RenderPassBuilder,
       shader::{
@@ -39,6 +42,8 @@ use lambda_platform::{
   },
 };
 
+// ------------------------------ SHADER SOURCE --------------------------------
+
 const VERTEX_SHADER_SOURCE: &str = r#"
 #version 450
 
@@ -60,18 +65,26 @@ void main() {
 
 "#;
 
+const FRAGMENT_SHADER_SOURCE: &str = r#"
+#version 450
+
+layout (location = 0) in vec3 frag_color;
+
+layout (location = 0) out vec4 fragment_color;
+
+void main() {
+  fragment_color = vec4(frag_color, 1.0);
+}
+
+"#;
+
+// ------------------------------ PUSH CONSTANTS -------------------------------
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct PushConstant {
   data: [f32; 4],
   render_matrix: [[f32; 4]; 4],
-}
-
-pub struct PushConstantsExample {
-  frame_number: u64,
-  shader: Shader,
-  render_pipeline: Option<ResourceId>,
-  render_pass: Option<ResourceId>,
 }
 
 pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
@@ -83,6 +96,16 @@ pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
   };
 
   return bytes;
+}
+
+// --------------------------------- COMPONENT ---------------------------------
+
+pub struct PushConstantsExample {
+  frame_number: u64,
+  shader: Shader,
+  mesh: Option<Mesh>,
+  render_pipeline: Option<ResourceId>,
+  render_pass: Option<ResourceId>,
 }
 
 impl Component for PushConstantsExample {
@@ -149,6 +172,7 @@ impl Component for PushConstantsExample {
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
+    self.mesh = Some(mesh);
   }
 
   fn on_detach(
@@ -246,6 +270,7 @@ impl Default for PushConstantsExample {
     return Self {
       frame_number: 0,
       shader,
+      mesh: None,
       render_pipeline: None,
       render_pass: None,
     };
