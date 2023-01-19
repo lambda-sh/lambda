@@ -25,6 +25,15 @@ pub struct Buffer {
   buffer_type: BufferType,
 }
 
+impl Buffer {
+  /// Retrieve a reference to the internal buffer.
+  pub(super) fn internal_buffer(
+    &self,
+  ) -> &internal::Buffer<super::internal::RenderBackend> {
+    return &self.buffer;
+  }
+}
+
 /// A buffer is a block of memory that can be used to store data that can be
 /// accessed by the GPU. The buffer is created with a length, usage, and
 /// properties that determine how the buffer can be used.

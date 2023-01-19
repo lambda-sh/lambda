@@ -39,7 +39,7 @@ impl SurfaceBuilder {
     let gfx_hal_surface = super::internal::create_surface(instance, window);
     let name = match self.name {
       Some(name) => name,
-      None => "LambdaSurface".to_string(),
+      None => "RenderSurface".to_string(),
     };
 
     return Surface {

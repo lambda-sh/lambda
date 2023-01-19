@@ -13,6 +13,7 @@ use super::{
 };
 
 /// Attributes for a vertex.
+#[derive(Debug, Clone)]
 pub struct VertexAttribute {
   pub location: u32,
   pub offset: u32,
@@ -39,8 +40,8 @@ impl PrimitiveAssemblerBuilder {
   pub fn build<'shader, RenderBackend: gfx_hal::Backend>(
     &'shader mut self,
     vertex_shader: &'shader super::shader::ShaderModule<RenderBackend>,
-    buffers: Option<&Vec<Buffer<RenderBackend>>>,
-    attributes: Option<&Vec<VertexAttribute>>,
+    buffers: Option<&Vec<&Buffer<RenderBackend>>>,
+    attributes: Option<&[VertexAttribute]>,
   ) -> PrimitiveAssembler<'shader, RenderBackend> {
     let binding = self.buffer_descriptions.len() as u32;
 

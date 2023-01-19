@@ -1,8 +1,12 @@
 use std::rc::Rc;
 
-use lambda_platform::gfx::shader::{
-  ShaderModuleBuilder,
-  ShaderModuleType,
+use lambda_platform::gfx::{
+  assembler::VertexAttribute,
+  buffer::Buffer as InternalBuffer,
+  shader::{
+    ShaderModuleBuilder,
+    ShaderModuleType,
+  },
 };
 
 use super::{
@@ -12,7 +16,6 @@ use super::{
     mut_gpu_from_context,
     RenderBackend,
   },
-  render_pass::internal::platform_render_pass_from_render_pass,
   shader::Shader,
   RenderContext,
 };
@@ -47,6 +50,7 @@ use lambda_platform::gfx::pipeline::PushConstantUpload;
 pub struct RenderPipelineBuilder {
   push_constants: Vec<PushConstantUpload>,
   buffers: Vec<Buffer>,
+  attributes: Vec<VertexAttribute>,
 }
 
 impl RenderPipelineBuilder {
@@ -54,12 +58,18 @@ impl RenderPipelineBuilder {
     return Self {
       push_constants: Vec::new(),
       buffers: Vec::new(),
+      attributes: Vec::new(),
     };
   }
 
   /// Adds a buffer to the render pipeline.
-  pub fn with_buffer(&mut self, buffer: Buffer) -> &mut Self {
+  pub fn with_buffer(
+    &mut self,
+    buffer: Buffer,
+    attributes: Vec<VertexAttribute>,
+  ) -> &mut Self {
     self.buffers.push(buffer);
+    self.attributes.extend(attributes);
     return self;
   }
 
@@ -95,15 +105,24 @@ impl RenderPipelineBuilder {
       None => None,
     };
 
-    let render_pipeline =
-      lambda_platform::gfx::pipeline::RenderPipelineBuilder::new()
-        .with_push_constants(self.push_constants.clone())
-        .build(
-          gpu_from_context(render_context),
-          &platform_render_pass_from_render_pass(render_pass),
-          &vertex_shader_module,
-          fragment_shader_module.as_ref(),
-        );
+    let builder = lambda_platform::gfx::pipeline::RenderPipelineBuilder::new();
+
+    let internal_buffers = self
+      .buffers
+      .iter()
+      .map(|b| b.internal_buffer())
+      .collect::<Vec<&InternalBuffer<RenderBackend>>>();
+
+    let render_pipeline = builder
+      .with_push_constants(self.push_constants.clone())
+      .build(
+        gpu_from_context(render_context),
+        render_pass.internal_render_pass(),
+        &vertex_shader_module,
+        fragment_shader_module.as_ref(),
+        &internal_buffers,
+        self.attributes.as_slice(),
+      );
 
     // Clean up shader modules.
     vertex_shader_module.destroy(mut_gpu_from_context(render_context));

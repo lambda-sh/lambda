@@ -18,6 +18,12 @@ pub struct Mesh {
   buffer: Buffer,
 }
 
+impl Mesh {
+  pub(super) fn buffer(&self) -> &Buffer {
+    return &self.buffer;
+  }
+}
+
 // ------------------------------ MeshBuilder ---------------------------------
 
 /// Construction for a mesh.
