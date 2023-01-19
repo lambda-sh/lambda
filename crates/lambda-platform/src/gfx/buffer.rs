@@ -9,11 +9,13 @@ use super::gpu::Gpu;
 pub type Usage = gfx_hal::buffer::Usage;
 pub type Properties = gfx_hal::memory::Properties;
 
-/// A buffer is a block of memory that can be used to store data that is accessed
+/// The type of buffers that can be allocated on the GPU.
 #[derive(Debug, Clone, Copy)]
 pub enum BufferType {
   Vertex,
   Index,
+  Uniform,
+  Storage,
 }
 
 /// A buffer is a block of memory that can be used to store data that can be
@@ -26,7 +28,11 @@ pub struct Buffer<RenderBackend: super::internal::Backend> {
   buffer_type: BufferType,
 }
 
-impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {}
+impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {
+  pub fn stride(&self) -> usize {
+    return self.stride;
+  }
+}
 
 pub struct BufferBuilder {
   buffer_length: usize,

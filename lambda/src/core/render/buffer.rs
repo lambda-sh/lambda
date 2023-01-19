@@ -1,4 +1,6 @@
 mod internal {
+  // Placed these in an internal module to avoid a name collision with the
+  // high level Buffer & BufferBuilder types in the parent module.
   pub use lambda_platform::gfx::buffer::{
     Buffer,
     BufferBuilder,
@@ -23,6 +25,9 @@ pub struct Buffer {
   buffer_type: BufferType,
 }
 
+/// A buffer is a block of memory that can be used to store data that can be
+/// accessed by the GPU. The buffer is created with a length, usage, and
+/// properties that determine how the buffer can be used.
 pub struct BufferBuilder {
   buffer_builder: internal::BufferBuilder,
   buffer_type: BufferType,
@@ -36,28 +41,32 @@ impl BufferBuilder {
     };
   }
 
+  /// Sets the length of the buffer (In bytes).
   pub fn with_length(&mut self, size: usize) -> &mut Self {
     self.buffer_builder.with_length(size);
     return self;
   }
 
+  /// Sets the type of buffer to create.
   pub fn with_buffer_type(&mut self, buffer_type: BufferType) -> &mut Self {
     self.buffer_type = buffer_type;
     self.buffer_builder.with_buffer_type(buffer_type);
     return self;
   }
 
+  /// Sets the usage of the buffer.
   pub fn with_usage(&mut self, usage: Usage) -> &mut Self {
     self.buffer_builder.with_usage(usage);
     return self;
   }
 
+  /// Sets the properties of the buffer.
   pub fn with_properties(&mut self, properties: Properties) -> &mut Self {
     self.buffer_builder.with_properties(properties);
     return self;
   }
 
-  /// Build a buffer from the render context.
+  /// Build a buffer utilizing the current render context
   pub fn build<Data: Sized>(
     &self,
     render_context: &mut RenderContext,

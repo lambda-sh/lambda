@@ -15,7 +15,6 @@ use super::{
 #[derive(Debug)]
 pub struct Mesh {
   vertices: Vec<Vertex>,
-  indices: Vec<u32>,
   buffer: Buffer,
 }
 
@@ -26,7 +25,6 @@ pub struct Mesh {
 pub struct MeshBuilder {
   capacity: usize,
   vertices: Vec<Vertex>,
-  indices: Vec<u32>,
 }
 
 impl MeshBuilder {
@@ -34,7 +32,6 @@ impl MeshBuilder {
     return Self {
       capacity: 0,
       vertices: vec![],
-      indices: vec![],
     };
   }
 
@@ -72,7 +69,6 @@ impl MeshBuilder {
       Ok(buffer) => {
         return Ok(Mesh {
           vertices: self.vertices.clone(),
-          indices: self.indices.clone(),
           buffer,
         });
       }
@@ -90,7 +86,6 @@ mod tests {
     let mut mesh = super::MeshBuilder::new();
 
     assert_eq!(mesh.vertices.len(), 0);
-    assert_eq!(mesh.indices.len(), 0);
   }
 
   // TODO(vmarcella): Add more tests for mesh building once the render context

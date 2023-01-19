@@ -212,7 +212,9 @@ impl RenderContext {
     return self.frame_buffer.as_ref().unwrap().clone();
   }
 
-  /// Allocates a command buffer and records commands to the GPU.
+  /// Allocates a command buffer and records commands to the GPU. This is the
+  /// primary entry point for submitting commands to the GPU and where rendering
+  /// will occur.
   pub fn render(&mut self, commands: Vec<RenderCommand>) {
     let (width, height) = self
       .surface

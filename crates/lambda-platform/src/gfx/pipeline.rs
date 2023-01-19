@@ -106,12 +106,14 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
         )
     };
 
-    let primitive_assembler =
-      super::assembler::PrimitiveAssemblerBuilder::new().build(vertex_shader);
+    // TODO(vmarcella): The primitive assembler should be configurable through
+    // the RenderPipelineBuilder so that buffers & attributes can be bound.
+    let mut builder = super::assembler::PrimitiveAssemblerBuilder::new();
+    let primitive_assembler = builder.build(vertex_shader, None, None);
 
     let fragment_entry = match fragment_shader {
       Some(shader) => Some(internal::EntryPoint::<RenderBackend> {
-        entry: "main",
+        entry: shader.entry(),
         module: super::internal::module_for(shader),
         specialization: gfx_hal::pso::Specialization::default(),
       }),
