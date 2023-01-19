@@ -310,6 +310,20 @@ impl RenderContext {
   }
 }
 
+impl RenderContext {
+  /// Internal access to the RenderContext's GPU.
+  pub(super) fn internal_gpu(&self) -> &internal::Gpu<internal::RenderBackend> {
+    return &self.gpu;
+  }
+
+  /// Internal mutable access to the RenderContext's GPU.
+  pub(super) fn internal_mutable_gpu(
+    &mut self,
+  ) -> &mut internal::Gpu<internal::RenderBackend> {
+    return &mut self.gpu;
+  }
+}
+
 type PlatformRenderCommand = Command<internal::RenderBackend>;
 
 pub(crate) mod internal {
@@ -358,13 +372,6 @@ pub(crate) mod internal {
     context: &super::RenderContext,
   ) -> &Gpu<RenderBackend> {
     return &context.gpu;
-  }
-
-  /// Returns a mutable GPU instance for the given render context.
-  pub fn mut_gpu_from_context(
-    context: &mut super::RenderContext,
-  ) -> &mut Gpu<RenderBackend> {
-    return &mut context.gpu;
   }
 
   /// Gets the surface for the given render context.

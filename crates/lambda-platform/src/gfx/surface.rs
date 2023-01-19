@@ -85,7 +85,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     swapchain: Swapchain,
     timeout_in_nanoseconds: u64,
   ) -> Result<(), &'surface str> {
-    let device = super::gpu::internal::logical_device_for(gpu);
+    let device = gpu.internal_logical_device();
     self.extent = Some(swapchain.config.extent);
 
     unsafe {

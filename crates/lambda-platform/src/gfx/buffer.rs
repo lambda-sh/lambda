@@ -1,6 +1,9 @@
-use gfx_hal::memory::{
-  Segment,
-  SparseFlags,
+use gfx_hal::{
+  memory::{
+    Segment,
+    SparseFlags,
+  },
+  prelude::Device,
 };
 
 use super::gpu::Gpu;
@@ -29,6 +32,14 @@ pub struct Buffer<RenderBackend: super::internal::Backend> {
 }
 
 impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {
+  /// Destroy the buffer and all it's resources with the GPU that
+  /// created it.
+  pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
+    unsafe {
+      gpu.internal_logical_device().destroy_buffer(self.buffer);
+      gpu.internal_logical_device().free_memory(self.memory);
+    }
+  }
   pub fn stride(&self) -> usize {
     return self.stride;
   }
@@ -82,10 +93,9 @@ impl BufferBuilder {
   ) -> Result<Buffer<RenderBackend>, &'static str> {
     use gfx_hal::{
       adapter::PhysicalDevice,
-      device::Device,
       MemoryTypeId,
     };
-    let logical_device = super::internal::logical_device_for(gpu);
+    let logical_device = gpu.internal_logical_device();
     let physical_device = super::internal::physical_device_for(gpu);
 
     // TODO(vmarcella): Add the ability for the user to specify the memory

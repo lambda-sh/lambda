@@ -183,7 +183,7 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
     return Ok(());
   }
 
-  pub(super) fn logical_device(&self) -> &RenderBackend::Device {
+  pub(super) fn internal_logical_device(&self) -> &RenderBackend::Device {
     return &self.gpu.device;
   }
 }

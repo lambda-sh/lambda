@@ -15,7 +15,7 @@ pub use lambda_platform::gfx::buffer::{
 };
 
 use super::{
-  internal::mut_gpu_from_context,
+  mesh::Mesh,
   RenderContext,
 };
 
@@ -25,6 +25,16 @@ pub struct Buffer {
   buffer_type: BufferType,
 }
 
+/// Public interface for a buffer.
+impl Buffer {
+  /// Destroy the buffer and all it's resources with the render context that
+  /// created it.
+  pub fn destroy(self, render_context: &RenderContext) {
+    self.buffer.destroy(render_context.internal_gpu());
+  }
+}
+
+/// Internal interface for working with buffers.
 impl Buffer {
   /// Retrieve a reference to the internal buffer.
   pub(super) fn internal_buffer(
@@ -48,6 +58,34 @@ impl BufferBuilder {
       buffer_builder: internal::BufferBuilder::new(),
       buffer_type: BufferType::Vertex,
     };
+  }
+
+  pub fn build_from_mesh(
+    mesh: &Mesh,
+    render_context: &mut RenderContext,
+  ) -> Result<Buffer, &'static str> {
+    let mut buffer_builder = Self::new();
+    let internal_buffer = buffer_builder
+      .buffer_builder
+      .with_length(mesh.vertices().len())
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE | Properties::COHERENT)
+      .build(
+        render_context.internal_mutable_gpu(),
+        mesh.vertices().to_vec(),
+      );
+
+    match internal_buffer {
+      Ok(internal_buffer) => {
+        return Ok(Buffer {
+          buffer: internal_buffer,
+          buffer_type: BufferType::Vertex,
+        });
+      }
+      Err(_) => {
+        return Err("Failed to create buffer from mesh.");
+      }
+    }
   }
 
   /// Sets the length of the buffer (In bytes).
@@ -83,7 +121,7 @@ impl BufferBuilder {
   ) -> Result<Buffer, &'static str> {
     let buffer_allocation = self
       .buffer_builder
-      .build(&mut mut_gpu_from_context(render_context), data);
+      .build(render_context.internal_mutable_gpu(), data);
 
     match buffer_allocation {
       Ok(buffer) => {

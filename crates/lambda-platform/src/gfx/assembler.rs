@@ -1,9 +1,9 @@
 //! Primitive assembly for the graphics pipeline.
 
+pub use gfx_hal::pso::Element as VertexElement;
 use gfx_hal::pso::{
   self,
   AttributeDesc,
-  Element,
   VertexBufferDesc,
 };
 
@@ -17,7 +17,7 @@ use super::{
 pub struct VertexAttribute {
   pub location: u32,
   pub offset: u32,
-  pub element: Element<ColorFormat>,
+  pub element: VertexElement<ColorFormat>,
 }
 
 /// PrimitiveAssemblerBuilder for preparing PrimitiveAssemblers to use in the

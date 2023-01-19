@@ -2,6 +2,7 @@ use lambda::{
   core::{
     component::Component,
     render::{
+      buffer::BufferBuilder,
       command::RenderCommand,
       mesh::MeshBuilder,
       pipeline::RenderPipelineBuilder,
@@ -10,7 +11,11 @@ use lambda::{
         Shader,
         ShaderBuilder,
       },
-      vertex::VertexBuilder,
+      vertex::{
+        VertexAttribute,
+        VertexBuilder,
+        VertexElement,
+      },
       viewport,
       ResourceId,
     },
@@ -24,7 +29,10 @@ use lambda::{
   runtimes::GenericRuntimeBuilder,
 };
 use lambda_platform::{
-  gfx::pipeline::PipelineStage,
+  gfx::{
+    pipeline::PipelineStage,
+    surface::ColorFormat,
+  },
   shaderc::{
     ShaderKind,
     VirtualShader,
@@ -82,14 +90,8 @@ impl Component for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
-    let render_pass = RenderPassBuilder::new().build(&render_context);
+    let render_pass = RenderPassBuilder::new().build(render_context);
     let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
-    let pipeline = RenderPipelineBuilder::new()
-      .with_push_constant(PipelineStage::VERTEX, push_constant_size)
-      .build(render_context, &render_pass, &self.shader, None);
-
-    self.render_pass = Some(render_context.attach_render_pass(render_pass));
-    self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
 
     // Create triangle mesh.
     let vertices = [
@@ -114,6 +116,39 @@ impl Component for PushConstantsExample {
     vertices.iter().for_each(|vertex| {
       mesh_builder.with_vertex(vertex.clone());
     });
+
+    let mesh = mesh_builder
+      .with_attributes(vec![
+        VertexAttribute {
+          location: 0,
+          offset: 0,
+          element: VertexElement {
+            format: ColorFormat::Rgb32Sfloat,
+            offset: 0,
+          },
+        },
+        VertexAttribute {
+          location: 1,
+          offset: 0,
+          element: VertexElement {
+            format: ColorFormat::Rgb32Sfloat,
+            offset: 12,
+          },
+        },
+      ])
+      .build();
+
+    let pipeline = RenderPipelineBuilder::new()
+      .with_push_constant(PipelineStage::VERTEX, push_constant_size)
+      .with_buffer(
+        BufferBuilder::build_from_mesh(&mesh, render_context)
+          .expect("Failed to create buffer"),
+        mesh.attributes().to_vec(),
+      )
+      .build(render_context, &render_pass, &self.shader, None);
+
+    self.render_pass = Some(render_context.attach_render_pass(render_pass));
+    self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
   }
 
   fn on_detach(

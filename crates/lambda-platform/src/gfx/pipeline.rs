@@ -158,7 +158,7 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
 
     let pipeline = unsafe {
       gpu
-        .logical_device()
+        .internal_logical_device()
         .create_graphics_pipeline(&pipeline_desc, None)
         .expect("Failed to create graphics pipeline")
     };
@@ -184,11 +184,11 @@ impl<RenderBackend: internal::Backend> RenderPipeline<RenderBackend> {
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
       gpu
-        .logical_device()
+        .internal_logical_device()
         .destroy_pipeline_layout(self.pipeline_layout);
 
       gpu
-        .logical_device()
+        .internal_logical_device()
         .destroy_graphics_pipeline(self.pipeline);
     }
   }

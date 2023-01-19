@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use lambda_platform::gfx::{
-  assembler::VertexAttribute,
   buffer::Buffer as InternalBuffer,
   shader::{
     ShaderModuleBuilder,
@@ -13,7 +12,6 @@ use super::{
   buffer::Buffer,
   internal::{
     gpu_from_context,
-    mut_gpu_from_context,
     RenderBackend,
   },
   shader::Shader,
@@ -27,6 +25,7 @@ pub struct RenderPipeline {
       super::internal::RenderBackend,
     >,
   >,
+  buffers: Vec<Buffer>,
 }
 
 impl RenderPipeline {
@@ -35,6 +34,10 @@ impl RenderPipeline {
     Rc::try_unwrap(self.pipeline)
       .expect("Failed to destroy render pipeline")
       .destroy(gpu_from_context(render_context));
+
+    for buffer in self.buffers {
+      buffer.destroy(render_context);
+    }
   }
 
   pub fn into_platform_render_pipeline(
@@ -44,8 +47,11 @@ impl RenderPipeline {
   }
 }
 
-pub use lambda_platform::gfx::pipeline::PipelineStage;
 use lambda_platform::gfx::pipeline::PushConstantUpload;
+pub use lambda_platform::gfx::{
+  assembler::VertexAttribute,
+  pipeline::PipelineStage,
+};
 
 pub struct RenderPipelineBuilder {
   push_constants: Vec<PushConstantUpload>,
@@ -64,41 +70,41 @@ impl RenderPipelineBuilder {
 
   /// Adds a buffer to the render pipeline.
   pub fn with_buffer(
-    &mut self,
+    mut self,
     buffer: Buffer,
     attributes: Vec<VertexAttribute>,
-  ) -> &mut Self {
+  ) -> Self {
     self.buffers.push(buffer);
     self.attributes.extend(attributes);
     return self;
   }
 
   pub fn with_push_constant(
-    &mut self,
+    mut self,
     stage: PipelineStage,
     bytes: u32,
-  ) -> &mut Self {
+  ) -> Self {
     self.push_constants.push((stage, 0..bytes));
     return self;
   }
 
   /// Builds a render pipeline based on your builder configuration.
   pub fn build(
-    &self,
+    self,
     render_context: &mut RenderContext,
     render_pass: &super::render_pass::RenderPass,
     vertex_shader: &Shader,
     fragment_shader: Option<&Shader>,
   ) -> RenderPipeline {
     let vertex_shader_module = ShaderModuleBuilder::new().build(
-      mut_gpu_from_context(render_context),
+      render_context.internal_mutable_gpu(),
       &vertex_shader.as_binary(),
       ShaderModuleType::Vertex,
     );
 
     let fragment_shader_module = match fragment_shader {
       Some(shader) => Some(ShaderModuleBuilder::new().build(
-        mut_gpu_from_context(render_context),
+        render_context.internal_mutable_gpu(),
         &shader.as_binary(),
         ShaderModuleType::Fragment,
       )),
@@ -107,8 +113,8 @@ impl RenderPipelineBuilder {
 
     let builder = lambda_platform::gfx::pipeline::RenderPipelineBuilder::new();
 
-    let internal_buffers = self
-      .buffers
+    let buffers = self.buffers;
+    let internal_buffers = buffers
       .iter()
       .map(|b| b.internal_buffer())
       .collect::<Vec<&InternalBuffer<RenderBackend>>>();
@@ -125,13 +131,14 @@ impl RenderPipelineBuilder {
       );
 
     // Clean up shader modules.
-    vertex_shader_module.destroy(mut_gpu_from_context(render_context));
+    vertex_shader_module.destroy(render_context.internal_mutable_gpu());
     if let Some(fragment_shader_module) = fragment_shader_module {
-      fragment_shader_module.destroy(mut_gpu_from_context(render_context));
+      fragment_shader_module.destroy(render_context.internal_mutable_gpu());
     }
 
     return RenderPipeline {
       pipeline: Rc::new(render_pipeline),
+      buffers,
     };
   }
 }

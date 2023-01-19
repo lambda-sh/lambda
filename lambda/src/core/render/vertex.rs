@@ -1,3 +1,8 @@
+pub use lambda_platform::gfx::assembler::{
+  VertexAttribute,
+  VertexElement,
+};
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Vertex {
@@ -59,7 +64,7 @@ mod test {
     assert_eq!(vertex.normal, [0.0, 0.0, 0.0]);
     assert_eq!(vertex.color, [0.0, 0.0, 0.0]);
 
-    let mut vertex = vertex
+    let vertex = vertex
       .with_position([1.0, 2.0, 3.0])
       .with_normal([4.0, 5.0, 6.0])
       .with_color([7.0, 8.0, 9.0])

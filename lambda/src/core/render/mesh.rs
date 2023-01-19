@@ -1,11 +1,8 @@
 use super::{
-  buffer::{
-    Buffer,
-    BufferBuilder,
-    Properties,
-    Usage,
+  vertex::{
+    Vertex,
+    VertexAttribute,
   },
-  vertex::Vertex,
   RenderContext,
 };
 
@@ -15,12 +12,16 @@ use super::{
 #[derive(Debug)]
 pub struct Mesh {
   vertices: Vec<Vertex>,
-  buffer: Buffer,
+  attributes: Vec<VertexAttribute>,
 }
 
 impl Mesh {
-  pub(super) fn buffer(&self) -> &Buffer {
-    return &self.buffer;
+  pub fn vertices(&self) -> &[Vertex] {
+    &self.vertices
+  }
+
+  pub fn attributes(&self) -> &[VertexAttribute] {
+    &self.attributes
   }
 }
 
@@ -31,13 +32,15 @@ impl Mesh {
 pub struct MeshBuilder {
   capacity: usize,
   vertices: Vec<Vertex>,
+  attributes: Vec<VertexAttribute>,
 }
 
 impl MeshBuilder {
   pub fn new() -> Self {
     return Self {
       capacity: 0,
-      vertices: vec![],
+      vertices: Vec::new(),
+      attributes: Vec::new(),
     };
   }
 
@@ -51,37 +54,21 @@ impl MeshBuilder {
     return self;
   }
 
+  pub fn with_attributes(
+    &mut self,
+    attributes: Vec<VertexAttribute>,
+  ) -> &mut Self {
+    self.attributes = attributes;
+    return self;
+  }
+
   /// Builds a mesh from the vertices and indices that have been added to the
   /// builder and allocates the memory for the mesh on the GPU.
-  pub fn build(
-    &self,
-    render_context: &mut RenderContext,
-  ) -> Result<Mesh, &'static str> {
-    let gpu_memory_required =
-      self.vertices.len() * std::mem::size_of::<Vertex>();
-    println!(
-      "Allocating {} bytes of GPU memory for mesh.",
-      gpu_memory_required
-    );
-
-    // Allocate memory for the mesh on the GPU.
-    let buffer_allocation = BufferBuilder::new()
-      .with_length(gpu_memory_required)
-      .with_usage(Usage::VERTEX)
-      .with_properties(Properties::CPU_VISIBLE | Properties::COHERENT)
-      .build(render_context, self.vertices.clone());
-
-    match buffer_allocation {
-      Ok(buffer) => {
-        return Ok(Mesh {
-          vertices: self.vertices.clone(),
-          buffer,
-        });
-      }
-      Err(error) => {
-        return Err(error);
-      }
-    }
+  pub fn build(&self) -> Mesh {
+    return Mesh {
+      vertices: self.vertices.clone(),
+      attributes: self.attributes.clone(),
+    };
   }
 }
 
@@ -93,8 +80,4 @@ mod tests {
 
     assert_eq!(mesh.vertices.len(), 0);
   }
-
-  // TODO(vmarcella): Add more tests for mesh building once the render context
-  // is mockable. As of right now, testing would require the creation of a real
-  // render context to perform the GPU memory allocation & binding for the mesh.
 }
