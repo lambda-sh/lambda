@@ -36,8 +36,8 @@ impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {
   /// created it.
   pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
     unsafe {
-      gpu.internal_logical_device().destroy_buffer(self.buffer);
       gpu.internal_logical_device().free_memory(self.memory);
+      gpu.internal_logical_device().destroy_buffer(self.buffer);
     }
   }
   pub fn stride(&self) -> usize {
