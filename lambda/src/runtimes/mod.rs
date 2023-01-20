@@ -312,6 +312,7 @@ impl Runtime for GenericRuntime {
 
       match mapped_event {
         Some(event) => {
+          println!("Sending event: {:?} to all components", event);
           for component in &mut component_stack {
             component.on_event(event.clone());
           }

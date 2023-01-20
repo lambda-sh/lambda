@@ -18,6 +18,7 @@ pub use lambda_platform::gfx::buffer::{
 
 use super::{
   mesh::Mesh,
+  vertex::Vertex,
   RenderContext,
 };
 
@@ -77,7 +78,7 @@ impl BufferBuilder {
     let mut buffer_builder = Self::new();
     let internal_buffer = buffer_builder
       .buffer_builder
-      .with_length(mesh.vertices().len())
+      .with_length(mesh.vertices().len() * std::mem::size_of::<Vertex>())
       .with_usage(Usage::VERTEX)
       .with_properties(Properties::CPU_VISIBLE)
       .build(

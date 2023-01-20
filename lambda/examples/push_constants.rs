@@ -1,6 +1,7 @@
 use lambda::{
   core::{
     component::Component,
+    events::WindowEvent,
     render::{
       buffer::BufferBuilder,
       command::RenderCommand,
@@ -47,7 +48,7 @@ use lambda_platform::{
 const VERTEX_SHADER_SOURCE: &str = r#"
 #version 450
 
-layout (location = 0) in vec2 vertex_position;
+layout (location = 0) in vec3 vertex_position;
 layout (location = 1) in vec3 vertex_normal;
 layout (location = 2) in vec3 vertex_color;
 
@@ -59,7 +60,7 @@ layout ( push_constant ) uniform PushConstant {
 } push_constants;
 
 void main() {
-  gl_Position = push_constants.render_matrix * vec4(vertex_position, 0.0, 1.0);
+  gl_Position = push_constants.render_matrix * vec4(vertex_position, 1.0);
   frag_color = vertex_color;
 }
 
@@ -103,9 +104,13 @@ pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
 pub struct PushConstantsExample {
   frame_number: u64,
   shader: Shader,
+  fs: Shader,
   mesh: Option<Mesh>,
   render_pipeline: Option<ResourceId>,
   render_pass: Option<ResourceId>,
+  last_frame: std::time::Duration,
+  width: u32,
+  height: u32,
 }
 
 impl Component for PushConstantsExample {
@@ -119,17 +124,17 @@ impl Component for PushConstantsExample {
     // Create triangle mesh.
     let vertices = [
       VertexBuilder::new()
-        .with_position([0.0, 0.5, 0.0])
+        .with_position([1.0, 1.0, 0.0])
         .with_normal([0.0, 0.0, 0.0])
         .with_color([1.0, 0.0, 0.0])
         .build(),
       VertexBuilder::new()
-        .with_position([-0.5, -0.5, 0.0])
+        .with_position([-1.0, 1.0, 0.0])
         .with_normal([0.0, 0.0, 0.0])
         .with_color([0.0, 1.0, 0.0])
         .build(),
       VertexBuilder::new()
-        .with_position([0.5, -0.5, 0.0])
+        .with_position([0.0, -1.0, 0.0])
         .with_normal([0.0, 0.0, 0.0])
         .with_color([0.0, 0.0, 1.0])
         .build(),
@@ -151,15 +156,17 @@ impl Component for PushConstantsExample {
           },
         },
         VertexAttribute {
-          location: 1,
+          location: 2,
           offset: 0,
           element: VertexElement {
             format: ColorFormat::Rgb32Sfloat,
-            offset: 12,
+            offset: 24,
           },
         },
       ])
       .build();
+
+    println!("mesh: {:?}", mesh);
 
     let pipeline = RenderPipelineBuilder::new()
       .with_push_constant(PipelineStage::VERTEX, push_constant_size)
@@ -168,7 +175,7 @@ impl Component for PushConstantsExample {
           .expect("Failed to create buffer"),
         mesh.attributes().to_vec(),
       )
-      .build(render_context, &render_pass, &self.shader, None);
+      .build(render_context, &render_pass, &self.shader, Some(&self.fs));
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
@@ -183,11 +190,26 @@ impl Component for PushConstantsExample {
   }
 
   fn on_event(&mut self, event: lambda::core::events::Events) {
-    println!("Event: {:?}", event);
+    match event {
+      lambda::core::events::Events::Window { event, issued_at } => {
+        match event {
+          WindowEvent::Resize { width, height } => {
+            self.width = width;
+            self.height = height;
+            println!("Window resized to {}x{}", width, height);
+          }
+          _ => {}
+        }
+      }
+      _ => {}
+    }
   }
 
   /// Update the frame number every frame.
-  fn on_update(&mut self, last_frame: &std::time::Duration) {}
+  fn on_update(&mut self, last_frame: &std::time::Duration) {
+    self.last_frame = *last_frame;
+    self.frame_number += 1;
+  }
 
   fn on_render(
     &mut self,
@@ -198,22 +220,26 @@ impl Component for PushConstantsExample {
     let view: [[f32; 4]; 4] = matrix::translation_matrix(camera);
 
     // Create a projection matrix.
-    let mut projection: [[f32; 4]; 4] =
-      matrix::perspective_matrix(0.25, 1700.0 / 900.0, 0.1, 200.0);
-    projection.as_mut()[1].as_mut()[1] *= -1.0;
+    let mut projection: [[f32; 4]; 4] = matrix::perspective_matrix(
+      0.25,
+      (self.width / self.height) as f32,
+      0.1,
+      200.0,
+    );
 
     // Rotate model.
     let model: [[f32; 4]; 4] = matrix::rotate_matrix(
-      matrix::filled_matrix(4, 4, 1.0),
+      matrix::identity_matrix(4, 4),
       [0.0, 1.0, 0.0],
-      0.4 * self.frame_number as f32,
+      0.001 * self.frame_number as f32,
     );
 
     // Create render matrix.
     let mesh_matrix = projection.multiply(&view).multiply(&model);
 
     // Create viewport.
-    let viewport = viewport::ViewportBuilder::new().build(800, 600);
+    let viewport =
+      viewport::ViewportBuilder::new().build(self.width, self.height);
 
     let render_pipeline = self
       .render_pipeline
@@ -271,15 +297,27 @@ impl Default for PushConstantsExample {
       name: "push_constants".to_string(),
     };
 
+    let triangle_fragment_shader = VirtualShader::Source {
+      source: FRAGMENT_SHADER_SOURCE.to_string(),
+      kind: ShaderKind::Fragment,
+      entry_point: "main".to_string(),
+      name: "push_constants".to_string(),
+    };
+
     let mut builder = ShaderBuilder::new();
     let shader = builder.build(triangle_in_3d);
+    let fs = builder.build(triangle_fragment_shader);
 
     return Self {
       frame_number: 0,
       shader,
+      fs,
+      last_frame: std::time::Duration::from_secs(0),
       mesh: None,
       render_pipeline: None,
       render_pass: None,
+      width: 800,
+      height: 600,
     };
   }
 }
@@ -290,6 +328,9 @@ fn main() {
       return window_builder
         .with_dimensions(800, 600)
         .with_name("3D Push Constants Example");
+    })
+    .with_renderer_configured_as(|renderer_builder| {
+      return renderer_builder.with_render_timeout(1_000_000_000);
     })
     .with_component(move |runtime, triangles: PushConstantsExample| {
       return (runtime, triangles);

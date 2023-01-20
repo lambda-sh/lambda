@@ -47,6 +47,9 @@ impl PrimitiveAssemblerBuilder {
 
     match (buffers, attributes) {
       (Some(buffers), Some(attributes)) => {
+        println!(
+          "[DEBUG] Building primitive assembler with buffers and attributes"
+        );
         self.buffer_descriptions = buffers
           .iter()
           .map(|buffer| VertexBufferDesc {

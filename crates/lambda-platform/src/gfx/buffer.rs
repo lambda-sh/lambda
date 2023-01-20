@@ -109,6 +109,7 @@ impl BufferBuilder {
 
     // TODO(vmarcella): Add the ability for the user to specify the memory
     // properties (I.E. SparseFlags::SPARSE_MEMORY).
+    println!("[DEBUG] Creating buffer of length: {}", self.buffer_length);
     let buffer_result = unsafe {
       logical_device.create_buffer(
         self.buffer_length as u64,
@@ -127,6 +128,7 @@ impl BufferBuilder {
       unsafe { logical_device.get_buffer_requirements(&buffer) };
     let memory_types = physical_device.memory_properties().memory_types;
 
+    println!("[DEBUG] Buffer requirements: {:?}", requirements);
     // Find a memory type that supports the requirements of the buffer.
     let memory_type = memory_types
       .iter()
@@ -138,6 +140,7 @@ impl BufferBuilder {
       .map(|(id, _)| MemoryTypeId(id))
       .unwrap();
 
+    println!("Allocating memory for buffer.");
     // Allocates the memory on the GPU for the buffer.
     let buffer_memory_allocation =
       unsafe { logical_device.allocate_memory(memory_type, requirements.size) };

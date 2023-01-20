@@ -108,12 +108,21 @@ impl RenderPipelineBuilder {
     vertex_shader: &Shader,
     fragment_shader: Option<&Shader>,
   ) -> RenderPipeline {
+    println!("[DEBUG] Building render pipeline...");
+
+    print!("[DEBUG] Building vertex shader... ");
     let vertex_shader_module = ShaderModuleBuilder::new().build(
       render_context.internal_mutable_gpu(),
       &vertex_shader.as_binary(),
       ShaderModuleType::Vertex,
     );
 
+    println!(
+      " Done. (Vertex shader: {} bytes)",
+      vertex_shader.as_binary().len()
+    );
+
+    print!("[DEBUG] Building fragment shader... ");
     let fragment_shader_module = match fragment_shader {
       Some(shader) => Some(ShaderModuleBuilder::new().build(
         render_context.internal_mutable_gpu(),
@@ -122,6 +131,11 @@ impl RenderPipelineBuilder {
       )),
       None => None,
     };
+
+    println!(
+      " Done. (Fragment shader: {} bytes)",
+      fragment_shader.map(|s| s.as_binary().len()).unwrap_or(0)
+    );
 
     let builder = lambda_platform::gfx::pipeline::RenderPipelineBuilder::new();
 
