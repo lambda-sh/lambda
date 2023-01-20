@@ -1,4 +1,8 @@
-use std::rc::Rc;
+use std::{
+  borrow::Borrow,
+  ops::Deref,
+  rc::Rc,
+};
 
 use lambda_platform::gfx::{
   buffer::Buffer as InternalBuffer,
@@ -25,7 +29,7 @@ pub struct RenderPipeline {
       super::internal::RenderBackend,
     >,
   >,
-  buffers: Vec<Buffer>,
+  buffers: Vec<Rc<Buffer>>,
 }
 
 impl RenderPipeline {
@@ -33,14 +37,22 @@ impl RenderPipeline {
   pub fn destroy(self, render_context: &RenderContext) {
     Rc::try_unwrap(self.pipeline)
       .expect("Failed to destroy render pipeline")
-      .destroy(gpu_from_context(render_context));
+      .destroy(render_context.internal_gpu());
 
     for buffer in self.buffers {
-      buffer.destroy(render_context);
+      Rc::try_unwrap(buffer)
+        .expect("Failed to get high level buffer.")
+        .destroy(render_context);
     }
   }
+}
 
-  pub fn into_platform_render_pipeline(
+impl RenderPipeline {
+  pub(super) fn buffers(&self) -> &Vec<Rc<Buffer>> {
+    return &self.buffers;
+  }
+
+  pub(super) fn into_platform_render_pipeline(
     &self,
   ) -> Rc<lambda_platform::gfx::pipeline::RenderPipeline<RenderBackend>> {
     return self.pipeline.clone();
@@ -55,7 +67,7 @@ pub use lambda_platform::gfx::{
 
 pub struct RenderPipelineBuilder {
   push_constants: Vec<PushConstantUpload>,
-  buffers: Vec<Buffer>,
+  buffers: Vec<Rc<Buffer>>,
   attributes: Vec<VertexAttribute>,
 }
 
@@ -74,7 +86,7 @@ impl RenderPipelineBuilder {
     buffer: Buffer,
     attributes: Vec<VertexAttribute>,
   ) -> Self {
-    self.buffers.push(buffer);
+    self.buffers.push(Rc::new(buffer));
     self.attributes.extend(attributes);
     return self;
   }
@@ -117,7 +129,7 @@ impl RenderPipelineBuilder {
     let internal_buffers = buffers
       .iter()
       .map(|b| b.internal_buffer())
-      .collect::<Vec<&InternalBuffer<RenderBackend>>>();
+      .collect::<Vec<_>>();
 
     let render_pipeline = builder
       .with_push_constants(self.push_constants.clone())

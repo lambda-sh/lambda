@@ -238,6 +238,10 @@ impl Component for PushConstantsExample {
           .clone(),
         viewport: viewport.clone(),
       },
+      RenderCommand::BindVertexBuffer {
+        pipeline: render_pipeline.clone(),
+        buffer: 0,
+      },
       RenderCommand::PushConstants {
         pipeline: render_pipeline.clone(),
         stage: PipelineStage::VERTEX,
@@ -247,8 +251,11 @@ impl Component for PushConstantsExample {
           render_matrix: mesh_matrix,
         })),
       },
-      RenderCommand::Draw { vertices: 0..3 },
+      RenderCommand::Draw {
+        vertices: 0..self.mesh.as_ref().unwrap().vertices().len() as u32,
+      },
     ];
+
     commands.push(RenderCommand::EndRenderPass);
 
     return commands;

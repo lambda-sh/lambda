@@ -37,6 +37,10 @@ pub enum RenderCommand {
     offset: u32,
     bytes: Vec<u32>,
   },
+  BindVertexBuffer {
+    pipeline: super::ResourceId,
+    buffer: u32,
+  },
   /// Draws a graphical primitive.
   Draw {
     vertices: Range<u32>,
@@ -47,7 +51,7 @@ impl RenderCommand {
   /// Converts the RenderCommand into a platform compatible render command.
   // TODO(vmarcella): implement this using Into<PlatformRenderCommand>
   pub fn into_platform_command(
-    self,
+    &self,
     render_context: &mut RenderContext,
   ) -> PlatformRenderCommand {
     return match self {
@@ -55,7 +59,7 @@ impl RenderCommand {
         start_at,
         viewports,
       } => PlatformRenderCommand::SetViewports {
-        start_at,
+        start_at: *start_at,
         viewports: viewports
           .into_iter()
           .map(|viewport| viewport.clone_gfx_viewport())
@@ -65,7 +69,7 @@ impl RenderCommand {
         start_at,
         viewports,
       } => PlatformRenderCommand::SetScissors {
-        start_at,
+        start_at: *start_at,
         viewports: viewports
           .into_iter()
           .map(|viewport| viewport.clone_gfx_viewport())
@@ -78,14 +82,14 @@ impl RenderCommand {
         let surface = surface_from_context(render_context);
         let frame_buffer = render_context.allocate_and_get_frame_buffer(
           render_context
-            .get_render_pass(render_pass)
+            .get_render_pass(*render_pass)
             .into_gfx_render_pass()
             .as_ref(),
         );
 
         PlatformRenderCommand::BeginRenderPass {
           render_pass: render_context
-            .get_render_pass(render_pass)
+            .get_render_pass(*render_pass)
             .into_gfx_render_pass(),
           surface: surface.clone(),
           frame_buffer: frame_buffer.clone(),
@@ -97,7 +101,7 @@ impl RenderCommand {
         PlatformRenderCommand::AttachGraphicsPipeline {
           pipeline: render_context
             .render_pipelines
-            .get(pipeline)
+            .get(*pipeline)
             .unwrap()
             .into_platform_render_pipeline(),
         }
@@ -110,13 +114,25 @@ impl RenderCommand {
       } => PlatformRenderCommand::PushConstants {
         pipeline: render_context
           .render_pipelines
-          .get(pipeline)
+          .get(*pipeline)
           .unwrap()
           .into_platform_render_pipeline(),
-        stage,
-        offset,
+        stage: *stage,
+        offset: *offset,
         bytes: bytes.clone(),
       },
+      RenderCommand::BindVertexBuffer { pipeline, buffer } => {
+        PlatformRenderCommand::BindVertexBuffer {
+          buffer: render_context
+            .render_pipelines
+            .get(*pipeline)
+            .unwrap()
+            .buffers()
+            .get(*buffer as usize)
+            .unwrap()
+            .internal_buffer_rc(),
+        }
+      }
       RenderCommand::Draw { vertices } => PlatformRenderCommand::Draw {
         vertices: vertices.clone(),
       },

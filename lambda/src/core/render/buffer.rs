@@ -7,6 +7,8 @@ mod internal {
   };
 }
 
+use std::rc::Rc;
+
 // publicly use Properties and Usage from buffer.rs
 pub use lambda_platform::gfx::buffer::{
   BufferType,
@@ -21,7 +23,7 @@ use super::{
 
 #[derive(Debug)]
 pub struct Buffer {
-  buffer: internal::Buffer<super::internal::RenderBackend>,
+  buffer: Rc<internal::Buffer<super::internal::RenderBackend>>,
   buffer_type: BufferType,
 }
 
@@ -30,13 +32,21 @@ impl Buffer {
   /// Destroy the buffer and all it's resources with the render context that
   /// created it.
   pub fn destroy(self, render_context: &RenderContext) {
-    self.buffer.destroy(render_context.internal_gpu());
+    Rc::try_unwrap(self.buffer)
+      .expect("Failed to get inside buffer")
+      .destroy(render_context.internal_gpu());
   }
 }
 
 /// Internal interface for working with buffers.
 impl Buffer {
   /// Retrieve a reference to the internal buffer.
+  pub(super) fn internal_buffer_rc(
+    &self,
+  ) -> Rc<internal::Buffer<super::internal::RenderBackend>> {
+    return self.buffer.clone();
+  }
+
   pub(super) fn internal_buffer(
     &self,
   ) -> &internal::Buffer<super::internal::RenderBackend> {
@@ -78,7 +88,7 @@ impl BufferBuilder {
     match internal_buffer {
       Ok(internal_buffer) => {
         return Ok(Buffer {
-          buffer: internal_buffer,
+          buffer: Rc::new(internal_buffer),
           buffer_type: BufferType::Vertex,
         });
       }
@@ -126,7 +136,7 @@ impl BufferBuilder {
     match buffer_allocation {
       Ok(buffer) => {
         return Ok(Buffer {
-          buffer,
+          buffer: Rc::new(buffer),
           buffer_type: self.buffer_type,
         });
       }

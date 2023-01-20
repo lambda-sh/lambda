@@ -40,8 +40,17 @@ impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {
       gpu.internal_logical_device().destroy_buffer(self.buffer);
     }
   }
+
+  /// Size of each buffer element in bytes.
   pub fn stride(&self) -> usize {
     return self.stride;
+  }
+}
+
+impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {
+  /// Retrieve a reference to the internal buffer.
+  pub(super) fn internal_buffer(&self) -> &RenderBackend::Buffer {
+    return &self.buffer;
   }
 }
 

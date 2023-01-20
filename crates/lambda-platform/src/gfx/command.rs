@@ -96,6 +96,9 @@ pub enum Command<RenderBackend: gfx_hal::Backend> {
     offset: u32,
     bytes: Vec<u32>,
   },
+  BindVertexBuffer {
+    buffer: Rc<super::buffer::Buffer<RenderBackend>>,
+  },
   EndRecording,
 }
 
@@ -186,6 +189,13 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
         ),
         Command::Draw { vertices } => {
           self.command_buffer.draw(vertices.clone(), 0..1)
+        }
+        Command::BindVertexBuffer { buffer } => {
+          self.command_buffer.bind_vertex_buffers(
+            0,
+            vec![(buffer.internal_buffer(), gfx_hal::buffer::SubRange::WHOLE)]
+              .into_iter(),
+          )
         }
         Command::EndRecording => self.command_buffer.finish(),
       }
@@ -386,7 +396,8 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   pub fn destroy(mut self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
       self.command_pool.reset(true);
-      super::gpu::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .destroy_command_pool(self.command_pool);
     }
   }
