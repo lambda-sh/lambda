@@ -99,6 +99,24 @@ pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
   return bytes;
 }
 
+fn make_transform(
+  translate: [f32; 3],
+  angle: f32,
+  scale: f32,
+) -> [[f32; 4]; 4] {
+  let c = angle.cos() * scale;
+  let s = angle.sin() * scale;
+
+  let [x, y, z] = translate;
+
+  return [
+    [c, 0.0, s, 0.0],
+    [0.0, scale, 0.0, 0.0],
+    [-s, 0.0, c, 0.0],
+    [x, y, z, 1.0],
+  ];
+}
+
 // --------------------------------- COMPONENT ---------------------------------
 
 pub struct PushConstantsExample {
@@ -190,6 +208,7 @@ impl Component for PushConstantsExample {
   }
 
   fn on_event(&mut self, event: lambda::core::events::Events) {
+    // Only handle resizes.
     match event {
       lambda::core::events::Events::Window { event, issued_at } => {
         match event {
@@ -216,16 +235,12 @@ impl Component for PushConstantsExample {
     render_context: &mut lambda::core::render::RenderContext,
   ) -> Vec<lambda::core::render::command::RenderCommand> {
     self.frame_number += 1;
-    let mut camera = [0.0, 0.0, -2.0];
+    let camera = [0.0, 0.0, -2.0];
     let view: [[f32; 4]; 4] = matrix::translation_matrix(camera);
 
     // Create a projection matrix.
-    let mut projection: [[f32; 4]; 4] = matrix::perspective_matrix(
-      0.25,
-      (self.width / self.height) as f32,
-      0.1,
-      200.0,
-    );
+    let projection: [[f32; 4]; 4] =
+      matrix::perspective_matrix(0.25, (4 / 3) as f32, 0.1, 100.0);
 
     // Rotate model.
     let model: [[f32; 4]; 4] = matrix::rotate_matrix(
@@ -236,6 +251,8 @@ impl Component for PushConstantsExample {
 
     // Create render matrix.
     let mesh_matrix = projection.multiply(&view).multiply(&model);
+    let mesh_matrix =
+      make_transform([0.0, 0.0, 0.5], self.frame_number as f32 * 0.01, 0.5);
 
     // Create viewport.
     let viewport =
@@ -245,7 +262,7 @@ impl Component for PushConstantsExample {
       .render_pipeline
       .expect("No render pipeline actively set for rendering.");
 
-    let mut commands = vec![
+    return vec![
       RenderCommand::SetViewports {
         start_at: 0,
         viewports: vec![viewport.clone()],
@@ -280,11 +297,8 @@ impl Component for PushConstantsExample {
       RenderCommand::Draw {
         vertices: 0..self.mesh.as_ref().unwrap().vertices().len() as u32,
       },
+      RenderCommand::EndRenderPass,
     ];
-
-    commands.push(RenderCommand::EndRenderPass);
-
-    return commands;
   }
 }
 

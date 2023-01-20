@@ -103,7 +103,7 @@ pub fn rotate_matrix<
 
   let angle_in_radians = turns_to_radians(angle_in_turns);
   let cosine_of_angle = angle_in_radians.cos();
-  let sin_of_angle = -angle_in_radians.sin();
+  let sin_of_angle = angle_in_radians.sin();
 
   let t = 1.0 - cosine_of_angle;
   let x = axis_to_rotate.at(0);
@@ -112,27 +112,42 @@ pub fn rotate_matrix<
 
   let mut rotation_matrix = OutputMatrix::default();
 
-  let rotation = [
-    [
-      t * x * x + cosine_of_angle,
-      t * x * y - (sin_of_angle * z),
-      t * x * z + (sin_of_angle * y),
-      0.0,
-    ],
-    [
-      t * x * y + (sin_of_angle * z),
-      t * y * y + cosine_of_angle,
-      t * y * z - (sin_of_angle * x),
-      0.0,
-    ],
-    [
-      t * x * z - (sin_of_angle * y),
-      t * y * z - (sin_of_angle * x),
-      t * z * z + cosine_of_angle,
-      0.0,
-    ],
-    [0.0, 0.0, 0.0, 1.0],
-  ];
+  let rotation = match (x as u8, y as u8, z as u8) {
+    (0, 0, 0) => {
+      // No rotation
+      return matrix_to_rotate;
+    }
+    (0, 0, 1) => {
+      // Rotate around z-axis
+      [
+        [cosine_of_angle, sin_of_angle, 0.0, 0.0],
+        [-sin_of_angle, cosine_of_angle, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+      ]
+    }
+    (0, 1, 0) => {
+      // Rotate around y-axis
+      [
+        [cosine_of_angle, 0.0, -sin_of_angle, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [sin_of_angle, 0.0, cosine_of_angle, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+      ]
+    }
+    (1, 0, 0) => {
+      // Rotate around x-axis
+      [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, cosine_of_angle, sin_of_angle, 0.0],
+        [0.0, -sin_of_angle, cosine_of_angle, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+      ]
+    }
+    _ => {
+      panic!("Axis must be a unit vector")
+    }
+  };
 
   for i in 0..rows {
     for j in 0..columns {
