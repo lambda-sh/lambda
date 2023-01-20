@@ -41,7 +41,7 @@ impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {
     }
   }
 
-  /// Size of each buffer element in bytes.
+  /// Size of the buffer in bytes.
   pub fn stride(&self) -> usize {
     return self.stride;
   }

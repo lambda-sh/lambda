@@ -79,7 +79,7 @@ impl BufferBuilder {
       .buffer_builder
       .with_length(mesh.vertices().len())
       .with_usage(Usage::VERTEX)
-      .with_properties(Properties::CPU_VISIBLE | Properties::COHERENT)
+      .with_properties(Properties::CPU_VISIBLE)
       .build(
         render_context.internal_mutable_gpu(),
         mesh.vertices().to_vec(),

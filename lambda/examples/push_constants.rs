@@ -179,11 +179,11 @@ impl Component for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::core::render::RenderContext,
   ) {
-    todo!()
+    println!("Detaching component");
   }
 
   fn on_event(&mut self, event: lambda::core::events::Events) {
-    todo!()
+    println!("Event: {:?}", event);
   }
 
   /// Update the frame number every frame.
