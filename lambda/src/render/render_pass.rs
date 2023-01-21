@@ -16,7 +16,10 @@ impl RenderPass {
       .expect("Failed to destroy render pass. Is something holding a reference to it?")
       .destroy(render_context.internal_gpu());
   }
+}
 
+/// Internal Renderpass functions for lambda.
+impl RenderPass {
   /// Retrieve a reference to the lower level render pass.
   pub(super) fn internal_render_pass(
     &self,

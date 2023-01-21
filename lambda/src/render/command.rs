@@ -3,7 +3,6 @@ use std::ops::Range;
 use lambda_platform::gfx::viewport::ViewPort as PlatformViewPort;
 
 use super::{
-  internal::surface_from_context,
   PlatformRenderCommand,
   RenderContext,
 };
@@ -79,7 +78,7 @@ impl RenderCommand {
         render_pass,
         viewport,
       } => {
-        let surface = surface_from_context(render_context);
+        let surface = render_context.internal_surface();
         let frame_buffer = render_context.allocate_and_get_frame_buffer(
           render_context
             .get_render_pass(*render_pass)

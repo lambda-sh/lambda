@@ -7,6 +7,10 @@ use lambda::render::{
   },
 };
 
+struct ObjLoader {
+  mesh_builder: MeshBuilder,
+}
+
 fn main() {
   println!("Hello, world!");
 }

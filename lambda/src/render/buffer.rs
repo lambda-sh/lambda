@@ -64,6 +64,7 @@ pub struct BufferBuilder {
 }
 
 impl BufferBuilder {
+  /// Creates a new buffer builder of type vertex.
   pub fn new() -> Self {
     return Self {
       buffer_builder: internal::BufferBuilder::new(),
@@ -71,6 +72,7 @@ impl BufferBuilder {
     };
   }
 
+  /// Builds a buffer from a given mesh and allocates it's memory on to the GPU.
   pub fn build_from_mesh(
     mesh: &Mesh,
     render_context: &mut RenderContext,
