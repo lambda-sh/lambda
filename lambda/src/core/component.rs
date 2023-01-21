@@ -1,11 +1,9 @@
 use std::time::Duration;
 
-use super::{
-  events::Events,
-  render::{
-    command::RenderCommand,
-    RenderContext,
-  },
+use super::events::Events;
+use crate::render::{
+  command::RenderCommand,
+  RenderContext,
 };
 
 /// The Component Interface for allowing Component based data structures

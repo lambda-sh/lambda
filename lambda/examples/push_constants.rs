@@ -2,33 +2,33 @@ use lambda::{
   core::{
     component::Component,
     events::WindowEvent,
-    render::{
-      buffer::BufferBuilder,
-      command::RenderCommand,
-      mesh::{
-        Mesh,
-        MeshBuilder,
-      },
-      pipeline::RenderPipelineBuilder,
-      render_pass::RenderPassBuilder,
-      shader::{
-        Shader,
-        ShaderBuilder,
-      },
-      vertex::{
-        VertexAttribute,
-        VertexBuilder,
-        VertexElement,
-      },
-      viewport,
-      ResourceId,
-    },
     runtime::start_runtime,
   },
   math::{
     matrix,
     matrix::Matrix,
     vector::Vector,
+  },
+  render::{
+    buffer::BufferBuilder,
+    command::RenderCommand,
+    mesh::{
+      Mesh,
+      MeshBuilder,
+    },
+    pipeline::RenderPipelineBuilder,
+    render_pass::RenderPassBuilder,
+    shader::{
+      Shader,
+      ShaderBuilder,
+    },
+    vertex::{
+      VertexAttribute,
+      VertexBuilder,
+      VertexElement,
+    },
+    viewport,
+    ResourceId,
   },
   runtimes::GenericRuntimeBuilder,
 };
@@ -132,10 +132,7 @@ pub struct PushConstantsExample {
 }
 
 impl Component for PushConstantsExample {
-  fn on_attach(
-    &mut self,
-    render_context: &mut lambda::core::render::RenderContext,
-  ) {
+  fn on_attach(&mut self, render_context: &mut lambda::render::RenderContext) {
     let render_pass = RenderPassBuilder::new().build(render_context);
     let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
 
@@ -200,10 +197,7 @@ impl Component for PushConstantsExample {
     self.mesh = Some(mesh);
   }
 
-  fn on_detach(
-    &mut self,
-    render_context: &mut lambda::core::render::RenderContext,
-  ) {
+  fn on_detach(&mut self, render_context: &mut lambda::render::RenderContext) {
     println!("Detaching component");
   }
 
@@ -232,8 +226,8 @@ impl Component for PushConstantsExample {
 
   fn on_render(
     &mut self,
-    render_context: &mut lambda::core::render::RenderContext,
-  ) -> Vec<lambda::core::render::command::RenderCommand> {
+    render_context: &mut lambda::render::RenderContext,
+  ) -> Vec<lambda::render::command::RenderCommand> {
     self.frame_number += 1;
     let camera = [0.0, 0.0, -2.0];
     let view: [[f32; 4]; 4] = matrix::translation_matrix(camera);

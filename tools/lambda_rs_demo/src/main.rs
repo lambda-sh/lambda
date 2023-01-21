@@ -7,20 +7,20 @@ use lambda::{
       KeyEvent,
       WindowEvent,
     },
-    render::{
-      command::RenderCommand,
-      pipeline,
-      render_pass,
-      shader::{
-        Shader,
-        ShaderBuilder,
-        ShaderKind,
-        VirtualShader,
-      },
-      viewport,
-      RenderContext,
-    },
     runtime::start_runtime,
+  },
+  render::{
+    command::RenderCommand,
+    pipeline,
+    render_pass,
+    shader::{
+      Shader,
+      ShaderBuilder,
+      ShaderKind,
+      VirtualShader,
+    },
+    viewport,
+    RenderContext,
   },
   runtimes::GenericRuntimeBuilder,
 };
@@ -28,8 +28,8 @@ use lambda::{
 pub struct DemoComponent {
   fragment_shader: Shader,
   vertex_shader: Shader,
-  render_pass_id: Option<lambda::core::render::ResourceId>,
-  render_pipeline_id: Option<lambda::core::render::ResourceId>,
+  render_pass_id: Option<lambda::render::ResourceId>,
+  render_pipeline_id: Option<lambda::render::ResourceId>,
   width: u32,
   height: u32,
 }
@@ -116,7 +116,7 @@ impl Component for DemoComponent {
   }
   fn on_render(
     self: &mut DemoComponent,
-    _render_context: &mut lambda::core::render::RenderContext,
+    _render_context: &mut lambda::render::RenderContext,
   ) -> Vec<RenderCommand> {
     let viewport =
       viewport::ViewportBuilder::new().build(self.width, self.height);

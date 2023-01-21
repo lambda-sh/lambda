@@ -70,6 +70,27 @@ impl MeshBuilder {
       attributes: self.attributes.clone(),
     };
   }
+
+  pub fn build_from_obj(&self, file_path: &str) -> Mesh {
+    let obj = lambda_platform::obj::load_textured_obj_from_file(file_path);
+
+    let mut vertices = obj
+      .vertices
+      .iter()
+      .map(|v| {
+        return Vertex {
+          position: v.position,
+          color: v.texture,
+          normal: v.normal,
+        };
+      })
+      .collect::<Vec<Vertex>>();
+
+    return Mesh {
+      vertices,
+      attributes: vec![],
+    };
+  }
 }
 
 #[cfg(test)]

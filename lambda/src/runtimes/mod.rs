@@ -11,14 +11,17 @@ use lambda_platform::winit::{
   LoopBuilder,
 };
 
-use crate::core::{
-  component::Component,
-  events::{
-    ComponentEvent,
-    Events,
-    KeyEvent,
-    RuntimeEvent,
-    WindowEvent,
+use crate::{
+  core::{
+    component::Component,
+    events::{
+      ComponentEvent,
+      Events,
+      KeyEvent,
+      RuntimeEvent,
+      WindowEvent,
+    },
+    runtime::Runtime,
   },
   render::{
     window::{
@@ -28,7 +31,6 @@ use crate::core::{
     RenderContext,
     RenderContextBuilder,
   },
-  runtime::Runtime,
 };
 
 pub struct GenericRuntimeBuilder {
