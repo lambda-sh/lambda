@@ -2,10 +2,7 @@ use std::rc::Rc;
 
 use lambda_platform::gfx::render_pass;
 
-use super::{
-  internal::gpu_from_context,
-  RenderContext,
-};
+use super::RenderContext;
 
 #[derive(Debug)]
 pub struct RenderPass {
@@ -17,7 +14,7 @@ impl RenderPass {
   pub fn destroy(self, render_context: &RenderContext) {
     Rc::try_unwrap(self.render_pass)
       .expect("Failed to destroy render pass. Is something holding a reference to it?")
-      .destroy(gpu_from_context(render_context));
+      .destroy(render_context.internal_gpu());
   }
 
   /// Retrieve a reference to the lower level render pass.
@@ -46,7 +43,7 @@ impl RenderPassBuilder {
   pub fn build(self, render_context: &RenderContext) -> RenderPass {
     let render_pass =
       lambda_platform::gfx::render_pass::RenderPassBuilder::new()
-        .build(gpu_from_context(render_context));
+        .build(render_context.internal_gpu());
     return RenderPass {
       render_pass: Rc::new(render_pass),
     };

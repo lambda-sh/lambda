@@ -14,10 +14,7 @@ use lambda_platform::gfx::{
 
 use super::{
   buffer::Buffer,
-  internal::{
-    gpu_from_context,
-    RenderBackend,
-  },
+  internal::RenderBackend,
   shader::Shader,
   RenderContext,
 };
@@ -148,7 +145,7 @@ impl RenderPipelineBuilder {
     let render_pipeline = builder
       .with_push_constants(self.push_constants.clone())
       .build(
-        gpu_from_context(render_context),
+        render_context.internal_gpu(),
         render_pass.internal_render_pass(),
         &vertex_shader_module,
         fragment_shader_module.as_ref(),

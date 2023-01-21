@@ -367,13 +367,6 @@ pub(crate) mod internal {
     shaderc::ShaderKind,
   };
 
-  /// Returns the GPU instance for the given render context.
-  pub fn gpu_from_context(
-    context: &super::RenderContext,
-  ) -> &Gpu<RenderBackend> {
-    return &context.gpu;
-  }
-
   /// Gets the surface for the given render context.
   pub fn surface_from_context(
     context: &super::RenderContext,
