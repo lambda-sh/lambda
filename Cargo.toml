@@ -4,6 +4,7 @@
 members = [
     "lambda",
     "crates/lambda-platform",
+    "crates/lambda-args",
     "tools/lambda_rs_demo",
     "tools/minimal",
     "tools/triangles_demo",
