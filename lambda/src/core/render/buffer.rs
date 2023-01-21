@@ -76,6 +76,8 @@ impl BufferBuilder {
     render_context: &mut RenderContext,
   ) -> Result<Buffer, &'static str> {
     let mut buffer_builder = Self::new();
+
+    // Allocate a buffer with the size of the mesh's vertices.
     let internal_buffer = buffer_builder
       .buffer_builder
       .with_length(mesh.vertices().len() * std::mem::size_of::<Vertex>())
