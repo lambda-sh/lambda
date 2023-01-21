@@ -1299,6 +1299,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "lambda-args"
+version = "2022.1.21"
+
+[[package]]
 name = "lambda-platform"
 version = "0.1.0"
 dependencies = [
@@ -1318,9 +1322,10 @@ dependencies = [
 
 [[package]]
 name = "lambda_obj_loader"
-version = "0.1.0"
+version = "2022.1.21"
 dependencies = [
  "lambda",
+ "lambda-args",
 ]
 
 [[package]]
