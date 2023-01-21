@@ -10,6 +10,7 @@ use crate::core::events::Events;
 pub struct WindowBuilder {
   name: String,
   dimensions: (u32, u32),
+  vsync: bool,
 }
 
 impl WindowBuilder {
@@ -21,6 +22,7 @@ impl WindowBuilder {
     return Self {
       name: String::from("Window"),
       dimensions: (480, 360),
+      vsync: false,
     };
   }
 
@@ -33,6 +35,10 @@ impl WindowBuilder {
   /// Specify the dimensions for the window (Defaults to 480 x 360).
   pub fn with_dimensions(mut self, width: u32, height: u32) -> Self {
     self.dimensions = (width, height);
+    return self;
+  }
+
+  pub fn with_vsync(mut self, vsync: bool) -> Self {
     return self;
   }
 

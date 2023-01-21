@@ -20,8 +20,15 @@ impl RenderPass {
       .destroy(gpu_from_context(render_context));
   }
 
+  /// Retrieve a reference to the lower level render pass.
+  pub(super) fn internal_render_pass(
+    &self,
+  ) -> &Rc<render_pass::RenderPass<super::internal::RenderBackend>> {
+    return &self.render_pass;
+  }
+
   /// Converts
-  pub fn into_gfx_render_pass(
+  pub(super) fn into_gfx_render_pass(
     &self,
   ) -> Rc<render_pass::RenderPass<super::internal::RenderBackend>> {
     return self.render_pass.clone();
@@ -43,16 +50,5 @@ impl RenderPassBuilder {
     return RenderPass {
       render_pass: Rc::new(render_pass),
     };
-  }
-}
-
-pub mod internal {
-  use crate::core::render::internal::RenderBackend;
-
-  /// Converts a render pass into a platform render pass.
-  pub fn platform_render_pass_from_render_pass(
-    render_pass: &super::RenderPass,
-  ) -> &lambda_platform::gfx::render_pass::RenderPass<RenderBackend> {
-    return &render_pass.render_pass;
   }
 }

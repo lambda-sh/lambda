@@ -12,6 +12,7 @@ gfx-hal = "=0.9.0"
 winit = "=0.27.5"
 shaderc = "=0.7"
 cfg-if = "=1.0.0"
+rand = "=0.8.5"
 
 # GFX-RS backends
 gfx-backend-gl = { version="=0.9.0", optional = true }
@@ -32,6 +33,10 @@ gfx-with-vulkan=["dep:gfx-backend-vulkan"]
 gfx-with-metal=["dep:gfx-backend-metal"]
 gfx-with-dx11=["dep:gfx-backend-dx11"]
 gfx-with-dx12=["dep:gfx-backend-dx12"]
+
+[profile.dev]
+crate-type = ["cdylib", "rlib"]
+incremental = true
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.gfx-platform-backend]
 package = "gfx-backend-gl"

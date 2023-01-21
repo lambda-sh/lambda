@@ -26,7 +26,7 @@ use lambda::{
 };
 
 pub struct DemoComponent {
-  triangle_vertex: Shader,
+  fragment_shader: Shader,
   vertex_shader: Shader,
   render_pass_id: Option<lambda::core::render::ResourceId>,
   render_pipeline_id: Option<lambda::core::render::ResourceId>,
@@ -44,7 +44,7 @@ impl Component for DemoComponent {
       render_context,
       &render_pass,
       &self.vertex_shader,
-      &self.triangle_vertex,
+      Some(&self.fragment_shader),
     );
 
     // Attach the render pass and pipeline to the render context
@@ -102,6 +102,7 @@ impl Component for DemoComponent {
           println!("Component detached: {:?}", name);
         }
       },
+      _ => {}
     }
   }
 
@@ -175,7 +176,7 @@ impl Default for DemoComponent {
 
     return DemoComponent {
       vertex_shader: vs,
-      triangle_vertex: fs,
+      fragment_shader: fs,
       render_pass_id: None,
       render_pipeline_id: None,
       width: 800,

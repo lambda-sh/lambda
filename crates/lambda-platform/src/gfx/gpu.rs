@@ -1,6 +1,5 @@
 use gfx_hal::{
   adapter::Adapter,
-  device::Device,
   prelude::{
     PhysicalDevice,
     QueueFamily,
@@ -9,7 +8,6 @@ use gfx_hal::{
     Queue,
     QueueGroup,
   },
-  window::Extent2D,
 };
 #[cfg(test)]
 use mockall::automock;
@@ -136,16 +134,21 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
       vec![super::command::internal::command_buffer_for(command_buffer)]
         .into_iter();
     unsafe {
-      self.queue_group.queues[0].submit(
-        commands,
-        vec![].into_iter(),
-        // TODO(vmarcella): This was needed to allow the push constants to
-        // properly render to the screen. Look into a better way to do this.
-        signal_semaphores.into_iter().map(|semaphore| {
-          return super::fence::internal::semaphore_for(semaphore);
-        }),
-        Some(super::fence::internal::mutable_fence_for(fence)),
-      );
+      self
+        .queue_group
+        .queues
+        .first_mut()
+        .expect("Couldn't find the primary queue to submit commands to. ")
+        .submit(
+          commands,
+          vec![].into_iter(),
+          // TODO(vmarcella): This was needed to allow the push constants to
+          // properly render to the screen. Look into a better way to do this.
+          signal_semaphores.into_iter().map(|semaphore| {
+            return super::fence::internal::semaphore_for(semaphore);
+          }),
+          Some(super::fence::internal::mutable_fence_for(fence)),
+        );
     }
   }
 
@@ -167,6 +170,10 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
     };
 
     if result.is_err() {
+      println!(
+        "Failed to present to the surface: {:?}",
+        result.err().unwrap()
+      );
       surface.remove_swapchain(self);
       return Err(
         "Rendering failed. Swapchain for the surface needs to be reconfigured.",
@@ -174,6 +181,10 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
     }
 
     return Ok(());
+  }
+
+  pub(super) fn internal_logical_device(&self) -> &RenderBackend::Device {
+    return &self.gpu.device;
   }
 }
 
@@ -210,7 +221,7 @@ mod tests {
 
 // --------------------------------- GPU INTERNALS -----------------------------
 
-pub mod internal {
+pub(crate) mod internal {
   use super::Gpu;
 
   /// Retrieves the gfx_hal logical device for a given GPU.

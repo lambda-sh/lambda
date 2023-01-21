@@ -36,6 +36,11 @@ use std::ops::Range;
 use gfx_hal::device::Device;
 
 use super::{
+  assembler::{
+    PrimitiveAssemblerBuilder,
+    VertexAttribute,
+  },
+  buffer::Buffer,
   gpu::Gpu,
   shader::ShaderModule,
 };
@@ -44,6 +49,8 @@ use super::{
 pub struct RenderPipelineBuilder<RenderBackend: internal::Backend> {
   pipeline_layout: Option<RenderBackend::PipelineLayout>,
   push_constants: Vec<PushConstantUpload>,
+  buffers: Vec<Buffer<RenderBackend>>,
+  attributes: Vec<VertexAttribute>,
 }
 
 pub type PipelineStage = gfx_hal::pso::ShaderStageFlags;
@@ -55,15 +62,27 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
     return Self {
       pipeline_layout: None,
       push_constants: Vec::new(),
+      buffers: Vec::new(),
+      attributes: Vec::new(),
     };
+  }
+
+  pub fn with_buffer(
+    &mut self,
+    buffer: Buffer<RenderBackend>,
+    attributes: Vec<VertexAttribute>,
+  ) -> &mut Self {
+    self.buffers.push(buffer);
+    self.attributes.extend(attributes);
+    return self;
   }
 
   /// Adds a push constant to the render pipeline at the set PipelineStage(s)
   pub fn with_push_constant(
-    mut self,
+    &mut self,
     stage: PipelineStage,
     bytes: u32,
-  ) -> Self {
+  ) -> &mut Self {
     self.push_constants.push((stage, 0..bytes));
     return self;
   }
@@ -85,29 +104,36 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
     gpu: &Gpu<RenderBackend>,
     render_pass: &super::render_pass::RenderPass<RenderBackend>,
     vertex_shader: &ShaderModule<RenderBackend>,
-    fragment_shader: &ShaderModule<RenderBackend>,
+    fragment_shader: Option<&ShaderModule<RenderBackend>>,
+    buffers: &Vec<&Buffer<RenderBackend>>,
+    attributes: &[VertexAttribute],
   ) -> RenderPipeline<RenderBackend> {
     // TODO(vmarcella): The pipeline layout should be configurable through the
     // RenderPipelineBuilder.
     let push_constants = self.push_constants.into_iter();
 
     let pipeline_layout = unsafe {
-      use internal::Device;
-
-      super::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .create_pipeline_layout(vec![].into_iter(), push_constants)
         .expect(
           "The GPU does not have enough memory to allocate a pipeline layout",
         )
     };
 
+    // TODO(vmarcella): The primitive assembler should be configurable through
+    // the RenderPipelineBuilder so that buffers & attributes can be bound.
+    let mut builder = PrimitiveAssemblerBuilder::new();
     let primitive_assembler =
-      super::assembler::PrimitiveAssemblerBuilder::new().build(vertex_shader);
+      builder.build(vertex_shader, Some(buffers), Some(attributes));
 
-    let fragment_entry = internal::EntryPoint {
-      entry: fragment_shader.entry(),
-      module: super::internal::module_for(fragment_shader),
-      specialization: fragment_shader.specializations().clone(),
+    let fragment_entry = match fragment_shader {
+      Some(shader) => Some(internal::EntryPoint::<RenderBackend> {
+        entry: shader.entry(),
+        module: super::internal::module_for(shader),
+        specialization: shader.specializations().clone(),
+      }),
+      None => None,
     };
 
     let mut pipeline_desc = internal::GraphicsPipelineDesc::new(
@@ -116,7 +142,7 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
         cull_face: internal::Face::BACK,
         ..internal::Rasterizer::FILL
       },
-      Some(fragment_entry),
+      fragment_entry,
       &pipeline_layout,
       internal::Subpass {
         index: 0,
@@ -133,14 +159,20 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
       });
 
     let pipeline = unsafe {
-      super::internal::logical_device_for(gpu)
-        .create_graphics_pipeline(&pipeline_desc, None)
-        .expect("Failed to create graphics pipeline")
+      let pipeline_build_result = gpu
+        .internal_logical_device()
+        .create_graphics_pipeline(&pipeline_desc, None);
+
+      match pipeline_build_result {
+        Ok(pipeline) => pipeline,
+        Err(e) => panic!("Failed to create graphics pipeline: {:?}", e),
+      }
     };
 
     return RenderPipeline {
       pipeline_layout,
       pipeline,
+      buffers: self.buffers,
     };
   }
 }
@@ -150,16 +182,24 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
 pub struct RenderPipeline<RenderBackend: internal::Backend> {
   pipeline_layout: RenderBackend::PipelineLayout,
   pipeline: RenderBackend::GraphicsPipeline,
+  buffers: Vec<Buffer<RenderBackend>>,
 }
 
 impl<RenderBackend: internal::Backend> RenderPipeline<RenderBackend> {
   /// Destroys the pipeline layout and graphical pipeline
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
+    println!("Destroying render pipeline");
     unsafe {
-      super::gpu::internal::logical_device_for(gpu)
+      for buffer in self.buffers {
+        buffer.destroy(gpu);
+      }
+
+      gpu
+        .internal_logical_device()
         .destroy_pipeline_layout(self.pipeline_layout);
 
-      super::gpu::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .destroy_graphics_pipeline(self.pipeline);
     }
   }

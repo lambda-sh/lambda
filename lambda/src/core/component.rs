@@ -16,10 +16,10 @@ pub trait Component {
   fn on_detach(&mut self, render_context: &mut RenderContext);
   fn on_event(&mut self, event: Events);
 
-  /// When the application state should perform logic updates.
+  /// The update function is called every frame and is used to update
+  /// the state of the component.
   fn on_update(&mut self, last_frame: &Duration);
 
-  /// When the application state should perform rendering.
   fn on_render(
     &mut self,
     render_context: &mut RenderContext,

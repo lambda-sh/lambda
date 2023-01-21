@@ -2,6 +2,7 @@
 
 pub mod api;
 pub mod assembler;
+pub mod buffer;
 pub mod command;
 pub mod fence;
 pub mod framebuffer;

@@ -39,7 +39,7 @@ impl SurfaceBuilder {
     let gfx_hal_surface = super::internal::create_surface(instance, window);
     let name = match self.name {
       Some(name) => name,
-      None => "LambdaSurface".to_string(),
+      None => "RenderSurface".to_string(),
     };
 
     return Surface {
@@ -69,7 +69,7 @@ pub struct Surface<RenderBackend: gfx_hal::Backend> {
   frame_buffer_attachment: Option<gfx_hal::image::FramebufferAttachment>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Swapchain {
   config: gfx_hal::window::SwapchainConfig,
   format: gfx_hal::format::Format,
@@ -85,7 +85,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     swapchain: Swapchain,
     timeout_in_nanoseconds: u64,
   ) -> Result<(), &'surface str> {
-    let device = super::gpu::internal::logical_device_for(gpu);
+    let device = gpu.internal_logical_device();
     self.extent = Some(swapchain.config.extent);
 
     unsafe {
@@ -118,6 +118,10 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     }
   }
 
+  pub fn needs_swapchain(&self) -> bool {
+    return self.swapchain_is_valid;
+  }
+
   /// Remove the swapchain configuration that this surface used on this given
   /// GPU.
   pub fn remove_swapchain(&mut self, gpu: &Gpu<RenderBackend>) {
@@ -127,11 +131,6 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
         .gfx_hal_surface
         .unconfigure_swapchain(super::gpu::internal::logical_device_for(gpu));
     }
-  }
-
-  /// private function to invalidate the surface swapchain.
-  fn invalidate_swapchain(&mut self) {
-    self.swapchain_is_valid = false;
   }
 
   /// Destroy the current surface and it's underlying resources.

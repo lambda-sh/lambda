@@ -6,7 +6,18 @@ pub use lambda_platform::shaderc::{
   VirtualShader,
 };
 
-/// Reusable shader builder that utilizes a lower level platform
+#[macro_export]
+macro_rules! vertex_shader {
+  ($source:ident) => {
+    VirtualShader::Source {
+      source: String::from($stringify!($source)),
+      kind: ShaderKind::Vertex,
+      name: String::from("vertex-shader"),
+      entry_point: String::from("main"),
+    }
+  };
+}
+
 pub struct ShaderBuilder {
   compiler: ShaderCompiler,
 }
