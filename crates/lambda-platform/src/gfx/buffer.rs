@@ -105,7 +105,7 @@ impl BufferBuilder {
       MemoryTypeId,
     };
     let logical_device = gpu.internal_logical_device();
-    let physical_device = super::internal::physical_device_for(gpu);
+    let physical_device = gpu.internal_physical_device();
 
     // TODO(vmarcella): Add the ability for the user to specify the memory
     // properties (I.E. SparseFlags::SPARSE_MEMORY).

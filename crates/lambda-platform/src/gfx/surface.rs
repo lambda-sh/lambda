@@ -172,7 +172,7 @@ impl SwapchainBuilder {
     gpu: &Gpu<RenderBackend>,
     surface: &Surface<RenderBackend>,
   ) -> Swapchain {
-    let physical_device = super::gpu::internal::physical_device_for(gpu);
+    let physical_device = gpu.internal_physical_device();
     let caps = surface.gfx_hal_surface.capabilities(physical_device);
     let format = internal::get_first_supported_format(surface, physical_device);
     let (width, height) = self.size;

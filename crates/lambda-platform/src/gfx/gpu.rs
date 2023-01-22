@@ -182,9 +182,47 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
 
     return Ok(());
   }
+}
 
+impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   pub(super) fn internal_logical_device(&self) -> &RenderBackend::Device {
     return &self.gpu.device;
+  }
+
+  pub(super) fn internal_physical_device(
+    &self,
+  ) -> &RenderBackend::PhysicalDevice {
+    return &self.adapter.physical_device;
+  }
+}
+
+// --------------------------------- GPU INTERNALS -----------------------------
+
+pub(crate) mod internal {
+  use super::Gpu;
+
+  /// Retrieves the gfx_hal logical device for a given GPU.
+  #[inline]
+  pub fn logical_device_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> &RenderBackend::Device {
+    return &gpu.gpu.device;
+  }
+
+  /// Retrieves the gfx_hal queue group for a given GPU.
+  #[inline]
+  pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> gfx_hal::queue::QueueFamilyId {
+    return gpu.queue_group.family;
+  }
+
+  /// Retrieve the primary queue from the GPU.
+  #[inline]
+  pub fn primary_queue_for<RenderBackend: gfx_hal::Backend>(
+    gpu: &Gpu<RenderBackend>,
+  ) -> &RenderBackend::Queue {
+    return &gpu.queue_group.queues[0];
   }
 }
 
@@ -217,42 +255,4 @@ mod tests {
 
   #[test]
   fn test_gpu_builder_build() {}
-}
-
-// --------------------------------- GPU INTERNALS -----------------------------
-
-pub(crate) mod internal {
-  use super::Gpu;
-
-  /// Retrieves the gfx_hal logical device for a given GPU.
-  #[inline]
-  pub fn logical_device_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::Device {
-    return &gpu.gpu.device;
-  }
-
-  /// Retrieves the gfx_hal physical device for a given GPU.
-  #[inline]
-  pub fn physical_device_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::PhysicalDevice {
-    return &gpu.adapter.physical_device;
-  }
-
-  /// Retrieves the gfx_hal queue group for a given GPU.
-  #[inline]
-  pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> gfx_hal::queue::QueueFamilyId {
-    return gpu.queue_group.family;
-  }
-
-  /// Retrieve the primary queue from the GPU.
-  #[inline]
-  pub fn primary_queue_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::Queue {
-    return &gpu.queue_group.queues[0];
-  }
 }
