@@ -3,12 +3,14 @@ use std::{
   collections::HashMap,
   ops::Range,
   rc::Rc,
+  sync::Arc,
 };
 
 use gfx_hal::{
   command::ClearValue,
   device::Device,
   pool::CommandPool as _,
+  prelude::CommandBuffer as GfxCommandBuffer,
 };
 
 use super::{
@@ -210,6 +212,12 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
       self.issue_command(command);
     }
   }
+
+  pub fn reset(&mut self) {
+    unsafe {
+      self.command_buffer.reset(true);
+    }
+  }
 }
 
 /// Builder for creating a Command buffer that can issue commands directly to
@@ -356,6 +364,10 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   // TODO(vmarcella): This function should return a result based on the status
   // of the deallocation.
   pub fn deallocate_command_buffer(&mut self, name: &str) {
+    if self.command_buffers.contains_key(name) == false {
+      return;
+    }
+
     let buffer = self
       .command_buffers
       .remove(&name.to_string())

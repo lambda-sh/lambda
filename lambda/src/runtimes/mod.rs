@@ -275,6 +275,7 @@ impl Runtime for GenericRuntime {
             let commands = component.on_render(active_render_context);
             active_render_context.render(commands);
           }
+
           None
         }
         WinitEvent::RedrawRequested(_) => { None }

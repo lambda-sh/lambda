@@ -290,6 +290,12 @@ impl RenderContext {
       }
       None => {}
     }
+
+    self
+      .command_pool
+      .as_mut()
+      .unwrap()
+      .deallocate_command_buffer("primary");
   }
 
   pub fn resize(&mut self, width: u32, height: u32) {
