@@ -129,7 +129,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     unsafe {
       self
         .gfx_hal_surface
-        .unconfigure_swapchain(super::gpu::internal::logical_device_for(gpu));
+        .unconfigure_swapchain(gpu.internal_logical_device());
     }
   }
 

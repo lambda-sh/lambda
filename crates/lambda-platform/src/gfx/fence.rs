@@ -17,7 +17,8 @@ impl RenderSemaphoreBuilder {
     self,
     gpu: &mut super::gpu::Gpu<RenderBackend>,
   ) -> RenderSemaphore<RenderBackend> {
-    let semaphore = super::internal::logical_device_for(gpu)
+    let semaphore = gpu
+      .internal_logical_device()
       .create_semaphore()
       .expect("The GPU has no memory to allocate the semaphore");
 
@@ -36,7 +37,9 @@ impl<RenderBackend: gfx_hal::Backend> RenderSemaphore<RenderBackend> {
   /// Destroys the semaphore using the GPU that created it.
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
-      super::internal::logical_device_for(gpu).destroy_semaphore(self.semaphore)
+      gpu
+        .internal_logical_device()
+        .destroy_semaphore(self.semaphore)
     }
   }
 }
@@ -67,7 +70,8 @@ impl RenderSubmissionFenceBuilder {
     self,
     gpu: &mut super::gpu::Gpu<RenderBackend>,
   ) -> RenderSubmissionFence<RenderBackend> {
-    let fence = super::gpu::internal::logical_device_for(gpu)
+    let fence = gpu
+      .internal_logical_device()
       .create_fence(true)
       .expect("There is not enough memory to create a fence on this device.");
 
@@ -99,23 +103,18 @@ impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
     };
 
     unsafe {
-      super::gpu::internal::logical_device_for(gpu)
+      gpu.internal_logical_device()
         .wait_for_fence(&self.fence, timeout)
     }
     .expect("The GPU ran out of memory or has become detached from the current context.");
 
-    unsafe {
-      super::gpu::internal::logical_device_for(gpu).reset_fence(&mut self.fence)
-    }
-    .expect("The fence failed to reset.");
+    unsafe { gpu.internal_logical_device().reset_fence(&mut self.fence) }
+      .expect("The fence failed to reset.");
   }
 
   /// Destroy this fence given the GPU that created it.
-  #[inline]
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
-    unsafe {
-      super::gpu::internal::logical_device_for(gpu).destroy_fence(self.fence)
-    }
+    unsafe { gpu.internal_logical_device().destroy_fence(self.fence) }
   }
 }
 

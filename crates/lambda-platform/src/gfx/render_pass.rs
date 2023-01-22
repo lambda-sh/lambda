@@ -224,7 +224,7 @@ impl<'builder> RenderPassBuilder<'builder> {
     };
 
     let render_pass = unsafe {
-      super::internal::logical_device_for(gpu).create_render_pass(
+      gpu.internal_logical_device().create_render_pass(
         attachments.into_iter(),
         subpasses.into_iter(),
         vec![].into_iter(),
@@ -244,7 +244,8 @@ pub struct RenderPass<RenderBackend: gfx_hal::Backend> {
 impl<RenderBackend: gfx_hal::Backend> RenderPass<RenderBackend> {
   pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
     unsafe {
-      super::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .destroy_render_pass(self.render_pass);
     }
   }

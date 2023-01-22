@@ -201,14 +201,6 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
 pub(crate) mod internal {
   use super::Gpu;
 
-  /// Retrieves the gfx_hal logical device for a given GPU.
-  #[inline]
-  pub fn logical_device_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::Device {
-    return &gpu.gpu.device;
-  }
-
   /// Retrieves the gfx_hal queue group for a given GPU.
   #[inline]
   pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(

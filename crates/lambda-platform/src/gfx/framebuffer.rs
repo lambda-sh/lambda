@@ -19,7 +19,8 @@ impl<RenderBackend: gfx_hal::Backend> Framebuffer<RenderBackend> {
   /// Destroys the framebuffer from the given GPU.
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
-      super::gpu::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .destroy_framebuffer(self.frame_buffer);
     }
   }
@@ -44,7 +45,8 @@ impl FramebufferBuilder {
     let image = frame_buffer_attachment_from(surface).unwrap();
 
     let frame_buffer = unsafe {
-      super::gpu::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .create_framebuffer(
           super::render_pass::internal::render_pass_for(render_pass),
           vec![image].into_iter(),

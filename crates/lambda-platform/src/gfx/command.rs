@@ -314,7 +314,8 @@ impl CommandPoolBuilder {
     gpu: &super::gpu::Gpu<B>,
   ) -> CommandPool<B> {
     let command_pool = unsafe {
-      super::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .create_command_pool(
           super::internal::queue_family_for(gpu),
           self.command_pool_flags,
