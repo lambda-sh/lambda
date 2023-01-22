@@ -97,7 +97,7 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   /// Instantiates a new GPU given an adapter that is implemented by the GPUs
   /// current rendering backend B. A new GPU does not come with a command pool
   /// unless specified.
-  pub fn new(
+  pub(super) fn new(
     adapter: Adapter<RenderBackend>,
     queue_family: gfx_hal::queue::QueueFamilyId,
   ) -> Self {
@@ -194,6 +194,10 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   ) -> &RenderBackend::PhysicalDevice {
     return &self.adapter.physical_device;
   }
+
+  pub(super) fn internal_queue_family(&self) -> gfx_hal::queue::QueueFamilyId {
+    return self.queue_group.family;
+  }
 }
 
 // --------------------------------- GPU INTERNALS -----------------------------
@@ -207,14 +211,6 @@ pub(crate) mod internal {
     gpu: &Gpu<RenderBackend>,
   ) -> gfx_hal::queue::QueueFamilyId {
     return gpu.queue_group.family;
-  }
-
-  /// Retrieve the primary queue from the GPU.
-  #[inline]
-  pub fn primary_queue_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::Queue {
-    return &gpu.queue_group.queues[0];
   }
 }
 

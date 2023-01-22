@@ -325,7 +325,7 @@ impl CommandPoolBuilder {
       gpu
         .internal_logical_device()
         .create_command_pool(
-          super::internal::queue_family_for(gpu),
+          gpu.internal_queue_family(),
           self.command_pool_flags,
         )
         .expect("")
