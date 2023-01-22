@@ -200,20 +200,6 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   }
 }
 
-// --------------------------------- GPU INTERNALS -----------------------------
-
-pub(crate) mod internal {
-  use super::Gpu;
-
-  /// Retrieves the gfx_hal queue group for a given GPU.
-  #[inline]
-  pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> gfx_hal::queue::QueueFamilyId {
-    return gpu.queue_group.family;
-  }
-}
-
 #[cfg(test)]
 mod tests {
   #[test]
