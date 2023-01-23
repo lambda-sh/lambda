@@ -17,6 +17,10 @@ use lambda::{
     },
     runtime::start_runtime,
   },
+  math::matrix::{
+    self,
+    Matrix,
+  },
   render::{
     buffer::BufferBuilder,
     command::RenderCommand,
@@ -225,8 +229,22 @@ impl Component for ObjLoader {
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Vec<lambda::render::command::RenderCommand> {
-    let mesh_matrix =
-      make_transform([0.0, 0.0, 0.5], self.frame_number as f32 * 0.01, 0.5);
+    let camera = [0.0, 0.0, -2.0];
+    let view: [[f32; 4]; 4] = matrix::translation_matrix(camera);
+
+    // Create a projection matrix.
+    let projection: [[f32; 4]; 4] =
+      matrix::perspective_matrix(0.50, (4 / 3) as f32, 0.1, 200.0);
+
+    // Rotate model.
+    let model: [[f32; 4]; 4] = matrix::rotate_matrix(
+      matrix::identity_matrix(4, 4),
+      [1.0, 0.0, 0.0],
+      0.001 * self.frame_number as f32,
+    );
+
+    // Create render matrix.
+    let mesh_matrix = projection.multiply(&view).multiply(&model);
 
     // Create viewport.
     let viewport =
