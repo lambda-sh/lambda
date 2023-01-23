@@ -290,12 +290,6 @@ impl RenderContext {
       }
       None => {}
     }
-
-    self
-      .command_pool
-      .as_mut()
-      .unwrap()
-      .deallocate_command_buffer("primary");
   }
 
   pub fn resize(&mut self, width: u32, height: u32) {
@@ -343,7 +337,6 @@ impl RenderContext {
 type PlatformRenderCommand = Command<internal::RenderBackend>;
 
 pub(crate) mod internal {
-  use std::rc::Rc;
 
   use lambda_platform::gfx::api::RenderingAPI as RenderContext;
   pub type RenderBackend = RenderContext::Backend;

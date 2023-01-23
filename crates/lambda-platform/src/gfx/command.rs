@@ -260,7 +260,8 @@ impl CommandBufferBuilder {
     command_pool: &'command_pool mut CommandPool<RenderBackend>,
     name: &str,
   ) -> CommandBuffer<'command_pool, RenderBackend> {
-    let command_buffer = command_pool.allocate_command_buffer(name, self.level);
+    let command_buffer =
+      command_pool.fetch_or_allocate_command_buffer(name, self.level);
 
     let flags = self.flags;
 
@@ -344,11 +345,15 @@ pub struct CommandPool<RenderBackend: gfx_hal::Backend> {
 
 impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   /// Allocate a command buffer for lambda.
-  fn allocate_command_buffer(
+  fn fetch_or_allocate_command_buffer(
     &mut self,
     name: &str,
     level: CommandBufferLevel,
   ) -> &mut RenderBackend::CommandBuffer {
+    if self.command_buffers.contains_key(name) {
+      return self.command_buffers.get_mut(name).unwrap();
+    }
+
     let buffer = unsafe {
       self
         .command_pool
