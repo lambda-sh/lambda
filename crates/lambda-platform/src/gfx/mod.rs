@@ -63,7 +63,6 @@ pub mod internal {
   };
 
   pub use super::{
-    assembler::internal::*,
     pipeline::internal::*,
     render_pass::internal::*,
     shader::internal::*,

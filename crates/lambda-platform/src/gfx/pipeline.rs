@@ -137,7 +137,7 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
     };
 
     let mut pipeline_desc = internal::GraphicsPipelineDesc::new(
-      super::internal::into_primitive_assembler(primitive_assembler),
+      primitive_assembler.internal_primitive_assembler(),
       internal::Rasterizer {
         cull_face: internal::Face::BACK,
         ..internal::Rasterizer::FILL

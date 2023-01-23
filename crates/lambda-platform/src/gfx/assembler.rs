@@ -104,15 +104,10 @@ pub struct PrimitiveAssembler<'shader, RenderBackend: gfx_hal::Backend> {
 impl<'shader, RenderBackend: gfx_hal::Backend>
   PrimitiveAssembler<'shader, RenderBackend>
 {
-}
-
-/// Internal functions for the primitive assembler. User applications most
-/// likely should not use these functions directly nor should they need to.
-pub(crate) mod internal {
-  #[inline]
-  pub fn into_primitive_assembler<'shader, RenderBackend: gfx_hal::Backend>(
-    primitive_assembler: super::PrimitiveAssembler<'shader, RenderBackend>,
-  ) -> gfx_hal::pso::PrimitiveAssemblerDesc<'shader, RenderBackend> {
-    return primitive_assembler.primitive_assembler;
+  // Get the internal primitive assembler.
+  pub(super) fn internal_primitive_assembler(
+    self,
+  ) -> pso::PrimitiveAssemblerDesc<'shader, RenderBackend> {
+    return self.primitive_assembler;
   }
 }
