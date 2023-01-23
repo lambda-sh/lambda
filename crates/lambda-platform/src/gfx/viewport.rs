@@ -9,6 +9,13 @@ pub struct ViewPort {
   viewport: gfx_hal::pso::Viewport,
 }
 
+impl ViewPort {
+  /// Get the internal viewport object.
+  pub(super) fn internal_viewport(&self) -> gfx_hal::pso::Viewport {
+    return self.viewport.clone();
+  }
+}
+
 /// A builder for `Viewport`.
 pub struct ViewPortBuilder {
   x: i16,
@@ -43,13 +50,6 @@ impl ViewPortBuilder {
         depth: 0.0..1.0,
       },
     };
-  }
-}
-
-pub mod internal {
-  /// Return the gfx_hal viewport.
-  pub fn viewport_for(viewport: &super::ViewPort) -> gfx_hal::pso::Viewport {
-    return viewport.viewport.clone();
   }
 }
 

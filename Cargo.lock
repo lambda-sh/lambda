@@ -1303,6 +1303,14 @@ name = "lambda-args"
 version = "2022.1.21"
 
 [[package]]
+name = "lambda-obj-loader"
+version = "2023.1.21"
+dependencies = [
+ "lambda",
+ "lambda-args",
+]
+
+[[package]]
 name = "lambda-platform"
 version = "0.1.0"
 dependencies = [
@@ -1318,14 +1326,6 @@ dependencies = [
  "rand",
  "shaderc",
  "winit",
-]
-
-[[package]]
-name = "lambda_obj_loader"
-version = "2022.1.21"
-dependencies = [
- "lambda",
- "lambda-args",
 ]
 
 [[package]]

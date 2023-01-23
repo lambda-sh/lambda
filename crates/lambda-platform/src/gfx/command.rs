@@ -135,16 +135,16 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           start_at,
           viewports
             .into_iter()
-            .map(|viewport| super::viewport::internal::viewport_for(&viewport)),
+            .map(|viewport| viewport.internal_viewport()),
         ),
         Command::SetScissors {
           start_at,
           viewports,
         } => self.command_buffer.set_scissors(
           start_at,
-          viewports.into_iter().map(|viewport| {
-            super::viewport::internal::viewport_for(&viewport).rect
-          }),
+          viewports
+            .into_iter()
+            .map(|viewport| viewport.internal_viewport().rect),
         ),
 
         Command::BeginRenderPass {
@@ -155,7 +155,7 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
         } => self.command_buffer.begin_render_pass(
           render_pass.internal_render_pass(),
           super::framebuffer::internal::frame_buffer_for(&frame_buffer),
-          super::viewport::internal::viewport_for(&viewport).rect,
+          viewport.internal_viewport().rect,
           vec![gfx_hal::command::RenderAttachmentInfo::<RenderBackend> {
             image_view: super::surface::internal::borrow_surface_image_for(
               &surface,

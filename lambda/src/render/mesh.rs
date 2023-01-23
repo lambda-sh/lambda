@@ -88,7 +88,7 @@ impl MeshBuilder {
         return Vertex {
           position: v.position,
           normal: v.normal,
-          color: v.texture,
+          color: [1.0, 1.0, 1.0],
         };
       })
       .collect::<Vec<Vertex>>();
