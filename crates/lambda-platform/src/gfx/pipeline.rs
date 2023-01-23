@@ -146,7 +146,7 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
       &pipeline_layout,
       internal::Subpass {
         index: 0,
-        main_pass: super::internal::render_pass_for(render_pass),
+        main_pass: render_pass.internal_render_pass(),
       },
     );
 

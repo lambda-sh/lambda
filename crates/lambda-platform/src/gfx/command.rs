@@ -3,7 +3,6 @@ use std::{
   collections::HashMap,
   ops::Range,
   rc::Rc,
-  sync::Arc,
 };
 
 use gfx_hal::{
@@ -154,7 +153,7 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           surface,
           viewport,
         } => self.command_buffer.begin_render_pass(
-          super::render_pass::internal::render_pass_for(&render_pass),
+          render_pass.internal_render_pass(),
           super::framebuffer::internal::frame_buffer_for(&frame_buffer),
           super::viewport::internal::viewport_for(&viewport).rect,
           vec![gfx_hal::command::RenderAttachmentInfo::<RenderBackend> {

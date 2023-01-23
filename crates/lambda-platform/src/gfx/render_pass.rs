@@ -251,15 +251,8 @@ impl<RenderBackend: gfx_hal::Backend> RenderPass<RenderBackend> {
   }
 }
 
-// --------------------------------- INTERNAL ----------------------------------
-
-pub mod internal {
-  use gfx_hal::Backend;
-
-  #[inline]
-  pub fn render_pass_for<RenderBackend: Backend>(
-    render_pass: &super::RenderPass<RenderBackend>,
-  ) -> &RenderBackend::RenderPass {
-    return &render_pass.render_pass;
+impl<RenderBackend: gfx_hal::Backend> RenderPass<RenderBackend> {
+  pub(super) fn internal_render_pass(&self) -> &RenderBackend::RenderPass {
+    return &self.render_pass;
   }
 }

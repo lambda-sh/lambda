@@ -48,7 +48,7 @@ impl FramebufferBuilder {
       gpu
         .internal_logical_device()
         .create_framebuffer(
-          super::render_pass::internal::render_pass_for(render_pass),
+          render_pass.internal_render_pass(),
           vec![image].into_iter(),
           Extent {
             width,
