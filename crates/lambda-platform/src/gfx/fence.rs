@@ -44,6 +44,20 @@ impl<RenderBackend: gfx_hal::Backend> RenderSemaphore<RenderBackend> {
   }
 }
 
+impl<RenderBackend: gfx_hal::Backend> RenderSemaphore<RenderBackend> {
+  /// Retrieve a reference to the internal semaphore.
+  pub(super) fn internal_semaphore(&self) -> &RenderBackend::Semaphore {
+    return &self.semaphore;
+  }
+
+  /// Retrieve a mutable reference to the internal semaphore.
+  pub(super) fn internal_semaphore_mut(
+    &mut self,
+  ) -> &mut RenderBackend::Semaphore {
+    return &mut self.semaphore;
+  }
+}
+
 pub struct RenderSubmissionFenceBuilder {
   default_render_timeout: u64,
 }
@@ -118,24 +132,14 @@ impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
   }
 }
 
-pub(crate) mod internal {
-  /// Retrieve the underlying submission fence.
-  pub fn mutable_fence_for<RenderBackend: gfx_hal::Backend>(
-    fence: &mut super::RenderSubmissionFence<RenderBackend>,
-  ) -> &mut RenderBackend::Fence {
-    return &mut fence.fence;
+impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
+  /// Retrieve the underlying fence.
+  pub fn internal_fence(&self) -> &RenderBackend::Fence {
+    return &self.fence;
   }
 
-  /// Retrieve the underlying semaphore.
-  pub fn mutable_semaphore_for<RenderBackend: gfx_hal::Backend>(
-    semaphore: &mut super::RenderSemaphore<RenderBackend>,
-  ) -> &mut RenderBackend::Semaphore {
-    return &mut semaphore.semaphore;
-  }
-
-  pub fn semaphore_for<RenderBackend: gfx_hal::Backend>(
-    semaphore: &super::RenderSemaphore<RenderBackend>,
-  ) -> &RenderBackend::Semaphore {
-    return &semaphore.semaphore;
+  /// Retrieve a mutable reference to the underlying fence.
+  pub fn internal_fence_mut(&mut self) -> &mut RenderBackend::Fence {
+    return &mut self.fence;
   }
 }

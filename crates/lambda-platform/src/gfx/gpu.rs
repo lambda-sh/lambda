@@ -145,9 +145,9 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
           // TODO(vmarcella): This was needed to allow the push constants to
           // properly render to the screen. Look into a better way to do this.
           signal_semaphores.into_iter().map(|semaphore| {
-            return super::fence::internal::semaphore_for(semaphore);
+            return semaphore.internal_semaphore();
           }),
-          Some(super::fence::internal::mutable_fence_for(fence)),
+          Some(fence.internal_fence_mut()),
         );
     }
   }
@@ -165,7 +165,7 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
       self.queue_group.queues[0].present(
         render_surface,
         render_image,
-        Some(super::fence::internal::mutable_semaphore_for(semaphore)),
+        Some(semaphore.internal_semaphore_mut()),
       )
     };
 
