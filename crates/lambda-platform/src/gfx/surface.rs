@@ -1,8 +1,11 @@
 /// ColorFormat for the surface.
 pub use gfx_hal::format::Format as ColorFormat;
-use gfx_hal::window::{
-  PresentationSurface,
-  Surface as _,
+use gfx_hal::{
+  window::{
+    PresentationSurface,
+    Surface as _,
+  },
+  Backend,
 };
 #[cfg(test)]
 use mockall::automock;
@@ -167,7 +170,7 @@ impl SwapchainBuilder {
     return self;
   }
 
-  pub fn build<RenderBackend: super::internal::Backend>(
+  pub fn build<RenderBackend: Backend>(
     self,
     gpu: &Gpu<RenderBackend>,
     surface: &Surface<RenderBackend>,

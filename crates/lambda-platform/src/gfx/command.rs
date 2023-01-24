@@ -171,11 +171,9 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           .into_iter(),
           gfx_hal::command::SubpassContents::Inline,
         ),
-        Command::AttachGraphicsPipeline { pipeline } => {
-          self.command_buffer.bind_graphics_pipeline(
-            super::pipeline::internal::pipeline_for(pipeline.as_ref()),
-          )
-        }
+        Command::AttachGraphicsPipeline { pipeline } => self
+          .command_buffer
+          .bind_graphics_pipeline(pipeline.internal_pipeline()),
         Command::EndRenderPass => self.command_buffer.end_render_pass(),
         Command::PushConstants {
           pipeline,
@@ -183,7 +181,7 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           offset,
           bytes,
         } => self.command_buffer.push_graphics_constants(
-          super::pipeline::internal::pipeline_layout_for(pipeline.as_ref()),
+          pipeline.internal_pipeline_layout(),
           stage,
           offset,
           bytes.as_slice(),

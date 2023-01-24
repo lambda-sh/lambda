@@ -4,6 +4,7 @@ use gfx_hal::{
     SparseFlags,
   },
   prelude::Device,
+  Backend,
 };
 
 use super::gpu::Gpu;
@@ -24,14 +25,14 @@ pub enum BufferType {
 /// A buffer is a block of memory that can be used to store data that can be
 /// accessed by the GPU.
 #[derive(Debug, Clone, Copy)]
-pub struct Buffer<RenderBackend: super::internal::Backend> {
+pub struct Buffer<RenderBackend: Backend> {
   buffer: RenderBackend::Buffer,
   memory: RenderBackend::Memory,
   stride: usize,
   buffer_type: BufferType,
 }
 
-impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {
+impl<RenderBackend: Backend> Buffer<RenderBackend> {
   /// Destroy the buffer and all it's resources with the GPU that
   /// created it.
   pub fn destroy(self, gpu: &Gpu<RenderBackend>) {
@@ -47,7 +48,7 @@ impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {
   }
 }
 
-impl<RenderBackend: super::internal::Backend> Buffer<RenderBackend> {
+impl<RenderBackend: Backend> Buffer<RenderBackend> {
   /// Retrieve a reference to the internal buffer.
   pub(super) fn internal_buffer(&self) -> &RenderBackend::Buffer {
     return &self.buffer;
@@ -95,7 +96,7 @@ impl BufferBuilder {
   /// bound to the GPU, the buffer memory is freed before the error is returned.
   /// Data must represent the data that will be stored in the buffer, meaning
   /// it must repr C and be the same size as the buffer length.
-  pub fn build<RenderBackend: super::internal::Backend, Data: Sized>(
+  pub fn build<RenderBackend: Backend, Data: Sized>(
     &self,
     gpu: &mut Gpu<RenderBackend>,
     data: Vec<Data>,

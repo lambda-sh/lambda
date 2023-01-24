@@ -14,7 +14,10 @@ pub mod shader;
 pub mod surface;
 pub mod viewport;
 
-use gfx_hal::Instance as _;
+use gfx_hal::{
+  Backend,
+  Instance as _,
+};
 
 // ----------------------- INSTANCE BUILDER AND INSTANCE -------------------------------
 
@@ -30,7 +33,7 @@ impl InstanceBuilder {
   }
 
   /// Builds a graphical instance for the current platform.
-  pub fn build<RenderBackend: internal::Backend>(
+  pub fn build<RenderBackend: Backend>(
     self,
     name: &str,
   ) -> Instance<RenderBackend> {
@@ -38,11 +41,11 @@ impl InstanceBuilder {
   }
 }
 
-pub struct Instance<RenderBackend: internal::Backend> {
+pub struct Instance<RenderBackend: Backend> {
   gfx_hal_instance: RenderBackend::Instance,
 }
 
-impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
+impl<RenderBackend: Backend> Instance<RenderBackend> {
   /// Create a new GfxInstance connected to the current platforms primary backend.
   fn new(name: &str) -> Self {
     let instance = RenderBackend::Instance::create(name, 1)
@@ -54,7 +57,7 @@ impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
   }
 }
 
-impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
+impl<RenderBackend: Backend> Instance<RenderBackend> {
   /// Returns a list of all available adapters.
   pub(super) fn enumerate_adapters(
     &self,
@@ -90,9 +93,5 @@ impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
 // ----------------------- INTERNAL INSTANCE OPERATIONS ------------------------
 
 pub mod internal {
-
-  pub use super::{
-    pipeline::internal::*,
-    shader::internal::*,
-  };
+  pub use super::shader::internal::*;
 }
