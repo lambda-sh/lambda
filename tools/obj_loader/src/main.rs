@@ -60,6 +60,7 @@ layout (location = 1) in vec3 vertex_normal;
 layout (location = 2) in vec3 vertex_color;
 
 layout (location = 0) out vec3 frag_color;
+layout (location = 1) out vec3 frag_normal;
 
 layout ( push_constant ) uniform PushConstant {
   vec4 data;
@@ -69,6 +70,7 @@ layout ( push_constant ) uniform PushConstant {
 void main() {
   gl_Position = push_constants.render_matrix * vec4(vertex_position, 1.0);
   frag_color = vertex_color;
+  frag_normal = vertex_normal;
 }
 
 "#;
@@ -77,11 +79,13 @@ const FRAGMENT_SHADER_SOURCE: &str = r#"
 #version 450
 
 layout (location = 0) in vec3 frag_color;
+layout (location = 1) in vec3 frag_normal;
 
 layout (location = 0) out vec4 fragment_color;
 
 void main() {
-  fragment_color = vec4(frag_color, 1.0);
+  float diffuse = dot(frag_normal, vec3(0.0, 0.0, 1.0));
+  fragment_color = vec4(frag_color, 1.0) * vec4(diffuse);
 }
 
 "#;
@@ -234,17 +238,19 @@ impl Component for ObjLoader {
 
     // Create a projection matrix.
     let projection: [[f32; 4]; 4] =
-      matrix::perspective_matrix(0.50, (4 / 3) as f32, 0.1, 200.0);
+      matrix::perspective_matrix(0.12, (4 / 3) as f32, 0.1, 200.0);
 
     // Rotate model.
     let model: [[f32; 4]; 4] = matrix::rotate_matrix(
       matrix::identity_matrix(4, 4),
-      [1.0, 0.0, 0.0],
+      [0.0, 1.0, 0.0],
       0.001 * self.frame_number as f32,
     );
 
     // Create render matrix.
     let mesh_matrix = projection.multiply(&view).multiply(&model);
+    let mesh_matrix =
+      make_transform([0.0, 0.0, 0.5], self.frame_number as f32 * 0.01, 0.5);
 
     // Create viewport.
     let viewport =
