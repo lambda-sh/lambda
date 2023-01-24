@@ -1,8 +1,11 @@
 /// ColorFormat for the surface.
 pub use gfx_hal::format::Format as ColorFormat;
-use gfx_hal::window::{
-  PresentationSurface,
-  Surface as _,
+use gfx_hal::{
+  window::{
+    PresentationSurface,
+    Surface as _,
+  },
+  Backend,
 };
 #[cfg(test)]
 use mockall::automock;
@@ -36,7 +39,7 @@ impl SurfaceBuilder {
     instance: &super::Instance<RenderBackend>,
     window: &crate::winit::WindowHandle,
   ) -> Surface<RenderBackend> {
-    let gfx_hal_surface = super::internal::create_surface(instance, window);
+    let gfx_hal_surface = instance.create_surface(window);
     let name = match self.name {
       Some(name) => name,
       None => "RenderSurface".to_string(),
@@ -129,7 +132,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
     unsafe {
       self
         .gfx_hal_surface
-        .unconfigure_swapchain(super::gpu::internal::logical_device_for(gpu));
+        .unconfigure_swapchain(gpu.internal_logical_device());
     }
   }
 
@@ -137,7 +140,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   pub fn destroy(self, instance: &Instance<RenderBackend>) {
     println!("Destroying the surface: {}", self.name);
 
-    super::internal::destroy_surface(&instance, self.gfx_hal_surface);
+    instance.destroy_surface(self.gfx_hal_surface);
   }
 
   /// Get the size of the surface's extent. Will only return a size if a
@@ -167,14 +170,14 @@ impl SwapchainBuilder {
     return self;
   }
 
-  pub fn build<RenderBackend: super::internal::Backend>(
+  pub fn build<RenderBackend: Backend>(
     self,
     gpu: &Gpu<RenderBackend>,
     surface: &Surface<RenderBackend>,
   ) -> Swapchain {
-    let physical_device = super::gpu::internal::physical_device_for(gpu);
+    let physical_device = gpu.internal_physical_device();
     let caps = surface.gfx_hal_surface.capabilities(physical_device);
-    let format = internal::get_first_supported_format(surface, physical_device);
+    let format = surface.get_first_supported_format(physical_device);
     let (width, height) = self.size;
 
     let mut swapchain_config = gfx_hal::window::SwapchainConfig::from_caps(
@@ -232,81 +235,57 @@ mod tests {
   }
 }
 
-/// Internal functions to work with the gfx-hal surface components
-pub mod internal {
-  use gfx_hal::window::{
-    PresentationSurface,
-    Surface as _,
-  };
-
+impl<RenderBackend: Backend> Surface<RenderBackend> {
   /// Checks the queue family if the current Surface can support the GPU.
-  pub fn can_support_queue_family<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
+  pub(super) fn can_support_queue_family(
+    &self,
     queue_family: &RenderBackend::QueueFamily,
   ) -> bool {
-    return surface.gfx_hal_surface.supports_queue_family(queue_family);
+    return self.gfx_hal_surface.supports_queue_family(queue_family);
   }
 
-  /// Get the supported gfx_hal color formats for a given format.
-  pub fn get_supported_formats<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
+  pub(super) fn get_supported_formats(
+    &self,
     physical_device: &RenderBackend::PhysicalDevice,
   ) -> Vec<gfx_hal::format::Format> {
-    return surface
+    return self
       .gfx_hal_surface
       .supported_formats(physical_device)
       .unwrap_or(vec![]);
   }
 
-  /// Helper function to retrieve the first supported format given a physical
-  /// GPU device.
-  pub fn get_first_supported_format<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
+  pub(super) fn get_first_supported_format(
+    &self,
     physical_device: &RenderBackend::PhysicalDevice,
   ) -> gfx_hal::format::Format {
-    let supported_formats = get_supported_formats(&surface, physical_device);
-
-    let default_format = *supported_formats
+    return self
+      .get_supported_formats(physical_device)
       .get(0)
-      .unwrap_or(&gfx_hal::format::Format::Rgba8Srgb);
-
-    return supported_formats
-      .into_iter()
-      .find(|format| -> bool {
-        format.base_format().1 == gfx_hal::format::ChannelType::Srgb
-      })
-      .unwrap_or(default_format);
+      .unwrap_or(&gfx_hal::format::Format::Rgba8Srgb)
+      .clone();
   }
 
-  /// Acquires a surface image for attaching to a framebuffer.
-  pub fn take_surface_image_for<RenderBackend: gfx_hal::Backend>(
-    surface: &mut super::Surface<RenderBackend>,
-  ) -> Option<<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
-    return surface.image.take();
-  }
-
-  /// Acquires a surface image for attaching to a framebuffer.
-  pub fn borrow_surface_image_for<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
+  pub(super) fn internal_surface_image(
+    &self,
   ) -> Option<&<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
-    return surface.image.as_ref();
+    return self.image.as_ref();
   }
 
-  /// FrameBuffer Attachment
-  pub fn frame_buffer_attachment_from<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
+  pub(super) fn internal_frame_buffer_attachment(
+    &self,
   ) -> Option<gfx_hal::image::FramebufferAttachment> {
-    return surface.frame_buffer_attachment.clone();
+    return self.frame_buffer_attachment.clone();
   }
 
-  /// Borrow the surface and take the image. This internal function is used for
-  /// rendering and composes surface_for + take image.
-  pub fn borrow_surface_and_take_image<RenderBackend: gfx_hal::Backend>(
-    surface: &mut super::Surface<RenderBackend>,
-  ) -> (&mut RenderBackend::Surface, <RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage){
+  pub(super) fn internal_surface_and_image(
+    &mut self,
+  ) -> (
+    &mut RenderBackend::Surface,
+    <RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage,
+  ){
     return (
-      &mut surface.gfx_hal_surface,
-      surface.image.take().expect("Surface image is not present"),
+      &mut self.gfx_hal_surface,
+      self.image.take().expect("Surface image is not present"),
     );
   }
 }

@@ -9,6 +9,7 @@ use gfx_hal::{
   command::ClearValue,
   device::Device,
   pool::CommandPool as _,
+  prelude::CommandBuffer as GfxCommandBuffer,
 };
 
 use super::{
@@ -134,16 +135,16 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           start_at,
           viewports
             .into_iter()
-            .map(|viewport| super::viewport::internal::viewport_for(&viewport)),
+            .map(|viewport| viewport.internal_viewport()),
         ),
         Command::SetScissors {
           start_at,
           viewports,
         } => self.command_buffer.set_scissors(
           start_at,
-          viewports.into_iter().map(|viewport| {
-            super::viewport::internal::viewport_for(&viewport).rect
-          }),
+          viewports
+            .into_iter()
+            .map(|viewport| viewport.internal_viewport().rect),
         ),
 
         Command::BeginRenderPass {
@@ -152,15 +153,14 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           surface,
           viewport,
         } => self.command_buffer.begin_render_pass(
-          super::render_pass::internal::render_pass_for(&render_pass),
-          super::framebuffer::internal::frame_buffer_for(&frame_buffer),
-          super::viewport::internal::viewport_for(&viewport).rect,
+          render_pass.internal_render_pass(),
+          frame_buffer.internal_frame_buffer(),
+          viewport.internal_viewport().rect,
           vec![gfx_hal::command::RenderAttachmentInfo::<RenderBackend> {
-            image_view: super::surface::internal::borrow_surface_image_for(
-              &surface,
-            )
-            .unwrap()
-            .borrow(),
+            image_view: surface
+              .internal_surface_image()
+              .expect("No internal surface set when beginning the render pass.")
+              .borrow(),
             clear_value: ClearValue {
               color: gfx_hal::command::ClearColor {
                 float32: [0.0, 0.0, 0.0, 1.0],
@@ -170,11 +170,9 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           .into_iter(),
           gfx_hal::command::SubpassContents::Inline,
         ),
-        Command::AttachGraphicsPipeline { pipeline } => {
-          self.command_buffer.bind_graphics_pipeline(
-            super::pipeline::internal::pipeline_for(pipeline.as_ref()),
-          )
-        }
+        Command::AttachGraphicsPipeline { pipeline } => self
+          .command_buffer
+          .bind_graphics_pipeline(pipeline.internal_pipeline()),
         Command::EndRenderPass => self.command_buffer.end_render_pass(),
         Command::PushConstants {
           pipeline,
@@ -182,7 +180,7 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           offset,
           bytes,
         } => self.command_buffer.push_graphics_constants(
-          super::pipeline::internal::pipeline_layout_for(pipeline.as_ref()),
+          pipeline.internal_pipeline_layout(),
           stage,
           offset,
           bytes.as_slice(),
@@ -208,6 +206,12 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
   pub fn issue_commands(&mut self, commands: Vec<Command<RenderBackend>>) {
     for command in commands {
       self.issue_command(command);
+    }
+  }
+
+  pub fn reset(&mut self) {
+    unsafe {
+      self.command_buffer.reset(true);
     }
   }
 }
@@ -253,7 +257,8 @@ impl CommandBufferBuilder {
     command_pool: &'command_pool mut CommandPool<RenderBackend>,
     name: &str,
   ) -> CommandBuffer<'command_pool, RenderBackend> {
-    let command_buffer = command_pool.allocate_command_buffer(name, self.level);
+    let command_buffer =
+      command_pool.fetch_or_allocate_command_buffer(name, self.level);
 
     let flags = self.flags;
 
@@ -314,9 +319,10 @@ impl CommandPoolBuilder {
     gpu: &super::gpu::Gpu<B>,
   ) -> CommandPool<B> {
     let command_pool = unsafe {
-      super::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .create_command_pool(
-          super::internal::queue_family_for(gpu),
+          gpu.internal_queue_family(),
           self.command_pool_flags,
         )
         .expect("")
@@ -336,11 +342,15 @@ pub struct CommandPool<RenderBackend: gfx_hal::Backend> {
 
 impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   /// Allocate a command buffer for lambda.
-  fn allocate_command_buffer(
+  fn fetch_or_allocate_command_buffer(
     &mut self,
     name: &str,
     level: CommandBufferLevel,
   ) -> &mut RenderBackend::CommandBuffer {
+    if self.command_buffers.contains_key(name) {
+      return self.command_buffers.get_mut(name).unwrap();
+    }
+
     let buffer = unsafe {
       self
         .command_pool
@@ -355,6 +365,10 @@ impl<RenderBackend: gfx_hal::Backend> CommandPool<RenderBackend> {
   // TODO(vmarcella): This function should return a result based on the status
   // of the deallocation.
   pub fn deallocate_command_buffer(&mut self, name: &str) {
+    if self.command_buffers.contains_key(name) == false {
+      return;
+    }
+
     let buffer = self
       .command_buffers
       .remove(&name.to_string())

@@ -1,13 +1,25 @@
+use std::env;
+
+use args::{
+  Argument,
+  ArgumentParser,
+  ArgumentType,
+  ArgumentValue,
+  ParsedArgument,
+};
 use lambda::{
   core::{
     component::Component,
-    events::WindowEvent,
+    events::{
+      ComponentEvent,
+      Events,
+      WindowEvent,
+    },
     runtime::start_runtime,
   },
-  math::{
-    matrix,
-    matrix::Matrix,
-    vector::Vector,
+  math::matrix::{
+    self,
+    Matrix,
   },
   render::{
     buffer::BufferBuilder,
@@ -16,31 +28,26 @@ use lambda::{
       Mesh,
       MeshBuilder,
     },
-    pipeline::RenderPipelineBuilder,
+    pipeline::{
+      PipelineStage,
+      RenderPipelineBuilder,
+    },
     render_pass::RenderPassBuilder,
     shader::{
       Shader,
       ShaderBuilder,
+      ShaderKind,
+      VirtualShader,
     },
     vertex::{
+      Vertex,
       VertexAttribute,
-      VertexBuilder,
       VertexElement,
     },
     viewport,
     ResourceId,
   },
   runtimes::GenericRuntimeBuilder,
-};
-use lambda_platform::{
-  gfx::{
-    pipeline::PipelineStage,
-    surface::ColorFormat,
-  },
-  shaderc::{
-    ShaderKind,
-    VirtualShader,
-  },
 };
 
 // ------------------------------ SHADER SOURCE --------------------------------
@@ -53,6 +60,7 @@ layout (location = 1) in vec3 vertex_normal;
 layout (location = 2) in vec3 vertex_color;
 
 layout (location = 0) out vec3 frag_color;
+layout (location = 1) out vec3 frag_normal;
 
 layout ( push_constant ) uniform PushConstant {
   vec4 data;
@@ -62,6 +70,7 @@ layout ( push_constant ) uniform PushConstant {
 void main() {
   gl_Position = push_constants.render_matrix * vec4(vertex_position, 1.0);
   frag_color = vertex_color;
+  frag_normal = vertex_normal;
 }
 
 "#;
@@ -70,11 +79,13 @@ const FRAGMENT_SHADER_SOURCE: &str = r#"
 #version 450
 
 layout (location = 0) in vec3 frag_color;
+layout (location = 1) in vec3 frag_normal;
 
 layout (location = 0) out vec4 fragment_color;
 
 void main() {
-  fragment_color = vec4(frag_color, 1.0);
+  float diffuse = dot(frag_normal, vec3(0.0, 0.0, 1.0));
+  fragment_color = vec4(frag_color, 1.0) * vec4(diffuse);
 }
 
 "#;
@@ -117,92 +128,55 @@ fn make_transform(
   ];
 }
 
-// --------------------------------- COMPONENT ---------------------------------
+struct Args {
+  obj_path: String,
+}
 
-pub struct PushConstantsExample {
-  frame_number: u64,
-  shader: Shader,
-  fs: Shader,
-  mesh: Option<Mesh>,
+impl Into<Args> for Vec<ParsedArgument> {
+  fn into(self) -> Args {
+    let mut args = Args {
+      obj_path: String::new(),
+    };
+
+    for arg in self {
+      match (arg.name().as_str(), arg.value()) {
+        ("--obj-path", ArgumentValue::String(path)) => args.obj_path = path,
+        (_, _) => {}
+      }
+    }
+
+    return args;
+  }
+}
+
+fn parse_arguments() -> Args {
+  let parser = ArgumentParser::new("obj-loader");
+
+  let obj_file = Argument::new("--obj-path")
+    .is_required(true)
+    .with_type(ArgumentType::String);
+
+  let args = parser
+    .with_argument(obj_file)
+    .compile(&env::args().collect::<Vec<_>>());
+
+  return args.into();
+}
+
+struct ObjLoader {
+  obj_path: String,
+  vertex_shader: Shader,
+  fragment_shader: Shader,
   render_pipeline: Option<ResourceId>,
   render_pass: Option<ResourceId>,
-  last_frame: std::time::Duration,
+  mesh: Option<Mesh>,
+  frame_number: u32,
   width: u32,
   height: u32,
 }
 
-impl Component for PushConstantsExample {
-  fn on_attach(&mut self, render_context: &mut lambda::render::RenderContext) {
-    let render_pass = RenderPassBuilder::new().build(render_context);
-    let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
-
-    // Create triangle mesh.
-    let vertices = [
-      VertexBuilder::new()
-        .with_position([1.0, 1.0, 0.0])
-        .with_normal([0.0, 0.0, 0.0])
-        .with_color([1.0, 0.0, 0.0])
-        .build(),
-      VertexBuilder::new()
-        .with_position([-1.0, 1.0, 0.0])
-        .with_normal([0.0, 0.0, 0.0])
-        .with_color([0.0, 1.0, 0.0])
-        .build(),
-      VertexBuilder::new()
-        .with_position([0.0, -1.0, 0.0])
-        .with_normal([0.0, 0.0, 0.0])
-        .with_color([0.0, 0.0, 1.0])
-        .build(),
-    ];
-
-    let mut mesh_builder = MeshBuilder::new();
-    vertices.iter().for_each(|vertex| {
-      mesh_builder.with_vertex(vertex.clone());
-    });
-
-    let mesh = mesh_builder
-      .with_attributes(vec![
-        VertexAttribute {
-          location: 0,
-          offset: 0,
-          element: VertexElement {
-            format: ColorFormat::Rgb32Sfloat,
-            offset: 0,
-          },
-        },
-        VertexAttribute {
-          location: 2,
-          offset: 0,
-          element: VertexElement {
-            format: ColorFormat::Rgb32Sfloat,
-            offset: 24,
-          },
-        },
-      ])
-      .build();
-
-    println!("mesh: {:?}", mesh);
-
-    let pipeline = RenderPipelineBuilder::new()
-      .with_push_constant(PipelineStage::VERTEX, push_constant_size)
-      .with_buffer(
-        BufferBuilder::build_from_mesh(&mesh, render_context)
-          .expect("Failed to create buffer"),
-        mesh.attributes().to_vec(),
-      )
-      .build(render_context, &render_pass, &self.shader, Some(&self.fs));
-
-    self.render_pass = Some(render_context.attach_render_pass(render_pass));
-    self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
-    self.mesh = Some(mesh);
-  }
-
-  fn on_detach(&mut self, render_context: &mut lambda::render::RenderContext) {
-    println!("Detaching component");
-  }
-
-  fn on_event(&mut self, event: lambda::core::events::Events) {
-    // Only handle resizes.
+impl Component for ObjLoader {
+  fn on_event(&mut self, event: Events) {
     match event {
       lambda::core::events::Events::Window { event, issued_at } => {
         match event {
@@ -218,9 +192,40 @@ impl Component for PushConstantsExample {
     }
   }
 
-  /// Update the frame number every frame.
+  fn on_attach(&mut self, render_context: &mut lambda::render::RenderContext) {
+    let render_pass = RenderPassBuilder::new().build(render_context);
+    let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
+
+    let mesh = MeshBuilder::new().build_from_obj(&self.obj_path);
+
+    println!(
+      "[DEBUG] Mesh data from {} Mesh:\n {:#?}",
+      &self.obj_path, mesh
+    );
+
+    let pipeline = RenderPipelineBuilder::new()
+      .with_push_constant(PipelineStage::VERTEX, push_constant_size)
+      .with_buffer(
+        BufferBuilder::build_from_mesh(&mesh, render_context)
+          .expect("Failed to create buffer"),
+        mesh.attributes().to_vec(),
+      )
+      .build(
+        render_context,
+        &render_pass,
+        &self.vertex_shader,
+        Some(&self.fragment_shader),
+      );
+
+    self.render_pass = Some(render_context.attach_render_pass(render_pass));
+    self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
+    self.mesh = Some(mesh);
+  }
+  fn on_detach(&mut self, render_context: &mut lambda::render::RenderContext) {
+    todo!()
+  }
+
   fn on_update(&mut self, last_frame: &std::time::Duration) {
-    self.last_frame = *last_frame;
     self.frame_number += 1;
   }
 
@@ -228,13 +233,12 @@ impl Component for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Vec<lambda::render::command::RenderCommand> {
-    self.frame_number += 1;
     let camera = [0.0, 0.0, -2.0];
     let view: [[f32; 4]; 4] = matrix::translation_matrix(camera);
 
     // Create a projection matrix.
     let projection: [[f32; 4]; 4] =
-      matrix::perspective_matrix(0.25, (4 / 3) as f32, 0.1, 100.0);
+      matrix::perspective_matrix(0.12, (4 / 3) as f32, 0.1, 200.0);
 
     // Rotate model.
     let model: [[f32; 4]; 4] = matrix::rotate_matrix(
@@ -296,54 +300,58 @@ impl Component for PushConstantsExample {
   }
 }
 
-impl Default for PushConstantsExample {
+impl Default for ObjLoader {
   fn default() -> Self {
-    let triangle_in_3d = VirtualShader::Source {
-      source: VERTEX_SHADER_SOURCE.to_string(),
+    let virtual_vertex_shader = VirtualShader::Source {
+      source: String::from(VERTEX_SHADER_SOURCE),
       kind: ShaderKind::Vertex,
-      entry_point: "main".to_string(),
-      name: "push_constants".to_string(),
+      name: String::from("obj-loader-vertex"),
+      entry_point: String::from("main"),
     };
+    let vs = ShaderBuilder::new().build(virtual_vertex_shader);
 
-    let triangle_fragment_shader = VirtualShader::Source {
-      source: FRAGMENT_SHADER_SOURCE.to_string(),
+    let virtual_fragment_shader = VirtualShader::Source {
+      source: String::from(FRAGMENT_SHADER_SOURCE),
       kind: ShaderKind::Fragment,
-      entry_point: "main".to_string(),
-      name: "push_constants".to_string(),
+      name: String::from("obj-loader-fragment"),
+      entry_point: String::from("main"),
     };
 
-    let mut builder = ShaderBuilder::new();
-    let shader = builder.build(triangle_in_3d);
-    let fs = builder.build(triangle_fragment_shader);
+    let fs = ShaderBuilder::new().build(virtual_fragment_shader);
 
     return Self {
-      frame_number: 0,
-      shader,
-      fs,
-      last_frame: std::time::Duration::from_secs(0),
-      mesh: None,
+      obj_path: String::new(),
+      vertex_shader: vs,
+      fragment_shader: fs,
       render_pipeline: None,
       render_pass: None,
+      mesh: None,
       width: 800,
       height: 600,
+      frame_number: 0,
     };
   }
 }
 
 fn main() {
-  let runtime = GenericRuntimeBuilder::new("3D Push Constants Example")
-    .with_window_configured_as(move |window_builder| {
-      return window_builder
-        .with_dimensions(800, 600)
-        .with_name("3D Push Constants Example");
-    })
-    .with_renderer_configured_as(|renderer_builder| {
-      return renderer_builder.with_render_timeout(1_000_000_000);
-    })
-    .with_component(move |runtime, triangles: PushConstantsExample| {
-      return (runtime, triangles);
-    })
-    .build();
+  let args = parse_arguments();
+  let runtime = GenericRuntimeBuilder::new(
+    std::format!("obj-loader: {}", &args.obj_path).as_str(),
+  )
+  .with_window_configured_as(move |window_builder| {
+    return window_builder
+      .with_dimensions(800, 600)
+      .with_name(std::format!("obj-loader: {}", &args.obj_path).as_str())
+      .with_vsync(true);
+  })
+  .with_renderer_configured_as(|renderer_builder| {
+    return renderer_builder.with_render_timeout(1_000_000_000);
+  })
+  .with_component(move |runtime, mut obj_loader: ObjLoader| {
+    obj_loader.obj_path = parse_arguments().obj_path.clone();
+    return (runtime, obj_loader);
+  })
+  .build();
 
   start_runtime(runtime);
 }

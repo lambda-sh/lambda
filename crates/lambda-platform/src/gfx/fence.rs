@@ -17,7 +17,8 @@ impl RenderSemaphoreBuilder {
     self,
     gpu: &mut super::gpu::Gpu<RenderBackend>,
   ) -> RenderSemaphore<RenderBackend> {
-    let semaphore = super::internal::logical_device_for(gpu)
+    let semaphore = gpu
+      .internal_logical_device()
       .create_semaphore()
       .expect("The GPU has no memory to allocate the semaphore");
 
@@ -36,8 +37,24 @@ impl<RenderBackend: gfx_hal::Backend> RenderSemaphore<RenderBackend> {
   /// Destroys the semaphore using the GPU that created it.
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
-      super::internal::logical_device_for(gpu).destroy_semaphore(self.semaphore)
+      gpu
+        .internal_logical_device()
+        .destroy_semaphore(self.semaphore)
     }
+  }
+}
+
+impl<RenderBackend: gfx_hal::Backend> RenderSemaphore<RenderBackend> {
+  /// Retrieve a reference to the internal semaphore.
+  pub(super) fn internal_semaphore(&self) -> &RenderBackend::Semaphore {
+    return &self.semaphore;
+  }
+
+  /// Retrieve a mutable reference to the internal semaphore.
+  pub(super) fn internal_semaphore_mut(
+    &mut self,
+  ) -> &mut RenderBackend::Semaphore {
+    return &mut self.semaphore;
   }
 }
 
@@ -67,7 +84,8 @@ impl RenderSubmissionFenceBuilder {
     self,
     gpu: &mut super::gpu::Gpu<RenderBackend>,
   ) -> RenderSubmissionFence<RenderBackend> {
-    let fence = super::gpu::internal::logical_device_for(gpu)
+    let fence = gpu
+      .internal_logical_device()
       .create_fence(true)
       .expect("There is not enough memory to create a fence on this device.");
 
@@ -99,44 +117,29 @@ impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
     };
 
     unsafe {
-      super::gpu::internal::logical_device_for(gpu)
+      gpu.internal_logical_device()
         .wait_for_fence(&self.fence, timeout)
     }
     .expect("The GPU ran out of memory or has become detached from the current context.");
 
-    unsafe {
-      super::gpu::internal::logical_device_for(gpu).reset_fence(&mut self.fence)
-    }
-    .expect("The fence failed to reset.");
+    unsafe { gpu.internal_logical_device().reset_fence(&mut self.fence) }
+      .expect("The fence failed to reset.");
   }
 
   /// Destroy this fence given the GPU that created it.
-  #[inline]
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
-    unsafe {
-      super::gpu::internal::logical_device_for(gpu).destroy_fence(self.fence)
-    }
+    unsafe { gpu.internal_logical_device().destroy_fence(self.fence) }
   }
 }
 
-pub(crate) mod internal {
-  /// Retrieve the underlying submission fence.
-  pub fn mutable_fence_for<RenderBackend: gfx_hal::Backend>(
-    fence: &mut super::RenderSubmissionFence<RenderBackend>,
-  ) -> &mut RenderBackend::Fence {
-    return &mut fence.fence;
+impl<RenderBackend: gfx_hal::Backend> RenderSubmissionFence<RenderBackend> {
+  /// Retrieve the underlying fence.
+  pub fn internal_fence(&self) -> &RenderBackend::Fence {
+    return &self.fence;
   }
 
-  /// Retrieve the underlying semaphore.
-  pub fn mutable_semaphore_for<RenderBackend: gfx_hal::Backend>(
-    semaphore: &mut super::RenderSemaphore<RenderBackend>,
-  ) -> &mut RenderBackend::Semaphore {
-    return &mut semaphore.semaphore;
-  }
-
-  pub fn semaphore_for<RenderBackend: gfx_hal::Backend>(
-    semaphore: &super::RenderSemaphore<RenderBackend>,
-  ) -> &RenderBackend::Semaphore {
-    return &semaphore.semaphore;
+  /// Retrieve a mutable reference to the underlying fence.
+  pub fn internal_fence_mut(&mut self) -> &mut RenderBackend::Fence {
+    return &mut self.fence;
   }
 }

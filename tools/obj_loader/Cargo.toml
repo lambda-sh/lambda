@@ -1,0 +1,15 @@
+[package]
+name = "lambda-obj-loader"
+version = "2023.1.21"
+edition = "2021"
+
+[[bin]]
+name = "obj-loader"
+path = "src/main.rs"
+
+[dependencies]
+lambda = { path = "../../lambda" }
+lambda-args = { path = "../../crates/lambda-args" }
+
+[features]
+default = ["lambda/with-vulkan"]

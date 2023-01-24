@@ -19,9 +19,17 @@ impl<RenderBackend: gfx_hal::Backend> Framebuffer<RenderBackend> {
   /// Destroys the framebuffer from the given GPU.
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
     unsafe {
-      super::gpu::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .destroy_framebuffer(self.frame_buffer);
     }
+  }
+}
+
+impl<RenderBackend: gfx_hal::Backend> Framebuffer<RenderBackend> {
+  /// Retrieve a reference to the internal frame buffer.
+  pub(super) fn internal_frame_buffer(&self) -> &RenderBackend::Framebuffer {
+    return &self.frame_buffer;
   }
 }
 pub struct FramebufferBuilder {}
@@ -38,15 +46,16 @@ impl FramebufferBuilder {
     render_pass: &RenderPass<RenderBackend>,
     surface: &Surface<RenderBackend>,
   ) -> Framebuffer<RenderBackend> {
-    use super::surface::internal::frame_buffer_attachment_from;
-
     let (width, height) = surface.size().expect("A surface without a swapchain cannot be used in a framebeen configured with a swapchain");
-    let image = frame_buffer_attachment_from(surface).unwrap();
+    let image = surface
+      .internal_frame_buffer_attachment()
+      .expect("A surface without a swapchain cannot be used in a frame.");
 
     let frame_buffer = unsafe {
-      super::gpu::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .create_framebuffer(
-          super::render_pass::internal::render_pass_for(render_pass),
+          render_pass.internal_render_pass(),
           vec![image].into_iter(),
           Extent {
             width,
@@ -57,15 +66,5 @@ impl FramebufferBuilder {
         .expect("Failed to create a framebuffer")
     };
     return Framebuffer { frame_buffer };
-  }
-}
-
-/// Internal functions to work with gfx-hal framebuffers directly. Applications
-/// should not need to use these functions directly.
-pub(crate) mod internal {
-  pub fn frame_buffer_for<RenderBackend: gfx_hal::Backend>(
-    frame_buffer: &super::Framebuffer<RenderBackend>,
-  ) -> &RenderBackend::Framebuffer {
-    return &frame_buffer.frame_buffer;
   }
 }

@@ -7,23 +7,23 @@ use lambda::{
       VirtualKey,
       WindowEvent,
     },
-    render::{
-      command::RenderCommand,
-      pipeline::{
-        self,
-        PipelineStage,
-      },
-      render_pass,
-      shader::{
-        Shader,
-        ShaderBuilder,
-        ShaderKind,
-        VirtualShader,
-      },
-      viewport,
-      RenderContext,
-    },
     runtime::start_runtime,
+  },
+  render::{
+    command::RenderCommand,
+    pipeline::{
+      self,
+      PipelineStage,
+    },
+    render_pass,
+    shader::{
+      Shader,
+      ShaderBuilder,
+      ShaderKind,
+      VirtualShader,
+    },
+    viewport,
+    RenderContext,
   },
   runtimes::GenericRuntimeBuilder,
 };
@@ -31,8 +31,8 @@ use lambda::{
 pub struct TrianglesComponent {
   triangle_vertex: Shader,
   vertex_shader: Shader,
-  render_pass: Option<lambda::core::render::ResourceId>,
-  render_pipeline: Option<lambda::core::render::ResourceId>,
+  render_pass: Option<lambda::render::ResourceId>,
+  render_pipeline: Option<lambda::render::ResourceId>,
   width: u32,
   height: u32,
   animation_scalar: f32,
@@ -64,7 +64,7 @@ impl Component for TrianglesComponent {
 
   fn on_render(
     &mut self,
-    _render_context: &mut lambda::core::render::RenderContext,
+    _render_context: &mut lambda::render::RenderContext,
   ) -> Vec<RenderCommand> {
     let viewport =
       viewport::ViewportBuilder::new().build(self.width, self.height);

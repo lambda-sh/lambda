@@ -14,7 +14,10 @@ pub mod shader;
 pub mod surface;
 pub mod viewport;
 
-use gfx_hal::Instance as _;
+use gfx_hal::{
+  Backend,
+  Instance as _,
+};
 
 // ----------------------- INSTANCE BUILDER AND INSTANCE -------------------------------
 
@@ -30,7 +33,7 @@ impl InstanceBuilder {
   }
 
   /// Builds a graphical instance for the current platform.
-  pub fn build<RenderBackend: internal::Backend>(
+  pub fn build<RenderBackend: Backend>(
     self,
     name: &str,
   ) -> Instance<RenderBackend> {
@@ -38,11 +41,11 @@ impl InstanceBuilder {
   }
 }
 
-pub struct Instance<RenderBackend: internal::Backend> {
+pub struct Instance<RenderBackend: Backend> {
   gfx_hal_instance: RenderBackend::Instance,
 }
 
-impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
+impl<RenderBackend: Backend> Instance<RenderBackend> {
   /// Create a new GfxInstance connected to the current platforms primary backend.
   fn new(name: &str) -> Self {
     let instance = RenderBackend::Instance::create(name, 1)
@@ -54,58 +57,41 @@ impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
   }
 }
 
-// ----------------------- INTERNAL INSTANCE OPERATIONS ------------------------
+impl<RenderBackend: Backend> Instance<RenderBackend> {
+  /// Returns a list of all available adapters.
+  pub(super) fn enumerate_adapters(
+    &self,
+  ) -> Vec<gfx_hal::adapter::Adapter<RenderBackend>> {
+    return self.gfx_hal_instance.enumerate_adapters();
+  }
 
-pub mod internal {
-  use gfx_hal::{
-    adapter::Adapter,
-    Instance as _,
-  };
+  pub(super) fn first_adapter(
+    &self,
+  ) -> gfx_hal::adapter::Adapter<RenderBackend> {
+    return self.gfx_hal_instance.enumerate_adapters().remove(0);
+  }
 
-  pub use super::{
-    assembler::internal::*,
-    gpu::internal::*,
-    pipeline::internal::*,
-    render_pass::internal::*,
-    shader::internal::*,
-    Instance,
-  };
-
-  /// Helper function to create a low level gfx_hal surface. Not meant to be
-  /// used outside of lambda-platform.
-  #[inline]
-  pub fn create_surface<RenderBackend: gfx_hal::Backend>(
-    instance: &Instance<RenderBackend>,
+  pub(super) fn create_surface(
+    &self,
     window_handle: &crate::winit::WindowHandle,
   ) -> RenderBackend::Surface {
-    unsafe {
-      let surface = instance
+    return unsafe {
+      self
         .gfx_hal_instance
         .create_surface(&window_handle.window_handle)
-        .expect("Failed to create a surface using the current instance and window handle.");
-
-      return surface;
+        .expect("Failed to create a surface using the current instance and window handle.")
     };
   }
 
-  /// Destroy a low level gfx_hal surface using the instance abstraction.
-  pub fn destroy_surface<RenderBackend: gfx_hal::Backend>(
-    instance: &Instance<RenderBackend>,
-    surface: RenderBackend::Surface,
-  ) {
+  pub(super) fn destroy_surface(&self, surface: RenderBackend::Surface) {
     unsafe {
-      instance.gfx_hal_instance.destroy_surface(surface);
+      self.gfx_hal_instance.destroy_surface(surface);
     }
   }
+}
 
-  /// Returns a graphical adapter from an instance.
-  pub fn get_adapter<RenderBackend: gfx_hal::Backend>(
-    instance: &mut Instance<RenderBackend>,
-    adapter_num: usize,
-  ) -> Adapter<RenderBackend> {
-    return instance
-      .gfx_hal_instance
-      .enumerate_adapters()
-      .remove(adapter_num);
-  }
+// ----------------------- INTERNAL INSTANCE OPERATIONS ------------------------
+
+pub mod internal {
+  pub use super::shader::internal::*;
 }

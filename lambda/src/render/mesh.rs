@@ -1,8 +1,12 @@
+use lambda_platform::obj::load_textured_obj_from_file;
+
 use super::{
   vertex::{
     Vertex,
     VertexAttribute,
+    VertexElement,
   },
+  ColorFormat,
   RenderContext,
 };
 
@@ -68,6 +72,57 @@ impl MeshBuilder {
     return Mesh {
       vertices: self.vertices.clone(),
       attributes: self.attributes.clone(),
+    };
+  }
+
+  /// Builds a mesh from the vertices of an OBJ file. The mesh will have the same
+  /// attributes as the OBJ file and can be allocated on to the GPU with
+  /// `BufferBuilder::build_from_mesh`.
+  pub fn build_from_obj(&self, file_path: &str) -> Mesh {
+    let obj = load_textured_obj_from_file(file_path);
+
+    let vertices = obj
+      .vertices
+      .iter()
+      .map(|v| {
+        return Vertex {
+          position: v.position,
+          normal: v.normal,
+          color: [1.0, 1.0, 1.0],
+        };
+      })
+      .collect::<Vec<Vertex>>();
+
+    // Returns a mesh with the given vertices with attributes for position,
+    // normal, and color.
+    return Mesh {
+      vertices,
+      attributes: vec![
+        VertexAttribute {
+          location: 0,
+          offset: 0,
+          element: VertexElement {
+            format: ColorFormat::Rgb32Sfloat,
+            offset: 0,
+          },
+        },
+        VertexAttribute {
+          location: 1,
+          offset: 0,
+          element: VertexElement {
+            format: ColorFormat::Rgb32Sfloat,
+            offset: 12,
+          },
+        },
+        VertexAttribute {
+          location: 2,
+          offset: 0,
+          element: VertexElement {
+            format: ColorFormat::Rgb32Sfloat,
+            offset: 24,
+          },
+        },
+      ],
     };
   }
 }

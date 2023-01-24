@@ -2,6 +2,9 @@
 name = "lambda"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+keywords = ["graphics", "compute"]
+repository = "https://github.com/lambda-sh/lambda"
 
 [lib]
 name = "lambda"
@@ -16,10 +19,12 @@ mockall = "0.11.3"
 
 [features]
 default = ["lambda-platform/detect-platform"]
-stable-linux-dependencies=["lambda-platform/gfx-with-vulkan"]
-stable-wsl-dependencies=["lambda-platform/gfx-with-opengl"]
-stable-windows-dependencies=["lambda-platform/gfx-with-dx12"]
-stable-macos-dependencies=["lambda-platform/gfx-with-metal"]
+with-vulkan=["lambda-platform/gfx-with-vulkan"]
+with-opengl=["lambda-platform/gfx-with-opengl"]
+with-dx11=["lambda-platform/gfx-with-dx11"]
+with-dx12=["lambda-platform/gfx-with-dx12"]
+with-metal=["lambda-platform/gfx-with-metal"]
+
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------
 

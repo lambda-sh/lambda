@@ -49,23 +49,17 @@ impl GpuBuilder {
   ) -> Result<Gpu<RenderBackend>, String> {
     match (surface, self.render_queue_type) {
       (Some(surface), RenderQueueType::Graphical) => {
-        let adapter = super::internal::get_adapter(instance, 0);
+        let adapter = instance.first_adapter();
 
         let queue_family = adapter
           .queue_families
           .iter()
           .find(|family| {
-            return surface::internal::can_support_queue_family(
-              surface, family,
-            ) && family.queue_type().supports_graphics();
+            return surface.can_support_queue_family(family)
+              && family.queue_type().supports_graphics();
           })
           .expect("No compatible queue family found.")
           .id();
-
-        let _formats = surface::internal::get_first_supported_format(
-          surface,
-          &adapter.physical_device,
-        );
 
         return Ok(Gpu::new(adapter, queue_family));
       }
@@ -97,7 +91,7 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   /// Instantiates a new GPU given an adapter that is implemented by the GPUs
   /// current rendering backend B. A new GPU does not come with a command pool
   /// unless specified.
-  pub fn new(
+  pub(super) fn new(
     adapter: Adapter<RenderBackend>,
     queue_family: gfx_hal::queue::QueueFamilyId,
   ) -> Self {
@@ -145,9 +139,9 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
           // TODO(vmarcella): This was needed to allow the push constants to
           // properly render to the screen. Look into a better way to do this.
           signal_semaphores.into_iter().map(|semaphore| {
-            return super::fence::internal::semaphore_for(semaphore);
+            return semaphore.internal_semaphore();
           }),
-          Some(super::fence::internal::mutable_fence_for(fence)),
+          Some(fence.internal_fence_mut()),
         );
     }
   }
@@ -158,14 +152,13 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
     surface: &mut surface::Surface<RenderBackend>,
     semaphore: &mut RenderSemaphore<RenderBackend>,
   ) -> Result<(), &str> {
-    let (render_surface, render_image) =
-      super::surface::internal::borrow_surface_and_take_image(surface);
+    let (render_surface, render_image) = surface.internal_surface_and_image();
 
     let result = unsafe {
       self.queue_group.queues[0].present(
         render_surface,
         render_image,
-        Some(super::fence::internal::mutable_semaphore_for(semaphore)),
+        Some(semaphore.internal_semaphore_mut()),
       )
     };
 
@@ -182,9 +175,21 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
 
     return Ok(());
   }
+}
 
+impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
   pub(super) fn internal_logical_device(&self) -> &RenderBackend::Device {
     return &self.gpu.device;
+  }
+
+  pub(super) fn internal_physical_device(
+    &self,
+  ) -> &RenderBackend::PhysicalDevice {
+    return &self.adapter.physical_device;
+  }
+
+  pub(super) fn internal_queue_family(&self) -> gfx_hal::queue::QueueFamilyId {
+    return self.queue_group.family;
   }
 }
 
@@ -217,42 +222,4 @@ mod tests {
 
   #[test]
   fn test_gpu_builder_build() {}
-}
-
-// --------------------------------- GPU INTERNALS -----------------------------
-
-pub(crate) mod internal {
-  use super::Gpu;
-
-  /// Retrieves the gfx_hal logical device for a given GPU.
-  #[inline]
-  pub fn logical_device_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::Device {
-    return &gpu.gpu.device;
-  }
-
-  /// Retrieves the gfx_hal physical device for a given GPU.
-  #[inline]
-  pub fn physical_device_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::PhysicalDevice {
-    return &gpu.adapter.physical_device;
-  }
-
-  /// Retrieves the gfx_hal queue group for a given GPU.
-  #[inline]
-  pub fn queue_family_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> gfx_hal::queue::QueueFamilyId {
-    return gpu.queue_group.family;
-  }
-
-  /// Retrieve the primary queue from the GPU.
-  #[inline]
-  pub fn primary_queue_for<RenderBackend: gfx_hal::Backend>(
-    gpu: &Gpu<RenderBackend>,
-  ) -> &RenderBackend::Queue {
-    return &gpu.queue_group.queues[0];
-  }
 }

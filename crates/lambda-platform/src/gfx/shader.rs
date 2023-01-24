@@ -58,7 +58,8 @@ impl ShaderModuleBuilder {
     shader_type: ShaderModuleType,
   ) -> ShaderModule<RenderBackend> {
     let shader_module = unsafe {
-      gpu::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .create_shader_module(&shader_binary)
         .expect("Failed to create a shader module.")
     };
@@ -85,7 +86,8 @@ impl<RenderBackend: gfx_hal::Backend> ShaderModule<RenderBackend> {
   /// Destroy the shader module and free the memory on the GPU.
   pub fn destroy(self, gpu: &mut gpu::Gpu<RenderBackend>) {
     unsafe {
-      gpu::internal::logical_device_for(gpu)
+      gpu
+        .internal_logical_device()
         .destroy_shader_module(self.shader_module)
     }
   }

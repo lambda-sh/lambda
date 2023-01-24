@@ -17,6 +17,10 @@ use std::{
   rc::Rc,
 };
 
+/// ColorFormat is a type alias for the color format used by the surface and
+/// vertex buffers. They denote the size of the color channels and the number of
+/// channels being used.
+pub use lambda_platform::gfx::surface::ColorFormat;
 use lambda_platform::gfx::{
   command::{
     Command,
@@ -322,12 +326,17 @@ impl RenderContext {
   ) -> &mut internal::Gpu<internal::RenderBackend> {
     return &mut self.gpu;
   }
+
+  pub(super) fn internal_surface(
+    &self,
+  ) -> Rc<lambda_platform::gfx::surface::Surface<internal::RenderBackend>> {
+    return self.surface.clone();
+  }
 }
 
 type PlatformRenderCommand = Command<internal::RenderBackend>;
 
 pub(crate) mod internal {
-  use std::rc::Rc;
 
   use lambda_platform::gfx::api::RenderingAPI as RenderContext;
   pub type RenderBackend = RenderContext::Backend;
@@ -366,18 +375,4 @@ pub(crate) mod internal {
     },
     shaderc::ShaderKind,
   };
-
-  /// Returns the GPU instance for the given render context.
-  pub fn gpu_from_context(
-    context: &super::RenderContext,
-  ) -> &Gpu<RenderBackend> {
-    return &context.gpu;
-  }
-
-  /// Gets the surface for the given render context.
-  pub fn surface_from_context(
-    context: &super::RenderContext,
-  ) -> Rc<Surface<RenderBackend>> {
-    return context.surface.clone();
-  }
 }

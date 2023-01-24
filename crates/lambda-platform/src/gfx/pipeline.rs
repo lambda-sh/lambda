@@ -1,39 +1,21 @@
-pub mod internal {
-
-  /// gfx-hal imports for pipeline.rs
-  pub use gfx_hal::{
-    device::Device,
-    pass::Subpass,
-    pso::{
-      BlendState,
-      ColorBlendDesc,
-      ColorMask,
-      EntryPoint,
-      Face,
-      GraphicsPipelineDesc,
-      PrimitiveAssemblerDesc,
-      Rasterizer,
-    },
-    Backend,
-  };
-
-  /// Retrieves the underlying gfx_hal pipeline for internal use.
-  pub fn pipeline_for<RenderBackend: gfx_hal::Backend>(
-    pipeline: &super::RenderPipeline<RenderBackend>,
-  ) -> &RenderBackend::GraphicsPipeline {
-    return &pipeline.pipeline;
-  }
-
-  pub fn pipeline_layout_for<RenderBackend: gfx_hal::Backend>(
-    pipeline: &super::RenderPipeline<RenderBackend>,
-  ) -> &RenderBackend::PipelineLayout {
-    return &pipeline.pipeline_layout;
-  }
-}
-
 use std::ops::Range;
 
-use gfx_hal::device::Device;
+/// gfx-hal imports for pipeline.rs
+use gfx_hal::{
+  device::Device,
+  pass::Subpass,
+  pso::{
+    BlendState,
+    ColorBlendDesc,
+    ColorMask,
+    EntryPoint,
+    Face,
+    GraphicsPipelineDesc,
+    PrimitiveAssemblerDesc,
+    Rasterizer,
+  },
+  Backend,
+};
 
 use super::{
   assembler::{
@@ -46,7 +28,7 @@ use super::{
 };
 
 /// Builder for a gfx-hal backed render pipeline.
-pub struct RenderPipelineBuilder<RenderBackend: internal::Backend> {
+pub struct RenderPipelineBuilder<RenderBackend: Backend> {
   pipeline_layout: Option<RenderBackend::PipelineLayout>,
   push_constants: Vec<PushConstantUpload>,
   buffers: Vec<Buffer<RenderBackend>>,
@@ -57,7 +39,7 @@ pub type PipelineStage = gfx_hal::pso::ShaderStageFlags;
 
 pub type PushConstantUpload = (PipelineStage, Range<u32>);
 
-impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
+impl<RenderBackend: Backend> RenderPipelineBuilder<RenderBackend> {
   pub fn new() -> Self {
     return Self {
       pipeline_layout: None,
@@ -128,7 +110,7 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
       builder.build(vertex_shader, Some(buffers), Some(attributes));
 
     let fragment_entry = match fragment_shader {
-      Some(shader) => Some(internal::EntryPoint::<RenderBackend> {
+      Some(shader) => Some(EntryPoint::<RenderBackend> {
         entry: shader.entry(),
         module: super::internal::module_for(shader),
         specialization: shader.specializations().clone(),
@@ -136,27 +118,24 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
       None => None,
     };
 
-    let mut pipeline_desc = internal::GraphicsPipelineDesc::new(
-      super::internal::into_primitive_assembler(primitive_assembler),
-      internal::Rasterizer {
-        cull_face: internal::Face::BACK,
-        ..internal::Rasterizer::FILL
+    let mut pipeline_desc = GraphicsPipelineDesc::new(
+      primitive_assembler.internal_primitive_assembler(),
+      Rasterizer {
+        cull_face: Face::BACK,
+        ..Rasterizer::FILL
       },
       fragment_entry,
       &pipeline_layout,
-      internal::Subpass {
+      Subpass {
         index: 0,
-        main_pass: super::internal::render_pass_for(render_pass),
+        main_pass: render_pass.internal_render_pass(),
       },
     );
 
-    pipeline_desc
-      .blender
-      .targets
-      .push(internal::ColorBlendDesc {
-        mask: internal::ColorMask::ALL,
-        blend: Some(internal::BlendState::ALPHA),
-      });
+    pipeline_desc.blender.targets.push(ColorBlendDesc {
+      mask: ColorMask::ALL,
+      blend: Some(BlendState::ALPHA),
+    });
 
     let pipeline = unsafe {
       let pipeline_build_result = gpu
@@ -179,13 +158,13 @@ impl<RenderBackend: internal::Backend> RenderPipelineBuilder<RenderBackend> {
 
 /// Represents a render capable pipeline for graphical
 #[derive(Debug)]
-pub struct RenderPipeline<RenderBackend: internal::Backend> {
+pub struct RenderPipeline<RenderBackend: Backend> {
   pipeline_layout: RenderBackend::PipelineLayout,
   pipeline: RenderBackend::GraphicsPipeline,
   buffers: Vec<Buffer<RenderBackend>>,
 }
 
-impl<RenderBackend: internal::Backend> RenderPipeline<RenderBackend> {
+impl<RenderBackend: Backend> RenderPipeline<RenderBackend> {
   /// Destroys the pipeline layout and graphical pipeline
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
     println!("Destroying render pipeline");
@@ -202,5 +181,17 @@ impl<RenderBackend: internal::Backend> RenderPipeline<RenderBackend> {
         .internal_logical_device()
         .destroy_graphics_pipeline(self.pipeline);
     }
+  }
+}
+
+impl<RenderBackend: Backend> RenderPipeline<RenderBackend> {
+  pub(super) fn internal_pipeline_layout(
+    &self,
+  ) -> &RenderBackend::PipelineLayout {
+    return &self.pipeline_layout;
+  }
+
+  pub(super) fn internal_pipeline(&self) -> &RenderBackend::GraphicsPipeline {
+    return &self.pipeline;
   }
 }
