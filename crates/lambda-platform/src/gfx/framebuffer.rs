@@ -68,13 +68,3 @@ impl FramebufferBuilder {
     return Framebuffer { frame_buffer };
   }
 }
-
-/// Internal functions to work with gfx-hal framebuffers directly. Applications
-/// should not need to use these functions directly.
-pub(crate) mod internal {
-  pub fn frame_buffer_for<RenderBackend: gfx_hal::Backend>(
-    frame_buffer: &super::Framebuffer<RenderBackend>,
-  ) -> &RenderBackend::Framebuffer {
-    return &frame_buffer.frame_buffer;
-  }
-}
