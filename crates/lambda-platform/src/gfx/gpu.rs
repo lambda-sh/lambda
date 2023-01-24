@@ -55,17 +55,11 @@ impl GpuBuilder {
           .queue_families
           .iter()
           .find(|family| {
-            return surface::internal::can_support_queue_family(
-              surface, family,
-            ) && family.queue_type().supports_graphics();
+            return surface.can_support_queue_family(family)
+              && family.queue_type().supports_graphics();
           })
           .expect("No compatible queue family found.")
           .id();
-
-        let _formats = surface::internal::get_first_supported_format(
-          surface,
-          &adapter.physical_device,
-        );
 
         return Ok(Gpu::new(adapter, queue_family));
       }

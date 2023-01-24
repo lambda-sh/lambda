@@ -177,7 +177,7 @@ impl SwapchainBuilder {
   ) -> Swapchain {
     let physical_device = gpu.internal_physical_device();
     let caps = surface.gfx_hal_surface.capabilities(physical_device);
-    let format = internal::get_first_supported_format(surface, physical_device);
+    let format = surface.get_first_supported_format(physical_device);
     let (width, height) = self.size;
 
     let mut swapchain_config = gfx_hal::window::SwapchainConfig::from_caps(
@@ -235,6 +235,37 @@ mod tests {
   }
 }
 
+impl<RenderBackend: Backend> Surface<RenderBackend> {
+  /// Checks the queue family if the current Surface can support the GPU.
+  pub(super) fn can_support_queue_family(
+    &self,
+    queue_family: &RenderBackend::QueueFamily,
+  ) -> bool {
+    return self.gfx_hal_surface.supports_queue_family(queue_family);
+  }
+
+  pub(super) fn get_supported_formats(
+    &self,
+    physical_device: &RenderBackend::PhysicalDevice,
+  ) -> Vec<gfx_hal::format::Format> {
+    return self
+      .gfx_hal_surface
+      .supported_formats(physical_device)
+      .unwrap_or(vec![]);
+  }
+
+  pub(super) fn get_first_supported_format(
+    &self,
+    physical_device: &RenderBackend::PhysicalDevice,
+  ) -> gfx_hal::format::Format {
+    return self
+      .get_supported_formats(physical_device)
+      .get(0)
+      .unwrap_or(&gfx_hal::format::Format::Rgba8Srgb)
+      .clone();
+  }
+}
+
 /// Internal functions to work with the gfx-hal surface components
 pub mod internal {
   use gfx_hal::window::{
@@ -242,32 +273,13 @@ pub mod internal {
     Surface as _,
   };
 
-  /// Checks the queue family if the current Surface can support the GPU.
-  pub fn can_support_queue_family<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
-    queue_family: &RenderBackend::QueueFamily,
-  ) -> bool {
-    return surface.gfx_hal_surface.supports_queue_family(queue_family);
-  }
-
-  /// Get the supported gfx_hal color formats for a given format.
-  pub fn get_supported_formats<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
-    physical_device: &RenderBackend::PhysicalDevice,
-  ) -> Vec<gfx_hal::format::Format> {
-    return surface
-      .gfx_hal_surface
-      .supported_formats(physical_device)
-      .unwrap_or(vec![]);
-  }
-
   /// Helper function to retrieve the first supported format given a physical
   /// GPU device.
   pub fn get_first_supported_format<RenderBackend: gfx_hal::Backend>(
     surface: &super::Surface<RenderBackend>,
     physical_device: &RenderBackend::PhysicalDevice,
   ) -> gfx_hal::format::Format {
-    let supported_formats = get_supported_formats(&surface, physical_device);
+    let supported_formats = surface.get_supported_formats(physical_device);
 
     let default_format = *supported_formats
       .get(0)
