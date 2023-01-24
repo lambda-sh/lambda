@@ -49,7 +49,7 @@ impl GpuBuilder {
   ) -> Result<Gpu<RenderBackend>, String> {
     match (surface, self.render_queue_type) {
       (Some(surface), RenderQueueType::Graphical) => {
-        let adapter = super::internal::get_adapter(instance, 0);
+        let adapter = instance.first_adapter();
 
         let queue_family = adapter
           .queue_families

@@ -36,7 +36,7 @@ impl SurfaceBuilder {
     instance: &super::Instance<RenderBackend>,
     window: &crate::winit::WindowHandle,
   ) -> Surface<RenderBackend> {
-    let gfx_hal_surface = super::internal::create_surface(instance, window);
+    let gfx_hal_surface = instance.create_surface(window);
     let name = match self.name {
       Some(name) => name,
       None => "RenderSurface".to_string(),
@@ -137,7 +137,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   pub fn destroy(self, instance: &Instance<RenderBackend>) {
     println!("Destroying the surface: {}", self.name);
 
-    super::internal::destroy_surface(&instance, self.gfx_hal_surface);
+    instance.destroy_surface(self.gfx_hal_surface);
   }
 
   /// Get the size of the surface's extent. Will only return a size if a

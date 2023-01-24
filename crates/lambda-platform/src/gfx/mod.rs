@@ -54,55 +54,45 @@ impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
   }
 }
 
+impl<RenderBackend: internal::Backend> Instance<RenderBackend> {
+  /// Returns a list of all available adapters.
+  pub(super) fn enumerate_adapters(
+    &self,
+  ) -> Vec<gfx_hal::adapter::Adapter<RenderBackend>> {
+    return self.gfx_hal_instance.enumerate_adapters();
+  }
+
+  pub(super) fn first_adapter(
+    &self,
+  ) -> gfx_hal::adapter::Adapter<RenderBackend> {
+    return self.gfx_hal_instance.enumerate_adapters().remove(0);
+  }
+
+  pub(super) fn create_surface(
+    &self,
+    window_handle: &crate::winit::WindowHandle,
+  ) -> RenderBackend::Surface {
+    return unsafe {
+      self
+        .gfx_hal_instance
+        .create_surface(&window_handle.window_handle)
+        .expect("Failed to create a surface using the current instance and window handle.")
+    };
+  }
+
+  pub(super) fn destroy_surface(&self, surface: RenderBackend::Surface) {
+    unsafe {
+      self.gfx_hal_instance.destroy_surface(surface);
+    }
+  }
+}
+
 // ----------------------- INTERNAL INSTANCE OPERATIONS ------------------------
 
 pub mod internal {
-  use gfx_hal::{
-    adapter::Adapter,
-    Instance as _,
-  };
 
   pub use super::{
     pipeline::internal::*,
     shader::internal::*,
-    Instance,
   };
-
-  /// Helper function to create a low level gfx_hal surface. Not meant to be
-  /// used outside of lambda-platform.
-  #[inline]
-  pub fn create_surface<RenderBackend: gfx_hal::Backend>(
-    instance: &Instance<RenderBackend>,
-    window_handle: &crate::winit::WindowHandle,
-  ) -> RenderBackend::Surface {
-    unsafe {
-      let surface = instance
-        .gfx_hal_instance
-        .create_surface(&window_handle.window_handle)
-        .expect("Failed to create a surface using the current instance and window handle.");
-
-      return surface;
-    };
-  }
-
-  /// Destroy a low level gfx_hal surface using the instance abstraction.
-  pub fn destroy_surface<RenderBackend: gfx_hal::Backend>(
-    instance: &Instance<RenderBackend>,
-    surface: RenderBackend::Surface,
-  ) {
-    unsafe {
-      instance.gfx_hal_instance.destroy_surface(surface);
-    }
-  }
-
-  /// Returns a graphical adapter from an instance.
-  pub fn get_adapter<RenderBackend: gfx_hal::Backend>(
-    instance: &mut Instance<RenderBackend>,
-    adapter_num: usize,
-  ) -> Adapter<RenderBackend> {
-    return instance
-      .gfx_hal_instance
-      .enumerate_adapters()
-      .remove(adapter_num);
-  }
 }
