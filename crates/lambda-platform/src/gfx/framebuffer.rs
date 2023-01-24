@@ -25,6 +25,13 @@ impl<RenderBackend: gfx_hal::Backend> Framebuffer<RenderBackend> {
     }
   }
 }
+
+impl<RenderBackend: gfx_hal::Backend> Framebuffer<RenderBackend> {
+  /// Retrieve a reference to the internal frame buffer.
+  pub(super) fn internal_frame_buffer(&self) -> &RenderBackend::Framebuffer {
+    return &self.frame_buffer;
+  }
+}
 pub struct FramebufferBuilder {}
 
 impl FramebufferBuilder {

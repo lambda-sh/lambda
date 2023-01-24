@@ -154,7 +154,7 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           viewport,
         } => self.command_buffer.begin_render_pass(
           render_pass.internal_render_pass(),
-          super::framebuffer::internal::frame_buffer_for(&frame_buffer),
+          frame_buffer.internal_frame_buffer(),
           viewport.internal_viewport().rect,
           vec![gfx_hal::command::RenderAttachmentInfo::<RenderBackend> {
             image_view: super::surface::internal::borrow_surface_image_for(
