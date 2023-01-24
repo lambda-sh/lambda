@@ -264,64 +264,28 @@ impl<RenderBackend: Backend> Surface<RenderBackend> {
       .unwrap_or(&gfx_hal::format::Format::Rgba8Srgb)
       .clone();
   }
-}
 
-/// Internal functions to work with the gfx-hal surface components
-pub mod internal {
-  use gfx_hal::window::{
-    PresentationSurface,
-    Surface as _,
-  };
-
-  /// Helper function to retrieve the first supported format given a physical
-  /// GPU device.
-  pub fn get_first_supported_format<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
-    physical_device: &RenderBackend::PhysicalDevice,
-  ) -> gfx_hal::format::Format {
-    let supported_formats = surface.get_supported_formats(physical_device);
-
-    let default_format = *supported_formats
-      .get(0)
-      .unwrap_or(&gfx_hal::format::Format::Rgba8Srgb);
-
-    return supported_formats
-      .into_iter()
-      .find(|format| -> bool {
-        format.base_format().1 == gfx_hal::format::ChannelType::Srgb
-      })
-      .unwrap_or(default_format);
-  }
-
-  /// Acquires a surface image for attaching to a framebuffer.
-  pub fn take_surface_image_for<RenderBackend: gfx_hal::Backend>(
-    surface: &mut super::Surface<RenderBackend>,
-  ) -> Option<<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
-    return surface.image.take();
-  }
-
-  /// Acquires a surface image for attaching to a framebuffer.
-  pub fn borrow_surface_image_for<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
+  pub(super) fn internal_surface_image(
+    &self,
   ) -> Option<&<RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage>{
-    return surface.image.as_ref();
+    return self.image.as_ref();
   }
 
-  /// FrameBuffer Attachment
-  pub fn frame_buffer_attachment_from<RenderBackend: gfx_hal::Backend>(
-    surface: &super::Surface<RenderBackend>,
+  pub(super) fn internal_frame_buffer_attachment(
+    &self,
   ) -> Option<gfx_hal::image::FramebufferAttachment> {
-    return surface.frame_buffer_attachment.clone();
+    return self.frame_buffer_attachment.clone();
   }
 
-  /// Borrow the surface and take the image. This internal function is used for
-  /// rendering and composes surface_for + take image.
-  pub fn borrow_surface_and_take_image<RenderBackend: gfx_hal::Backend>(
-    surface: &mut super::Surface<RenderBackend>,
-  ) -> (&mut RenderBackend::Surface, <RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage){
+  pub(super) fn internal_surface_and_image(
+    &mut self,
+  ) -> (
+    &mut RenderBackend::Surface,
+    <RenderBackend::Surface as PresentationSurface<RenderBackend>>::SwapchainImage,
+  ){
     return (
-      &mut surface.gfx_hal_surface,
-      surface.image.take().expect("Surface image is not present"),
+      &mut self.gfx_hal_surface,
+      self.image.take().expect("Surface image is not present"),
     );
   }
 }

@@ -157,11 +157,10 @@ impl<'command_pool, RenderBackend: gfx_hal::Backend>
           frame_buffer.internal_frame_buffer(),
           viewport.internal_viewport().rect,
           vec![gfx_hal::command::RenderAttachmentInfo::<RenderBackend> {
-            image_view: super::surface::internal::borrow_surface_image_for(
-              &surface,
-            )
-            .unwrap()
-            .borrow(),
+            image_view: surface
+              .internal_surface_image()
+              .expect("No internal surface set when beginning the render pass.")
+              .borrow(),
             clear_value: ClearValue {
               color: gfx_hal::command::ClearColor {
                 float32: [0.0, 0.0, 0.0, 1.0],

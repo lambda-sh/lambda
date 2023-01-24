@@ -152,8 +152,7 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
     surface: &mut surface::Surface<RenderBackend>,
     semaphore: &mut RenderSemaphore<RenderBackend>,
   ) -> Result<(), &str> {
-    let (render_surface, render_image) =
-      super::surface::internal::borrow_surface_and_take_image(surface);
+    let (render_surface, render_image) = surface.internal_surface_and_image();
 
     let result = unsafe {
       self.queue_group.queues[0].present(
