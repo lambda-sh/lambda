@@ -1329,27 +1329,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lambda_rs_demo"
-version = "2023.1.25"
-dependencies = [
- "lambda",
-]
-
-[[package]]
-name = "lambda_rs_minimal"
-version = "2023.1.25"
-dependencies = [
- "lambda",
-]
-
-[[package]]
-name = "lambda_rs_triangles"
-version = "2023.1.25"
-dependencies = [
- "lambda",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

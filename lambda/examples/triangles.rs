@@ -220,14 +220,14 @@ impl Default for TrianglesComponent {
   fn default() -> Self {
     // Specify virtual shaders to use for rendering
     let triangle_vertex = VirtualShader::Source {
-      source: include_str!("../assets/triangles.vert").to_string(),
+      source: include_str!("../assets/shaders/triangles.vert").to_string(),
       kind: ShaderKind::Vertex,
       name: String::from("triangles"),
       entry_point: String::from("main"),
     };
 
     let triangle_fragment = VirtualShader::Source {
-      source: include_str!("../assets/triangles.frag").to_string(),
+      source: include_str!("../assets/shaders/triangles.frag").to_string(),
       kind: ShaderKind::Fragment,
       name: String::from("triangles"),
       entry_point: String::from("main"),

@@ -2,6 +2,10 @@
 <img src="https://media.githubusercontent.com/media/lambda-sh/lambda/main/lambda/assets/logos/lambda_header.png" />
 </p>
 
+[![Cross Platform builds & tests](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml/badge.svg)](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml)
+
+
+
 ## Table of contents
 1. [Description](#description)
 2. [API Documentation](#documentation)
@@ -11,9 +15,10 @@
         2. [Optional depedencies](#opt_deps)
         3. [Linux, Macos, Windows](#bash)
 5. [Getting started](#get_started)
-6. [Planned additions](#plans)
-7. [How to contribute](#contribute)
-8. [Resources](#resources)
+6. [Examples](#examples)
+7. [Planned additions](#plans)
+8. [How to contribute](#contribute)
+9. [Resources](#resources)
 ## Description <a name="description"></a>
 Lambda is a framework for developing cross platform applications and workloads using Rust.
 
@@ -88,37 +93,69 @@ If this works successfully, then lambda is ready to work on your system!
 ## Getting started <a name="get_started"></a>
 Coming soon.
 
+## Examples <a name="examples"></a>
+### Minimal
+A minimal example of an application with a working window using lambda.
+```rust
+cargo run --example minimal
+```
+
+### Push Constants
+An example of using shaders with push constants to render a 3D image.
+```rust
+cargo run --example push_constants
+```
+
+### Triangle
+An example using shaders to render a single triangle.
+```rust
+cargo run --example triangle
+```
+
+### Triangles
+An example using shaders to render multiple triangles and keyboard input to move one of the triangles on screen.
+```rust
+cargo run --example triangles
+```
 
 ## Plans <a name="plans"></a>
-- [x] Architecture support
+- ### Architecture support
 	- [x] x86
 	- [x] arm64
-- [ ] Operating system support
+- ### Operating system support
 	- [x] MacOS
 	- [x] Linux
 	- [x] Windows 10/11
 	- [ ] Xbox Series S|X (Long term goal)
 	- [ ] iOS (Long term goal)
 	- [ ] Android (Long term goal)
-- [x] Rendering API support
+- ### Rendering API support
 	- [x] OpenGL
 	- [x] Vulkan
 	- [x] Metal
 	- [x] DirectX11
 	- [x] DirectX12
-- [ ] Crates
-	- [ ] lambda-arch -- Architecture support
-	- [x] (WIP) lambda-platform -- Platform support
-	- [ ] (WIP) lambda-core -- Core library implementations
-	- [ ] lambda-cloud -- Cloud integrations
-	- [ ] (WIP) lambda -- The public Lambda API
-- [ ] Tools
-	- [x] lambda-rs-demo -- 2D rendering demo
-	- [ ] lambda-rs-cube -- 3D rendering demo
-	- [ ] lambda-checker -- Checks system specifications against lambda requirements
-- [ ] CI/CD
-	- [ ] Github action pipelines for creating downloadable builds from releases.
-	- [ ] Tests & benchmarking.
+- ### Crates
+  - [x] (WIP) lambda-args -- Command line argument parsing.
+  - [x] (WIP) lambda-platform -- Dependency wrappers & platform support.
+  - [ ] lambda-cloud -- Cloud integrations.
+  - [x] (WIP) lambda -- The public Lambda API.
+- ### Examples
+  - [x] Minimal -- A minimal example of an application with a working window
+  using lambda.
+  - [x] Push Constants -- An example of using shaders with push constants to
+  render a 3D image.
+  - [x] Triangle -- An example using shaders to render a single triangle.
+  - [x] Triangles -- An example using shaders to render multiple triangles and keyboard input to move one of the triangles on screen.
+- ### Tools
+  - [x] obj-loader -- (WIP) Loads .obj files into lambda. Meshes need to be triangulated in order for it to render at the moment.
+  - [ ] platform-info -- Utility for viewing information about the current platform.
+- ### CI/CD
+  - [x] Github action pipelines for building lambda on all platforms.
+  - [ ] Github action pipelines for creating downloadable builds from releases.
+  - [ ] Tests & benchmarking.
+    - [ ] Unit tests.
+  - [ ] Nightly builds.
 
 ## How to contribute <a name="contribute"></a>
 Fork the current repository and then make the changes that you'd like to
