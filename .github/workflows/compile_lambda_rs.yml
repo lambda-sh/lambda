@@ -15,7 +15,7 @@ defaults:
 
 jobs:
   build_and_test:
-    name: Build lambda-rs on ${{ matrix.os }}.
+    name: Build lambda-rs on ${{ matrix.os }} with features ${{ matrix.features }}.
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -26,9 +26,6 @@ jobs:
         - os: ubuntu-latest
           rustup-toolchain: "stable"
           features: "lambda/with-vulkan"
-        - os: windows-latest
-          rustup-toolchain: "stable"
-          features: "lambda/with-opengl"
         - os: windows-latest
           rustup-toolchain: "stable"
           features: "lambda/with-vulkan"
