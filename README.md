@@ -2,6 +2,10 @@
 <img src="https://media.githubusercontent.com/media/lambda-sh/lambda/main/lambda/assets/logos/lambda_header.png" />
 </p>
 
+[![compile & test lambda-rs](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml/badge.svg)](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml)
+
+
+
 ## Table of contents
 1. [Description](#description)
 2. [API Documentation](#documentation)
