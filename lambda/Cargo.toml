@@ -18,6 +18,7 @@ cargo-audit = "0.16.0"
 mockall = "0.11.3"
 
 [features]
+default=["lambda-platform/detect-platform"]
 detect-platform=["lambda-platform/detect-platform"]
 with-vulkan=["lambda-platform/gfx-with-vulkan"]
 with-opengl=["lambda-platform/gfx-with-opengl"]
