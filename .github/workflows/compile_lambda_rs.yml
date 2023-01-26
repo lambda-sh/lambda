@@ -57,7 +57,7 @@ jobs:
           rustup default ${{ matrix.rustup-toolchain }}
 
       - name: Build Lambda & other default workspace members.
-        run: cargo test --all --features {{ matrix.features }} --no-default-features
+        run: cargo test --all --features ${{ matrix.features }} --no-default-features
 
       - uses: actions/setup-ruby@v1
       - name: Send Webhook Notification for build status.
