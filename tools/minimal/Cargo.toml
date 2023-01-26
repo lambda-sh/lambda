@@ -1,6 +1,6 @@
 [package]
 name = "lambda_rs_minimal"
-version = "0.1.0"
+version = "2023.1.25"
 edition = "2021"
 
 [[bin]]

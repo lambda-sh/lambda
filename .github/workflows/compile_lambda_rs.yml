@@ -21,6 +21,16 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         rustup-toolchain: ["stable"]
+        include:
+        - os: ubuntu-latest
+          rustup-toolchain: "stable"
+          features: [ "lambda/with-opengl", "lambda/with-vulkan" ]
+        - os: windows-latest
+          rustup-toolchain: "stable"
+          features: [ "lambda/with-opengl", "lambda/with-vulkan", "lambda/with-dx11", "lambda/with-dx12" ]
+        - os: macos-latest
+          rustup-toolchain: "stable"
+          features: [ "lambda/with-opengl", "lambda/with-metal" ]
 
     steps:
       - name: Checkout Repository

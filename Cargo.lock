@@ -1337,14 +1337,14 @@ dependencies = [
 
 [[package]]
 name = "lambda_rs_minimal"
-version = "0.1.0"
+version = "2023.1.25"
 dependencies = [
  "lambda",
 ]
 
 [[package]]
 name = "lambda_rs_triangles"
-version = "0.1.0"
+version = "2023.1.25"
 dependencies = [
  "lambda",
 ]
