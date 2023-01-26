@@ -1,5 +1,5 @@
 [package]
-name = "lambda-platform"
+name = "lambda-rs-platform"
 version = "2023.1.26"
 edition = "2021"
 resolver = "2"

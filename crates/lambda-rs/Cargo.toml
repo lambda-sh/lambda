@@ -1,5 +1,5 @@
 [package]
-name = "lambda"
+name = "lambda-rs"
 description = "A framework for building cross platform graphics & compute applications."
 version = "2023.1.26"
 edition = "2021"
@@ -12,20 +12,20 @@ name = "lambda"
 path = "src/lib.rs"
 
 [dependencies]
-lambda-platform = { path = "../crates/lambda-platform", version = "2023.1.26" }
+lambda-rs-platform = { path = "../lambda-rs-platform", version = "2023.1.26" }
 
 [dev-dependencies]
 cargo-audit = "0.16.0"
 mockall = "0.11.3"
 
 [features]
-default=["lambda-platform/detect-platform"]
-detect-platform=["lambda-platform/detect-platform"]
-with-vulkan=["lambda-platform/gfx-with-vulkan"]
-with-opengl=["lambda-platform/gfx-with-opengl"]
-with-dx11=["lambda-platform/gfx-with-dx11"]
-with-dx12=["lambda-platform/gfx-with-dx12"]
-with-metal=["lambda-platform/gfx-with-metal"]
+default=["lambda-rs-platform/detect-platform"]
+detect-platform=["lambda-rs-platform/detect-platform"]
+with-vulkan=["lambda-rs-platform/gfx-with-vulkan"]
+with-opengl=["lambda-rs-platform/gfx-with-opengl"]
+with-dx11=["lambda-rs-platform/gfx-with-dx11"]
+with-dx12=["lambda-rs-platform/gfx-with-dx12"]
+with-metal=["lambda-rs-platform/gfx-with-metal"]
 
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------
