@@ -1,6 +1,7 @@
 [package]
 name = "lambda"
-version = "0.1.0"
+description = "A framework for building cross platform graphics & compute applications."
+version = "2023.1.26"
 edition = "2021"
 license = "MIT"
 keywords = ["graphics", "compute"]
@@ -11,7 +12,7 @@ name = "lambda"
 path = "src/lib.rs"
 
 [dependencies]
-lambda-platform = { path = "../crates/lambda-platform" }
+lambda-platform = { path = "../crates/lambda-platform", version = "2023.1.26" }
 
 [dev-dependencies]
 cargo-audit = "0.16.0"

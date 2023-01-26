@@ -1,7 +1,8 @@
 [package]
 name = "lambda-args"
-version = "2022.1.21"
+version = "2023.1.26"
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "args"

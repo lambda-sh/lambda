@@ -8,5 +8,5 @@ name = "obj-loader"
 path = "src/main.rs"
 
 [dependencies]
-lambda = { path = "../../lambda" }
-lambda-args = { path = "../../crates/lambda-args" }
+lambda = { path = "../../lambda", version = "2023.1.26" }
+lambda-args = { path = "../../crates/lambda-args", version = "2023.1.26" }

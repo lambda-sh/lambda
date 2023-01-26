@@ -1290,7 +1290,7 @@ dependencies = [
 
 [[package]]
 name = "lambda"
-version = "0.1.0"
+version = "2023.1.26"
 dependencies = [
  "cargo-audit",
  "cargo-tarpaulin",
@@ -1300,7 +1300,7 @@ dependencies = [
 
 [[package]]
 name = "lambda-args"
-version = "2022.1.21"
+version = "2023.1.26"
 
 [[package]]
 name = "lambda-obj-loader"
@@ -1312,7 +1312,7 @@ dependencies = [
 
 [[package]]
 name = "lambda-platform"
-version = "2023.1.25"
+version = "2023.1.26"
 dependencies = [
  "cfg-if 1.0.0",
  "gfx-backend-dx11",

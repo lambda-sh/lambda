@@ -1,8 +1,9 @@
 [package]
 name = "lambda-platform"
-version = "2023.1.25"
+version = "2023.1.26"
 edition = "2021"
 resolver = "2"
+license = "MIT"
 
 [lib]
 name = "lambda_platform"
