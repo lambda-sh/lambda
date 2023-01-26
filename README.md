@@ -2,7 +2,7 @@
 <img src="https://media.githubusercontent.com/media/lambda-sh/lambda/main/lambda/assets/logos/lambda_header.png" />
 </p>
 
-[![compile & test lambda-rs](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml/badge.svg)](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml)
+[![Cross Platform builds & tests](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml/badge.svg)](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml)
 
 
 
