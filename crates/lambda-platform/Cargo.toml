@@ -39,14 +39,14 @@ gfx-with-dx12=["dep:gfx-backend-dx12"]
 crate-type = ["cdylib", "rlib"]
 incremental = true
 
-[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.gfx-platform-backend]
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.gfx-backend-gl]
 package = "gfx-backend-gl"
 version = "=0.9.0"
 
-[target.'cfg(all(target_os = "macos"))'.dependencies.gfx-platform-backend]
+[target.'cfg(all(target_os = "macos"))'.dependencies.gfx-backend-metal]
 package = "gfx-backend-metal"
 version = "=0.9.0"
 
-[target.'cfg(all(windows))'.dependencies.gfx-platform-backend]
+[target.'cfg(all(windows))'.dependencies.gfx-backend-dx12]
 package = "gfx-backend-dx12"
 version = "=0.9.0"

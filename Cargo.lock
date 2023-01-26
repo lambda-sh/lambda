@@ -1330,7 +1330,7 @@ dependencies = [
 
 [[package]]
 name = "lambda_rs_demo"
-version = "0.1.0"
+version = "2023.1.25"
 dependencies = [
  "lambda",
 ]
