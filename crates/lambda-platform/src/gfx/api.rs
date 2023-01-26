@@ -16,9 +16,9 @@ if #[cfg(feature = "gfx-with-gl")] {
     pub use gfx_backend_dx12 as RenderingAPI;
 } else if #[cfg(all(feature = "detect-platform", target_os = "macos"))] {
     pub use gfx_backend_metal as RenderingAPI;
-  } else if #[cfg(all(feature = "detect-platform", unix, not(target_os = "macos")))] {
+} else if #[cfg(all(feature = "detect-platform", unix, not(target_os = "macos")))] {
     pub use gfx_backend_vulkan as RenderingAPI;
-  } else {
+} else {
     panic!("No supported GPU API found for the current platform.");
   }
 }
