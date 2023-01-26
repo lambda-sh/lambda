@@ -11,14 +11,15 @@ name = "lambda"
 path = "src/lib.rs"
 
 [dependencies]
-lambda-platform = { path = "../crates/lambda-platform", version = "0.1.0" }
+lambda-platform = { path = "../crates/lambda-platform" }
 
 [dev-dependencies]
 cargo-audit = "0.16.0"
 mockall = "0.11.3"
 
 [features]
-default = ["lambda-platform/detect-platform"]
+default=["lambda-platform/detect-platform"]
+detect-platform=["lambda-platform/detect-platform"]
 with-vulkan=["lambda-platform/gfx-with-vulkan"]
 with-opengl=["lambda-platform/gfx-with-opengl"]
 with-dx11=["lambda-platform/gfx-with-dx11"]

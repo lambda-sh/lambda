@@ -15,12 +15,32 @@ defaults:
 
 jobs:
   build_and_test:
-    name: Build lambda-rs on ${{ matrix.os }}.
+    name: Build lambda-rs on ${{ matrix.os }} with features ${{ matrix.features }}.
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        rustup-toolchain: ["stable"]
+        include:
+        - os: ubuntu-latest
+          rustup-toolchain: "stable"
+          features: "lambda/with-opengl"
+        - os: ubuntu-latest
+          rustup-toolchain: "stable"
+          features: "lambda/with-vulkan"
+        - os: windows-latest
+          rustup-toolchain: "stable"
+          features: "lambda/with-vulkan"
+        - os: windows-latest
+          rustup-toolchain: "stable"
+          features: "lambda/with-dx11"
+        - os: windows-latest
+          rustup-toolchain: "stable"
+          features: "lambda/with-dx12"
+        - os: macos-latest
+          rustup-toolchain: "stable"
+          features: "lambda/with-opengl"
+        - os: macos-latest
+          rustup-toolchain: "stable"
+          features: "lambda/with-metal"
 
     steps:
       - name: Checkout Repository
@@ -47,7 +67,7 @@ jobs:
           rustup default ${{ matrix.rustup-toolchain }}
 
       - name: Build Lambda & other default workspace members.
-        run: cargo test --all
+        run: cargo test --all --features ${{ matrix.features }} --no-default-features
 
       - uses: actions/setup-ruby@v1
       - name: Send Webhook Notification for build status.

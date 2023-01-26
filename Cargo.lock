@@ -1312,7 +1312,7 @@ dependencies = [
 
 [[package]]
 name = "lambda-platform"
-version = "0.1.0"
+version = "2023.1.25"
 dependencies = [
  "cfg-if 1.0.0",
  "gfx-backend-dx11",
@@ -1330,21 +1330,21 @@ dependencies = [
 
 [[package]]
 name = "lambda_rs_demo"
-version = "0.1.0"
+version = "2023.1.25"
 dependencies = [
  "lambda",
 ]
 
 [[package]]
 name = "lambda_rs_minimal"
-version = "0.1.0"
+version = "2023.1.25"
 dependencies = [
  "lambda",
 ]
 
 [[package]]
 name = "lambda_rs_triangles"
-version = "0.1.0"
+version = "2023.1.25"
 dependencies = [
  "lambda",
 ]

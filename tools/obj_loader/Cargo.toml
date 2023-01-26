@@ -10,6 +10,3 @@ path = "src/main.rs"
 [dependencies]
 lambda = { path = "../../lambda" }
 lambda-args = { path = "../../crates/lambda-args" }
-
-[features]
-default = ["lambda/with-vulkan"]
