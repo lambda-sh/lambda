@@ -14,6 +14,5 @@ if #[cfg(any(feature = "gfx-with-gl", all(feature = "detect-platform", unix, not
   pub use gfx_backend_dx12 as RenderingAPI;
 } else {
     pub use gfx_backend_empty as RenderingAPI;
-    println!("[WARN] No rendering backend specified, using empty backend.");
   }
 }
