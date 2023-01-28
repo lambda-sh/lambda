@@ -1,0 +1,10 @@
+[package]
+name = "lambda-rs-args"
+description = "Argument parser for lambda-rs tools."
+version = "2023.1.27-1"
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "args"
+path = "src/lib.rs"

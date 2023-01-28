@@ -2,14 +2,15 @@
 
 # Sub packages provided by lambda.
 members = [
-    "lambda",
-    "crates/lambda-platform",
-    "crates/lambda-args",
+    "crates/lambda-rs",
+    "crates/lambda-rs-args",
+    "crates/lambda-rs-platform",
     "tools/obj_loader"
 ]
 
 default-members = [
-    "lambda",
-    "crates/lambda-platform",
+    "crates/lambda-rs",
+    "crates/lambda-rs-args",
+    "crates/lambda-rs-platform",
     "tools/obj_loader"
 ]

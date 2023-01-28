@@ -1,8 +1,0 @@
-[package]
-name = "lambda-args"
-version = "2022.1.21"
-edition = "2021"
-
-[lib]
-name = "args"
-path = "src/lib.rs"

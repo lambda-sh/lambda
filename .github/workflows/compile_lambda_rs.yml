@@ -22,25 +22,25 @@ jobs:
         include:
         - os: ubuntu-latest
           rustup-toolchain: "stable"
-          features: "lambda/with-opengl"
+          features: "lambda-rs/with-opengl"
         - os: ubuntu-latest
           rustup-toolchain: "stable"
-          features: "lambda/with-vulkan"
+          features: "lambda-rs/with-vulkan"
         - os: windows-latest
           rustup-toolchain: "stable"
-          features: "lambda/with-vulkan"
+          features: "lambda-rs/with-vulkan"
         - os: windows-latest
           rustup-toolchain: "stable"
-          features: "lambda/with-dx11"
+          features: "lambda-rs/with-dx11"
         - os: windows-latest
           rustup-toolchain: "stable"
-          features: "lambda/with-dx12"
+          features: "lambda-rs/with-dx12"
         - os: macos-latest
           rustup-toolchain: "stable"
-          features: "lambda/with-opengl"
+          features: "lambda-rs/with-opengl"
         - os: macos-latest
           rustup-toolchain: "stable"
-          features: "lambda/with-metal"
+          features: "lambda-rs/with-metal"
 
     steps:
       - name: Checkout Repository
