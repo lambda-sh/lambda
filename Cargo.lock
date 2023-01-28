@@ -1319,7 +1319,7 @@ dependencies = [
 
 [[package]]
 name = "lambda-rs-args"
-version = "2023.1.26"
+version = "2023.1.27"
 
 [[package]]
 name = "lambda-rs-platform"
