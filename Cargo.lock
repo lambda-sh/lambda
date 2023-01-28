@@ -1309,7 +1309,7 @@ dependencies = [
 
 [[package]]
 name = "lambda-rs"
-version = "2023.1.26"
+version = "2023.1.27"
 dependencies = [
  "cargo-audit",
  "cargo-tarpaulin",
