@@ -17,7 +17,7 @@ shaderc = "=0.7"
 cfg-if = "=1.0.0"
 rand = "=0.8.5"
 obj-rs = "=0.7.0"
-gfx-backend-empty = "=0.9.0"
+default_backend = { package = "gfx-backend-empty", version = "=0.9.0", optional = true}
 
 # GFX-RS backends
 gfx-backend-gl = { version="=0.9.0", optional = true }
@@ -43,17 +43,14 @@ gfx-with-dx12=["dep:gfx-backend-dx12"]
 crate-type = ["cdylib", "rlib"]
 incremental = true
 
-[target.'cfg(all(unix, not(target_os = "macos"), not(feature = "gfx-with-opengl")))'.dependencies.default_backend]
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.gfx-backend-gl]
 package = "gfx-backend-gl"
 version = "=0.9.0"
-optional = true
 
-[target.'cfg(all(target_os = "macos", not(feature = "gfx-with-metal")))'.dependencies.default_backend]
+[target.'cfg(all(target_os = "macos"))'.dependencies.gfx-backend-metal]
 package = "gfx-backend-metal"
 version = "=0.9.0"
-optional = true
 
-[target.'cfg(all(windows, not(feature = "gfx-with-dx12")))'.dependencies.default_backend]
+[target.'cfg(all(windows))'.dependencies.gfx-backend-dx12]
 package = "gfx-backend-dx12"
 version = "=0.9.0"
-optional = true
