@@ -12,7 +12,7 @@ name = "lambda"
 path = "src/lib.rs"
 
 [dependencies]
-lambda-rs-platform = { path = "../lambda-rs-platform", version = "2023.1.26" }
+lambda-rs-platform = { path = "../lambda-rs-platform", version = "2023.1.26"}
 
 [dev-dependencies]
 cargo-audit = "0.16.0"
