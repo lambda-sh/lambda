@@ -53,7 +53,7 @@ package = "gfx-backend-metal"
 version = "=0.9.0"
 optional = true
 
-[target.'cfg(all(windows))'.depedencies.default_backend]
+[target.'cfg(all(windows))'.dependencies.default_backend]
 package = "gfx-backend-dx12"
 version = "=0.9.0"
 optional = true
