@@ -47,10 +47,25 @@ on implementing a Rust native UI framework built on top of our rendering engine.
 ## Documentation <a name="documentation"></a>
 Documentation to be added soon.
 
-## Building <a name="building"></a>
+## Installation <a name="building"></a>
+
+### From crates.io
+lambda is now available on [crates.io](https://crates.io/crates/lambda-rs)
+and can be added to your project by adding the following to your
+`Cargo.toml` file:
+
+```toml
+[dependencies]
+lambda-rs = "2023.1.28"
+```
+
+or from the CLI:
+```bash
+cargo add lambda-rs
+```
+
 
 ### From source <a name="source"></a>
-Currently, building from source is the only method to obtain a copy of Lambda.
 
 #### Required external dependencies <a name="ext_deps"></a>
 * All platforms
@@ -105,6 +120,11 @@ An example of using shaders with push constants to render a 3D image.
 ```rust
 cargo run --example push_constants
 ```
+
+#### Notes
+* On windows, you need to run this example with
+`--features lambda-rs/with-vulkan` as the shader used in the example does not work
+in either dx11 or dx12.
 
 ### Triangle
 An example using shaders to render a single triangle.
