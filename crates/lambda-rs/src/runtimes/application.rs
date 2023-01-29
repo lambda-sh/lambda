@@ -320,13 +320,9 @@ impl Runtime for ApplicationRuntime {
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
 
-          // Update and render commands.
-          for component in &mut component_stack {
-            component.on_update(duration);
-          }
-
           let active_render_context = active_render_context.as_mut().expect("Couldn't get the active render context. ");
           for component in &mut component_stack {
+            component.on_update(duration);
             let commands = component.on_render(active_render_context);
             active_render_context.render(commands);
           }
