@@ -46,7 +46,7 @@ lightweight HTML/CSS based rendering in the future but we're primarily focused
 on implementing a Rust native UI framework built on top of our rendering engine.
 
 ## Documentation <a name="documentation"></a>
-Documentation to be added soon.
+* [lambda-rs API documentation](https://docs.rs/lambda-rs/2023.1.29/lambda/)
 
 ## Installation <a name="building"></a>
 
