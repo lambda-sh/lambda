@@ -8,18 +8,18 @@
 
 ## Table of contents
 1. [Description](#description)
-2. [API Documentation](#documentation)
-3. [Building](#building)
+1. [API Documentation](#documentation)
+1. [Building](#building)
     1. [From crates.io](#crates)
     1. [From source](#source)
         1. [External dependencies](#ext_deps)
-        2. [Optional dependencies](#opt_deps)
-        3. [Linux, Macos, Windows](#bash)
-5. [Getting started](#get_started)
-6. [Examples](#examples)
-7. [Planned additions](#plans)
-8. [How to contribute](#contribute)
-9. [Resources](#resources)
+        1. [Optional dependencies](#opt_deps)
+        1. [Linux, Macos, Windows](#bash)
+1. [Getting started](#get_started)
+1. [Examples](#examples)
+1. [Planned additions](#plans)
+1. [How to contribute](#contribute)
+1. [Resources](#resources)
 ## Description <a name="description"></a>
 Lambda is a framework for developing cross platform applications and workloads using Rust.
 
@@ -155,11 +155,10 @@ cargo run --example triangles
 	- [x] Metal
 	- [x] DirectX11
 	- [x] DirectX12
-- ### Crates
-  - [x] (WIP) lambda-args -- Command line argument parsing.
-  - [x] (WIP) lambda-platform -- Dependency wrappers & platform support.
-  - [ ] lambda-cloud -- Cloud integrations.
-  - [x] (WIP) lambda -- The public Lambda API.
+- ### Packages
+  - [x] (WIP) [lambda-rs-args](./crates/lambda-rs-args/README.md) -- Command line argument parsing.
+  - [x] (WIP) [lambda-rs-platform](./crates/lambda-rs-platform/README.md) -- Dependency wrappers & platform support.
+  - [x] (WIP) [lambda-rs](./crates/lambda-rs/README.md) -- The public Lambda API.
 - ### Examples
   - [x] Minimal -- A minimal example of an application with a working window
   using lambda.
