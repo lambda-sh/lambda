@@ -9,6 +9,9 @@ use super::{
 
 // -------------------------------- MATRIX -------------------------------------
 
+/// Matrix trait which defines the basic operations that can be performed on a
+/// matrix. Lambda currently implements this trait for f32 arrays of arrays
+/// for any size.
 pub trait Matrix<V: Vector> {
   fn add(&self, other: &Self) -> Self;
   fn subtract(&self, other: &Self) -> Self;

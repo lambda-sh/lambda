@@ -1,3 +1,5 @@
+//! A module for compiling shaders into SPIR-V binary.
+
 // Expose some lower level shader
 pub use lambda_platform::shaderc::{
   ShaderCompiler,
@@ -5,18 +7,6 @@ pub use lambda_platform::shaderc::{
   ShaderKind,
   VirtualShader,
 };
-
-#[macro_export]
-macro_rules! vertex_shader {
-  ($source:ident) => {
-    VirtualShader::Source {
-      source: String::from($stringify!($source)),
-      kind: ShaderKind::Vertex,
-      name: String::from("vertex-shader"),
-      entry_point: String::from("main"),
-    }
-  };
-}
 
 pub struct ShaderBuilder {
   compiler: ShaderCompiler,
@@ -41,12 +31,16 @@ impl ShaderBuilder {
   }
 }
 
+/// A shader that has been compiled into SPIR-V binary. Contains the binary
+/// representation of the shader as well as the virtual shader that was used
+/// to compile it.
 pub struct Shader {
   binary: Vec<u32>,
   virtual_shader: VirtualShader,
 }
 
 impl Shader {
+  /// Returns a copy of the SPIR-V binary representation of the shader.
   pub fn as_binary(&self) -> Vec<u32> {
     return self.binary.clone();
   }

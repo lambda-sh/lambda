@@ -1,13 +1,10 @@
 use lambda::{
-  core::{
-    component::Component,
-    events::{
-      ComponentEvent,
-      Events,
-      KeyEvent,
-      WindowEvent,
-    },
-    runtime::start_runtime,
+  component::Component,
+  events::{
+    ComponentEvent,
+    Events,
+    Key,
+    WindowEvent,
   },
   render::{
     command::RenderCommand,
@@ -22,7 +19,11 @@ use lambda::{
     viewport,
     RenderContext,
   },
-  runtimes::GenericRuntimeBuilder,
+  runtime::start_runtime,
+  runtimes::{
+    application::ComponentResult,
+    ApplicationRuntimeBuilder,
+  },
 };
 
 pub struct DemoComponent {
@@ -34,8 +35,11 @@ pub struct DemoComponent {
   height: u32,
 }
 
-impl Component for DemoComponent {
-  fn on_attach(&mut self, render_context: &mut RenderContext) {
+impl Component<ComponentResult, String> for DemoComponent {
+  fn on_attach(
+    &mut self,
+    render_context: &mut RenderContext,
+  ) -> Result<ComponentResult, String> {
     println!("Attached the demo component to the renderer");
     let render_pass =
       render_pass::RenderPassBuilder::new().build(&render_context);
@@ -52,14 +56,23 @@ impl Component for DemoComponent {
     self.render_pipeline_id = Some(render_context.attach_pipeline(pipeline));
 
     println!("Attached the DemoComponent.");
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_detach(self: &mut DemoComponent, render_context: &mut RenderContext) {}
+  fn on_detach(
+    self: &mut DemoComponent,
+    render_context: &mut RenderContext,
+  ) -> Result<ComponentResult, String> {
+    return Ok(ComponentResult::Success);
+  }
 
-  fn on_event(self: &mut DemoComponent, event: Events) {
+  fn on_event(
+    self: &mut DemoComponent,
+    event: Events,
+  ) -> Result<ComponentResult, String> {
     match event {
       Events::Runtime { event, issued_at } => match event {
-        lambda::core::events::RuntimeEvent::Shutdown => {
+        lambda::events::RuntimeEvent::Shutdown => {
           println!("Shutting down the runtime");
         }
         _ => {}
@@ -75,19 +88,19 @@ impl Component for DemoComponent {
         }
       },
       Events::Keyboard { event, issued_at } => match event {
-        KeyEvent::KeyPressed {
+        Key::Pressed {
           scan_code,
           virtual_key,
         } => {
           println!("Key pressed: {:?}", virtual_key);
         }
-        KeyEvent::KeyReleased {
+        Key::Released {
           scan_code,
           virtual_key,
         } => {
           println!("Key released: {:?}", virtual_key);
         }
-        KeyEvent::ModifierPressed {
+        Key::ModifierPressed {
           modifier,
           virtual_key,
         } => {
@@ -103,16 +116,21 @@ impl Component for DemoComponent {
         }
       },
       _ => {}
-    }
+    };
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_update(self: &mut DemoComponent, last_frame: &std::time::Duration) {
+  fn on_update(
+    self: &mut DemoComponent,
+    last_frame: &std::time::Duration,
+  ) -> Result<ComponentResult, String> {
     match last_frame.as_millis() > 20 {
       true => {
         println!("[WARN] Last frame took {}ms", last_frame.as_millis());
       }
       false => {}
-    }
+    };
+    return Ok(ComponentResult::Success);
   }
   fn on_render(
     self: &mut DemoComponent,
@@ -186,7 +204,7 @@ impl Default for DemoComponent {
 }
 
 fn main() {
-  let runtime = GenericRuntimeBuilder::new("2D Triangle Demo")
+  let runtime = ApplicationRuntimeBuilder::new("2D Triangle Demo")
     .with_renderer_configured_as(move |render_context_builder| {
       return render_context_builder.with_render_timeout(1_000_000_000);
     })

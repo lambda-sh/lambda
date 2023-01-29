@@ -1,3 +1,5 @@
+//! Viewport for rendering a frame within the RenderContext.
+
 use lambda_platform::gfx;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -20,6 +22,7 @@ pub struct ViewportBuilder {
 }
 
 impl ViewportBuilder {
+  /// Creates a new viewport builder.
   pub fn new() -> Self {
     return Self { x: 0, y: 0 };
   }

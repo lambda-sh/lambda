@@ -1,3 +1,5 @@
+//! Buffers for allocating memory on the GPU.
+
 mod internal {
   // Placed these in an internal module to avoid a name collision with the
   // high level Buffer & BufferBuilder types in the parent module.
@@ -22,6 +24,7 @@ use super::{
   RenderContext,
 };
 
+/// Buffer for storing vertex data on the GPU.
 #[derive(Debug)]
 pub struct Buffer {
   buffer: Rc<internal::Buffer<super::internal::RenderBackend>>,

@@ -1,13 +1,10 @@
 use lambda::{
-  core::{
-    component::Component,
-    events::{
-      Events,
-      KeyEvent,
-      VirtualKey,
-      WindowEvent,
-    },
-    runtime::start_runtime,
+  component::Component,
+  events::{
+    Events,
+    Key,
+    VirtualKey,
+    WindowEvent,
   },
   render::{
     command::RenderCommand,
@@ -25,7 +22,11 @@ use lambda::{
     viewport,
     RenderContext,
   },
-  runtimes::GenericRuntimeBuilder,
+  runtime::start_runtime,
+  runtimes::{
+    application::ComponentResult,
+    ApplicationRuntimeBuilder,
+  },
 };
 
 pub struct TrianglesComponent {
@@ -39,8 +40,11 @@ pub struct TrianglesComponent {
   position: (f32, f32),
 }
 
-impl Component for TrianglesComponent {
-  fn on_attach(&mut self, render_context: &mut RenderContext) {
+impl Component<ComponentResult, String> for TrianglesComponent {
+  fn on_attach(
+    &mut self,
+    render_context: &mut RenderContext,
+  ) -> Result<ComponentResult, String> {
     let render_pass =
       render_pass::RenderPassBuilder::new().build(&render_context);
 
@@ -58,9 +62,15 @@ impl Component for TrianglesComponent {
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
 
     println!("Attached the DemoComponent.");
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_detach(&mut self, _render_context: &mut RenderContext) {}
+  fn on_detach(
+    &mut self,
+    _render_context: &mut RenderContext,
+  ) -> Result<ComponentResult, String> {
+    return Ok(ComponentResult::Success);
+  }
 
   fn on_render(
     &mut self,
@@ -141,10 +151,10 @@ impl Component for TrianglesComponent {
     return commands;
   }
 
-  fn on_event(&mut self, event: Events) {
+  fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
     match event {
       Events::Runtime { event, issued_at } => match event {
-        lambda::core::events::RuntimeEvent::Shutdown => {
+        lambda::events::RuntimeEvent::Shutdown => {
           println!("Shutting down the runtime");
         }
         _ => {}
@@ -161,7 +171,7 @@ impl Component for TrianglesComponent {
       },
       Events::Component { event, issued_at } => todo!(),
       Events::Keyboard { event, issued_at } => match event {
-        KeyEvent::KeyPressed {
+        Key::Pressed {
           scan_code,
           virtual_key,
         } => match virtual_key {
@@ -182,16 +192,21 @@ impl Component for TrianglesComponent {
         _ => {}
       },
       _ => {}
-    }
+    };
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_update(&mut self, last_frame: &std::time::Duration) {
+  fn on_update(
+    &mut self,
+    last_frame: &std::time::Duration,
+  ) -> Result<ComponentResult, String> {
     match last_frame.as_millis() > 20 {
       true => {
         println!("[WARN] Last frame took {}ms", last_frame.as_millis());
       }
       false => {}
-    }
+    };
+    return Ok(ComponentResult::Success);
   }
 }
 
@@ -252,7 +267,7 @@ impl Default for TrianglesComponent {
 }
 
 fn main() {
-  let runtime = GenericRuntimeBuilder::new("Multiple Triangles Demo")
+  let runtime = ApplicationRuntimeBuilder::new("Multiple Triangles Demo")
     .with_renderer_configured_as(move |render_context_builder| {
       return render_context_builder.with_render_timeout(1_000_000_000);
     })

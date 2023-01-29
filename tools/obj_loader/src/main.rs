@@ -8,14 +8,11 @@ use args::{
   ParsedArgument,
 };
 use lambda::{
-  core::{
-    component::Component,
-    events::{
-      ComponentEvent,
-      Events,
-      WindowEvent,
-    },
-    runtime::start_runtime,
+  component::Component,
+  events::{
+    ComponentEvent,
+    Events,
+    WindowEvent,
   },
   math::matrix::{
     self,
@@ -47,7 +44,11 @@ use lambda::{
     viewport,
     ResourceId,
   },
-  runtimes::GenericRuntimeBuilder,
+  runtime::start_runtime,
+  runtimes::{
+    application::ComponentResult,
+    ApplicationRuntimeBuilder,
+  },
 };
 
 // ------------------------------ SHADER SOURCE --------------------------------
@@ -175,24 +176,26 @@ struct ObjLoader {
   height: u32,
 }
 
-impl Component for ObjLoader {
-  fn on_event(&mut self, event: Events) {
+impl Component<ComponentResult, String> for ObjLoader {
+  fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
     match event {
-      lambda::core::events::Events::Window { event, issued_at } => {
-        match event {
-          WindowEvent::Resize { width, height } => {
-            self.width = width;
-            self.height = height;
-            println!("Window resized to {}x{}", width, height);
-          }
-          _ => {}
+      lambda::events::Events::Window { event, issued_at } => match event {
+        WindowEvent::Resize { width, height } => {
+          self.width = width;
+          self.height = height;
+          println!("Window resized to {}x{}", width, height);
         }
-      }
+        _ => {}
+      },
       _ => {}
-    }
+    };
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_attach(&mut self, render_context: &mut lambda::render::RenderContext) {
+  fn on_attach(
+    &mut self,
+    render_context: &mut lambda::render::RenderContext,
+  ) -> Result<ComponentResult, String> {
     let render_pass = RenderPassBuilder::new().build(render_context);
     let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
 
@@ -220,13 +223,22 @@ impl Component for ObjLoader {
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
     self.mesh = Some(mesh);
-  }
-  fn on_detach(&mut self, render_context: &mut lambda::render::RenderContext) {
-    todo!()
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_update(&mut self, last_frame: &std::time::Duration) {
+  fn on_detach(
+    &mut self,
+    render_context: &mut lambda::render::RenderContext,
+  ) -> Result<ComponentResult, String> {
+    return Ok(ComponentResult::Success);
+  }
+
+  fn on_update(
+    &mut self,
+    last_frame: &std::time::Duration,
+  ) -> Result<ComponentResult, String> {
     self.frame_number += 1;
+    return Ok(ComponentResult::Success);
   }
 
   fn on_render(
@@ -335,7 +347,7 @@ impl Default for ObjLoader {
 
 fn main() {
   let args = parse_arguments();
-  let runtime = GenericRuntimeBuilder::new(
+  let runtime = ApplicationRuntimeBuilder::new(
     std::format!("obj-loader: {}", &args.obj_path).as_str(),
   )
   .with_window_configured_as(move |window_builder| {

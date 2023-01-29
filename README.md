@@ -1,24 +1,25 @@
 <p align="center" style="text-align:center;">
-<img src="https://media.githubusercontent.com/media/lambda-sh/lambda/main/lambda/assets/logos/lambda_header.png" />
+<img src="https://media.githubusercontent.com/media/lambda-sh/lambda/main/crates/lambda-rs/assets/logos/lambda_header.png" />
 </p>
 
 [![Cross Platform builds & tests](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml/badge.svg)](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml)
-
-
+![lambda-rs](https://img.shields.io/crates/d/lambda-rs)
+![lambda-rs](https://img.shields.io/crates/v/lambda-rs)
 
 ## Table of contents
 1. [Description](#description)
-2. [API Documentation](#documentation)
-3. [Building](#building)
+1. [API Documentation](#documentation)
+1. [Building](#building)
+    1. [From crates.io](#crates)
     1. [From source](#source)
         1. [External dependencies](#ext_deps)
-        2. [Optional depedencies](#opt_deps)
-        3. [Linux, Macos, Windows](#bash)
-5. [Getting started](#get_started)
-6. [Examples](#examples)
-7. [Planned additions](#plans)
-8. [How to contribute](#contribute)
-9. [Resources](#resources)
+        1. [Optional dependencies](#opt_deps)
+        1. [Linux, Macos, Windows](#bash)
+1. [Getting started](#get_started)
+1. [Examples](#examples)
+1. [Planned additions](#plans)
+1. [How to contribute](#contribute)
+1. [Resources](#resources)
 ## Description <a name="description"></a>
 Lambda is a framework for developing cross platform applications and workloads using Rust.
 
@@ -45,12 +46,26 @@ lightweight HTML/CSS based rendering in the future but we're primarily focused
 on implementing a Rust native UI framework built on top of our rendering engine.
 
 ## Documentation <a name="documentation"></a>
-Documentation to be added soon.
+* [lambda-rs API documentation](https://docs.rs/lambda-rs/2023.1.29/lambda/)
 
-## Building <a name="building"></a>
+## Installation <a name="building"></a>
+
+### From crates.io <a name="crates"></a>
+lambda is now available on [crates.io](https://crates.io/crates/lambda-rs)
+and can be added to your project by adding the following to your
+`Cargo.toml` file:
+
+```toml
+[dependencies]
+lambda-rs = "2023.1.29"
+```
+
+or from the CLI:
+```bash
+cargo add lambda-rs
+```
 
 ### From source <a name="source"></a>
-Currently, building from source is the only method to obtain a copy of Lambda.
 
 #### Required external dependencies <a name="ext_deps"></a>
 * All platforms
@@ -106,6 +121,11 @@ An example of using shaders with push constants to render a 3D image.
 cargo run --example push_constants
 ```
 
+#### Notes
+* On windows, you need to run this example with
+`--features lambda-rs/with-vulkan` as the shader used in the example does not work
+in either dx11 or dx12.
+
 ### Triangle
 An example using shaders to render a single triangle.
 ```rust
@@ -135,11 +155,10 @@ cargo run --example triangles
 	- [x] Metal
 	- [x] DirectX11
 	- [x] DirectX12
-- ### Crates
-  - [x] (WIP) lambda-args -- Command line argument parsing.
-  - [x] (WIP) lambda-platform -- Dependency wrappers & platform support.
-  - [ ] lambda-cloud -- Cloud integrations.
-  - [x] (WIP) lambda -- The public Lambda API.
+- ### Packages
+  - [x] (WIP) [lambda-rs-args](./crates/lambda-rs-args/README.md) -- Command line argument parsing.
+  - [x] (WIP) [lambda-rs-platform](./crates/lambda-rs-platform/README.md) -- Dependency wrappers & platform support.
+  - [x] (WIP) [lambda-rs](./crates/lambda-rs/README.md) -- The public Lambda API.
 - ### Examples
   - [x] Minimal -- A minimal example of an application with a working window
   using lambda.

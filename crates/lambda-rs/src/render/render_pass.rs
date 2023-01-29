@@ -1,3 +1,4 @@
+//! Render pass builders and definitions for lambda runtimes and applications.
 use std::rc::Rc;
 
 use lambda_platform::gfx::render_pass;
@@ -38,6 +39,7 @@ impl RenderPass {
 pub struct RenderPassBuilder {}
 
 impl RenderPassBuilder {
+  /// Creates a new render pass builder.
   pub fn new() -> Self {
     return Self {};
   }

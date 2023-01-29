@@ -1,3 +1,5 @@
+//! Render command definitions for lambda runtimes.
+
 use std::ops::Range;
 
 use lambda_platform::gfx::viewport::ViewPort as PlatformViewPort;
@@ -20,9 +22,8 @@ pub enum RenderCommand {
     start_at: u32,
     viewports: Vec<super::viewport::Viewport>,
   },
-  SetPipeline {
-    pipeline: super::ResourceId,
-  },
+  /// Sets the pipeline to use for the render context.
+  SetPipeline { pipeline: super::ResourceId },
   /// Begins the render pass.
   BeginRenderPass {
     render_pass: super::ResourceId,
@@ -30,26 +31,26 @@ pub enum RenderCommand {
   },
   /// Ends the render pass.
   EndRenderPass,
+
+  /// Sets the push constants for the render pipeline.
   PushConstants {
     pipeline: super::ResourceId,
     stage: super::pipeline::PipelineStage,
     offset: u32,
     bytes: Vec<u32>,
   },
+  /// Binds a vertex buffer to the render pipeline.
   BindVertexBuffer {
     pipeline: super::ResourceId,
     buffer: u32,
   },
   /// Draws a graphical primitive.
-  Draw {
-    vertices: Range<u32>,
-  },
+  Draw { vertices: Range<u32> },
 }
 
 impl RenderCommand {
   /// Converts the RenderCommand into a platform compatible render command.
-  // TODO(vmarcella): implement this using Into<PlatformRenderCommand>
-  pub fn into_platform_command(
+  pub(super) fn into_platform_command(
     &self,
     render_context: &mut RenderContext,
   ) -> PlatformRenderCommand {
