@@ -1,4 +1,7 @@
 # lambda-rs
+![lambda-rs](https://img.shields.io/crates/d/lambda-rs)
+![lambda-rs](https://img.shields.io/crates/v/lambda-rs)
+
 The lambda-rs crate provides a safe, cross-platform API for building applications on the Lambda platform.
 
 ## Getting started

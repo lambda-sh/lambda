@@ -3,6 +3,9 @@
 </p>
 
 [![Cross Platform builds & tests](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml/badge.svg)](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml)
+![lambda-rs](https://img.shields.io/crates/d/lambda-rs)
+![lambda-rs](https://img.shields.io/crates/v/lambda-rs)
+
 
 
 

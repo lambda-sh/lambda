@@ -21,6 +21,7 @@ use crate::{
     ComponentEvent,
     Events,
     KeyEvent,
+    Mouse,
     RuntimeEvent,
     WindowEvent,
   },
@@ -231,7 +232,17 @@ impl Runtime for ApplicationRuntime {
             device_id,
             position,
             modifiers,
-          } => {None}
+          } => {
+            Some(Events::Mouse {
+              event: Mouse::Moved {
+                x: position.x,
+                y: position.y,
+                dx: 0.0,
+                dy: 0.0
+              },
+              issued_at: Instant::now(),
+            })
+          }
           WinitWindowEvent::CursorEntered { device_id } => {None}
           WinitWindowEvent::CursorLeft { device_id } => {None}
           WinitWindowEvent::MouseWheel {
@@ -245,7 +256,25 @@ impl Runtime for ApplicationRuntime {
             state,
             button,
             modifiers,
-          } => {None}
+          } => {
+            let event = match state {
+              ElementState::Pressed => Mouse::Pressed {
+                button: button.clone(),
+                x: 0.0,
+                y: 0.0,
+              },
+              ElementState::Released => Mouse::Released {
+                button: button.into(),
+                x: 0.0,
+                y: 0.0
+              },
+            };
+
+            Some(Events::Mouse {
+              event,
+              issued_at: Instant::now(),
+            })
+          }
           WinitWindowEvent::TouchpadPressure {
             device_id,
             pressure,

@@ -1,4 +1,7 @@
 # lambda-rs-platform
+![lambda-rs](https://img.shields.io/crates/d/lambda-rs-platform)
+![lambda-rs](https://img.shields.io/crates/v/lambda-rs-platform)
+
 Platform implementations for lambda-rs. This crate is not intended to be used directly and guarantees no stability across versions.
 
 ## Platforms
