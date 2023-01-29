@@ -8,14 +8,12 @@ use args::{
   ParsedArgument,
 };
 use lambda::{
-  core::{
-    component::Component,
-    events::{
-      ComponentEvent,
-      Events,
-      WindowEvent,
-    },
-    runtime::start_runtime,
+  component::Component,
+  core::runtime::start_runtime,
+  events::{
+    ComponentEvent,
+    Events,
+    WindowEvent,
   },
   math::matrix::{
     self,
@@ -178,16 +176,14 @@ struct ObjLoader {
 impl Component for ObjLoader {
   fn on_event(&mut self, event: Events) {
     match event {
-      lambda::core::events::Events::Window { event, issued_at } => {
-        match event {
-          WindowEvent::Resize { width, height } => {
-            self.width = width;
-            self.height = height;
-            println!("Window resized to {}x{}", width, height);
-          }
-          _ => {}
+      lambda::events::Events::Window { event, issued_at } => match event {
+        WindowEvent::Resize { width, height } => {
+          self.width = width;
+          self.height = height;
+          println!("Window resized to {}x{}", width, height);
         }
-      }
+        _ => {}
+      },
       _ => {}
     }
   }

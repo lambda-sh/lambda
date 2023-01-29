@@ -5,7 +5,7 @@ use lambda_platform::winit::{
   WindowProperties,
 };
 
-use crate::core::events::Events;
+use crate::events::Events;
 
 pub struct WindowBuilder {
   name: String,

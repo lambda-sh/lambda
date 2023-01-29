@@ -1,13 +1,11 @@
 use lambda::{
-  core::{
-    component::Component,
-    events::{
-      ComponentEvent,
-      Events,
-      KeyEvent,
-      WindowEvent,
-    },
-    runtime::start_runtime,
+  component::Component,
+  core::runtime::start_runtime,
+  events::{
+    ComponentEvent,
+    Events,
+    KeyEvent,
+    WindowEvent,
   },
   render::{
     command::RenderCommand,
@@ -59,7 +57,7 @@ impl Component for DemoComponent {
   fn on_event(self: &mut DemoComponent, event: Events) {
     match event {
       Events::Runtime { event, issued_at } => match event {
-        lambda::core::events::RuntimeEvent::Shutdown => {
+        lambda::events::RuntimeEvent::Shutdown => {
           println!("Shutting down the runtime");
         }
         _ => {}

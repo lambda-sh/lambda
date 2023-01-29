@@ -1,13 +1,11 @@
 use lambda::{
-  core::{
-    component::Component,
-    events::{
-      Events,
-      KeyEvent,
-      VirtualKey,
-      WindowEvent,
-    },
-    runtime::start_runtime,
+  component::Component,
+  core::runtime::start_runtime,
+  events::{
+    Events,
+    KeyEvent,
+    VirtualKey,
+    WindowEvent,
   },
   render::{
     command::RenderCommand,
@@ -144,7 +142,7 @@ impl Component for TrianglesComponent {
   fn on_event(&mut self, event: Events) {
     match event {
       Events::Runtime { event, issued_at } => match event {
-        lambda::core::events::RuntimeEvent::Shutdown => {
+        lambda::events::RuntimeEvent::Shutdown => {
           println!("Shutting down the runtime");
         }
         _ => {}

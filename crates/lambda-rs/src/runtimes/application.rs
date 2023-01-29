@@ -6,7 +6,6 @@ use std::time::Instant;
 
 use lambda_platform::winit::{
   winit_exports::{
-    ControlFlow,
     ElementState,
     Event as WinitEvent,
     WindowEvent as WinitWindowEvent,
@@ -16,16 +15,14 @@ use lambda_platform::winit::{
 };
 
 use crate::{
-  core::{
-    component::Component,
-    events::{
-      ComponentEvent,
-      Events,
-      KeyEvent,
-      RuntimeEvent,
-      WindowEvent,
-    },
-    runtime::Runtime,
+  component::Component,
+  core::runtime::Runtime,
+  events::{
+    ComponentEvent,
+    Events,
+    KeyEvent,
+    RuntimeEvent,
+    WindowEvent,
   },
   render::{
     window::{

@@ -1,9 +1,7 @@
 use lambda::{
-  core::{
-    component::Component,
-    events::WindowEvent,
-    runtime::start_runtime,
-  },
+  component::Component,
+  core::runtime::start_runtime,
+  events::WindowEvent,
   math::{
     matrix,
     matrix::Matrix,
@@ -201,19 +199,17 @@ impl Component for PushConstantsExample {
     println!("Detaching component");
   }
 
-  fn on_event(&mut self, event: lambda::core::events::Events) {
+  fn on_event(&mut self, event: lambda::events::Events) {
     // Only handle resizes.
     match event {
-      lambda::core::events::Events::Window { event, issued_at } => {
-        match event {
-          WindowEvent::Resize { width, height } => {
-            self.width = width;
-            self.height = height;
-            println!("Window resized to {}x{}", width, height);
-          }
-          _ => {}
+      lambda::events::Events::Window { event, issued_at } => match event {
+        WindowEvent::Resize { width, height } => {
+          self.width = width;
+          self.height = height;
+          println!("Window resized to {}x{}", width, height);
         }
-      }
+        _ => {}
+      },
       _ => {}
     }
   }
