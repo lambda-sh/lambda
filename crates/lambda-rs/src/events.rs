@@ -42,11 +42,19 @@ pub enum KeyEvent {
 }
 
 #[derive(Debug, Clone)]
+pub enum Button {
+  Left,
+  Right,
+  Middle,
+  Other(u16),
+}
+
+#[derive(Debug, Clone)]
 pub enum Mouse {
   Moved { x: f64, y: f64, dx: f64, dy: f64 },
   WheelPressed { x: f64, y: f64, button: u32 },
-  Pressed { x: f64, y: f64, button: u32 },
-  Released { x: f64, y: f64, button: u32 },
+  Pressed { x: f64, y: f64, button: Button },
+  Released { x: f64, y: f64, button: Button },
 }
 
 /// Generic Event Enum which encapsulates all possible events that will be

@@ -16,7 +16,7 @@ impl ShaderCompilerBuilder {
     let compiler =
       shaderc::Compiler::new().expect("Failed to create shaderc compiler.");
 
-    let mut options = shaderc::CompileOptions::new()
+    let options = shaderc::CompileOptions::new()
       .expect("Failed to create shaderc compile options.");
 
     return ShaderCompiler {

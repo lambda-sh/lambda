@@ -25,6 +25,7 @@ pub mod winit_exports {
     event::{
       ElementState,
       Event,
+      MouseButton,
       VirtualKeyCode,
       WindowEvent,
     },

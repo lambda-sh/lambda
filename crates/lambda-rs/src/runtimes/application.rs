@@ -8,6 +8,7 @@ use lambda_platform::winit::{
   winit_exports::{
     ElementState,
     Event as WinitEvent,
+    MouseButton,
     WindowEvent as WinitWindowEvent,
   },
   Loop,
@@ -18,6 +19,7 @@ use crate::{
   component::Component,
   core::runtime::Runtime,
   events::{
+    Button,
     ComponentEvent,
     Events,
     KeyEvent,
@@ -257,14 +259,22 @@ impl Runtime for ApplicationRuntime {
             button,
             modifiers,
           } => {
+
+            let button = match button {
+              MouseButton::Left => Button::Left,
+              MouseButton::Right => Button::Right,
+              MouseButton::Middle => Button::Middle,
+              MouseButton::Other(other) => Button::Other(other),
+            };
+
             let event = match state {
               ElementState::Pressed => Mouse::Pressed {
-                button: button.clone(),
+                button,
                 x: 0.0,
                 y: 0.0,
               },
               ElementState::Released => Mouse::Released {
-                button: button.into(),
+                button,
                 x: 0.0,
                 y: 0.0
               },
