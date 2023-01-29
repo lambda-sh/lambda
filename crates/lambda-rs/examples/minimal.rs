@@ -11,9 +11,6 @@ use lambda::{
 
 fn main() {
   let runtime = ApplicationRuntimeBuilder::new("Minimal Demo application")
-    .with_renderer_configured_as(move |render_context_builder| {
-      return render_context_builder.with_render_timeout(1_000_000_000);
-    })
     .with_window_configured_as(move |window_builder| {
       return window_builder
         .with_dimensions(800, 600)

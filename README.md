@@ -12,7 +12,7 @@
 3. [Building](#building)
     1. [From source](#source)
         1. [External dependencies](#ext_deps)
-        2. [Optional depedencies](#opt_deps)
+        2. [Optional dependencies](#opt_deps)
         3. [Linux, Macos, Windows](#bash)
 5. [Getting started](#get_started)
 6. [Examples](#examples)
@@ -63,7 +63,6 @@ or from the CLI:
 ```bash
 cargo add lambda-rs
 ```
-
 
 ### From source <a name="source"></a>
 
