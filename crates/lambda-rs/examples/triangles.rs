@@ -3,7 +3,7 @@ use lambda::{
   core::runtime::start_runtime,
   events::{
     Events,
-    KeyEvent,
+    Key,
     VirtualKey,
     WindowEvent,
   },
@@ -159,7 +159,7 @@ impl Component for TrianglesComponent {
       },
       Events::Component { event, issued_at } => todo!(),
       Events::Keyboard { event, issued_at } => match event {
-        KeyEvent::KeyPressed {
+        Key::Pressed {
           scan_code,
           virtual_key,
         } => match virtual_key {

@@ -22,7 +22,7 @@ use crate::{
     Button,
     ComponentEvent,
     Events,
-    KeyEvent,
+    Key,
     Mouse,
     RuntimeEvent,
     WindowEvent,
@@ -205,7 +205,7 @@ impl Runtime for ApplicationRuntime {
           } => match (input.state, is_synthetic) {
             (ElementState::Pressed, false) => {
               Some(Events::Keyboard {
-                event: KeyEvent::KeyPressed {
+                event: Key::Pressed {
                   scan_code: input.scancode,
                   virtual_key: input.virtual_keycode,
                 },
@@ -214,7 +214,7 @@ impl Runtime for ApplicationRuntime {
             }
             (ElementState::Released, false) => {
               Some(Events::Keyboard {
-                event: KeyEvent::KeyReleased {
+                event: Key::Released {
                   scan_code: input.scancode,
                   virtual_key: input.virtual_keycode,
                 },
@@ -240,19 +240,32 @@ impl Runtime for ApplicationRuntime {
                 x: position.x,
                 y: position.y,
                 dx: 0.0,
-                dy: 0.0
+                dy: 0.0,
+                device_id: 0
               },
               issued_at: Instant::now(),
             })
           }
-          WinitWindowEvent::CursorEntered { device_id } => {None}
-          WinitWindowEvent::CursorLeft { device_id } => {None}
+          WinitWindowEvent::CursorEntered { device_id } => {
+            Some(Events::Mouse {
+              event: Mouse::EnteredWindow { device_id: 0 },
+              issued_at: Instant::now(),
+            })
+          }
+          WinitWindowEvent::CursorLeft { device_id } => {
+            Some(Events::Mouse { event: Mouse::LeftWindow { device_id: 0 }, issued_at: Instant::now() })
+          }
           WinitWindowEvent::MouseWheel {
             device_id,
             delta,
             phase,
             modifiers,
-          } => { None }
+          } => {
+            Some(Events::Mouse{
+              event: Mouse::Scrolled { device_id: 0 },
+              issued_at: Instant::now(),
+            })
+           }
           WinitWindowEvent::MouseInput {
             device_id,
             state,
@@ -260,6 +273,7 @@ impl Runtime for ApplicationRuntime {
             modifiers,
           } => {
 
+            // Map winit button to our button type
             let button = match button {
               MouseButton::Left => Button::Left,
               MouseButton::Right => Button::Right,
@@ -272,11 +286,13 @@ impl Runtime for ApplicationRuntime {
                 button,
                 x: 0.0,
                 y: 0.0,
+                device_id: 0,
               },
               ElementState::Released => Mouse::Released {
                 button,
                 x: 0.0,
-                y: 0.0
+                y: 0.0,
+                device_id: 0
               },
             };
 

@@ -26,12 +26,12 @@ pub enum RuntimeEvent {
 pub use lambda_platform::winit::winit_exports::VirtualKeyCode as VirtualKey;
 
 #[derive(Debug, Clone)]
-pub enum KeyEvent {
-  KeyPressed {
+pub enum Key {
+  Pressed {
     scan_code: u32,
     virtual_key: Option<VirtualKey>,
   },
-  KeyReleased {
+  Released {
     scan_code: u32,
     virtual_key: Option<VirtualKey>,
   },
@@ -51,10 +51,34 @@ pub enum Button {
 
 #[derive(Debug, Clone)]
 pub enum Mouse {
-  Moved { x: f64, y: f64, dx: f64, dy: f64 },
-  WheelPressed { x: f64, y: f64, button: u32 },
-  Pressed { x: f64, y: f64, button: Button },
-  Released { x: f64, y: f64, button: Button },
+  Moved {
+    x: f64,
+    y: f64,
+    dx: f64,
+    dy: f64,
+    device_id: u32,
+  },
+  Scrolled {
+    device_id: u32,
+  },
+  Pressed {
+    x: f64,
+    y: f64,
+    button: Button,
+    device_id: u32,
+  },
+  Released {
+    x: f64,
+    y: f64,
+    button: Button,
+    device_id: u32,
+  },
+  LeftWindow {
+    device_id: u32,
+  },
+  EnteredWindow {
+    device_id: u32,
+  },
 }
 
 /// Generic Event Enum which encapsulates all possible events that will be
@@ -74,7 +98,7 @@ pub enum Events {
     issued_at: Instant,
   },
   Keyboard {
-    event: KeyEvent,
+    event: Key,
     issued_at: Instant,
   },
   Mouse {

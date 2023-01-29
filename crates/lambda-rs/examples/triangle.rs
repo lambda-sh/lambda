@@ -4,7 +4,7 @@ use lambda::{
   events::{
     ComponentEvent,
     Events,
-    KeyEvent,
+    Key,
     WindowEvent,
   },
   render::{
@@ -73,19 +73,19 @@ impl Component for DemoComponent {
         }
       },
       Events::Keyboard { event, issued_at } => match event {
-        KeyEvent::KeyPressed {
+        Key::Pressed {
           scan_code,
           virtual_key,
         } => {
           println!("Key pressed: {:?}", virtual_key);
         }
-        KeyEvent::KeyReleased {
+        Key::Released {
           scan_code,
           virtual_key,
         } => {
           println!("Key released: {:?}", virtual_key);
         }
-        KeyEvent::ModifierPressed {
+        Key::ModifierPressed {
           modifier,
           virtual_key,
         } => {
