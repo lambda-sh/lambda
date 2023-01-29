@@ -1301,7 +1301,7 @@ dependencies = [
 
 [[package]]
 name = "lambda-obj-loader"
-version = "2023.1.21"
+version = "2023.1.28"
 dependencies = [
  "lambda-rs",
  "lambda-rs-args",

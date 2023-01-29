@@ -1,6 +1,6 @@
 [package]
 name = "lambda-obj-loader"
-version = "2023.1.21"
+version = "2023.1.28"
 edition = "2021"
 
 [[bin]]
@@ -8,5 +8,5 @@ name = "obj-loader"
 path = "src/main.rs"
 
 [dependencies]
-lambda-rs = { path = "../../crates/lambda-rs", version = "2023.1.27-1" }
-lambda-rs-args = { path = "../../crates/lambda-rs-args", version = "2023.1.27-1" }
+lambda-rs = { path = "../../crates/lambda-rs", version = "2023.1.28" }
+lambda-rs-args = { path = "../../crates/lambda-rs-args", version = "2023.1.28" }
