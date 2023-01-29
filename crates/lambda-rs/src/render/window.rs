@@ -1,3 +1,5 @@
+//! Window implementation for rendering applications.
+
 use lambda_platform::winit::{
   Loop,
   WindowHandle,
@@ -7,6 +9,8 @@ use lambda_platform::winit::{
 
 use crate::events::Events;
 
+/// Builder for windows that are used to render a frame within the
+/// RenderContext.
 pub struct WindowBuilder {
   name: String,
   dimensions: (u32, u32),

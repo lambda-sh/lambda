@@ -1,15 +1,10 @@
-use std::{
-  borrow::Borrow,
-  ops::Deref,
-  rc::Rc,
-};
+//! Render pipeline builders and definitions for lambda runtimes and
+//! applications.
+use std::rc::Rc;
 
-use lambda_platform::gfx::{
-  buffer::Buffer as InternalBuffer,
-  shader::{
-    ShaderModuleBuilder,
-    ShaderModuleType,
-  },
+use lambda_platform::gfx::shader::{
+  ShaderModuleBuilder,
+  ShaderModuleType,
 };
 
 use super::{
@@ -69,6 +64,7 @@ pub struct RenderPipelineBuilder {
 }
 
 impl RenderPipelineBuilder {
+  /// Creates a new render pipeline builder.
   pub fn new() -> Self {
     return Self {
       push_constants: Vec::new(),
@@ -88,6 +84,8 @@ impl RenderPipelineBuilder {
     return self;
   }
 
+  /// Adds a push constant to the render pipeline at the given stage
+  /// with the given size in bytes.
   pub fn with_push_constant(
     mut self,
     stage: PipelineStage,

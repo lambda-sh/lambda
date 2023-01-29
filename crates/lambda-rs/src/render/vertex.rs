@@ -1,8 +1,11 @@
+//! Vertex data structures.
+
 pub use lambda_platform::gfx::assembler::{
   VertexAttribute,
   VertexElement,
 };
 
+/// Vertex data structure with position, normal, and color.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Vertex {
@@ -20,6 +23,7 @@ pub struct VertexBuilder {
 }
 
 impl VertexBuilder {
+  /// Creates a new vertex builder.
   pub fn new() -> Self {
     return Self {
       position: [0.0, 0.0, 0.0],
@@ -40,11 +44,13 @@ impl VertexBuilder {
     return self;
   }
 
+  /// Set the color of the vertex.
   pub fn with_color(&mut self, color: [f32; 3]) -> &mut Self {
     self.color = color;
     return self;
   }
 
+  /// Build the vertex.
   pub fn build(&self) -> Vertex {
     return Vertex {
       position: self.position,

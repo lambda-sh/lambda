@@ -38,13 +38,15 @@ use self::{
   render_pass::RenderPass,
 };
 
+/// A RenderContext is a localized rendering context that can be used to render
+/// to a window. It is localized to a single window at the moment.
 pub struct RenderContextBuilder {
   name: String,
   render_timeout: u64,
 }
 
 impl RenderContextBuilder {
-  /// Create a new localized RenderContext
+  /// Create a new localized RenderContext with the given name.
   pub fn new(name: &str) -> Self {
     return Self {
       name: name.to_string(),
@@ -52,7 +54,7 @@ impl RenderContextBuilder {
     };
   }
 
-  /// The time rendering has to complete before timing out.
+  /// The time rendering has to complete before a timeout occurs.
   pub fn with_render_timeout(mut self, render_timeout: u64) -> Self {
     self.render_timeout = render_timeout;
     return self;
@@ -69,7 +71,7 @@ impl RenderContextBuilder {
 
     let mut instance = internal::InstanceBuilder::new()
       .build::<internal::RenderBackend>(name.as_str());
-    let mut surface = Rc::new(
+    let surface = Rc::new(
       internal::SurfaceBuilder::new().build(&instance, window.window_handle()),
     );
 
@@ -89,10 +91,6 @@ impl RenderContextBuilder {
 
     let render_semaphore =
       internal::RenderSemaphoreBuilder::new().build(&mut gpu);
-
-    // Create the image extent and initial frame buffer attachment description
-    // for rendering.
-    let (width, height) = window.dimensions();
 
     return RenderContext {
       name,
@@ -305,10 +303,14 @@ impl RenderContext {
     }
   }
 
+  /// Get the render pass with the resource ID that was provided upon
+  /// attachment.
   pub fn get_render_pass(&self, id: ResourceId) -> &RenderPass {
     return &self.render_passes[id];
   }
 
+  /// Get the render pipeline with the resource ID that was provided upon
+  /// attachment.
   pub fn get_render_pipeline(&mut self, id: ResourceId) -> &RenderPipeline {
     return &self.render_pipelines[id];
   }

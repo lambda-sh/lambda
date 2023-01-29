@@ -1,3 +1,5 @@
+//! Runtime definition & functions for executing lambda applications.
+
 pub trait Runtime {
   fn on_start(&mut self);
   fn on_stop(&mut self);
