@@ -6,9 +6,6 @@
 ![lambda-rs](https://img.shields.io/crates/d/lambda-rs)
 ![lambda-rs](https://img.shields.io/crates/v/lambda-rs)
 
-
-
-
 ## Table of contents
 1. [Description](#description)
 2. [API Documentation](#documentation)
