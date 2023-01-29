@@ -1,7 +1,6 @@
 //! Lambda is a simple, fast, and safe compute engine written in Rust.
 
 pub mod component;
-pub mod components;
 pub mod events;
 pub mod math;
 pub mod render;
