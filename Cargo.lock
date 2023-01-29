@@ -1309,7 +1309,7 @@ dependencies = [
 
 [[package]]
 name = "lambda-rs"
-version = "2023.1.27-1"
+version = "2023.1.28"
 dependencies = [
  "cargo-audit",
  "cargo-tarpaulin",
@@ -1319,11 +1319,11 @@ dependencies = [
 
 [[package]]
 name = "lambda-rs-args"
-version = "2023.1.27-1"
+version = "2023.1.28"
 
 [[package]]
 name = "lambda-rs-platform"
-version = "2023.1.27-1"
+version = "2023.1.28"
 dependencies = [
  "cfg-if 1.0.0",
  "gfx-backend-dx11",
