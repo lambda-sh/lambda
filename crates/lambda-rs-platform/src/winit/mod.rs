@@ -1,3 +1,5 @@
+//! Winit wrapper to easily construct cross platform windows
+
 use winit::{
   dpi::{
     LogicalSize,

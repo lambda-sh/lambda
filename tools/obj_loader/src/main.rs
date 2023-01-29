@@ -45,7 +45,10 @@ use lambda::{
     ResourceId,
   },
   runtime::start_runtime,
-  runtimes::ApplicationRuntimeBuilder,
+  runtimes::{
+    application::ComponentResult,
+    ApplicationRuntimeBuilder,
+  },
 };
 
 // ------------------------------ SHADER SOURCE --------------------------------
@@ -173,8 +176,8 @@ struct ObjLoader {
   height: u32,
 }
 
-impl Component for ObjLoader {
-  fn on_event(&mut self, event: Events) {
+impl Component<ComponentResult, String> for ObjLoader {
+  fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
     match event {
       lambda::events::Events::Window { event, issued_at } => match event {
         WindowEvent::Resize { width, height } => {
@@ -185,10 +188,14 @@ impl Component for ObjLoader {
         _ => {}
       },
       _ => {}
-    }
+    };
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_attach(&mut self, render_context: &mut lambda::render::RenderContext) {
+  fn on_attach(
+    &mut self,
+    render_context: &mut lambda::render::RenderContext,
+  ) -> Result<ComponentResult, String> {
     let render_pass = RenderPassBuilder::new().build(render_context);
     let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
 
@@ -216,13 +223,22 @@ impl Component for ObjLoader {
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
     self.mesh = Some(mesh);
-  }
-  fn on_detach(&mut self, render_context: &mut lambda::render::RenderContext) {
-    todo!()
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_update(&mut self, last_frame: &std::time::Duration) {
+  fn on_detach(
+    &mut self,
+    render_context: &mut lambda::render::RenderContext,
+  ) -> Result<ComponentResult, String> {
+    return Ok(ComponentResult::Success);
+  }
+
+  fn on_update(
+    &mut self,
+    last_frame: &std::time::Duration,
+  ) -> Result<ComponentResult, String> {
     self.frame_number += 1;
+    return Ok(ComponentResult::Success);
   }
 
   fn on_render(

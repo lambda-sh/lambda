@@ -28,7 +28,11 @@ use lambda::{
     ResourceId,
   },
   runtime::start_runtime,
-  runtimes::ApplicationRuntimeBuilder,
+  runtimes::{
+    application::ComponentResult,
+    ApplicationRuntime,
+    ApplicationRuntimeBuilder,
+  },
 };
 use lambda_platform::{
   gfx::{
@@ -129,8 +133,11 @@ pub struct PushConstantsExample {
   height: u32,
 }
 
-impl Component for PushConstantsExample {
-  fn on_attach(&mut self, render_context: &mut lambda::render::RenderContext) {
+impl Component<ComponentResult, String> for PushConstantsExample {
+  fn on_attach(
+    &mut self,
+    render_context: &mut lambda::render::RenderContext,
+  ) -> Result<ComponentResult, String> {
     let render_pass = RenderPassBuilder::new().build(render_context);
     let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
 
@@ -193,13 +200,22 @@ impl Component for PushConstantsExample {
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
     self.mesh = Some(mesh);
+
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_detach(&mut self, render_context: &mut lambda::render::RenderContext) {
+  fn on_detach(
+    &mut self,
+    render_context: &mut lambda::render::RenderContext,
+  ) -> Result<ComponentResult, String> {
     println!("Detaching component");
+    return Ok(ComponentResult::Success);
   }
 
-  fn on_event(&mut self, event: lambda::events::Events) {
+  fn on_event(
+    &mut self,
+    event: lambda::events::Events,
+  ) -> Result<ComponentResult, String> {
     // Only handle resizes.
     match event {
       lambda::events::Events::Window { event, issued_at } => match event {
@@ -211,13 +227,18 @@ impl Component for PushConstantsExample {
         _ => {}
       },
       _ => {}
-    }
+    };
+    return Ok(ComponentResult::Success);
   }
 
   /// Update the frame number every frame.
-  fn on_update(&mut self, last_frame: &std::time::Duration) {
+  fn on_update(
+    &mut self,
+    last_frame: &std::time::Duration,
+  ) -> Result<ComponentResult, String> {
     self.last_frame = *last_frame;
     self.frame_number += 1;
+    return Ok(ComponentResult::Success);
   }
 
   fn on_render(

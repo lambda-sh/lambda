@@ -2,7 +2,10 @@
 //! provides a window and a render context which can be used to render
 //! both 2D and 3D graphics to the screen.
 
-use std::time::Instant;
+use std::{
+  str::FromStr,
+  time::Instant,
+};
 
 use lambda_platform::winit::{
   winit_exports::{
@@ -37,11 +40,17 @@ use crate::{
   runtime::Runtime,
 };
 
+#[derive(Clone, Debug)]
+pub enum ComponentResult {
+  Success,
+  Failure,
+}
+
 pub struct ApplicationRuntimeBuilder {
   app_name: String,
   render_context_builder: RenderContextBuilder,
   window_builder: WindowBuilder,
-  components: Vec<Box<dyn Component>>,
+  components: Vec<Box<dyn Component<ComponentResult, String>>>,
 }
 
 impl ApplicationRuntimeBuilder {
@@ -84,7 +93,9 @@ impl ApplicationRuntimeBuilder {
   }
 
   /// Attach a component to the current runnable.
-  pub fn with_component<T: Default + Component + 'static>(
+  pub fn with_component<
+    T: Default + Component<ComponentResult, String> + 'static,
+  >(
     self,
     configure_component: impl FnOnce(Self, T) -> (Self, T),
   ) -> Self {
@@ -121,17 +132,18 @@ pub struct ApplicationRuntime {
   name: String,
   event_loop: Loop<Events>,
   window: Window,
-  component_stack: Vec<Box<dyn Component>>,
+  component_stack: Vec<Box<dyn Component<ComponentResult, String>>>,
   render_context: RenderContext,
 }
 
 impl ApplicationRuntime {}
 
-impl Runtime for ApplicationRuntime {
+impl Runtime<(), String> for ApplicationRuntime {
+  type Component = Box<dyn Component<ComponentResult, String>>;
   /// Runs the event loop for the Application Runtime which takes ownership
   /// of all components, the windowing the render context, and anything
   /// else relevant to the runtime.
-  fn run(self) {
+  fn run(self) -> Result<(), String> {
     // Decompose Runtime components to transfer ownership from the runtime to
     // the event loop closure which will run until the app is closed.
     let ApplicationRuntime {
@@ -151,6 +163,7 @@ impl Runtime for ApplicationRuntime {
     });
 
     let mut current_frame = Instant::now();
+    let mut runtime_result: Box<Result<(), String>> = Box::new(Ok(()));
 
     event_loop.run_forever(move |event, _, control_flow| {
       let mapped_event: Option<Events> = match event {
@@ -345,6 +358,11 @@ impl Runtime for ApplicationRuntime {
               for component in &mut component_stack {
                 component.on_detach(active_render_context.as_mut().unwrap());
               }
+              *runtime_result = Ok(());
+              None
+            }
+            RuntimeEvent::ComponentPanic { message } => {
+              *runtime_result = Err(message);
               None
             }
           },
@@ -368,12 +386,20 @@ impl Runtime for ApplicationRuntime {
         Some(event) => {
           println!("Sending event: {:?} to all components", event);
           for component in &mut component_stack {
-            component.on_event(event.clone());
+            let event_result = component.on_event(event.clone());
+            match event_result {
+              Ok(_) => {}
+              Err(e) => {
+                let error = format!("[ERROR] A component has panicked while handling an event. {:?}", e);
+                publisher.publish_event(Events::Runtime{event: RuntimeEvent::ComponentPanic{ message: error}, issued_at: Instant::now()});
+              }
+            }
           }
         }
-        None => {}
+        None => { }
       }
     });
+    return Ok(());
   }
 
   /// When an application runtime starts, it will attach all of the components that
