@@ -1,6 +1,5 @@
 use lambda::{
   component::Component,
-  core::runtime::start_runtime,
   events::{
     ComponentEvent,
     Events,
@@ -20,6 +19,7 @@ use lambda::{
     viewport,
     RenderContext,
   },
+  runtime::start_runtime,
   runtimes::ApplicationRuntimeBuilder,
 };
 

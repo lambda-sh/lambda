@@ -5,7 +5,7 @@
 
 #[macro_use]
 use lambda::{
-  core::runtime::start_runtime,
+  runtime::start_runtime,
   runtimes::ApplicationRuntimeBuilder,
 };
 

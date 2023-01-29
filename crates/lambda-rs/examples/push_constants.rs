@@ -1,6 +1,5 @@
 use lambda::{
   component::Component,
-  core::runtime::start_runtime,
   events::WindowEvent,
   math::{
     matrix,
@@ -28,6 +27,7 @@ use lambda::{
     viewport,
     ResourceId,
   },
+  runtime::start_runtime,
   runtimes::ApplicationRuntimeBuilder,
 };
 use lambda_platform::{

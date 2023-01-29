@@ -9,7 +9,6 @@ use args::{
 };
 use lambda::{
   component::Component,
-  core::runtime::start_runtime,
   events::{
     ComponentEvent,
     Events,
@@ -45,6 +44,7 @@ use lambda::{
     viewport,
     ResourceId,
   },
+  runtime::start_runtime,
   runtimes::ApplicationRuntimeBuilder,
 };
 

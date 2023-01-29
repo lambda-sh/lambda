@@ -17,7 +17,6 @@ use lambda_platform::winit::{
 
 use crate::{
   component::Component,
-  core::runtime::Runtime,
   events::{
     Button,
     ComponentEvent,
@@ -35,6 +34,7 @@ use crate::{
     RenderContext,
     RenderContextBuilder,
   },
+  runtime::Runtime,
 };
 
 pub struct ApplicationRuntimeBuilder {
