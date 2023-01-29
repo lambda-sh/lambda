@@ -1,5 +1,5 @@
 <p align="center" style="text-align:center;">
-<img src="https://media.githubusercontent.com/media/lambda-sh/lambda/main/lambda/assets/logos/lambda_header.png" />
+<img src="https://media.githubusercontent.com/media/lambda-sh/lambda/main/crates/lambda-rs/assets/logos/lambda_header.png" />
 </p>
 
 [![Cross Platform builds & tests](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml/badge.svg)](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml)
@@ -10,6 +10,7 @@
 1. [Description](#description)
 2. [API Documentation](#documentation)
 3. [Building](#building)
+    1. [From crates.io](#crates)
     1. [From source](#source)
         1. [External dependencies](#ext_deps)
         2. [Optional dependencies](#opt_deps)
@@ -49,14 +50,14 @@ Documentation to be added soon.
 
 ## Installation <a name="building"></a>
 
-### From crates.io
+### From crates.io <a name="crates"></a>
 lambda is now available on [crates.io](https://crates.io/crates/lambda-rs)
 and can be added to your project by adding the following to your
 `Cargo.toml` file:
 
 ```toml
 [dependencies]
-lambda-rs = "2023.1.28"
+lambda-rs = "2023.1.29"
 ```
 
 or from the CLI:

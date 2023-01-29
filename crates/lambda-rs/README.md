@@ -1,11 +1,19 @@
-# lambda-rs
+<p align="center" style="text-align:center;">
+<img src="https://media.githubusercontent.com/media/lambda-sh/lambda/main/crates/lambda-rs/assets/logos/lambda_header.png" />
+</p>
+
 ![lambda-rs](https://img.shields.io/crates/d/lambda-rs)
 ![lambda-rs](https://img.shields.io/crates/v/lambda-rs)
 
 The lambda-rs crate provides a safe, cross-platform API for building applications on the Lambda platform.
 
-## Getting started
-### First window
+# Installation
+```bash
+cargo add lambda-rs
+```
+
+# Getting started
+## First window
 Getting started with lambda is easy. The following example will create a window with the title "Hello lambda!" and a size of 800x600.
 ```rust
 #[macro_use]
