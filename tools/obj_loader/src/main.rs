@@ -47,7 +47,7 @@ use lambda::{
     viewport,
     ResourceId,
   },
-  runtimes::GenericRuntimeBuilder,
+  runtimes::ApplicationRuntimeBuilder,
 };
 
 // ------------------------------ SHADER SOURCE --------------------------------
@@ -335,7 +335,7 @@ impl Default for ObjLoader {
 
 fn main() {
   let args = parse_arguments();
-  let runtime = GenericRuntimeBuilder::new(
+  let runtime = ApplicationRuntimeBuilder::new(
     std::format!("obj-loader: {}", &args.obj_path).as_str(),
   )
   .with_window_configured_as(move |window_builder| {

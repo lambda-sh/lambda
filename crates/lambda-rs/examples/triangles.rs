@@ -25,7 +25,7 @@ use lambda::{
     viewport,
     RenderContext,
   },
-  runtimes::GenericRuntimeBuilder,
+  runtimes::ApplicationRuntimeBuilder,
 };
 
 pub struct TrianglesComponent {
@@ -252,7 +252,7 @@ impl Default for TrianglesComponent {
 }
 
 fn main() {
-  let runtime = GenericRuntimeBuilder::new("Multiple Triangles Demo")
+  let runtime = ApplicationRuntimeBuilder::new("Multiple Triangles Demo")
     .with_renderer_configured_as(move |render_context_builder| {
       return render_context_builder.with_render_timeout(1_000_000_000);
     })

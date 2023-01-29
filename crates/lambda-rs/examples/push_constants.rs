@@ -30,7 +30,7 @@ use lambda::{
     viewport,
     ResourceId,
   },
-  runtimes::GenericRuntimeBuilder,
+  runtimes::ApplicationRuntimeBuilder,
 };
 use lambda_platform::{
   gfx::{
@@ -331,7 +331,7 @@ impl Default for PushConstantsExample {
 }
 
 fn main() {
-  let runtime = GenericRuntimeBuilder::new("3D Push Constants Example")
+  let runtime = ApplicationRuntimeBuilder::new("3D Push Constants Example")
     .with_window_configured_as(move |window_builder| {
       return window_builder
         .with_dimensions(800, 600)
