@@ -1,13 +1,6 @@
 //! A simple logging library for lambda-rs crates.
 
-use std::{
-  fs::OpenOptions,
-  io::Write,
-  time::{
-    SystemTime,
-    UNIX_EPOCH,
-  },
-};
+use std::fmt::Debug;
 
 /// A trait for handling log messages.
 pub mod handler;
@@ -31,12 +24,30 @@ pub struct Logger {
 }
 
 impl Logger {
-  pub fn new(level: LogLevel, name: String) -> Self {
+  /// Creates a new logger with the given log level and name.
+  pub fn new(level: LogLevel, name: &str) -> Self {
     Self {
-      name,
+      name: name.to_string(),
       level,
       handlers: Vec::new(),
     }
+  }
+
+  /// Returns the global logger.
+  pub fn global() -> &'static mut Self {
+    // TODO(vmarcella): Fix the instantiation for the global logger.
+    unsafe {
+      if LOGGER.is_none() {
+        LOGGER = Some(Logger {
+          level: LogLevel::TRACE,
+          name: "lambda-rs".to_string(),
+          handlers: vec![Box::new(handler::ConsoleHandler::new("lambda-rs"))],
+        });
+      }
+    };
+    return unsafe { &mut LOGGER }
+      .as_mut()
+      .expect("Logger not initialized");
   }
 
   /// Adds a handler to the logger. Handlers are called in the order they
@@ -113,4 +124,52 @@ impl Logger {
     }
     std::process::exit(1);
   }
+}
+
+static mut LOGGER: Option<Logger> = None;
+
+/// Trace logging macro using the global logger instance.
+#[macro_export]
+macro_rules! trace {
+  ($($arg:tt)*) => {
+      Logger::global().trace(format!("{}", format_args!($($arg)*)));
+  };
+}
+
+/// Trace logging macro using the global logger instance.
+#[macro_export]
+macro_rules! debug {
+  ($($arg:tt)*) => {
+      Logger::global().debug(format!("{}", format_args!($($arg)*)));
+  };
+}
+
+/// Trace logging macro using the global logger instance.
+#[macro_export]
+macro_rules! info {
+  ($($arg:tt)*) => {
+      Logger::global().info(format!("{}", format_args!($($arg)*)));
+  };
+}
+
+// Define logging macros that use the global logger instance
+#[macro_export]
+macro_rules! warn {
+  ($($arg:tt)*) => {
+      Logger.global().warn(format!("{}", format_args!($($arg)*)));
+  };
+}
+
+#[macro_export]
+macro_rules! error {
+  ($($arg:tt)*) => {
+      Logger::global().error(format!("{}", format_args!($($arg)*)));
+  };
+}
+
+#[macro_export]
+macro_rules! fatal {
+  ($($arg:tt)*) => {
+      Logger::global().fatal(format!("{}", format_args!($($arg)*)));
+  };
 }

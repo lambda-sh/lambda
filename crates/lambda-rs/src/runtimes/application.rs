@@ -14,6 +14,7 @@ use lambda_platform::winit::{
   Loop,
   LoopBuilder,
 };
+#[macro_use]
 use logging::{
   handler::ConsoleHandler,
   Logger,
@@ -155,9 +156,6 @@ impl Runtime<(), String> for ApplicationRuntime {
       render_context,
     } = self;
 
-    let mut runtime_logger =
-      Logger::new(logging::LogLevel::TRACE, name.clone());
-    runtime_logger.add_handler(Box::new(ConsoleHandler::new(name.clone())));
     let mut active_render_context = Some(render_context);
 
     let publisher = event_loop.create_event_publisher();
@@ -239,10 +237,9 @@ impl Runtime<(), String> for ApplicationRuntime {
               })
             }
             _ => {
-              runtime_logger.warn(
-                format!("[WARN] Unhandled synthetic keyboard event: {:?}",
-                input)
-              );
+              logging::info!(
+                "[INFO] Unhandled synthetic keyboard event: {:?}",
+                input);
               None
             }
           },
@@ -352,7 +349,7 @@ impl Runtime<(), String> for ApplicationRuntime {
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
           Events::Runtime { event, issued_at } => match event {
             RuntimeEvent::Initialized => {
-              runtime_logger.info(format!("Initializing all of the components for the runtime: {}", name));
+              logging::info!("Initializing all of the components for the runtime: {}", name);
               for component in &mut component_stack {
                 component.on_attach(active_render_context.as_mut().unwrap());
               }
@@ -382,14 +379,14 @@ impl Runtime<(), String> for ApplicationRuntime {
             .destroy();
 
 
-          runtime_logger.info(String::from("All resources were successfully deleted."));
+          logging::info!("All resources were successfully deleted.");
           None
         }
       };
 
       match mapped_event {
         Some(event) => {
-          runtime_logger.trace(format!("Sending event: {:?} to all components", event));
+          logging::trace!("Sending event: {:?} to all components", event);
 
           for component in &mut component_stack {
             let event_result = component.on_event(event.clone());
@@ -397,7 +394,7 @@ impl Runtime<(), String> for ApplicationRuntime {
               Ok(_) => {}
               Err(e) => {
                 let error = format!("[ERROR] A component has panicked while handling an event. {:?}", e);
-                runtime_logger.error(error.clone());
+                logging::error!("A component has panicked while handling an event. {:?}", e);
                 publisher.publish_event(Events::Runtime{event: RuntimeEvent::ComponentPanic{ message: error}, issued_at: Instant::now()});
               }
             }
@@ -412,10 +409,10 @@ impl Runtime<(), String> for ApplicationRuntime {
   /// When an application runtime starts, it will attach all of the components that
   /// have been added during the construction phase in the users code.
   fn on_start(&mut self) {
-    println!("[INFO] Starting the runtime {}", self.name);
+    logging::info!("Starting the runtime: {}", self.name);
   }
 
   fn on_stop(&mut self) {
-    println!("[INFO] Stopping {}", self.name)
+    logging::info!("Stopping the runtime: {}", self.name);
   }
 }

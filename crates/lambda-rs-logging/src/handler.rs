@@ -1,6 +1,7 @@
 //! Log handling implementations for the logger.
 
 use std::{
+  fmt::Debug,
   fs::OpenOptions,
   io::Write,
   time::SystemTime,
@@ -18,6 +19,8 @@ pub trait Handler {
 }
 
 /// A handler that logs to a file.
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct FileHandler {
   file: String,
   log_buffer: Vec<String>,
@@ -98,13 +101,16 @@ impl Handler for FileHandler {
   }
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct ConsoleHandler {
   name: String,
 }
 
 impl ConsoleHandler {
-  pub fn new(name: String) -> Self {
-    return Self { name };
+  pub fn new(name: &str) -> Self {
+    return Self {
+      name: name.to_string(),
+    };
   }
 
   fn log(&mut self, log_level: LogLevel, message: String) {
