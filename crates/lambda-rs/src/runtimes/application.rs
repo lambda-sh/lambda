@@ -2,10 +2,7 @@
 //! provides a window and a render context which can be used to render
 //! both 2D and 3D graphics to the screen.
 
-use std::{
-  str::FromStr,
-  time::Instant,
-};
+use std::time::Instant;
 
 use lambda_platform::winit::{
   winit_exports::{
@@ -16,6 +13,10 @@ use lambda_platform::winit::{
   },
   Loop,
   LoopBuilder,
+};
+use logging::{
+  handler::ConsoleHandler,
+  Logger,
 };
 
 use crate::{
@@ -154,6 +155,9 @@ impl Runtime<(), String> for ApplicationRuntime {
       render_context,
     } = self;
 
+    let mut runtime_logger =
+      Logger::new(logging::LogLevel::Trace, name.clone());
+    runtime_logger.add_handler(Box::new(ConsoleHandler::new(name.clone())));
     let mut active_render_context = Some(render_context);
 
     let publisher = event_loop.create_event_publisher();
@@ -235,9 +239,9 @@ impl Runtime<(), String> for ApplicationRuntime {
               })
             }
             _ => {
-              println!(
-                "[WARN] Unhandled synthetic keyboard event: {:?}",
-                input
+              runtime_logger.info(
+                format!("[WARN] Unhandled synthetic keyboard event: {:?}",
+                input)
               );
               None
             }
@@ -348,7 +352,7 @@ impl Runtime<(), String> for ApplicationRuntime {
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
           Events::Runtime { event, issued_at } => match event {
             RuntimeEvent::Initialized => {
-              println!("[INFO] Initializing all of the components for the runtime: {}", name);
+              runtime_logger.info(format!("Initializing all of the components for the runtime: {}", name));
               for component in &mut component_stack {
                 component.on_attach(active_render_context.as_mut().unwrap());
               }
@@ -377,14 +381,16 @@ impl Runtime<(), String> for ApplicationRuntime {
             .expect("[ERROR] The render API has been already taken.")
             .destroy();
 
-          println!("[INFO] All resources were successfully deleted.");
+
+          runtime_logger.info(String::from("All resources were successfully deleted."));
           None
         }
       };
 
       match mapped_event {
         Some(event) => {
-          println!("Sending event: {:?} to all components", event);
+          runtime_logger.debug(format!("Sending event: {:?} to all components", event));
+
           for component in &mut component_stack {
             let event_result = component.on_event(event.clone());
             match event_result {

@@ -1,0 +1,10 @@
+[package]
+name = "lambda-rs-logging"
+description = "Logging support for lambda-rs"
+version = "2023.1.29"
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "logging"
+path = "src/lib.rs"

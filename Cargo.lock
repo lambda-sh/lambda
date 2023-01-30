@@ -1313,6 +1313,7 @@ version = "2023.1.29"
 dependencies = [
  "cargo-audit",
  "cargo-tarpaulin",
+ "lambda-rs-logging",
  "lambda-rs-platform",
  "mockall",
 ]
@@ -1320,6 +1321,10 @@ dependencies = [
 [[package]]
 name = "lambda-rs-args"
 version = "2023.1.28"
+
+[[package]]
+name = "lambda-rs-logging"
+version = "2023.1.29"
 
 [[package]]
 name = "lambda-rs-platform"
