@@ -1,3 +1,5 @@
+//! Log handling implementations for the logger.
+
 use std::{
   fs::OpenOptions,
   io::Write,

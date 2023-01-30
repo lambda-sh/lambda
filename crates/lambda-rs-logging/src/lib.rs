@@ -1,3 +1,5 @@
+//! A simple logging library for lambda-rs crates.
+
 use std::{
   fs::OpenOptions,
   io::Write,
