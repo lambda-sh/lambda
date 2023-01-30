@@ -13,12 +13,12 @@ pub mod handler;
 /// The log level for the logger.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 pub enum LogLevel {
-  Trace,
-  Debug,
-  Info,
-  Warn,
-  Error,
-  Fatal,
+  TRACE,
+  DEBUG,
+  INFO,
+  WARN,
+  ERROR,
+  FATAL,
 }
 
 /// Logger implementation.
@@ -49,7 +49,7 @@ impl Logger {
 
   /// Logs a trace message to all handlers.
   pub fn trace(&mut self, message: String) {
-    if !self.compare_levels(LogLevel::Trace) {
+    if !self.compare_levels(LogLevel::TRACE) {
       return;
     }
 
@@ -60,7 +60,7 @@ impl Logger {
 
   /// Logs a debug message to all handlers.
   pub fn debug(&mut self, message: String) {
-    if !self.compare_levels(LogLevel::Debug) {
+    if !self.compare_levels(LogLevel::DEBUG) {
       return;
     }
     for handler in self.handlers.iter_mut() {
@@ -70,7 +70,7 @@ impl Logger {
 
   /// Logs an info message to all handlers.
   pub fn info(&mut self, message: String) {
-    if !self.compare_levels(LogLevel::Info) {
+    if !self.compare_levels(LogLevel::INFO) {
       return;
     }
 
@@ -81,7 +81,7 @@ impl Logger {
 
   /// Logs a warning to all handlers.
   pub fn warn(&mut self, message: String) {
-    if !self.compare_levels(LogLevel::Warn) {
+    if !self.compare_levels(LogLevel::WARN) {
       return;
     }
     for handler in self.handlers.iter_mut() {
@@ -91,7 +91,7 @@ impl Logger {
 
   /// Logs an error to all handlers.
   pub fn error(&mut self, message: String) {
-    if !self.compare_levels(LogLevel::Error) {
+    if !self.compare_levels(LogLevel::ERROR) {
       return;
     }
 
@@ -102,7 +102,7 @@ impl Logger {
 
   ///  Logs a fatal error to all handlers and exits the program.
   pub fn fatal(&mut self, message: String) {
-    if !self.compare_levels(LogLevel::Fatal) {
+    if !self.compare_levels(LogLevel::FATAL) {
       return;
     }
 

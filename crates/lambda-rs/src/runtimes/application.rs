@@ -156,7 +156,7 @@ impl Runtime<(), String> for ApplicationRuntime {
     } = self;
 
     let mut runtime_logger =
-      Logger::new(logging::LogLevel::Trace, name.clone());
+      Logger::new(logging::LogLevel::TRACE, name.clone());
     runtime_logger.add_handler(Box::new(ConsoleHandler::new(name.clone())));
     let mut active_render_context = Some(render_context);
 
@@ -239,7 +239,7 @@ impl Runtime<(), String> for ApplicationRuntime {
               })
             }
             _ => {
-              runtime_logger.info(
+              runtime_logger.warn(
                 format!("[WARN] Unhandled synthetic keyboard event: {:?}",
                 input)
               );
@@ -389,7 +389,7 @@ impl Runtime<(), String> for ApplicationRuntime {
 
       match mapped_event {
         Some(event) => {
-          runtime_logger.debug(format!("Sending event: {:?} to all components", event));
+          runtime_logger.trace(format!("Sending event: {:?} to all components", event));
 
           for component in &mut component_stack {
             let event_result = component.on_event(event.clone());
@@ -397,6 +397,7 @@ impl Runtime<(), String> for ApplicationRuntime {
               Ok(_) => {}
               Err(e) => {
                 let error = format!("[ERROR] A component has panicked while handling an event. {:?}", e);
+                runtime_logger.error(error.clone());
                 publisher.publish_event(Events::Runtime{event: RuntimeEvent::ComponentPanic{ message: error}, issued_at: Instant::now()});
               }
             }

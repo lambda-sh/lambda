@@ -39,12 +39,12 @@ impl FileHandler {
     let log_message = format!("[{}]-[{:?}]: {}", timestamp, log_level, message);
 
     let colored_message = match log_level {
-      LogLevel::Trace => format!("\x1B[32m{}\x1B[0m\n", log_message),
-      LogLevel::Debug => format!("\x1B[33m{}\x1B[0m\n", log_message),
-      LogLevel::Info => format!("\x1B[34m{}\x1B[0m\n", log_message),
-      LogLevel::Warn => format!("\x1B[31m{}\x1B[0m\n", log_message),
-      LogLevel::Error => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
-      LogLevel::Fatal => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
+      LogLevel::TRACE => format!("\x1B[32m{}\x1B[0m\n", log_message),
+      LogLevel::DEBUG => format!("\x1B[33m{}\x1B[0m\n", log_message),
+      LogLevel::INFO => format!("\x1B[34m{}\x1B[0m\n", log_message),
+      LogLevel::WARN => format!("\x1B[31m{}\x1B[0m\n", log_message),
+      LogLevel::ERROR => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
+      LogLevel::FATAL => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
     };
 
     self.log_buffer.push(colored_message);
@@ -72,27 +72,27 @@ impl FileHandler {
 
 impl Handler for FileHandler {
   fn trace(&mut self, message: String) {
-    self.log(LogLevel::Trace, message)
+    self.log(LogLevel::TRACE, message)
   }
 
   fn debug(&mut self, message: String) {
-    self.log(LogLevel::Debug, message)
+    self.log(LogLevel::DEBUG, message)
   }
 
   fn info(&mut self, message: String) {
-    self.log(LogLevel::Info, message)
+    self.log(LogLevel::INFO, message)
   }
 
   fn warn(&mut self, message: String) {
-    self.log(LogLevel::Warn, message)
+    self.log(LogLevel::WARN, message)
   }
 
   fn error(&mut self, message: String) {
-    self.log(LogLevel::Error, message)
+    self.log(LogLevel::ERROR, message)
   }
 
   fn fatal(&mut self, message: String) {
-    self.log(LogLevel::Fatal, message)
+    self.log(LogLevel::FATAL, message)
   }
 }
 
@@ -117,12 +117,12 @@ impl ConsoleHandler {
     );
 
     let colored_message = match log_level {
-      LogLevel::Trace => format!("\x1B[32m{}\x1B[0m\n", log_message),
-      LogLevel::Debug => format!("\x1B[33m{}\x1B[0m\n", log_message),
-      LogLevel::Info => format!("\x1B[34m{}\x1B[0m\n", log_message),
-      LogLevel::Warn => format!("\x1B[31m{}\x1B[0m\n", log_message),
-      LogLevel::Error => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
-      LogLevel::Fatal => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
+      LogLevel::TRACE => format!("\x1B[34m{}\x1B[0m\n", log_message),
+      LogLevel::DEBUG => format!("\x1B[33m{}\x1B[0m\n", log_message),
+      LogLevel::INFO => format!("\x1B[32m{}\x1B[0m\n", log_message),
+      LogLevel::WARN => format!("\x1B[31m{}\x1B[0m\n", log_message),
+      LogLevel::ERROR => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
+      LogLevel::FATAL => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
     };
 
     println!("{}", colored_message);
@@ -131,26 +131,26 @@ impl ConsoleHandler {
 
 impl Handler for ConsoleHandler {
   fn trace(&mut self, message: String) {
-    self.log(LogLevel::Trace, message);
+    self.log(LogLevel::TRACE, message);
   }
 
   fn debug(&mut self, message: String) {
-    self.log(LogLevel::Debug, message);
+    self.log(LogLevel::DEBUG, message);
   }
 
   fn info(&mut self, message: String) {
-    self.log(LogLevel::Info, message);
+    self.log(LogLevel::INFO, message);
   }
 
   fn warn(&mut self, message: String) {
-    self.log(LogLevel::Warn, message);
+    self.log(LogLevel::WARN, message);
   }
 
   fn error(&mut self, message: String) {
-    self.log(LogLevel::Error, message);
+    self.log(LogLevel::ERROR, message);
   }
 
   fn fatal(&mut self, message: String) {
-    self.log(LogLevel::Fatal, message);
+    self.log(LogLevel::FATAL, message);
   }
 }
