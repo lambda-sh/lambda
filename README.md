@@ -57,7 +57,7 @@ and can be added to your project by adding the following to your
 
 ```toml
 [dependencies]
-lambda-rs = "2023.1.29"
+lambda-rs = "2023.1.30"
 ```
 
 or from the CLI:

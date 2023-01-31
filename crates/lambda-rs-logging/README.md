@@ -1,4 +1,7 @@
 # lambda-rs-logging
+![lambda-rs](https://img.shields.io/crates/d/lambda-rs-logging)
+![lambda-rs](https://img.shields.io/crates/v/lambda-rs-logging)
+
 A simple logger implementation for lamba-rs crates. Inspired by
 python's [logging](https://docs.python.org/3/library/logging.html) module.
 
