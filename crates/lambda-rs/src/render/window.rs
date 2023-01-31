@@ -81,6 +81,7 @@ impl Window {
       .with_window_properties(window_properties, event_loop)
       .build();
 
+    logging::debug!("Created window: {}", name);
     return Self { window_handle };
   }
 

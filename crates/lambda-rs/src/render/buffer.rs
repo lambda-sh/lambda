@@ -17,6 +17,7 @@ pub use lambda_platform::gfx::buffer::{
   Properties,
   Usage,
 };
+use logging;
 
 use super::{
   mesh::Mesh,
@@ -143,12 +144,21 @@ impl BufferBuilder {
 
     match buffer_allocation {
       Ok(buffer) => {
+        logging::debug!(
+          "Buffer allocation for {:?} succeeded.",
+          self.buffer_type
+        );
         return Ok(Buffer {
           buffer: Rc::new(buffer),
           buffer_type: self.buffer_type,
         });
       }
       Err(error) => {
+        logging::error!(
+          "Buffer allocation for {:?} failed with error: {:?}",
+          self.buffer_type,
+          error
+        );
         return Err(error);
       }
     }

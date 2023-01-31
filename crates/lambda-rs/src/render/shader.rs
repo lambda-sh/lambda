@@ -22,6 +22,7 @@ impl ShaderBuilder {
   /// Compiles the virtual shader into a real shader with SPIR-V binary
   /// representation.
   pub fn build(&mut self, virtual_shader: VirtualShader) -> Shader {
+    logging::trace!("Compiling shader: {:?}", virtual_shader);
     let binary = self.compiler.compile_into_binary(&virtual_shader);
 
     return Shader {

@@ -126,13 +126,13 @@ impl Logger {
   }
 }
 
-static mut LOGGER: Option<Logger> = None;
+pub(crate) static mut LOGGER: Option<Logger> = None;
 
 /// Trace logging macro using the global logger instance.
 #[macro_export]
 macro_rules! trace {
   ($($arg:tt)*) => {
-      Logger::global().trace(format!("{}", format_args!($($arg)*)));
+      logging::Logger::global().trace(format!("{}", format_args!($($arg)*)));
   };
 }
 
@@ -140,7 +140,7 @@ macro_rules! trace {
 #[macro_export]
 macro_rules! debug {
   ($($arg:tt)*) => {
-      Logger::global().debug(format!("{}", format_args!($($arg)*)));
+      logging::Logger::global().debug(format!("{}", format_args!($($arg)*)));
   };
 }
 
@@ -148,7 +148,7 @@ macro_rules! debug {
 #[macro_export]
 macro_rules! info {
   ($($arg:tt)*) => {
-      Logger::global().info(format!("{}", format_args!($($arg)*)));
+      logging::Logger::global().info(format!("{}", format_args!($($arg)*)));
   };
 }
 
@@ -156,20 +156,20 @@ macro_rules! info {
 #[macro_export]
 macro_rules! warn {
   ($($arg:tt)*) => {
-      Logger.global().warn(format!("{}", format_args!($($arg)*)));
+      logging::Logger::global().warn(format!("{}", format_args!($($arg)*)));
   };
 }
 
 #[macro_export]
 macro_rules! error {
   ($($arg:tt)*) => {
-      Logger::global().error(format!("{}", format_args!($($arg)*)));
+      logging::Logger::global().error(format!("{}", format_args!($($arg)*)));
   };
 }
 
 #[macro_export]
 macro_rules! fatal {
   ($($arg:tt)*) => {
-      Logger::global().fatal(format!("{}", format_args!($($arg)*)));
+      logging::Logger::global().fatal(format!("{}", format_args!($($arg)*)));
   };
 }
