@@ -27,15 +27,19 @@ pub struct RenderPipeline {
 impl RenderPipeline {
   /// Destroy the render pipeline with the render context that created it.
   pub fn destroy(self, render_context: &RenderContext) {
+    logging::trace!("Destroying render pipeline");
     Rc::try_unwrap(self.pipeline)
       .expect("Failed to destroy render pipeline")
       .destroy(render_context.internal_gpu());
 
+    logging::trace!("Destroying buffers");
     for buffer in self.buffers {
       Rc::try_unwrap(buffer)
         .expect("Failed to get high level buffer.")
         .destroy(render_context);
     }
+
+    logging::info!("Render pipeline & all attached buffers destroyed");
   }
 }
 
@@ -103,21 +107,21 @@ impl RenderPipelineBuilder {
     vertex_shader: &Shader,
     fragment_shader: Option<&Shader>,
   ) -> RenderPipeline {
-    println!("[DEBUG] Building render pipeline...");
+    logging::debug!("Building render pipeline");
 
-    print!("[DEBUG] Building vertex shader... ");
+    logging::debug!("Building vertex shader... ");
     let vertex_shader_module = ShaderModuleBuilder::new().build(
       render_context.internal_mutable_gpu(),
       &vertex_shader.as_binary(),
       ShaderModuleType::Vertex,
     );
 
-    println!(
-      " Done. (Vertex shader: {} bytes)",
+    logging::debug!(
+      "\tDone. (Vertex shader: {} bytes)",
       vertex_shader.as_binary().len()
     );
 
-    print!("[DEBUG] Building fragment shader... ");
+    logging::debug!("Building fragment shader... ");
     let fragment_shader_module = match fragment_shader {
       Some(shader) => Some(ShaderModuleBuilder::new().build(
         render_context.internal_mutable_gpu(),
@@ -127,8 +131,8 @@ impl RenderPipelineBuilder {
       None => None,
     };
 
-    println!(
-      " Done. (Fragment shader: {} bytes)",
+    logging::debug!(
+      "\tDone. (Fragment shader: {} bytes)",
       fragment_shader.map(|s| s.as_binary().len()).unwrap_or(0)
     );
 

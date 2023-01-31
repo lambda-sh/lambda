@@ -1309,10 +1309,11 @@ dependencies = [
 
 [[package]]
 name = "lambda-rs"
-version = "2023.1.29"
+version = "2023.1.30"
 dependencies = [
  "cargo-audit",
  "cargo-tarpaulin",
+ "lambda-rs-logging",
  "lambda-rs-platform",
  "mockall",
 ]
@@ -1322,8 +1323,12 @@ name = "lambda-rs-args"
 version = "2023.1.28"
 
 [[package]]
+name = "lambda-rs-logging"
+version = "2023.1.30"
+
+[[package]]
 name = "lambda-rs-platform"
-version = "2023.1.29"
+version = "2023.1.30"
 dependencies = [
  "cfg-if 1.0.0",
  "gfx-backend-dx11",
@@ -1333,6 +1338,7 @@ dependencies = [
  "gfx-backend-metal",
  "gfx-backend-vulkan",
  "gfx-hal",
+ "lambda-rs-logging",
  "mockall",
  "obj-rs",
  "rand",

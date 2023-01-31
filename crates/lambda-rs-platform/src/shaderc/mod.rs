@@ -33,6 +33,7 @@ pub struct ShaderCompiler {
 }
 
 /// Meta Representations of real shaders to use for easy compilation
+#[derive(Debug, Clone)]
 pub enum VirtualShader {
   File {
     path: String,

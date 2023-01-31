@@ -525,7 +525,6 @@ mod tests {
       [14.999999, 13.999999, -13.000001, 16.0],
     ];
 
-    println!("rotated: {:?}", rotated);
     for i in 0..4 {
       for j in 0..4 {
         crate::assert_approximately_equal!(

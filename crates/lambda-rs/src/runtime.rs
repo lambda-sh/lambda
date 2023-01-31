@@ -2,6 +2,8 @@
 
 use std::fmt::Debug;
 
+use logging;
+
 /// A runtime is an important but simple type in lambda that is responsible for
 /// executing the application. The event loop for the application is started
 /// within the runtime and should live for the duration of the application.
@@ -23,10 +25,10 @@ pub fn start_runtime<R: Sized + Debug, E: Sized + Debug, T: Runtime<R, E>>(
   let runtime_result = runtime.run();
   match runtime_result {
     Ok(_) => {
-      print!("[INFO] Runtime finished successfully.");
+      logging::info!("Runtime finished successfully.");
     }
     Err(e) => {
-      println!("[FATAL] Runtime panicked because: {:?}", e);
+      logging::fatal!("Runtime panicked because: {:?}", e);
     }
   }
 }

@@ -163,7 +163,7 @@ impl<RenderBackend: gfx_hal::Backend> Gpu<RenderBackend> {
     };
 
     if result.is_err() {
-      println!(
+      logging::error!(
         "Failed to present to the surface: {:?}",
         result.err().unwrap()
       );

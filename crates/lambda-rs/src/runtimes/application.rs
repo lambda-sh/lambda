@@ -2,10 +2,7 @@
 //! provides a window and a render context which can be used to render
 //! both 2D and 3D graphics to the screen.
 
-use std::{
-  str::FromStr,
-  time::Instant,
-};
+use std::time::Instant;
 
 use lambda_platform::winit::{
   winit_exports::{
@@ -17,6 +14,7 @@ use lambda_platform::winit::{
   Loop,
   LoopBuilder,
 };
+use logging;
 
 use crate::{
   component::Component,
@@ -204,88 +202,77 @@ impl Runtime<(), String> for ApplicationRuntime {
               issued_at: Instant::now(),
             })
           }
-          WinitWindowEvent::Moved(_) => {None}
-          WinitWindowEvent::Destroyed => {None}
-          WinitWindowEvent::DroppedFile(_) => {None}
-          WinitWindowEvent::HoveredFile(_) => {None}
-          WinitWindowEvent::HoveredFileCancelled => {None}
-          WinitWindowEvent::ReceivedCharacter(_) => {None}
-          WinitWindowEvent::Focused(_) => {None}
+          WinitWindowEvent::Moved(_) => None,
+          WinitWindowEvent::Destroyed => None,
+          WinitWindowEvent::DroppedFile(_) => None,
+          WinitWindowEvent::HoveredFile(_) => None,
+          WinitWindowEvent::HoveredFileCancelled => None,
+          WinitWindowEvent::ReceivedCharacter(_) => None,
+          WinitWindowEvent::Focused(_) => None,
           WinitWindowEvent::KeyboardInput {
             device_id: _,
             input,
             is_synthetic,
           } => match (input.state, is_synthetic) {
-            (ElementState::Pressed, false) => {
-              Some(Events::Keyboard {
-                event: Key::Pressed {
-                  scan_code: input.scancode,
-                  virtual_key: input.virtual_keycode,
-                },
-                issued_at: Instant::now(),
-              })
-            }
-            (ElementState::Released, false) => {
-              Some(Events::Keyboard {
-                event: Key::Released {
-                  scan_code: input.scancode,
-                  virtual_key: input.virtual_keycode,
-                },
-                issued_at: Instant::now(),
-              })
-            }
+            (ElementState::Pressed, false) => Some(Events::Keyboard {
+              event: Key::Pressed {
+                scan_code: input.scancode,
+                virtual_key: input.virtual_keycode,
+              },
+              issued_at: Instant::now(),
+            }),
+            (ElementState::Released, false) => Some(Events::Keyboard {
+              event: Key::Released {
+                scan_code: input.scancode,
+                virtual_key: input.virtual_keycode,
+              },
+              issued_at: Instant::now(),
+            }),
             _ => {
-              println!(
-                "[WARN] Unhandled synthetic keyboard event: {:?}",
-                input
-              );
+              logging::warn!("Unhandled synthetic keyboard event: {:?}", input);
               None
             }
           },
-          WinitWindowEvent::ModifiersChanged(_) => {None}
+          WinitWindowEvent::ModifiersChanged(_) => None,
           WinitWindowEvent::CursorMoved {
             device_id,
             position,
             modifiers,
-          } => {
-            Some(Events::Mouse {
-              event: Mouse::Moved {
-                x: position.x,
-                y: position.y,
-                dx: 0.0,
-                dy: 0.0,
-                device_id: 0
-              },
-              issued_at: Instant::now(),
-            })
-          }
+          } => Some(Events::Mouse {
+            event: Mouse::Moved {
+              x: position.x,
+              y: position.y,
+              dx: 0.0,
+              dy: 0.0,
+              device_id: 0,
+            },
+            issued_at: Instant::now(),
+          }),
           WinitWindowEvent::CursorEntered { device_id } => {
             Some(Events::Mouse {
               event: Mouse::EnteredWindow { device_id: 0 },
               issued_at: Instant::now(),
             })
           }
-          WinitWindowEvent::CursorLeft { device_id } => {
-            Some(Events::Mouse { event: Mouse::LeftWindow { device_id: 0 }, issued_at: Instant::now() })
-          }
+          WinitWindowEvent::CursorLeft { device_id } => Some(Events::Mouse {
+            event: Mouse::LeftWindow { device_id: 0 },
+            issued_at: Instant::now(),
+          }),
           WinitWindowEvent::MouseWheel {
             device_id,
             delta,
             phase,
             modifiers,
-          } => {
-            Some(Events::Mouse{
-              event: Mouse::Scrolled { device_id: 0 },
-              issued_at: Instant::now(),
-            })
-           }
+          } => Some(Events::Mouse {
+            event: Mouse::Scrolled { device_id: 0 },
+            issued_at: Instant::now(),
+          }),
           WinitWindowEvent::MouseInput {
             device_id,
             state,
             button,
             modifiers,
           } => {
-
             // Map winit button to our button type
             let button = match button {
               MouseButton::Left => Button::Left,
@@ -305,7 +292,7 @@ impl Runtime<(), String> for ApplicationRuntime {
                 button,
                 x: 0.0,
                 y: 0.0,
-                device_id: 0
+                device_id: 0,
               },
             };
 
@@ -318,37 +305,56 @@ impl Runtime<(), String> for ApplicationRuntime {
             device_id,
             pressure,
             stage,
-          } => {None}
+          } => None,
           WinitWindowEvent::AxisMotion {
             device_id,
             axis,
             value,
-          } => {None}
-          WinitWindowEvent::Touch(_) => {None}
-          WinitWindowEvent::ThemeChanged(_) => {None}
-          _ => {None}
+          } => None,
+          WinitWindowEvent::Touch(_) => None,
+          WinitWindowEvent::ThemeChanged(_) => None,
+          _ => None,
         },
         WinitEvent::MainEventsCleared => {
           let last_frame = current_frame.clone();
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
 
-          let active_render_context = active_render_context.as_mut().expect("Couldn't get the active render context. ");
+          let active_render_context = active_render_context
+            .as_mut()
+            .expect("Couldn't get the active render context. ");
           for component in &mut component_stack {
             component.on_update(duration);
             let commands = component.on_render(active_render_context);
             active_render_context.render(commands);
           }
 
+          // Warn if frames dropped below 32 ms (30 fps).
+          match duration.as_millis() > 32 {
+            true => {
+              logging::warn!(
+                "Frame took too long to render: {:?} ms",
+                duration.as_millis()
+              );
+            }
+            false => {
+              // Disable until frametimes can be determined via monitor
+              // std::thread::sleep(std::time::Duration::from_millis(16 - duration.as_millis() as u64));
+            }
+          }
+
           None
         }
-        WinitEvent::RedrawRequested(_) => { None }
-        WinitEvent::NewEvents(_) => {None}
-        WinitEvent::DeviceEvent { device_id, event } => {None}
+        WinitEvent::RedrawRequested(_) => None,
+        WinitEvent::NewEvents(_) => None,
+        WinitEvent::DeviceEvent { device_id, event } => None,
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
           Events::Runtime { event, issued_at } => match event {
             RuntimeEvent::Initialized => {
-              println!("[INFO] Initializing all of the components for the runtime: {}", name);
+              logging::debug!(
+                "Initializing all of the components for the runtime: {}",
+                name
+              );
               for component in &mut component_stack {
                 component.on_attach(active_render_context.as_mut().unwrap());
               }
@@ -366,37 +372,48 @@ impl Runtime<(), String> for ApplicationRuntime {
               None
             }
           },
-          _ => { None}
+          _ => None,
         },
-        WinitEvent::Suspended => {None}
-        WinitEvent::Resumed => {None}
-        WinitEvent::RedrawEventsCleared => { None }
+        WinitEvent::Suspended => None,
+        WinitEvent::Resumed => None,
+        WinitEvent::RedrawEventsCleared => None,
         WinitEvent::LoopDestroyed => {
           active_render_context
             .take()
             .expect("[ERROR] The render API has been already taken.")
             .destroy();
 
-          println!("[INFO] All resources were successfully deleted.");
+          logging::info!("All resources were successfully deleted.");
           None
         }
       };
 
       match mapped_event {
         Some(event) => {
-          println!("Sending event: {:?} to all components", event);
+          logging::trace!("Sending event: {:?} to all components", event);
+
           for component in &mut component_stack {
             let event_result = component.on_event(event.clone());
             match event_result {
               Ok(_) => {}
               Err(e) => {
-                let error = format!("[ERROR] A component has panicked while handling an event. {:?}", e);
-                publisher.publish_event(Events::Runtime{event: RuntimeEvent::ComponentPanic{ message: error}, issued_at: Instant::now()});
+                let error = format!(
+                  "A component has panicked while handling an event. {:?}",
+                  e
+                );
+                logging::error!(
+                  "A component has panicked while handling an event. {:?}",
+                  e
+                );
+                publisher.publish_event(Events::Runtime {
+                  event: RuntimeEvent::ComponentPanic { message: error },
+                  issued_at: Instant::now(),
+                });
               }
             }
           }
         }
-        None => { }
+        None => {}
       }
     });
     return Ok(());
@@ -405,10 +422,10 @@ impl Runtime<(), String> for ApplicationRuntime {
   /// When an application runtime starts, it will attach all of the components that
   /// have been added during the construction phase in the users code.
   fn on_start(&mut self) {
-    println!("[INFO] Starting the runtime {}", self.name);
+    logging::info!("Starting the runtime: {}", self.name);
   }
 
   fn on_stop(&mut self) {
-    println!("[INFO] Stopping {}", self.name)
+    logging::info!("Stopping the runtime: {}", self.name);
   }
 }

@@ -4,6 +4,7 @@
 members = [
     "crates/lambda-rs",
     "crates/lambda-rs-args",
+    "crates/lambda-rs-logging",
     "crates/lambda-rs-platform",
     "tools/obj_loader"
 ]
@@ -11,6 +12,7 @@ members = [
 default-members = [
     "crates/lambda-rs",
     "crates/lambda-rs-args",
+    "crates/lambda-rs-logging",
     "crates/lambda-rs-platform",
     "tools/obj_loader"
 ]

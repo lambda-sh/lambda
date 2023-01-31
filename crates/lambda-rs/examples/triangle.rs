@@ -40,7 +40,7 @@ impl Component<ComponentResult, String> for DemoComponent {
     &mut self,
     render_context: &mut RenderContext,
   ) -> Result<ComponentResult, String> {
-    println!("Attached the demo component to the renderer");
+    logging::info!("Attached the demo component to the renderer");
     let render_pass =
       render_pass::RenderPassBuilder::new().build(&render_context);
 
@@ -55,7 +55,7 @@ impl Component<ComponentResult, String> for DemoComponent {
     self.render_pass_id = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline_id = Some(render_context.attach_pipeline(pipeline));
 
-    println!("Attached the DemoComponent.");
+    logging::info!("Attached the DemoComponent.");
     return Ok(ComponentResult::Success);
   }
 
@@ -73,18 +73,18 @@ impl Component<ComponentResult, String> for DemoComponent {
     match event {
       Events::Runtime { event, issued_at } => match event {
         lambda::events::RuntimeEvent::Shutdown => {
-          println!("Shutting down the runtime");
+          logging::info!("Shutting down the runtime");
         }
         _ => {}
       },
       Events::Window { event, issued_at } => match event {
         WindowEvent::Resize { width, height } => {
-          println!("Window resized to {}x{}", width, height);
+          logging::info!("Window resized to {}x{}", width, height);
           self.width = width;
           self.height = height;
         }
         WindowEvent::Close => {
-          println!("Window closed");
+          logging::info!("Window closed");
         }
       },
       Events::Keyboard { event, issued_at } => match event {
@@ -92,27 +92,27 @@ impl Component<ComponentResult, String> for DemoComponent {
           scan_code,
           virtual_key,
         } => {
-          println!("Key pressed: {:?}", virtual_key);
+          logging::debug!("Key pressed: {:?}", virtual_key);
         }
         Key::Released {
           scan_code,
           virtual_key,
         } => {
-          println!("Key released: {:?}", virtual_key);
+          logging::debug!("Key released: {:?}", virtual_key);
         }
         Key::ModifierPressed {
           modifier,
           virtual_key,
         } => {
-          println!("Modifier pressed: {:?}", virtual_key);
+          logging::debug!("Modifier pressed: {:?}", virtual_key);
         }
       },
       Events::Component { event, issued_at } => match event {
         ComponentEvent::Attached { name } => {
-          println!("Component attached: {:?}", name);
+          logging::debug!("Component attached: {:?}", name);
         }
         ComponentEvent::Detached { name } => {
-          println!("Component detached: {:?}", name);
+          logging::debug!("Component detached: {:?}", name);
         }
       },
       _ => {}
@@ -126,7 +126,7 @@ impl Component<ComponentResult, String> for DemoComponent {
   ) -> Result<ComponentResult, String> {
     match last_frame.as_millis() > 20 {
       true => {
-        println!("[WARN] Last frame took {}ms", last_frame.as_millis());
+        logging::warn!("Last frame took {}ms", last_frame.as_millis());
       }
       false => {}
     };

@@ -16,6 +16,7 @@ impl RenderPass {
     Rc::try_unwrap(self.render_pass)
       .expect("Failed to destroy render pass. Is something holding a reference to it?")
       .destroy(render_context.internal_gpu());
+    logging::debug!("Render pass destroyed");
   }
 }
 
