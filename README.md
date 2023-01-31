@@ -158,6 +158,7 @@ cargo run --example triangles
 - ### Packages
   - [x] (WIP) [lambda-rs-args](./crates/lambda-rs-args/README.md) -- Command line argument parsing.
   - [x] (WIP) [lambda-rs-platform](./crates/lambda-rs-platform/README.md) -- Dependency wrappers & platform support.
+  - [x] [lambda-rs-logging](./crates/lambda-rs-logging/README.md) -- Lightweight Logging API for lambda-rs packages.
   - [x] (WIP) [lambda-rs](./crates/lambda-rs/README.md) -- The public Lambda API.
 - ### Examples
   - [x] Minimal -- A minimal example of an application with a working window
