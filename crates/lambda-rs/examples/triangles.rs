@@ -61,7 +61,7 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
 
-    println!("Attached the DemoComponent.");
+    logging::info!("Attached the DemoComponent.");
     return Ok(ComponentResult::Success);
   }
 
@@ -155,18 +155,18 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     match event {
       Events::Runtime { event, issued_at } => match event {
         lambda::events::RuntimeEvent::Shutdown => {
-          println!("Shutting down the runtime");
+          logging::info!("Shutting down the runtime");
         }
         _ => {}
       },
       Events::Window { event, issued_at } => match event {
         WindowEvent::Resize { width, height } => {
-          println!("Window resized to {}x{}", width, height);
+          logging::info!("Window resized to {}x{}", width, height);
           self.width = width;
           self.height = height;
         }
         WindowEvent::Close => {
-          println!("Window closed");
+          logging::info!("Window closed");
         }
       },
       Events::Component { event, issued_at } => todo!(),
@@ -202,7 +202,7 @@ impl Component<ComponentResult, String> for TrianglesComponent {
   ) -> Result<ComponentResult, String> {
     match last_frame.as_millis() > 20 {
       true => {
-        println!("[WARN] Last frame took {}ms", last_frame.as_millis());
+        logging::warn!("Last frame took {}ms", last_frame.as_millis());
       }
       false => {}
     };

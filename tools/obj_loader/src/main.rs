@@ -14,6 +14,7 @@ use lambda::{
     Events,
     WindowEvent,
   },
+  logging,
   math::matrix::{
     self,
     Matrix,
@@ -183,7 +184,7 @@ impl Component<ComponentResult, String> for ObjLoader {
         WindowEvent::Resize { width, height } => {
           self.width = width;
           self.height = height;
-          println!("Window resized to {}x{}", width, height);
+          logging::info!("Window resized to {}x{}", width, height);
         }
         _ => {}
       },
@@ -201,9 +202,10 @@ impl Component<ComponentResult, String> for ObjLoader {
 
     let mesh = MeshBuilder::new().build_from_obj(&self.obj_path);
 
-    println!(
+    logging::trace!(
       "[DEBUG] Mesh data from {} Mesh:\n {:#?}",
-      &self.obj_path, mesh
+      &self.obj_path,
+      mesh
     );
 
     let pipeline = RenderPipelineBuilder::new()

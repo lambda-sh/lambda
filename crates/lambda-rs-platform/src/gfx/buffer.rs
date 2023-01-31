@@ -110,7 +110,10 @@ impl BufferBuilder {
 
     // TODO(vmarcella): Add the ability for the user to specify the memory
     // properties (I.E. SparseFlags::SPARSE_MEMORY).
-    println!("[DEBUG] Creating buffer of length: {}", self.buffer_length);
+    logging::debug!(
+      "[DEBUG] Creating buffer of length: {}",
+      self.buffer_length
+    );
     let buffer_result = unsafe {
       logical_device.create_buffer(
         self.buffer_length as u64,
@@ -120,6 +123,7 @@ impl BufferBuilder {
     };
 
     if buffer_result.is_err() {
+      logging::error!("Failed to create buffer for allocating memory.");
       return Err("Failed to create buffer for allocating memory.");
     }
 
@@ -129,7 +133,7 @@ impl BufferBuilder {
       unsafe { logical_device.get_buffer_requirements(&buffer) };
     let memory_types = physical_device.memory_properties().memory_types;
 
-    println!("[DEBUG] Buffer requirements: {:?}", requirements);
+    logging::debug!("Buffer requirements: {:?}", requirements);
     // Find a memory type that supports the requirements of the buffer.
     let memory_type = memory_types
       .iter()
@@ -141,12 +145,13 @@ impl BufferBuilder {
       .map(|(id, _)| MemoryTypeId(id))
       .unwrap();
 
-    println!("Allocating memory for buffer.");
+    logging::debug!("Allocating memory for buffer.");
     // Allocates the memory on the GPU for the buffer.
     let buffer_memory_allocation =
       unsafe { logical_device.allocate_memory(memory_type, requirements.size) };
 
     if buffer_memory_allocation.is_err() {
+      logging::error!("Failed to allocate memory for buffer.");
       return Err("Failed to allocate memory for buffer.");
     }
 
@@ -160,6 +165,7 @@ impl BufferBuilder {
     // Destroy the buffer if we failed to bind it to memory.
     if buffer_binding.is_err() {
       unsafe { logical_device.destroy_buffer(buffer) };
+      logging::error!("Failed to bind buffer memory.");
       return Err("Failed to bind buffer memory.");
     }
 
@@ -169,6 +175,7 @@ impl BufferBuilder {
 
     if get_mapping_to_memory.is_err() {
       unsafe { logical_device.destroy_buffer(buffer) };
+      logging::error!("Failed to map memory.");
       return Err("Failed to map memory.");
     }
     let mapped_memory = get_mapping_to_memory.unwrap();
@@ -194,6 +201,7 @@ impl BufferBuilder {
 
     if memory_flush.is_err() {
       unsafe { logical_device.destroy_buffer(buffer) };
+      logging::error!("Failed to flush memory.");
       return Err("No memory available on the GPU.");
     }
 

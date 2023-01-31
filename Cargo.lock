@@ -1324,7 +1324,7 @@ version = "2023.1.28"
 
 [[package]]
 name = "lambda-rs-logging"
-version = "2023.1.29"
+version = "2023.1.30"
 
 [[package]]
 name = "lambda-rs-platform"
@@ -1338,6 +1338,7 @@ dependencies = [
  "gfx-backend-metal",
  "gfx-backend-vulkan",
  "gfx-hal",
+ "lambda-rs-logging",
  "mockall",
  "obj-rs",
  "rand",

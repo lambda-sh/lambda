@@ -167,7 +167,7 @@ pub struct RenderPipeline<RenderBackend: Backend> {
 impl<RenderBackend: Backend> RenderPipeline<RenderBackend> {
   /// Destroys the pipeline layout and graphical pipeline
   pub fn destroy(self, gpu: &super::gpu::Gpu<RenderBackend>) {
-    println!("Destroying render pipeline");
+    logging::debug!("Destroying render pipeline");
     unsafe {
       for buffer in self.buffers {
         buffer.destroy(gpu);

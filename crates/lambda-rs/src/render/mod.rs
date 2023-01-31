@@ -144,7 +144,7 @@ impl RenderContext {
 
   /// destroys the RenderContext and all associated resources.
   pub fn destroy(mut self) {
-    println!("{} will now start destroying resources.", self.name);
+    logging::debug!("{} will now start destroying resources.", self.name);
 
     // Destroy the submission fence and rendering semaphore.
     self

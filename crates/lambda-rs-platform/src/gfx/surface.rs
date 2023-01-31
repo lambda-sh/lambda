@@ -128,7 +128,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
   /// Remove the swapchain configuration that this surface used on this given
   /// GPU.
   pub fn remove_swapchain(&mut self, gpu: &Gpu<RenderBackend>) {
-    println!("Removing the swapchain configuration from: {}", self.name);
+    logging::debug!("Removing the swapchain configuration from: {}", self.name);
     unsafe {
       self
         .gfx_hal_surface
@@ -138,7 +138,7 @@ impl<RenderBackend: gfx_hal::Backend> Surface<RenderBackend> {
 
   /// Destroy the current surface and it's underlying resources.
   pub fn destroy(self, instance: &Instance<RenderBackend>) {
-    println!("Destroying the surface: {}", self.name);
+    logging::debug!("Destroying the surface: {}", self.name);
 
     instance.destroy_surface(self.gfx_hal_surface);
   }

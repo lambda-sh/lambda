@@ -44,12 +44,12 @@ impl FileHandler {
     let log_message = format!("[{}]-[{:?}]: {}", timestamp, log_level, message);
 
     let colored_message = match log_level {
-      LogLevel::TRACE => format!("\x1B[34m{}\x1B[0m\n", log_message),
-      LogLevel::DEBUG => format!("\x1B[33m{}\x1B[0m\n", log_message),
-      LogLevel::INFO => format!("\x1B[32m{}\x1B[0m\n", log_message),
-      LogLevel::WARN => format!("\x1B[31m{}\x1B[0m\n", log_message),
-      LogLevel::ERROR => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
-      LogLevel::FATAL => format!("\x1B[31;1m{}\x1B[0m\n", log_message),
+      LogLevel::TRACE => format!("\x1B[37m{}\x1B[0m", log_message),
+      LogLevel::DEBUG => format!("\x1B[35m{}\x1B[0m", log_message),
+      LogLevel::INFO => format!("\x1B[32m{}\x1B[0m", log_message),
+      LogLevel::WARN => format!("\x1B[33m{}\x1B[0m", log_message),
+      LogLevel::ERROR => format!("\x1B[31;1m{}\x1B[0m", log_message),
+      LogLevel::FATAL => format!("\x1B[31;1m{}\x1B[0m", log_message),
     };
 
     self.log_buffer.push(colored_message);

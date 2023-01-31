@@ -1,6 +1,7 @@
 use lambda::{
   component::Component,
   events::WindowEvent,
+  logging,
   math::{
     matrix,
     matrix::Matrix,
@@ -186,7 +187,7 @@ impl Component<ComponentResult, String> for PushConstantsExample {
       ])
       .build();
 
-    println!("mesh: {:?}", mesh);
+    logging::trace!("mesh: {:?}", mesh);
 
     let pipeline = RenderPipelineBuilder::new()
       .with_push_constant(PipelineStage::VERTEX, push_constant_size)
@@ -208,7 +209,7 @@ impl Component<ComponentResult, String> for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
-    println!("Detaching component");
+    logging::info!("Detaching component");
     return Ok(ComponentResult::Success);
   }
 
@@ -222,7 +223,7 @@ impl Component<ComponentResult, String> for PushConstantsExample {
         WindowEvent::Resize { width, height } => {
           self.width = width;
           self.height = height;
-          println!("Window resized to {}x{}", width, height);
+          logging::info!("Window resized to {}x{}", width, height);
         }
         _ => {}
       },
