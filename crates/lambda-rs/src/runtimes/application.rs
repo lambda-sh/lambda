@@ -421,11 +421,7 @@ impl Runtime<(), String> for ApplicationRuntime {
 
   /// When an application runtime starts, it will attach all of the components that
   /// have been added during the construction phase in the users code.
-  fn on_start(&mut self) {
+  fn before_start(&mut self) {
     logging::info!("Starting the runtime: {}", self.name);
-  }
-
-  fn on_stop(&mut self) {
-    logging::info!("Stopping the runtime: {}", self.name);
   }
 }
