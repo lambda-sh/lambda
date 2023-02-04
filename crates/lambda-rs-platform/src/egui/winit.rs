@@ -7,7 +7,9 @@ use egui::{
 };
 use winit::event::{
   ElementState,
+  Event,
   MouseButton,
+  WindowEvent,
 };
 
 impl super::EguiContext {
@@ -23,73 +25,79 @@ impl super::EguiContext {
   }
 
   pub fn on_event<UserEventType: 'static>(
-    &self,
-    event: &winit::event::Event<UserEventType>,
+    &mut self,
+    event: &Event<UserEventType>,
   ) {
     match event {
-      winit::event::Event::NewEvents(_) => todo!(),
-      winit::event::Event::WindowEvent { window_id, event } => match event {
-        winit::event::WindowEvent::Resized(_) => todo!(),
-        winit::event::WindowEvent::Moved(_) => todo!(),
-        winit::event::WindowEvent::CloseRequested => todo!(),
-        winit::event::WindowEvent::Destroyed => todo!(),
-        winit::event::WindowEvent::DroppedFile(_) => todo!(),
-        winit::event::WindowEvent::HoveredFile(_) => todo!(),
-        winit::event::WindowEvent::HoveredFileCancelled => todo!(),
-        winit::event::WindowEvent::ReceivedCharacter(_) => todo!(),
-        winit::event::WindowEvent::Focused(_) => todo!(),
-        winit::event::WindowEvent::KeyboardInput {
+      Event::NewEvents(_) => todo!(),
+      Event::WindowEvent { window_id, event } => match event {
+        WindowEvent::Resized(_) => todo!(),
+        WindowEvent::Moved(_) => todo!(),
+        WindowEvent::CloseRequested => todo!(),
+        WindowEvent::Destroyed => todo!(),
+        WindowEvent::DroppedFile(_) => todo!(),
+        WindowEvent::HoveredFile(_) => todo!(),
+        WindowEvent::HoveredFileCancelled => todo!(),
+        WindowEvent::ReceivedCharacter(_) => todo!(),
+        WindowEvent::Focused(_) => todo!(),
+        WindowEvent::KeyboardInput {
           device_id,
           input,
           is_synthetic,
         } => todo!(),
-        winit::event::WindowEvent::ModifiersChanged(_) => todo!(),
-        winit::event::WindowEvent::Ime(_) => todo!(),
-        winit::event::WindowEvent::CursorMoved {
+        WindowEvent::ModifiersChanged(_) => todo!(),
+        WindowEvent::Ime(_) => todo!(),
+        WindowEvent::CursorMoved {
           device_id,
           position,
           modifiers,
         } => todo!(),
-        winit::event::WindowEvent::CursorEntered { device_id } => todo!(),
-        winit::event::WindowEvent::CursorLeft { device_id } => todo!(),
-        winit::event::WindowEvent::MouseWheel {
+        WindowEvent::CursorEntered { device_id } => todo!(),
+        WindowEvent::CursorLeft { device_id } => todo!(),
+        WindowEvent::MouseWheel {
           device_id,
           delta,
           phase,
           modifiers,
         } => todo!(),
-        winit::event::WindowEvent::MouseInput {
+        WindowEvent::MouseInput {
           device_id,
           state,
           button,
           modifiers,
         } => todo!(),
-        winit::event::WindowEvent::TouchpadPressure {
+        WindowEvent::TouchpadPressure {
           device_id,
           pressure,
           stage,
         } => todo!(),
-        winit::event::WindowEvent::AxisMotion {
+        WindowEvent::AxisMotion {
           device_id,
           axis,
           value,
         } => todo!(),
-        winit::event::WindowEvent::Touch(_) => todo!(),
-        winit::event::WindowEvent::ScaleFactorChanged {
+        WindowEvent::Touch(_) => todo!(),
+        WindowEvent::ScaleFactorChanged {
           scale_factor,
           new_inner_size,
-        } => todo!(),
-        winit::event::WindowEvent::ThemeChanged(_) => todo!(),
-        winit::event::WindowEvent::Occluded(_) => todo!(),
+        } => {
+          let pixels_per_point = *scale_factor as f32;
+          self.internal_egui_input.pixels_per_point = Some(pixels_per_point);
+          self
+            .internal_egui_context
+            .set_pixels_per_point(pixels_per_point);
+        }
+        WindowEvent::ThemeChanged(_) => todo!(),
+        WindowEvent::Occluded(_) => todo!(),
       },
-      winit::event::Event::DeviceEvent { device_id, event } => todo!(),
-      winit::event::Event::UserEvent(_) => todo!(),
-      winit::event::Event::Suspended => todo!(),
-      winit::event::Event::Resumed => todo!(),
-      winit::event::Event::MainEventsCleared => todo!(),
-      winit::event::Event::RedrawRequested(_) => todo!(),
-      winit::event::Event::RedrawEventsCleared => todo!(),
-      winit::event::Event::LoopDestroyed => todo!(),
+      Event::DeviceEvent { device_id, event } => todo!(),
+      Event::UserEvent(_) => todo!(),
+      Event::Suspended => todo!(),
+      Event::Resumed => todo!(),
+      Event::MainEventsCleared => todo!(),
+      Event::RedrawRequested(_) => todo!(),
+      Event::RedrawEventsCleared => todo!(),
+      Event::LoopDestroyed => todo!(),
     }
   }
 }
