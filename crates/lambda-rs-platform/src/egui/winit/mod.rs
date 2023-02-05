@@ -17,6 +17,8 @@ use winit::{
     WindowEvent,
   },
 };
+
+use self::input::winit_to_egui_mouse_button;
 pub struct EventResult {
   pub processed: bool,
   pub redraw: bool,
@@ -39,7 +41,21 @@ impl super::EguiContext {
   }
 
   fn process_mouse_input(&mut self, state: ElementState, button: MouseButton) {
-    if let Some(position) = self.mouse_position {}
+    match self.mouse_position {
+      Some(position) => match winit_to_egui_mouse_button(button) {
+        Some(button) => {
+          let is_pressed = state == winit::event::ElementState::Pressed;
+        }
+        None => {
+          logging::warn!("Couldn't convert the winit mouse button to an egui mouse button. Ignoring input.");
+        }
+      },
+      None => {
+        logging::debug!(
+          "Mouse position not within the bounds of the window. Ignoring input."
+        );
+      }
+    }
   }
 
   fn process_mouse_movement(
@@ -108,7 +124,23 @@ impl super::EguiContext {
           input,
           is_synthetic,
         } => todo!(),
-        WindowEvent::ModifiersChanged(_) => todo!(),
+        WindowEvent::ModifiersChanged(state) => {
+          self.internal_egui_input.modifiers.alt = state.alt();
+          self.internal_egui_input.modifiers.ctrl = state.ctrl();
+          self.internal_egui_input.modifiers.shift = state.shift();
+          self.internal_egui_input.modifiers.mac_cmd =
+            cfg!(target_os = "macos") && state.logo();
+          self.internal_egui_input.modifiers.command =
+            match cfg!(target_os = "macos") {
+              true => state.logo(),
+              false => state.ctrl(),
+            };
+
+          return EventResult {
+            redraw: true,
+            processed: false,
+          };
+        }
         WindowEvent::Ime(_) => todo!(),
         WindowEvent::CursorMoved {
           device_id,

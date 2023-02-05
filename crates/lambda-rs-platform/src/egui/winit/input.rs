@@ -8,7 +8,9 @@ use winit::event::{
 };
 
 /// Convert a winit mouse button to an egui mouse button.
-pub fn winit_to_egui_button(button: MouseButton) -> Option<PointerButton> {
+pub fn winit_to_egui_mouse_button(
+  button: MouseButton,
+) -> Option<PointerButton> {
   return match button {
     MouseButton::Left => Some(PointerButton::Primary),
     MouseButton::Right => Some(PointerButton::Secondary),
