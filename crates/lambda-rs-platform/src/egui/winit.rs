@@ -62,7 +62,7 @@ impl super::EguiContext {
           position,
           modifiers,
         } => todo!(),
-        WindowEvent::CursorLeft { device_id } => todo!(),
+
         // Mouse input events
         WindowEvent::MouseInput {
           device_id,
@@ -83,6 +83,17 @@ impl super::EguiContext {
           phase,
           modifiers,
         } => todo!(),
+        WindowEvent::CursorLeft { .. } => {
+          self.cursor_position = None;
+          self
+            .internal_egui_input
+            .events
+            .push(egui::Event::PointerGone);
+          EventResult {
+            processed: false,
+            redraw: true,
+          }
+        }
 
         // Repaint events
         WindowEvent::CloseRequested
