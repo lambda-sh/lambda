@@ -12,7 +12,7 @@ use winit::event::{
   WindowEvent,
 };
 pub struct EventResult {
-  pub consumed: bool,
+  pub processed: bool,
   pub redraw: bool,
 }
 
@@ -25,11 +25,16 @@ impl super::EguiContext {
         ..Default::default()
       },
       internal_egui_context: Context::default(),
-      internal_cursor_position: None,
+      cursor_position: None,
+      cursor_button_active: false,
+      current_pixels_per_point: 1.0,
+      emulate_touch_screen: false,
     }
   }
 
-  fn process_mouse_input(&mut self, state: ElementState, button: MouseButton) {}
+  fn process_mouse_input(&mut self, state: ElementState, button: MouseButton) {
+    if let Some(position) = self.cursor_position {}
+  }
 
   pub fn on_event<UserEventType: 'static>(
     &mut self,
@@ -38,10 +43,6 @@ impl super::EguiContext {
     return match event {
       Event::NewEvents(_) => todo!(),
       Event::WindowEvent { window_id, event } => match event {
-        WindowEvent::Resized(_) => todo!(),
-        WindowEvent::Moved(_) => todo!(),
-        WindowEvent::CloseRequested => todo!(),
-        WindowEvent::Destroyed => todo!(),
         WindowEvent::DroppedFile(_) => todo!(),
         WindowEvent::HoveredFile(_) => todo!(),
         WindowEvent::HoveredFileCancelled => todo!(),
@@ -59,14 +60,8 @@ impl super::EguiContext {
           position,
           modifiers,
         } => todo!(),
-        WindowEvent::CursorEntered { device_id } => todo!(),
         WindowEvent::CursorLeft { device_id } => todo!(),
-        WindowEvent::MouseWheel {
-          device_id,
-          delta,
-          phase,
-          modifiers,
-        } => todo!(),
+        // Mouse input events
         WindowEvent::MouseInput {
           device_id,
           state,
@@ -75,21 +70,37 @@ impl super::EguiContext {
         } => {
           self.process_mouse_input(state.clone(), button.clone());
           EventResult {
-            consumed: self.internal_egui_context.wants_pointer_input(),
+            processed: self.internal_egui_context.wants_pointer_input(),
             redraw: true,
           }
         }
-        WindowEvent::TouchpadPressure {
+        WindowEvent::MouseWheel {
           device_id,
-          pressure,
-          stage,
+          delta,
+          phase,
+          modifiers,
         } => todo!(),
-        WindowEvent::AxisMotion {
-          device_id,
-          axis,
-          value,
-        } => todo!(),
+
+        // Repaint events
+        WindowEvent::CloseRequested
+        | WindowEvent::CursorEntered { .. }
+        | WindowEvent::Destroyed
+        | WindowEvent::ThemeChanged(_)
+        | WindowEvent::Occluded(_)
+        | WindowEvent::Resized(_)
+        | WindowEvent::TouchpadPressure { .. } => EventResult {
+          processed: false,
+          redraw: true,
+        },
+
+        // Noop events
+        WindowEvent::Moved(_) | WindowEvent::AxisMotion { .. } => EventResult {
+          processed: false,
+          redraw: false,
+        },
         WindowEvent::Touch(_) => todo!(),
+
+        // Window Events
         WindowEvent::ScaleFactorChanged {
           scale_factor,
           new_inner_size,
@@ -100,12 +111,10 @@ impl super::EguiContext {
             .internal_egui_context
             .set_pixels_per_point(pixels_per_point);
           EventResult {
-            consumed: false,
+            processed: false,
             redraw: true,
           }
         }
-        WindowEvent::ThemeChanged(_) => todo!(),
-        WindowEvent::Occluded(_) => todo!(),
       },
       Event::DeviceEvent { device_id, event } => todo!(),
       Event::UserEvent(_) => todo!(),
