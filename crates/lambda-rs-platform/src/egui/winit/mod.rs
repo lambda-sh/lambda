@@ -11,6 +11,7 @@ use egui::{
 use winit::{
   dpi::PhysicalPosition,
   event::{
+    DeviceId,
     ElementState,
     Event,
     MouseButton,
@@ -28,11 +29,11 @@ impl super::EguiContext {
   /// Create a new input manager prepped for winit usage.
   pub fn new() -> Self {
     Self {
-      internal_egui_input: RawInput {
+      internal_input_handler: RawInput {
         has_focus: false,
         ..Default::default()
       },
-      internal_egui_context: Context::default(),
+      internal_context: Context::default(),
       mouse_position: None,
       cursor_button_active: false,
       current_pixels_per_point: 1.0,
@@ -40,7 +41,12 @@ impl super::EguiContext {
     }
   }
 
-  fn process_mouse_input(&mut self, state: ElementState, button: MouseButton) {
+  /// Process a winit mouse input event.
+  fn process_winit_mouse_input(
+    &mut self,
+    state: ElementState,
+    button: MouseButton,
+  ) {
     match self.mouse_position {
       Some(position) => match winit_to_egui_mouse_button(button) {
         Some(button) => {
@@ -58,7 +64,8 @@ impl super::EguiContext {
     }
   }
 
-  fn process_mouse_movement(
+  /// Process a winit mouse movement event.
+  fn process_winit_mouse_movement(
     &mut self,
     physical_mouse_position: PhysicalPosition<f64>,
   ) {
@@ -70,8 +77,25 @@ impl super::EguiContext {
     self.mouse_position = Some(normalized_position);
 
     match self.emulate_touch_screen {
-      true => if self.cursor_button_active {},
-      false => {}
+      true => {
+        if self.cursor_button_active {
+          self
+            .internal_input_handler
+            .events
+            .push(egui::Event::PointerMoved(normalized_position));
+          self.internal_input_handler.events.push(egui::Event::Touch {
+            device_id: egui::TouchDeviceId(0),
+            id: egui::TouchId(0),
+            phase: egui::TouchPhase::Move,
+            pos: normalized_position,
+            force: 0.0,
+          })
+        }
+      }
+      false => self
+        .internal_input_handler
+        .events
+        .push(egui::Event::PointerMoved((normalized_position))),
     }
   }
 
@@ -84,9 +108,9 @@ impl super::EguiContext {
       Event::WindowEvent { window_id, event } => match event {
         // File events.
         WindowEvent::DroppedFile(path) => {
-          self.internal_egui_input.dropped_files.clear();
+          self.internal_input_handler.dropped_files.clear();
           self
-            .internal_egui_input
+            .internal_input_handler
             .dropped_files
             .push(egui::DroppedFile {
               path: Some(path.clone()),
@@ -99,7 +123,7 @@ impl super::EguiContext {
         }
         WindowEvent::HoveredFile(path) => {
           self
-            .internal_egui_input
+            .internal_input_handler
             .hovered_files
             .push(egui::HoveredFile {
               path: Some(path.clone()),
@@ -111,7 +135,7 @@ impl super::EguiContext {
           };
         }
         WindowEvent::HoveredFileCancelled => {
-          self.internal_egui_input.hovered_files.clear();
+          self.internal_input_handler.hovered_files.clear();
           return EventResult {
             redraw: true,
             processed: false,
@@ -125,12 +149,12 @@ impl super::EguiContext {
           is_synthetic,
         } => todo!(),
         WindowEvent::ModifiersChanged(state) => {
-          self.internal_egui_input.modifiers.alt = state.alt();
-          self.internal_egui_input.modifiers.ctrl = state.ctrl();
-          self.internal_egui_input.modifiers.shift = state.shift();
-          self.internal_egui_input.modifiers.mac_cmd =
+          self.internal_input_handler.modifiers.alt = state.alt();
+          self.internal_input_handler.modifiers.ctrl = state.ctrl();
+          self.internal_input_handler.modifiers.shift = state.shift();
+          self.internal_input_handler.modifiers.mac_cmd =
             cfg!(target_os = "macos") && state.logo();
-          self.internal_egui_input.modifiers.command =
+          self.internal_input_handler.modifiers.command =
             match cfg!(target_os = "macos") {
               true => state.logo(),
               false => state.ctrl(),
@@ -146,7 +170,13 @@ impl super::EguiContext {
           device_id,
           position,
           modifiers,
-        } => todo!(),
+        } => {
+          self.process_winit_mouse_movement(*position);
+          return EventResult {
+            processed: self.internal_context.wants_pointer_input(),
+            redraw: true,
+          };
+        }
 
         // Mouse input events
         WindowEvent::MouseInput {
@@ -155,8 +185,8 @@ impl super::EguiContext {
           button,
           modifiers,
         } => {
-          self.process_mouse_input(state.clone(), button.clone());
-          let processed = self.internal_egui_context.wants_pointer_input();
+          self.process_winit_mouse_input(state.clone(), button.clone());
+          let processed = self.internal_context.wants_pointer_input();
           return EventResult {
             processed,
             redraw: true,
@@ -171,7 +201,7 @@ impl super::EguiContext {
         WindowEvent::CursorLeft { .. } => {
           self.mouse_position = None;
           self
-            .internal_egui_input
+            .internal_input_handler
             .events
             .push(egui::Event::PointerGone);
           return EventResult {
@@ -205,19 +235,19 @@ impl super::EguiContext {
           new_inner_size,
         } => {
           let pixels_per_point = *scale_factor as f32;
-          self.internal_egui_input.pixels_per_point = Some(pixels_per_point);
-          self
-            .internal_egui_context
-            .set_pixels_per_point(pixels_per_point);
+          self.internal_input_handler.pixels_per_point = Some(pixels_per_point);
+          self.internal_context.set_pixels_per_point(pixels_per_point);
           return EventResult {
             processed: false,
             redraw: true,
           };
         }
         WindowEvent::Focused(focused) => {
-          self.internal_egui_input.has_focus = *focused;
+          self.internal_input_handler.has_focus = *focused;
           match focused {
-            false => self.internal_egui_input.modifiers = Modifiers::default(),
+            false => {
+              self.internal_input_handler.modifiers = Modifiers::default()
+            }
             _ => {}
           }
           return EventResult {
