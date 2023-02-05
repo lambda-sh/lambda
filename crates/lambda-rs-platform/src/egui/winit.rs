@@ -11,6 +11,10 @@ use winit::event::{
   MouseButton,
   WindowEvent,
 };
+pub struct EventResult {
+  pub consumed: bool,
+  pub redraw: bool,
+}
 
 impl super::EguiContext {
   /// Create a new input manager prepped for winit usage.
@@ -21,14 +25,17 @@ impl super::EguiContext {
         ..Default::default()
       },
       internal_egui_context: Context::default(),
+      internal_cursor_position: None,
     }
   }
+
+  fn process_mouse_input(&mut self, state: ElementState, button: MouseButton) {}
 
   pub fn on_event<UserEventType: 'static>(
     &mut self,
     event: &Event<UserEventType>,
-  ) {
-    match event {
+  ) -> EventResult {
+    return match event {
       Event::NewEvents(_) => todo!(),
       Event::WindowEvent { window_id, event } => match event {
         WindowEvent::Resized(_) => todo!(),
@@ -65,7 +72,13 @@ impl super::EguiContext {
           state,
           button,
           modifiers,
-        } => todo!(),
+        } => {
+          self.process_mouse_input(state.clone(), button.clone());
+          EventResult {
+            consumed: self.internal_egui_context.wants_pointer_input(),
+            redraw: true,
+          }
+        }
         WindowEvent::TouchpadPressure {
           device_id,
           pressure,
@@ -86,6 +99,10 @@ impl super::EguiContext {
           self
             .internal_egui_context
             .set_pixels_per_point(pixels_per_point);
+          EventResult {
+            consumed: false,
+            redraw: true,
+          }
         }
         WindowEvent::ThemeChanged(_) => todo!(),
         WindowEvent::Occluded(_) => todo!(),
@@ -98,6 +115,6 @@ impl super::EguiContext {
       Event::RedrawRequested(_) => todo!(),
       Event::RedrawEventsCleared => todo!(),
       Event::LoopDestroyed => todo!(),
-    }
+    };
   }
 }
