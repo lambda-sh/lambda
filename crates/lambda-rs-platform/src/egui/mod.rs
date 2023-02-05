@@ -10,7 +10,7 @@ pub mod winit;
 pub struct EguiContext {
   internal_egui_input: RawInput,
   internal_egui_context: Context,
-  cursor_position: Option<Pos2>,
+  mouse_position: Option<Pos2>,
   cursor_button_active: bool,
   current_pixels_per_point: f32,
   emulate_touch_screen: bool,

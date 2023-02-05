@@ -1,16 +1,21 @@
 //! Custom integration between [egui](https://crates.io/crates/egui)
 //! and [winit](https://crates.io/crates/winit).
 
+pub mod input;
+
 use egui::{
   Context,
   Modifiers,
   RawInput,
 };
-use winit::event::{
-  ElementState,
-  Event,
-  MouseButton,
-  WindowEvent,
+use winit::{
+  dpi::PhysicalPosition,
+  event::{
+    ElementState,
+    Event,
+    MouseButton,
+    WindowEvent,
+  },
 };
 pub struct EventResult {
   pub processed: bool,
@@ -26,7 +31,7 @@ impl super::EguiContext {
         ..Default::default()
       },
       internal_egui_context: Context::default(),
-      cursor_position: None,
+      mouse_position: None,
       cursor_button_active: false,
       current_pixels_per_point: 1.0,
       emulate_touch_screen: false,
@@ -34,7 +39,24 @@ impl super::EguiContext {
   }
 
   fn process_mouse_input(&mut self, state: ElementState, button: MouseButton) {
-    if let Some(position) = self.cursor_position {}
+    if let Some(position) = self.mouse_position {}
+  }
+
+  fn process_mouse_movement(
+    &mut self,
+    physical_mouse_position: PhysicalPosition<f64>,
+  ) {
+    let normalized_position = egui::pos2(
+      physical_mouse_position.x as f32 / self.current_pixels_per_point,
+      physical_mouse_position.y as f32 / self.current_pixels_per_point,
+    );
+
+    self.mouse_position = Some(normalized_position);
+
+    match self.emulate_touch_screen {
+      true => if self.cursor_button_active {},
+      false => {}
+    }
   }
 
   pub fn on_event<UserEventType: 'static>(
@@ -84,7 +106,7 @@ impl super::EguiContext {
           modifiers,
         } => todo!(),
         WindowEvent::CursorLeft { .. } => {
-          self.cursor_position = None;
+          self.mouse_position = None;
           self
             .internal_egui_input
             .events
