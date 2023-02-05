@@ -67,9 +67,40 @@ impl super::EguiContext {
       Event::NewEvents(_) => todo!(),
       Event::WindowEvent { window_id, event } => match event {
         // File events.
-        WindowEvent::DroppedFile(_) => todo!(),
-        WindowEvent::HoveredFile(_) => todo!(),
-        WindowEvent::HoveredFileCancelled => todo!(),
+        WindowEvent::DroppedFile(path) => {
+          self.internal_egui_input.dropped_files.clear();
+          self
+            .internal_egui_input
+            .dropped_files
+            .push(egui::DroppedFile {
+              path: Some(path.clone()),
+              ..Default::default()
+            });
+          return EventResult {
+            redraw: true,
+            processed: false,
+          };
+        }
+        WindowEvent::HoveredFile(path) => {
+          self
+            .internal_egui_input
+            .hovered_files
+            .push(egui::HoveredFile {
+              path: Some(path.clone()),
+              ..Default::default()
+            });
+          return EventResult {
+            redraw: true,
+            processed: false,
+          };
+        }
+        WindowEvent::HoveredFileCancelled => {
+          self.internal_egui_input.hovered_files.clear();
+          return EventResult {
+            redraw: true,
+            processed: false,
+          };
+        }
         // Keyboard events.
         WindowEvent::ReceivedCharacter(_) => todo!(),
         WindowEvent::KeyboardInput {
@@ -94,10 +125,10 @@ impl super::EguiContext {
         } => {
           self.process_mouse_input(state.clone(), button.clone());
           let processed = self.internal_egui_context.wants_pointer_input();
-          EventResult {
+          return EventResult {
             processed,
             redraw: true,
-          }
+          };
         }
         WindowEvent::MouseWheel {
           device_id,
@@ -111,10 +142,10 @@ impl super::EguiContext {
             .internal_egui_input
             .events
             .push(egui::Event::PointerGone);
-          EventResult {
+          return EventResult {
             processed: false,
             redraw: true,
-          }
+          };
         }
 
         // Repaint events
@@ -146,10 +177,10 @@ impl super::EguiContext {
           self
             .internal_egui_context
             .set_pixels_per_point(pixels_per_point);
-          EventResult {
+          return EventResult {
             processed: false,
             redraw: true,
-          }
+          };
         }
         WindowEvent::Focused(focused) => {
           self.internal_egui_input.has_focus = *focused;
@@ -157,10 +188,10 @@ impl super::EguiContext {
             false => self.internal_egui_input.modifiers = Modifiers::default(),
             _ => {}
           }
-          EventResult {
+          return EventResult {
             processed: false,
             redraw: true,
-          }
+          };
         }
       },
       Event::DeviceEvent { device_id, event } => todo!(),
