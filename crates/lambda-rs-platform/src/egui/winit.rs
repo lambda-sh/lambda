@@ -3,6 +3,7 @@
 
 use egui::{
   Context,
+  Modifiers,
   RawInput,
 };
 use winit::event::{
@@ -43,11 +44,12 @@ impl super::EguiContext {
     return match event {
       Event::NewEvents(_) => todo!(),
       Event::WindowEvent { window_id, event } => match event {
+        // File events.
         WindowEvent::DroppedFile(_) => todo!(),
         WindowEvent::HoveredFile(_) => todo!(),
         WindowEvent::HoveredFileCancelled => todo!(),
+        // Keyboard events.
         WindowEvent::ReceivedCharacter(_) => todo!(),
-        WindowEvent::Focused(_) => todo!(),
         WindowEvent::KeyboardInput {
           device_id,
           input,
@@ -110,6 +112,17 @@ impl super::EguiContext {
           self
             .internal_egui_context
             .set_pixels_per_point(pixels_per_point);
+          EventResult {
+            processed: false,
+            redraw: true,
+          }
+        }
+        WindowEvent::Focused(focused) => {
+          self.internal_egui_input.has_focus = *focused;
+          match focused {
+            false => self.internal_egui_input.modifiers = Modifiers::default(),
+            _ => {}
+          }
           EventResult {
             processed: false,
             redraw: true,
