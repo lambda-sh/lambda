@@ -71,8 +71,9 @@ impl super::EguiContext {
           modifiers,
         } => {
           self.process_mouse_input(state.clone(), button.clone());
+          let processed = self.internal_egui_context.wants_pointer_input();
           EventResult {
-            processed: self.internal_egui_context.wants_pointer_input(),
+            processed,
             redraw: true,
           }
         }
