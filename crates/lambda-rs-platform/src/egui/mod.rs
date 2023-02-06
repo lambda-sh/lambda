@@ -8,7 +8,7 @@ pub mod winit;
 
 /// A context for managing egui input & rendering.
 pub struct EguiContext {
-  internal_input_handler: RawInput,
+  input_handler: RawInput,
   internal_context: Context,
   mouse_position: Option<Pos2>,
   mouse_button_active: bool,
