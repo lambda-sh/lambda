@@ -4,7 +4,7 @@
 use egui::PointerButton;
 use winit::event::{
   MouseButton,
-  VirtualKeyCode,
+  VirtualKeyCode as WinitKey,
 };
 
 /// Convert a winit mouse button to an egui mouse button.
@@ -22,81 +22,81 @@ pub fn winit_to_egui_mouse_button(
 }
 
 /// Convert a winit virtual key code to an egui key code.
-pub fn winit_to_egui_key(key: VirtualKeyCode) -> Option<egui::Key> {
+pub fn winit_to_egui_key(key: WinitKey) -> Option<egui::Key> {
   return Some(match key {
-    VirtualKeyCode::Down => egui::Key::ArrowDown,
-    VirtualKeyCode::Left => egui::Key::ArrowLeft,
-    VirtualKeyCode::Right => egui::Key::ArrowRight,
-    VirtualKeyCode::Up => egui::Key::ArrowUp,
-    VirtualKeyCode::Escape => egui::Key::Escape,
-    VirtualKeyCode::Tab => egui::Key::Tab,
-    VirtualKeyCode::Back => egui::Key::Backspace,
-    VirtualKeyCode::Return => egui::Key::Enter,
-    VirtualKeyCode::Space => egui::Key::Space,
-    VirtualKeyCode::Insert => egui::Key::Insert,
-    VirtualKeyCode::Delete => egui::Key::Delete,
-    VirtualKeyCode::Home => egui::Key::Home,
-    VirtualKeyCode::End => egui::Key::End,
-    VirtualKeyCode::PageUp => egui::Key::PageUp,
-    VirtualKeyCode::PageDown => egui::Key::PageDown,
-    VirtualKeyCode::Minus => egui::Key::Minus,
-    VirtualKeyCode::Equals => egui::Key::PlusEquals,
-    VirtualKeyCode::Key0 | VirtualKeyCode::Numpad0 => egui::Key::Num0,
-    VirtualKeyCode::Key1 | VirtualKeyCode::Numpad1 => egui::Key::Num1,
-    VirtualKeyCode::Key2 | VirtualKeyCode::Numpad2 => egui::Key::Num2,
-    VirtualKeyCode::Key3 | VirtualKeyCode::Numpad3 => egui::Key::Num3,
-    VirtualKeyCode::Key4 | VirtualKeyCode::Numpad4 => egui::Key::Num4,
-    VirtualKeyCode::Key5 | VirtualKeyCode::Numpad5 => egui::Key::Num5,
-    VirtualKeyCode::Key6 | VirtualKeyCode::Numpad6 => egui::Key::Num6,
-    VirtualKeyCode::Key7 | VirtualKeyCode::Numpad7 => egui::Key::Num7,
-    VirtualKeyCode::Key8 | VirtualKeyCode::Numpad8 => egui::Key::Num8,
-    VirtualKeyCode::Key9 | VirtualKeyCode::Numpad9 => egui::Key::Num9,
-    VirtualKeyCode::A => egui::Key::A,
-    VirtualKeyCode::B => egui::Key::B,
-    VirtualKeyCode::C => egui::Key::C,
-    VirtualKeyCode::D => egui::Key::D,
-    VirtualKeyCode::E => egui::Key::E,
-    VirtualKeyCode::F => egui::Key::F,
-    VirtualKeyCode::G => egui::Key::G,
-    VirtualKeyCode::H => egui::Key::H,
-    VirtualKeyCode::I => egui::Key::I,
-    VirtualKeyCode::J => egui::Key::J,
-    VirtualKeyCode::K => egui::Key::K,
-    VirtualKeyCode::L => egui::Key::L,
-    VirtualKeyCode::M => egui::Key::M,
-    VirtualKeyCode::N => egui::Key::N,
-    VirtualKeyCode::O => egui::Key::O,
-    VirtualKeyCode::P => egui::Key::P,
-    VirtualKeyCode::Q => egui::Key::Q,
-    VirtualKeyCode::R => egui::Key::R,
-    VirtualKeyCode::S => egui::Key::S,
-    VirtualKeyCode::T => egui::Key::T,
-    VirtualKeyCode::U => egui::Key::U,
-    VirtualKeyCode::V => egui::Key::V,
-    VirtualKeyCode::W => egui::Key::W,
-    VirtualKeyCode::X => egui::Key::X,
-    VirtualKeyCode::Y => egui::Key::Y,
-    VirtualKeyCode::Z => egui::Key::Z,
-    VirtualKeyCode::F1 => egui::Key::F1,
-    VirtualKeyCode::F2 => egui::Key::F2,
-    VirtualKeyCode::F3 => egui::Key::F3,
-    VirtualKeyCode::F4 => egui::Key::F4,
-    VirtualKeyCode::F5 => egui::Key::F5,
-    VirtualKeyCode::F6 => egui::Key::F6,
-    VirtualKeyCode::F7 => egui::Key::F7,
-    VirtualKeyCode::F8 => egui::Key::F8,
-    VirtualKeyCode::F9 => egui::Key::F9,
-    VirtualKeyCode::F10 => egui::Key::F10,
-    VirtualKeyCode::F11 => egui::Key::F11,
-    VirtualKeyCode::F12 => egui::Key::F12,
-    VirtualKeyCode::F13 => egui::Key::F13,
-    VirtualKeyCode::F14 => egui::Key::F14,
-    VirtualKeyCode::F15 => egui::Key::F15,
-    VirtualKeyCode::F16 => egui::Key::F16,
-    VirtualKeyCode::F17 => egui::Key::F17,
-    VirtualKeyCode::F18 => egui::Key::F18,
-    VirtualKeyCode::F19 => egui::Key::F19,
-    VirtualKeyCode::F20 => egui::Key::F20,
+    WinitKey::Down => egui::Key::ArrowDown,
+    WinitKey::Left => egui::Key::ArrowLeft,
+    WinitKey::Right => egui::Key::ArrowRight,
+    WinitKey::Up => egui::Key::ArrowUp,
+    WinitKey::Escape => egui::Key::Escape,
+    WinitKey::Tab => egui::Key::Tab,
+    WinitKey::Back => egui::Key::Backspace,
+    WinitKey::Return => egui::Key::Enter,
+    WinitKey::Space => egui::Key::Space,
+    WinitKey::Insert => egui::Key::Insert,
+    WinitKey::Delete => egui::Key::Delete,
+    WinitKey::Home => egui::Key::Home,
+    WinitKey::End => egui::Key::End,
+    WinitKey::PageUp => egui::Key::PageUp,
+    WinitKey::PageDown => egui::Key::PageDown,
+    WinitKey::Minus => egui::Key::Minus,
+    WinitKey::Equals => egui::Key::PlusEquals,
+    WinitKey::Key0 | WinitKey::Numpad0 => egui::Key::Num0,
+    WinitKey::Key1 | WinitKey::Numpad1 => egui::Key::Num1,
+    WinitKey::Key2 | WinitKey::Numpad2 => egui::Key::Num2,
+    WinitKey::Key3 | WinitKey::Numpad3 => egui::Key::Num3,
+    WinitKey::Key4 | WinitKey::Numpad4 => egui::Key::Num4,
+    WinitKey::Key5 | WinitKey::Numpad5 => egui::Key::Num5,
+    WinitKey::Key6 | WinitKey::Numpad6 => egui::Key::Num6,
+    WinitKey::Key7 | WinitKey::Numpad7 => egui::Key::Num7,
+    WinitKey::Key8 | WinitKey::Numpad8 => egui::Key::Num8,
+    WinitKey::Key9 | WinitKey::Numpad9 => egui::Key::Num9,
+    WinitKey::A => egui::Key::A,
+    WinitKey::B => egui::Key::B,
+    WinitKey::C => egui::Key::C,
+    WinitKey::D => egui::Key::D,
+    WinitKey::E => egui::Key::E,
+    WinitKey::F => egui::Key::F,
+    WinitKey::G => egui::Key::G,
+    WinitKey::H => egui::Key::H,
+    WinitKey::I => egui::Key::I,
+    WinitKey::J => egui::Key::J,
+    WinitKey::K => egui::Key::K,
+    WinitKey::L => egui::Key::L,
+    WinitKey::M => egui::Key::M,
+    WinitKey::N => egui::Key::N,
+    WinitKey::O => egui::Key::O,
+    WinitKey::P => egui::Key::P,
+    WinitKey::Q => egui::Key::Q,
+    WinitKey::R => egui::Key::R,
+    WinitKey::S => egui::Key::S,
+    WinitKey::T => egui::Key::T,
+    WinitKey::U => egui::Key::U,
+    WinitKey::V => egui::Key::V,
+    WinitKey::W => egui::Key::W,
+    WinitKey::X => egui::Key::X,
+    WinitKey::Y => egui::Key::Y,
+    WinitKey::Z => egui::Key::Z,
+    WinitKey::F1 => egui::Key::F1,
+    WinitKey::F2 => egui::Key::F2,
+    WinitKey::F3 => egui::Key::F3,
+    WinitKey::F4 => egui::Key::F4,
+    WinitKey::F5 => egui::Key::F5,
+    WinitKey::F6 => egui::Key::F6,
+    WinitKey::F7 => egui::Key::F7,
+    WinitKey::F8 => egui::Key::F8,
+    WinitKey::F9 => egui::Key::F9,
+    WinitKey::F10 => egui::Key::F10,
+    WinitKey::F11 => egui::Key::F11,
+    WinitKey::F12 => egui::Key::F12,
+    WinitKey::F13 => egui::Key::F13,
+    WinitKey::F14 => egui::Key::F14,
+    WinitKey::F15 => egui::Key::F15,
+    WinitKey::F16 => egui::Key::F16,
+    WinitKey::F17 => egui::Key::F17,
+    WinitKey::F18 => egui::Key::F18,
+    WinitKey::F19 => egui::Key::F19,
+    WinitKey::F20 => egui::Key::F20,
     _ => {
       return None;
     }
@@ -149,17 +149,14 @@ pub fn egui_to_winit_mouse_cursor_icon(
 }
 
 /// Check if the keyboard event is a cut event.
-pub fn is_keyboard_cut(
-  modifiers: egui::Modifiers,
-  key_code: winit::event::VirtualKeyCode,
-) -> bool {
-  let is_cut = modifiers.command && key_code == winit::event::VirtualKeyCode::X;
+pub fn is_keyboard_cut(modifiers: egui::Modifiers, key_code: WinitKey) -> bool {
+  let is_cut = modifiers.command && key_code == WinitKey::X;
 
   let is_cut_with_delete = cfg!(any(
     target_os = "windows",
     all(unix, not(target_os = "macos"))
   )) && modifiers.ctrl
-    && key_code == winit::event::VirtualKeyCode::Delete;
+    && key_code == WinitKey::Delete;
 
   return is_cut || is_cut_with_delete;
 }
@@ -167,16 +164,15 @@ pub fn is_keyboard_cut(
 /// Check if the keyboard event is a copy event.
 pub fn is_keyboard_copy(
   modifiers: egui::Modifiers,
-  key_code: winit::event::VirtualKeyCode,
+  key_code: WinitKey,
 ) -> bool {
-  let is_copy =
-    modifiers.command && key_code == winit::event::VirtualKeyCode::C;
+  let is_copy = modifiers.command && key_code == WinitKey::C;
 
   let is_copy_with_insert = cfg!(any(
     target_os = "windows",
     all(unix, not(target_os = "macos"))
   )) && modifiers.ctrl
-    && key_code == winit::event::VirtualKeyCode::Insert;
+    && key_code == WinitKey::Insert;
 
   return is_copy || is_copy_with_insert;
 }
@@ -184,16 +180,15 @@ pub fn is_keyboard_copy(
 /// Check if the keyboard event is a paste event.
 pub fn is_keyboard_paste(
   modifiers: egui::Modifiers,
-  key_code: winit::event::VirtualKeyCode,
+  key_code: WinitKey,
 ) -> bool {
-  let is_paste =
-    modifiers.command && key_code == winit::event::VirtualKeyCode::V;
+  let is_paste = modifiers.command && key_code == WinitKey::V;
 
   let is_paste_with_insert = cfg!(any(
     target_os = "windows",
     all(unix, not(target_os = "macos"))
   )) && modifiers.shift
-    && key_code == winit::event::VirtualKeyCode::Insert;
+    && key_code == WinitKey::Insert;
 
   return is_paste || is_paste_with_insert;
 }
