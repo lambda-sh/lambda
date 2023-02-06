@@ -35,14 +35,15 @@ impl super::EguiContext {
       },
       internal_context: Context::default(),
       mouse_position: None,
-      cursor_button_active: false,
+      mouse_button_active: false,
       current_pixels_per_point: 1.0,
       emulate_touch_screen: false,
     }
   }
 
-  /// Process a winit mouse input event.
-  fn process_winit_mouse_input(
+  /// Process a winit mouse input event. First checks if the mouse position is on
+  /// the screen and then if a winit mouse button is pressed.
+  fn process_winit_mouse_button(
     &mut self,
     state: ElementState,
     button: MouseButton,
@@ -51,9 +52,31 @@ impl super::EguiContext {
       Some(position) => match winit_to_egui_mouse_button(button) {
         Some(button) => {
           let is_pressed = state == winit::event::ElementState::Pressed;
+
+          self
+            .internal_input_handler
+            .events
+            .push(egui::Event::PointerButton {
+              pos: position,
+              button,
+              pressed: is_pressed,
+              modifiers: self.internal_input_handler.modifiers,
+            });
+
+          match self.emulate_touch_screen {
+            false => {}
+            true => match is_pressed {
+              true => {
+                self.mouse_button_active = true;
+              }
+              false => {
+                self.mouse_button_active = false;
+              }
+            },
+          }
         }
         None => {
-          logging::warn!("Couldn't convert the winit mouse button to an egui mouse button. Ignoring input.");
+          logging::debug!("Couldn't convert the winit mouse button to an egui mouse button. Ignoring input.");
         }
       },
       None => {
@@ -69,6 +92,7 @@ impl super::EguiContext {
     &mut self,
     physical_mouse_position: PhysicalPosition<f64>,
   ) {
+    // Normalize the mouse position by the current pixels per point.
     let normalized_position = egui::pos2(
       physical_mouse_position.x as f32 / self.current_pixels_per_point,
       physical_mouse_position.y as f32 / self.current_pixels_per_point,
@@ -76,9 +100,11 @@ impl super::EguiContext {
 
     self.mouse_position = Some(normalized_position);
 
+    // If we are emulating a touch screen, we need to send a touch event.
+    // Otherwise, we send a mouse event.
     match self.emulate_touch_screen {
       true => {
-        if self.cursor_button_active {
+        if self.mouse_button_active {
           self
             .internal_input_handler
             .events
@@ -95,7 +121,7 @@ impl super::EguiContext {
       false => self
         .internal_input_handler
         .events
-        .push(egui::Event::PointerMoved((normalized_position))),
+        .push(egui::Event::PointerMoved(normalized_position)),
     }
   }
 
@@ -185,7 +211,7 @@ impl super::EguiContext {
           button,
           modifiers,
         } => {
-          self.process_winit_mouse_input(state.clone(), button.clone());
+          self.process_winit_mouse_button(state.clone(), button.clone());
           let processed = self.internal_context.wants_pointer_input();
           return EventResult {
             processed,

@@ -103,65 +103,48 @@ pub fn winit_to_egui_key(key: VirtualKeyCode) -> Option<egui::Key> {
   });
 }
 
+use winit::window::CursorIcon as WinitCursorIcon;
+
 /// Convert an egui mouse cursor icon to a winit mouse cursor icon.
 pub fn egui_to_winit_mouse_cursor_icon(
   mouse_cursor_icon: egui::CursorIcon,
 ) -> Option<winit::window::CursorIcon> {
   return match mouse_cursor_icon {
     egui::CursorIcon::None => None,
-    egui::CursorIcon::Alias => Some(winit::window::CursorIcon::Alias),
-    egui::CursorIcon::AllScroll => Some(winit::window::CursorIcon::AllScroll),
-    egui::CursorIcon::Cell => Some(winit::window::CursorIcon::Cell),
-    egui::CursorIcon::ContextMenu => {
-      Some(winit::window::CursorIcon::ContextMenu)
-    }
-    egui::CursorIcon::Copy => Some(winit::window::CursorIcon::Copy),
-    egui::CursorIcon::Crosshair => Some(winit::window::CursorIcon::Crosshair),
-    egui::CursorIcon::Default => Some(winit::window::CursorIcon::Default),
-    egui::CursorIcon::Grab => Some(winit::window::CursorIcon::Grab),
-    egui::CursorIcon::Grabbing => Some(winit::window::CursorIcon::Grabbing),
-    egui::CursorIcon::Help => Some(winit::window::CursorIcon::Help),
-    egui::CursorIcon::Move => Some(winit::window::CursorIcon::Move),
-    egui::CursorIcon::NoDrop => Some(winit::window::CursorIcon::NoDrop),
-    egui::CursorIcon::NotAllowed => Some(winit::window::CursorIcon::NotAllowed),
-    egui::CursorIcon::PointingHand => Some(winit::window::CursorIcon::Hand),
-    egui::CursorIcon::Progress => Some(winit::window::CursorIcon::Progress),
-    egui::CursorIcon::ResizeHorizontal => {
-      Some(winit::window::CursorIcon::EwResize)
-    }
-    egui::CursorIcon::ResizeNeSw => Some(winit::window::CursorIcon::NeswResize),
-    egui::CursorIcon::ResizeNwSe => Some(winit::window::CursorIcon::NwseResize),
-    egui::CursorIcon::ResizeVertical => {
-      Some(winit::window::CursorIcon::NsResize)
-    }
-    egui::CursorIcon::ResizeEast => Some(winit::window::CursorIcon::EResize),
-    egui::CursorIcon::ResizeSouthEast => {
-      Some(winit::window::CursorIcon::SeResize)
-    }
-    egui::CursorIcon::ResizeSouth => Some(winit::window::CursorIcon::SResize),
-    egui::CursorIcon::ResizeSouthWest => {
-      Some(winit::window::CursorIcon::SwResize)
-    }
-    egui::CursorIcon::ResizeWest => Some(winit::window::CursorIcon::WResize),
-    egui::CursorIcon::ResizeNorthWest => {
-      Some(winit::window::CursorIcon::NwResize)
-    }
-    egui::CursorIcon::ResizeNorth => Some(winit::window::CursorIcon::NResize),
-    egui::CursorIcon::ResizeNorthEast => {
-      Some(winit::window::CursorIcon::NeResize)
-    }
-    egui::CursorIcon::ResizeColumn => {
-      Some(winit::window::CursorIcon::ColResize)
-    }
-    egui::CursorIcon::ResizeRow => Some(winit::window::CursorIcon::RowResize),
-
-    egui::CursorIcon::Text => Some(winit::window::CursorIcon::Text),
-    egui::CursorIcon::VerticalText => {
-      Some(winit::window::CursorIcon::VerticalText)
-    }
-    egui::CursorIcon::Wait => Some(winit::window::CursorIcon::Wait),
-    egui::CursorIcon::ZoomIn => Some(winit::window::CursorIcon::ZoomIn),
-    egui::CursorIcon::ZoomOut => Some(winit::window::CursorIcon::ZoomOut),
+    egui::CursorIcon::Alias => Some(WinitCursorIcon::Alias),
+    egui::CursorIcon::AllScroll => Some(WinitCursorIcon::AllScroll),
+    egui::CursorIcon::Cell => Some(WinitCursorIcon::Cell),
+    egui::CursorIcon::ContextMenu => Some(WinitCursorIcon::ContextMenu),
+    egui::CursorIcon::Copy => Some(WinitCursorIcon::Copy),
+    egui::CursorIcon::Crosshair => Some(WinitCursorIcon::Crosshair),
+    egui::CursorIcon::Default => Some(WinitCursorIcon::Default),
+    egui::CursorIcon::Grab => Some(WinitCursorIcon::Grab),
+    egui::CursorIcon::Grabbing => Some(WinitCursorIcon::Grabbing),
+    egui::CursorIcon::Help => Some(WinitCursorIcon::Help),
+    egui::CursorIcon::Move => Some(WinitCursorIcon::Move),
+    egui::CursorIcon::NoDrop => Some(WinitCursorIcon::NoDrop),
+    egui::CursorIcon::NotAllowed => Some(WinitCursorIcon::NotAllowed),
+    egui::CursorIcon::PointingHand => Some(WinitCursorIcon::Hand),
+    egui::CursorIcon::Progress => Some(WinitCursorIcon::Progress),
+    egui::CursorIcon::ResizeHorizontal => Some(WinitCursorIcon::EwResize),
+    egui::CursorIcon::ResizeNeSw => Some(WinitCursorIcon::NeswResize),
+    egui::CursorIcon::ResizeNwSe => Some(WinitCursorIcon::NwseResize),
+    egui::CursorIcon::ResizeVertical => Some(WinitCursorIcon::NsResize),
+    egui::CursorIcon::ResizeEast => Some(WinitCursorIcon::EResize),
+    egui::CursorIcon::ResizeSouthEast => Some(WinitCursorIcon::SeResize),
+    egui::CursorIcon::ResizeSouth => Some(WinitCursorIcon::SResize),
+    egui::CursorIcon::ResizeSouthWest => Some(WinitCursorIcon::SwResize),
+    egui::CursorIcon::ResizeWest => Some(WinitCursorIcon::WResize),
+    egui::CursorIcon::ResizeNorthWest => Some(WinitCursorIcon::NwResize),
+    egui::CursorIcon::ResizeNorth => Some(WinitCursorIcon::NResize),
+    egui::CursorIcon::ResizeNorthEast => Some(WinitCursorIcon::NeResize),
+    egui::CursorIcon::ResizeColumn => Some(WinitCursorIcon::ColResize),
+    egui::CursorIcon::ResizeRow => Some(WinitCursorIcon::RowResize),
+    egui::CursorIcon::Text => Some(WinitCursorIcon::Text),
+    egui::CursorIcon::VerticalText => Some(WinitCursorIcon::VerticalText),
+    egui::CursorIcon::Wait => Some(WinitCursorIcon::Wait),
+    egui::CursorIcon::ZoomIn => Some(WinitCursorIcon::ZoomIn),
+    egui::CursorIcon::ZoomOut => Some(WinitCursorIcon::ZoomOut),
   };
 }
 
