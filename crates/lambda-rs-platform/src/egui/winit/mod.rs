@@ -33,7 +33,7 @@ impl super::EguiContext {
         has_focus: false,
         ..Default::default()
       },
-      internal_context: Context::default(),
+      context: Context::default(),
       mouse_position: None,
       mouse_button_active: false,
       current_pixels_per_point: 1.0,
@@ -190,7 +190,7 @@ impl super::EguiContext {
         } => {
           self.process_winit_mouse_movement(*position);
           return EventResult {
-            processed: self.internal_context.wants_pointer_input(),
+            processed: self.context.wants_pointer_input(),
             redraw: true,
           };
         }
@@ -203,7 +203,7 @@ impl super::EguiContext {
           modifiers,
         } => {
           self.process_winit_mouse_button(state.clone(), button.clone());
-          let processed = self.internal_context.wants_pointer_input();
+          let processed = self.context.wants_pointer_input();
           return EventResult {
             processed,
             redraw: true,
@@ -250,7 +250,7 @@ impl super::EguiContext {
         } => {
           let pixels_per_point = *scale_factor as f32;
           self.input_handler.pixels_per_point = Some(pixels_per_point);
-          self.internal_context.set_pixels_per_point(pixels_per_point);
+          self.context.set_pixels_per_point(pixels_per_point);
           return EventResult {
             processed: false,
             redraw: true,
