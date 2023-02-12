@@ -1,5 +1,10 @@
 //! Custom integration between [egui](https://crates.io/crates/egui)
 //! and [winit](https://crates.io/crates/winit).
+//!
+//! This module implements the following for winit / egui compatibility:
+//!   * Mouse support
+//!   * Touch support
+//!   * File support
 
 pub mod input;
 
