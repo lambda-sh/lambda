@@ -66,19 +66,5 @@ jobs:
           rustup toolchain install ${{ matrix.rustup-toolchain }}
           rustup default ${{ matrix.rustup-toolchain }}
 
-      - name: Build Lambda & other default workspace members.
+      - name: Build Lambda using platform specific features.
         run: cargo test --all --features ${{ matrix.features }} --no-default-features
-
-      - uses: actions/setup-ruby@v1
-      - name: Send Webhook Notification for build status.
-        if: ${{ github.ref == 'refs/heads/main' }}
-        env:
-          JOB_STATUS: ${{ job.status }}
-          WEBHOOK_URL: ${{ secrets.LAMBDA_BUILD_WEBHOOK }}
-          HOOK_OS_NAME: ${{ runner.os }}
-          WORKFLOW_NAME: ${{ github.workflow }}
-          JOB_ID: ${{ github.job }}
-        run: |
-          git clone https://github.com/dhinakg/github-actions-discord-webhook.git webhook
-          bash webhook/send.sh $JOB_STATUS $WEBHOOK_URL
-        shell: bash
