@@ -65,6 +65,8 @@ impl super::EguiContext {
             modifiers: self.input_handler.modifiers,
           });
 
+          // If we emulate a touch screen & a mouse button is being pressed,
+          // we set the mouse button as active to send touch events.
           match self.emulate_touch_screen {
             false => {}
             true => match is_pressed {
