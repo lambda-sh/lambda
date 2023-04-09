@@ -1,3 +1,4 @@
+pub mod egui;
 pub mod gfx;
 pub mod obj;
 pub mod rand;

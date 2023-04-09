@@ -8,6 +8,7 @@ pub mod mesh;
 pub mod pipeline;
 pub mod render_pass;
 pub mod shader;
+pub mod ui;
 pub mod vertex;
 pub mod viewport;
 pub mod window;

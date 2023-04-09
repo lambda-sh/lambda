@@ -13,19 +13,29 @@ where
   RuntimeError: Sized + Debug,
 {
   type Component;
-  fn on_start(&mut self);
-  fn on_stop(&mut self);
+  fn before_start(&mut self);
   fn run(self) -> Result<RuntimeResult, RuntimeError>;
 }
 
-/// Simple function for starting any prebuilt Runnable.
-pub fn start_runtime<R: Sized + Debug, E: Sized + Debug, T: Runtime<R, E>>(
-  runtime: T,
+/// Starts a runtime and waits for it to finish. This function will not return
+/// until the runtime has finished executing.
+///
+/// The type `ImplementedRuntime` represents any struct which implements the
+/// `Runtime` trait with valid `RuntimeResult` & `RuntimeError` parameters.
+pub fn start_runtime<
+  RuntimeResult: Sized + Debug,
+  RuntimeError: Sized + Debug,
+  ImplementedRuntime: Runtime<RuntimeResult, RuntimeError>,
+>(
+  runtime: ImplementedRuntime,
 ) {
   let runtime_result = runtime.run();
   match runtime_result {
-    Ok(_) => {
-      logging::info!("Runtime finished successfully.");
+    Ok(result) => {
+      logging::info!(
+        "Runtime finished successfully with the result: {:?}",
+        result
+      );
     }
     Err(e) => {
       logging::fatal!("Runtime panicked because: {:?}", e);
