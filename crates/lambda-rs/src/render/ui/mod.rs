@@ -1,26 +1,5 @@
 pub use lambda_platform::egui;
-
-pub enum GridDirection {
-  Horizontal,
-  Vertical,
-}
-
-pub enum UIElement {
-  Button {
-    text: String,
-    width: f32,
-    height: f32,
-    on_click: Option<fn()>,
-  },
-  Grid {
-    rows: usize,
-    columns: usize,
-    width: f32,
-    height: f32,
-    direction: GridDirection,
-    children: Vec<UIElement>,
-  },
-}
+use lambda_platform::egui::gfx::UIElement;
 
 /// The context for managing UI state & rendering.
 pub struct UIContext {

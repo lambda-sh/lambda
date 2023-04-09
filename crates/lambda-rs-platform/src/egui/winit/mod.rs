@@ -13,6 +13,10 @@ use egui::{
   Modifiers,
   RawInput,
 };
+use logging::{
+  debug,
+  Logger,
+};
 use winit::{
   dpi::PhysicalPosition,
   event::{
@@ -20,11 +24,14 @@ use winit::{
     ElementState,
     Event,
     MouseButton,
+    TouchPhase,
+    VirtualKeyCode,
     WindowEvent,
   },
 };
 
 use self::input::winit_to_egui_mouse_button;
+use crate::egui::winit::input::winit_to_egui_key;
 pub struct EventResult {
   pub processed: bool,
   pub redraw: bool,
@@ -43,6 +50,7 @@ impl super::EguiContext {
       mouse_button_active: false,
       current_pixels_per_point: 1.0,
       emulate_touch_screen: false,
+      active_touch_device: None,
     }
   }
 
@@ -129,12 +137,98 @@ impl super::EguiContext {
     }
   }
 
+  fn process_winit_touch_event(&mut self, event: winit::event::Touch) {
+    let winit::event::Touch {
+      location,
+      phase,
+      device_id,
+      force,
+      id,
+    } = event;
+    let egui_phase = match phase {
+      TouchPhase::Started => {
+        self.mouse_button_active = true;
+        egui::TouchPhase::Start
+      }
+      TouchPhase::Moved => {
+        self.mouse_button_active = true;
+        egui::TouchPhase::Move
+      }
+      TouchPhase::Ended => {
+        self.mouse_button_active = false;
+        egui::TouchPhase::End
+      }
+      TouchPhase::Cancelled => {
+        self.mouse_button_active = false;
+        egui::TouchPhase::Cancel
+      }
+    };
+    let touch_device_id =
+      egui::TouchDeviceId(egui::epaint::util::hash(device_id));
+    self.input_handler.events.push(egui::Event::Touch {
+      device_id: touch_device_id,
+      id: egui::TouchId(id),
+      phase: egui_phase,
+      pos: egui::pos2(
+        location.x as f32 / self.current_pixels_per_point,
+        location.y as f32 / self.current_pixels_per_point,
+      ),
+      force: match force {
+        Some(winit::event::Force::Normalized(force)) => force as f32,
+        Some(winit::event::Force::Calibrated {
+          force,
+          max_possible_force,
+          altitude_angle,
+        }) => match altitude_angle {
+          // Applies the altitude angle to the force
+          Some(altitude_angle) => {
+            (force / max_possible_force) as f32 * (altitude_angle.cos() as f32)
+          }
+          None => (force / max_possible_force) as f32,
+        },
+        None => 0.0 as f32,
+      },
+    });
+    let processing_touch = self.active_touch_device.is_none()
+      || self.active_touch_device == Some(touch_device_id);
+
+    if processing_touch {
+      match phase {
+        TouchPhase::Started => {
+          self.active_touch_device = Some(touch_device_id);
+          self.process_winit_mouse_movement(location);
+          self.process_winit_mouse_button(
+            ElementState::Pressed,
+            MouseButton::Left,
+          );
+        }
+        TouchPhase::Moved => {
+          self.process_winit_mouse_movement(location);
+        }
+        TouchPhase::Ended => {
+          self.active_touch_device = None;
+          self.process_winit_mouse_movement(location);
+          self.process_winit_mouse_button(
+            ElementState::Released,
+            MouseButton::Left,
+          );
+        }
+        TouchPhase::Cancelled => {
+          self.process_winit_mouse_movement(location);
+          self.process_winit_mouse_button(
+            ElementState::Released,
+            MouseButton::Left,
+          );
+        }
+      }
+    }
+  }
+
   pub fn on_event<UserEventType: 'static>(
     &mut self,
     event: &Event<UserEventType>,
   ) -> EventResult {
     return match event {
-      Event::NewEvents(_) => todo!(),
       Event::WindowEvent { window_id, event } => match event {
         // File events.
         WindowEvent::DroppedFile(path) => {
@@ -166,12 +260,40 @@ impl super::EguiContext {
           };
         }
         // Keyboard events.
-        WindowEvent::ReceivedCharacter(_) => todo!(),
+        WindowEvent::ReceivedCharacter(character) => {
+          if !character.is_control() {
+            self
+              .input_handler
+              .events
+              .push(egui::Event::Text(character.to_string()));
+          }
+          return EventResult {
+            redraw: true,
+            processed: false,
+          };
+        }
+
         WindowEvent::KeyboardInput {
           device_id,
           input,
           is_synthetic,
-        } => todo!(),
+        } => {
+          let pressed = input.state == ElementState::Pressed;
+
+          if let Some(key) = winit_to_egui_key(
+            input.virtual_keycode.expect("No virtual keycode"),
+          ) {
+            self.input_handler.events.push(egui::Event::Key {
+              key,
+              pressed,
+              modifiers: self.input_handler.modifiers,
+            });
+          }
+          return EventResult {
+            redraw: true,
+            processed: false,
+          };
+        }
         WindowEvent::ModifiersChanged(state) => {
           self.input_handler.modifiers.alt = state.alt();
           self.input_handler.modifiers.ctrl = state.ctrl();
@@ -189,7 +311,13 @@ impl super::EguiContext {
             processed: false,
           };
         }
-        WindowEvent::Ime(_) => todo!(),
+        WindowEvent::Ime(ime) => {
+          debug!("IME event received, but cannot be handled yet: {:?}", ime);
+          return EventResult {
+            redraw: false,
+            processed: false,
+          };
+        }
         WindowEvent::CursorMoved {
           device_id,
           position,
@@ -275,14 +403,12 @@ impl super::EguiContext {
           };
         }
       },
-      Event::DeviceEvent { device_id, event } => todo!(),
-      Event::UserEvent(_) => todo!(),
-      Event::Suspended => todo!(),
-      Event::Resumed => todo!(),
-      Event::MainEventsCleared => todo!(),
-      Event::RedrawRequested(_) => todo!(),
-      Event::RedrawEventsCleared => todo!(),
-      Event::LoopDestroyed => todo!(),
+      _ => {
+        return EventResult {
+          processed: false,
+          redraw: false,
+        };
+      }
     };
   }
 }
