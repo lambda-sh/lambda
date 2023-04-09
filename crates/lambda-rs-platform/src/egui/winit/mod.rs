@@ -329,7 +329,6 @@ impl super::EguiContext {
             redraw: true,
           };
         }
-
         // Mouse input events
         WindowEvent::MouseInput {
           device_id,
@@ -376,7 +375,13 @@ impl super::EguiContext {
           processed: false,
           redraw: false,
         },
-        WindowEvent::Touch(_) => todo!(),
+        WindowEvent::Touch(event) => {
+          self.process_winit_touch_event(event.clone());
+          return EventResult {
+            processed: self.context.wants_pointer_input(),
+            redraw: true,
+          };
+        }
 
         // Window Events
         WindowEvent::ScaleFactorChanged {
