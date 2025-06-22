@@ -1,6 +1,8 @@
 //! A simple logging library for lambda-rs crates.
 
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::{Mutex, MutexGuard}};
+
+use once_cell::sync::Lazy;
 
 /// A trait for handling log messages.
 pub mod handler;
@@ -33,21 +35,10 @@ impl Logger {
     }
   }
 
-  /// Returns the global logger.
-  pub fn global() -> &'static mut Self {
-    // TODO(vmarcella): Fix the instantiation for the global logger.
-    unsafe {
-      if LOGGER.is_none() {
-        LOGGER = Some(Logger {
-          level: LogLevel::TRACE,
-          name: "lambda-rs".to_string(),
-          handlers: vec![Box::new(handler::ConsoleHandler::new("lambda-rs"))],
-        });
-      }
-    };
-    return unsafe { &mut LOGGER }
-      .as_mut()
-      .expect("Logger not initialized");
+  /// Returns a handle to the global logger. The logger is lazily
+  /// initialized on first access.
+  pub fn global() -> MutexGuard<'static, Self> {
+    LOGGER.lock().expect("Logger mutex poisoned")
   }
 
   /// Adds a handler to the logger. Handlers are called in the order they
@@ -126,7 +117,14 @@ impl Logger {
   }
 }
 
-pub(crate) static mut LOGGER: Option<Logger> = None;
+/// Global logger instance used by the logging macros.
+static LOGGER: Lazy<Mutex<Logger>> = Lazy::new(|| {
+  Mutex::new(Logger {
+    level: LogLevel::TRACE,
+    name: "lambda-rs".to_string(),
+    handlers: vec![Box::new(handler::ConsoleHandler::new("lambda-rs"))],
+  })
+});
 
 /// Trace logging macro using the global logger instance.
 #[macro_export]
