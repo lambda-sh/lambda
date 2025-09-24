@@ -1,4 +1,4 @@
-name: compile & test lambda-rs
+name: compile & test lambda-rs (wgpu)
 
 on:
   push:
@@ -22,52 +22,51 @@ jobs:
         include:
         - os: ubuntu-latest
           rustup-toolchain: "stable"
-          features: "lambda-rs/with-opengl"
-        - os: ubuntu-latest
-          rustup-toolchain: "stable"
           features: "lambda-rs/with-vulkan"
-        - os: windows-latest
-          rustup-toolchain: "stable"
-          features: "lambda-rs/with-vulkan"
-        - os: windows-latest
-          rustup-toolchain: "stable"
-          features: "lambda-rs/with-dx11"
         - os: windows-latest
           rustup-toolchain: "stable"
           features: "lambda-rs/with-dx12"
-        - os: macos-latest
-          rustup-toolchain: "stable"
-          features: "lambda-rs/with-opengl"
         - os: macos-latest
           rustup-toolchain: "stable"
           features: "lambda-rs/with-metal"
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Cache cargo builds
+        uses: Swatinem/rust-cache@v2
 
       - name: Run the projects setup.
         run: ./scripts/setup.sh --within-ci true
 
-      - name: Obtain Xorg for building on Ubuntu.
+      - name: Install Linux deps for winit/wgpu
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get update && sudo apt-get install xorg-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config libx11-dev libxcb1-dev libxcb-render0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev \
+            libwayland-dev libudev-dev libvulkan-dev
 
-      - name: Add msbuild to PATH
-        if: ${{ matrix.os == 'windows-latest' }}
-        uses: microsoft/setup-msbuild@v1.0.2
-
-      - name: Install ninja 1.10.2 on windows.
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: choco install ninja
+      # Windows runners already include the required toolchain for DX12 builds.
 
       - name: Obtain rust toolchain for ${{ matrix.rustup-toolchain }}
         run: |
           rustup toolchain install ${{ matrix.rustup-toolchain }}
           rustup default ${{ matrix.rustup-toolchain }}
 
-      - name: Build Lambda & other default workspace members.
-        run: cargo test --all --features ${{ matrix.features }} --no-default-features
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Build workspace
+        run: cargo build --workspace --features ${{ matrix.features }} --no-default-features
+
+      - name: Build examples (lambda-rs)
+        run: cargo build -p lambda-rs --examples --features ${{ matrix.features }} --no-default-features
+
+      - name: Test workspace
+        run: cargo test --workspace --features ${{ matrix.features }} --no-default-features
 
       - uses: actions/setup-ruby@v1
       - name: Send Webhook Notification for build status.
