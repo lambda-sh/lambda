@@ -1,48 +1,22 @@
+use lambda::render::{pipeline::PipelineStage, ColorFormat};
 use lambda::{
   component::Component,
   events::WindowEvent,
   logging,
-  math::{
-    matrix,
-    matrix::Matrix,
-    vector::Vector,
-  },
+  math::{matrix, matrix::Matrix, vector::Vector},
   render::{
     buffer::BufferBuilder,
     command::RenderCommand,
-    mesh::{
-      Mesh,
-      MeshBuilder,
-    },
+    mesh::{Mesh, MeshBuilder},
     pipeline::RenderPipelineBuilder,
     render_pass::RenderPassBuilder,
-    shader::{
-      Shader,
-      ShaderBuilder,
-    },
-    vertex::{
-      VertexAttribute,
-      VertexBuilder,
-      VertexElement,
-    },
-    viewport,
-    ResourceId,
+    shader::{Shader, ShaderBuilder, ShaderKind, VirtualShader},
+    vertex::{VertexAttribute, VertexBuilder, VertexElement},
+    viewport, ResourceId,
   },
   runtime::start_runtime,
   runtimes::{
-    application::ComponentResult,
-    ApplicationRuntime,
-    ApplicationRuntimeBuilder,
-  },
-};
-use lambda_platform::{
-  gfx::{
-    pipeline::PipelineStage,
-    surface::ColorFormat,
-  },
-  shaderc::{
-    ShaderKind,
-    VirtualShader,
+    application::ComponentResult, ApplicationRuntime, ApplicationRuntimeBuilder,
   },
 };
 
@@ -177,6 +151,14 @@ impl Component<ComponentResult, String> for PushConstantsExample {
           },
         },
         VertexAttribute {
+          location: 1,
+          offset: 0,
+          element: VertexElement {
+            format: ColorFormat::Rgb32Sfloat,
+            offset: 12,
+          },
+        },
+        VertexAttribute {
           location: 2,
           offset: 0,
           element: VertexElement {
@@ -275,6 +257,16 @@ impl Component<ComponentResult, String> for PushConstantsExample {
       .expect("No render pipeline actively set for rendering.");
 
     return vec![
+      RenderCommand::BeginRenderPass {
+        render_pass: self
+          .render_pass
+          .expect("Cannot begin the render pass when it doesn't exist.")
+          .clone(),
+        viewport: viewport.clone(),
+      },
+      RenderCommand::SetPipeline {
+        pipeline: render_pipeline.clone(),
+      },
       RenderCommand::SetViewports {
         start_at: 0,
         viewports: vec![viewport.clone()],
@@ -282,16 +274,6 @@ impl Component<ComponentResult, String> for PushConstantsExample {
       RenderCommand::SetScissors {
         start_at: 0,
         viewports: vec![viewport.clone()],
-      },
-      RenderCommand::SetPipeline {
-        pipeline: render_pipeline.clone(),
-      },
-      RenderCommand::BeginRenderPass {
-        render_pass: self
-          .render_pass
-          .expect("Cannot begin the render pass when it doesn't exist.")
-          .clone(),
-        viewport: viewport.clone(),
       },
       RenderCommand::BindVertexBuffer {
         pipeline: render_pipeline.clone(),

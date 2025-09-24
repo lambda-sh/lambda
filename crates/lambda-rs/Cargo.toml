@@ -20,13 +20,22 @@ cargo-audit = "0.16.0"
 mockall = "0.11.3"
 
 [features]
-default=["lambda-rs-platform/detect-platform"]
-detect-platform=["lambda-rs-platform/detect-platform"]
-with-vulkan=["lambda-rs-platform/gfx-with-vulkan"]
-with-opengl=["lambda-rs-platform/gfx-with-opengl"]
-with-dx11=["lambda-rs-platform/gfx-with-dx11"]
-with-dx12=["lambda-rs-platform/gfx-with-dx12"]
-with-metal=["lambda-rs-platform/gfx-with-metal"]
+default=["with-wgpu"]
+with-vulkan=["with-wgpu", "lambda-rs-platform/wgpu-with-vulkan"]
+with-opengl=["with-wgpu", "lambda-rs-platform/wgpu-with-gl"]
+with-dx11=["with-wgpu"]
+with-dx12=["with-wgpu", "lambda-rs-platform/wgpu-with-dx12"]
+with-metal=["with-wgpu", "lambda-rs-platform/wgpu-with-metal"]
+with-wgpu=["lambda-rs-platform/wgpu"]
+with-wgpu-vulkan=["with-wgpu", "lambda-rs-platform/wgpu-with-vulkan"]
+with-wgpu-metal=["with-wgpu", "lambda-rs-platform/wgpu-with-metal"]
+with-wgpu-dx12=["with-wgpu", "lambda-rs-platform/wgpu-with-dx12"]
+with-wgpu-gl=["with-wgpu", "lambda-rs-platform/wgpu-with-gl"]
+with-shaderc=["lambda-rs-platform/shader-backend-shaderc"]
+with-shaderc-build-from-source=[
+  "with-shaderc",
+  "lambda-rs-platform/shader-backend-shaderc-build-from-source",
+]
 
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------

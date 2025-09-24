@@ -3,11 +3,7 @@
 use lambda_platform::obj::load_textured_obj_from_file;
 
 use super::{
-  vertex::{
-    Vertex,
-    VertexAttribute,
-    VertexElement,
-  },
+  vertex::{Vertex, VertexAttribute, VertexElement},
   ColorFormat,
 };
 

@@ -2,10 +2,7 @@
 
 use lambda_platform::rand::get_uniformly_random_floats_between;
 
-use super::{
-  turns_to_radians,
-  vector::Vector,
-};
+use super::{turns_to_radians, vector::Vector};
 
 // -------------------------------- MATRIX -------------------------------------
 
@@ -392,16 +389,9 @@ where
 mod tests {
 
   use super::{
-    filled_matrix,
-    perspective_matrix,
-    rotate_matrix,
-    submatrix,
-    Matrix,
+    filled_matrix, perspective_matrix, rotate_matrix, submatrix, Matrix,
   };
-  use crate::math::{
-    matrix::translation_matrix,
-    turns_to_radians,
-  };
+  use crate::math::{matrix::translation_matrix, turns_to_radians};
 
   #[test]
   fn square_matrix_add() {

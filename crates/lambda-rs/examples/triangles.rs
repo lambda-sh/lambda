@@ -1,32 +1,15 @@
 use lambda::{
   component::Component,
-  events::{
-    Events,
-    Key,
-    VirtualKey,
-    WindowEvent,
-  },
+  events::{Events, Key, VirtualKey, WindowEvent},
   render::{
     command::RenderCommand,
-    pipeline::{
-      self,
-      PipelineStage,
-    },
+    pipeline::{self, PipelineStage},
     render_pass,
-    shader::{
-      Shader,
-      ShaderBuilder,
-      ShaderKind,
-      VirtualShader,
-    },
-    viewport,
-    RenderContext,
+    shader::{Shader, ShaderBuilder, ShaderKind, VirtualShader},
+    viewport, RenderContext,
   },
   runtime::start_runtime,
-  runtimes::{
-    application::ComponentResult,
-    ApplicationRuntimeBuilder,
-  },
+  runtimes::{application::ComponentResult, ApplicationRuntimeBuilder},
 };
 
 pub struct TrianglesComponent {
@@ -113,26 +96,26 @@ impl Component<ComponentResult, String> for TrianglesComponent {
       .render_pipeline
       .expect("No render pipeline actively set for rendering.");
 
-    let mut commands = vec![
-      RenderCommand::SetViewports {
-        start_at: 0,
-        viewports: vec![viewport.clone()],
-      },
-      RenderCommand::SetScissors {
-        start_at: 0,
-        viewports: vec![viewport.clone()],
-      },
-      RenderCommand::SetPipeline {
-        pipeline: render_pipeline.clone(),
-      },
-      RenderCommand::BeginRenderPass {
-        render_pass: self
-          .render_pass
-          .expect("Cannot begin the render pass when it doesn't exist.")
-          .clone(),
-        viewport: viewport.clone(),
-      },
-    ];
+    // All state setting must be inside the render pass
+    let mut commands = vec![RenderCommand::BeginRenderPass {
+      render_pass: self
+        .render_pass
+        .expect("Cannot begin the render pass when it doesn't exist.")
+        .clone(),
+      viewport: viewport.clone(),
+    }];
+
+    commands.push(RenderCommand::SetPipeline {
+      pipeline: render_pipeline.clone(),
+    });
+    commands.push(RenderCommand::SetViewports {
+      start_at: 0,
+      viewports: vec![viewport.clone()],
+    });
+    commands.push(RenderCommand::SetScissors {
+      start_at: 0,
+      viewports: vec![viewport.clone()],
+    });
 
     // Upload triangle data into the the GPU at the vertex stage of the pipeline
     // before requesting to draw each triangle.
@@ -175,16 +158,16 @@ impl Component<ComponentResult, String> for TrianglesComponent {
           scan_code,
           virtual_key,
         } => match virtual_key {
-          Some(VirtualKey::W) => {
+          Some(VirtualKey::KeyW) => {
             self.position.1 -= 0.01;
           }
-          Some(VirtualKey::S) => {
+          Some(VirtualKey::KeyS) => {
             self.position.1 += 0.01;
           }
-          Some(VirtualKey::A) => {
+          Some(VirtualKey::KeyA) => {
             self.position.0 -= 0.01;
           }
-          Some(VirtualKey::D) => {
+          Some(VirtualKey::KeyD) => {
             self.position.0 += 0.01;
           }
           _ => {}

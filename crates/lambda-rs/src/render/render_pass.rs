@@ -1,57 +1,64 @@
 //! Render pass builders and definitions for lambda runtimes and applications.
-use std::rc::Rc;
 
-use lambda_platform::gfx::render_pass;
+use lambda_platform::wgpu::types as wgpu;
 
 use super::RenderContext;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+/// Immutable parameters used when beginning a render pass.
 pub struct RenderPass {
-  render_pass: Rc<render_pass::RenderPass<super::internal::RenderBackend>>,
+  clear_color: wgpu::Color,
+  label: Option<String>,
 }
 
 impl RenderPass {
-  /// Destroy the render pass with the render context that created it.
-  pub fn destroy(self, render_context: &RenderContext) {
-    Rc::try_unwrap(self.render_pass)
-      .expect("Failed to destroy render pass. Is something holding a reference to it?")
-      .destroy(render_context.internal_gpu());
-    logging::debug!("Render pass destroyed");
+  /// Destroy the pass. Kept for symmetry with other resources.
+  pub fn destroy(self, _render_context: &RenderContext) {}
+
+  pub(crate) fn color_ops(&self) -> wgpu::Operations<wgpu::Color> {
+    wgpu::Operations {
+      load: wgpu::LoadOp::Clear(self.clear_color),
+      store: wgpu::StoreOp::Store,
+    }
+  }
+
+  pub(crate) fn label(&self) -> Option<&str> {
+    self.label.as_deref()
   }
 }
 
-/// Internal Renderpass functions for lambda.
-impl RenderPass {
-  /// Retrieve a reference to the lower level render pass.
-  pub(super) fn internal_render_pass(
-    &self,
-  ) -> &Rc<render_pass::RenderPass<super::internal::RenderBackend>> {
-    return &self.render_pass;
-  }
-
-  /// Converts
-  pub(super) fn into_gfx_render_pass(
-    &self,
-  ) -> Rc<render_pass::RenderPass<super::internal::RenderBackend>> {
-    return self.render_pass.clone();
-  }
+/// Builder for a `RenderPass` description.
+pub struct RenderPassBuilder {
+  clear_color: wgpu::Color,
+  label: Option<String>,
 }
-
-pub struct RenderPassBuilder {}
 
 impl RenderPassBuilder {
   /// Creates a new render pass builder.
   pub fn new() -> Self {
-    return Self {};
+    Self {
+      clear_color: wgpu::Color::BLACK,
+      label: None,
+    }
   }
 
-  /// Builds a render pass that can be used for defining
-  pub fn build(self, render_context: &RenderContext) -> RenderPass {
-    let render_pass =
-      lambda_platform::gfx::render_pass::RenderPassBuilder::new()
-        .build(render_context.internal_gpu());
-    return RenderPass {
-      render_pass: Rc::new(render_pass),
-    };
+  /// Specify the clear color used for the first color attachment.
+  pub fn with_clear_color(mut self, color: wgpu::Color) -> Self {
+    self.clear_color = color;
+    self
+  }
+
+  /// Attach a label to the render pass for debugging/profiling.
+  pub fn with_label(mut self, label: &str) -> Self {
+    self.label = Some(label.to_string());
+    self
+  }
+
+  /// Build the description used when beginning a render pass.
+  pub fn build(self, _render_context: &RenderContext) -> RenderPass {
+    RenderPass {
+      clear_color: self.clear_color,
+      label: self.label,
+    }
   }
 }

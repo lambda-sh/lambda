@@ -1,11 +1,6 @@
 //! Log handling implementations for the logger.
 
-use std::{
-  fmt::Debug,
-  fs::OpenOptions,
-  io::Write,
-  time::SystemTime,
-};
+use std::{fmt::Debug, fs::OpenOptions, io::Write, time::SystemTime};
 
 use crate::LogLevel;
 

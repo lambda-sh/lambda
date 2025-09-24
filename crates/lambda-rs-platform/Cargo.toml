@@ -11,48 +11,31 @@ name = "lambda_platform"
 path = "src/lib.rs"
 
 [dependencies]
-gfx-hal = "=0.9.0"
-winit = "=0.27.5"
-shaderc = "=0.7"
-cfg-if = "=1.0.0"
+winit = "=0.29.10"
+shaderc = { version = "=0.7", optional = true, default-features = false }
+naga = { version = "=23.1.0", optional = true, default-features = false, features = ["spv-out", "glsl-in", "wgsl-in"] }
 rand = "=0.8.5"
 obj-rs = "=0.7.0"
-gfx-backend-empty = "=0.9.0"
-
+wgpu = { version = "=23.0.1", optional = true, features = ["wgsl", "spirv"] }
+pollster = { version = "=0.3.0", optional = true }
 lambda-rs-logging = { path = "../lambda-rs-logging", version = "2023.1.30" }
-
-# GFX-RS backends
-gfx-backend-gl = { version="=0.9.0", optional = true }
-gfx-backend-metal = { version="=0.9.0", optional = true }
-gfx-backend-vulkan = { version="=0.9.0", optional = true }
-gfx-backend-dx11 = { version="=0.9.0", optional = true }
-gfx-backend-dx12 = { version="=0.9.0", optional = true }
 
 [dev-dependencies]
 mockall = "=0.11.3"
 
 [features]
-default=["shaderc/build-from-source"]
-detect-platform=[]
-winit-windowing=[]
-gfx-with-opengl=["dep:gfx-backend-gl"]
-gfx-with-vulkan=["dep:gfx-backend-vulkan"]
-gfx-with-metal=["dep:gfx-backend-metal"]
-gfx-with-dx11=["dep:gfx-backend-dx11"]
-gfx-with-dx12=["dep:gfx-backend-dx12"]
+default=["wgpu", "shader-backend-naga"]
+
+shader-backend-naga=["dep:naga"]
+shader-backend-shaderc=["dep:shaderc"]
+shader-backend-shaderc-build-from-source=["shader-backend-shaderc", "shaderc/build-from-source"]
+
+wgpu=["dep:wgpu", "dep:pollster", "wgpu/wgsl", "wgpu/spirv", "shader-backend-naga"]
+wgpu-with-vulkan=["wgpu"]
+wgpu-with-metal=["wgpu", "wgpu/metal"]
+wgpu-with-dx12=["wgpu", "wgpu/dx12"]
+wgpu-with-gl=["wgpu", "wgpu/webgl"]
 
 [profile.dev]
 crate-type = ["cdylib", "rlib"]
 incremental = true
-
-[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.gfx-backend-gl]
-package = "gfx-backend-gl"
-version = "=0.9.0"
-
-[target.'cfg(all(target_os = "macos"))'.dependencies.gfx-backend-metal]
-package = "gfx-backend-metal"
-version = "=0.9.0"
-
-[target.'cfg(all(windows))'.dependencies.gfx-backend-dx12]
-package = "gfx-backend-dx12"
-version = "=0.9.0"

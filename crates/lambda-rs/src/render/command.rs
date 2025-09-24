@@ -2,140 +2,43 @@
 
 use std::ops::Range;
 
-use lambda_platform::gfx::viewport::ViewPort as PlatformViewPort;
+use super::{pipeline::PipelineStage, viewport::Viewport};
 
-use super::{
-  PlatformRenderCommand,
-  RenderContext,
-};
-
-/// Commands that are used to render a frame within the RenderContext.
+/// Commands recorded and executed by the `RenderContext` to produce a frame.
 #[derive(Debug, Clone)]
 pub enum RenderCommand {
-  /// sets the viewports for the render context.
+  /// Set one or more viewports starting at `start_at` slot.
   SetViewports {
     start_at: u32,
-    viewports: Vec<super::viewport::Viewport>,
+    viewports: Vec<Viewport>,
   },
-  /// sets the scissor rectangles for the render context.
+  /// Set one or more scissor rectangles matching the current viewports.
   SetScissors {
     start_at: u32,
-    viewports: Vec<super::viewport::Viewport>,
+    viewports: Vec<Viewport>,
   },
-  /// Sets the pipeline to use for the render context.
+  /// Bind a previously attached graphics pipeline by id.
   SetPipeline { pipeline: super::ResourceId },
-  /// Begins the render pass.
+  /// Begin a render pass that targets the swapchain.
   BeginRenderPass {
     render_pass: super::ResourceId,
-    viewport: super::viewport::Viewport,
+    viewport: Viewport,
   },
-  /// Ends the render pass.
+  /// End the current render pass.
   EndRenderPass,
 
-  /// Sets the push constants for the render pipeline.
+  /// Upload push constants for the active pipeline/stage at `offset`.
   PushConstants {
     pipeline: super::ResourceId,
-    stage: super::pipeline::PipelineStage,
+    stage: PipelineStage,
     offset: u32,
     bytes: Vec<u32>,
   },
-  /// Binds a vertex buffer to the render pipeline.
+  /// Bind a vertex buffer by index as declared on the pipeline.
   BindVertexBuffer {
     pipeline: super::ResourceId,
     buffer: u32,
   },
-  /// Draws a graphical primitive.
+  /// Issue a non‑indexed draw for the provided vertex range.
   Draw { vertices: Range<u32> },
-}
-
-impl RenderCommand {
-  /// Converts the RenderCommand into a platform compatible render command.
-  pub(super) fn into_platform_command(
-    &self,
-    render_context: &mut RenderContext,
-  ) -> PlatformRenderCommand {
-    return match self {
-      RenderCommand::SetViewports {
-        start_at,
-        viewports,
-      } => PlatformRenderCommand::SetViewports {
-        start_at: *start_at,
-        viewports: viewports
-          .into_iter()
-          .map(|viewport| viewport.clone_gfx_viewport())
-          .collect::<Vec<PlatformViewPort>>(),
-      },
-      RenderCommand::SetScissors {
-        start_at,
-        viewports,
-      } => PlatformRenderCommand::SetScissors {
-        start_at: *start_at,
-        viewports: viewports
-          .into_iter()
-          .map(|viewport| viewport.clone_gfx_viewport())
-          .collect::<Vec<PlatformViewPort>>(),
-      },
-      RenderCommand::BeginRenderPass {
-        render_pass,
-        viewport,
-      } => {
-        let surface = render_context.internal_surface();
-        let frame_buffer = render_context.allocate_and_get_frame_buffer(
-          render_context
-            .get_render_pass(*render_pass)
-            .into_gfx_render_pass()
-            .as_ref(),
-        );
-
-        PlatformRenderCommand::BeginRenderPass {
-          render_pass: render_context
-            .get_render_pass(*render_pass)
-            .into_gfx_render_pass(),
-          surface: surface.clone(),
-          frame_buffer: frame_buffer.clone(),
-          viewport: viewport.clone_gfx_viewport(),
-        }
-      }
-      RenderCommand::EndRenderPass => PlatformRenderCommand::EndRenderPass,
-      RenderCommand::SetPipeline { pipeline } => {
-        PlatformRenderCommand::AttachGraphicsPipeline {
-          pipeline: render_context
-            .render_pipelines
-            .get(*pipeline)
-            .unwrap()
-            .into_platform_render_pipeline(),
-        }
-      }
-      RenderCommand::PushConstants {
-        pipeline,
-        stage,
-        offset,
-        bytes,
-      } => PlatformRenderCommand::PushConstants {
-        pipeline: render_context
-          .render_pipelines
-          .get(*pipeline)
-          .unwrap()
-          .into_platform_render_pipeline(),
-        stage: *stage,
-        offset: *offset,
-        bytes: bytes.clone(),
-      },
-      RenderCommand::BindVertexBuffer { pipeline, buffer } => {
-        PlatformRenderCommand::BindVertexBuffer {
-          buffer: render_context
-            .render_pipelines
-            .get(*pipeline)
-            .unwrap()
-            .buffers()
-            .get(*buffer as usize)
-            .unwrap()
-            .internal_buffer_rc(),
-        }
-      }
-      RenderCommand::Draw { vertices } => PlatformRenderCommand::Draw {
-        vertices: vertices.clone(),
-      },
-    };
-  }
 }

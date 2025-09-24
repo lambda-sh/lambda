@@ -1,5 +1,2 @@
 pub mod application;
-pub use application::{
-  ApplicationRuntime,
-  ApplicationRuntimeBuilder,
-};
+pub use application::{ApplicationRuntime, ApplicationRuntimeBuilder};
