@@ -2,10 +2,10 @@ name: compile & test lambda-rs (wgpu)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
   workflow_dispatch:
 
@@ -20,15 +20,15 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
-          rustup-toolchain: "stable"
-          features: "lambda-rs/with-vulkan"
-        - os: windows-latest
-          rustup-toolchain: "stable"
-          features: "lambda-rs/with-dx12"
-        - os: macos-latest
-          rustup-toolchain: "stable"
-          features: "lambda-rs/with-metal"
+          - os: ubuntu-latest
+            rustup-toolchain: "stable"
+            features: "lambda-rs/with-vulkan"
+          - os: windows-latest
+            rustup-toolchain: "stable"
+            features: "lambda-rs/with-dx12"
+          - os: macos-latest
+            rustup-toolchain: "stable"
+            features: "lambda-rs/with-metal"
 
     steps:
       - name: Checkout Repository
@@ -54,6 +54,7 @@ jobs:
       - name: Obtain rust toolchain for ${{ matrix.rustup-toolchain }}
         run: |
           rustup toolchain install ${{ matrix.rustup-toolchain }}
+          rustup component add rustfmt
           rustup default ${{ matrix.rustup-toolchain }}
 
       - name: Check formatting
