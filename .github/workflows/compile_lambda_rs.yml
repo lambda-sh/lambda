@@ -54,11 +54,12 @@ jobs:
       - name: Obtain rust toolchain for ${{ matrix.rustup-toolchain }}
         run: |
           rustup toolchain install ${{ matrix.rustup-toolchain }}
-          rustup component add rustfmt
           rustup default ${{ matrix.rustup-toolchain }}
 
       - name: Check formatting
-        run: cargo fmt --all --check
+        run: |
+          rustup component add rustfmt --toolchain nightly-2025-09-26
+          cargo +nightly-nightly-2025-09-26 fmt --all --check
 
       - name: Build workspace
         run: cargo build --workspace --features ${{ matrix.features }}
