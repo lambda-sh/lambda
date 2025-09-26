@@ -22,8 +22,8 @@ pub struct InstanceBuilder {
   label: Option<String>,
   backends: wgpu::Backends,
   flags: wgpu::InstanceFlags,
-  dx12_shader_compiler: wgpu::Dx12Compiler,
-  gles_minor_version: wgpu::Gles3MinorVersion,
+  backend_options: wgpu::BackendOptions,
+  memory_budget_thresholds: wgpu::MemoryBudgetThresholds,
 }
 
 impl InstanceBuilder {
@@ -33,8 +33,8 @@ impl InstanceBuilder {
       label: None,
       backends: wgpu::Backends::PRIMARY,
       flags: wgpu::InstanceFlags::default(),
-      dx12_shader_compiler: wgpu::Dx12Compiler::default(),
-      gles_minor_version: wgpu::Gles3MinorVersion::default(),
+      backend_options: wgpu::BackendOptions::default(),
+      memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
     }
   }
 
@@ -61,7 +61,7 @@ impl InstanceBuilder {
     mut self,
     compiler: wgpu::Dx12Compiler,
   ) -> Self {
-    self.dx12_shader_compiler = compiler;
+    self.backend_options.dx12.shader_compiler = compiler;
     self
   }
 
@@ -70,7 +70,7 @@ impl InstanceBuilder {
     mut self,
     version: wgpu::Gles3MinorVersion,
   ) -> Self {
-    self.gles_minor_version = version;
+    self.backend_options.gl.gles_minor_version = version;
     self
   }
 
@@ -79,13 +79,13 @@ impl InstanceBuilder {
     let descriptor = wgpu::InstanceDescriptor {
       backends: self.backends,
       flags: self.flags,
-      dx12_shader_compiler: self.dx12_shader_compiler,
-      gles_minor_version: self.gles_minor_version,
+      memory_budget_thresholds: self.memory_budget_thresholds,
+      backend_options: self.backend_options,
     };
 
     Instance {
       label: self.label,
-      instance: wgpu::Instance::new(descriptor),
+      instance: wgpu::Instance::new(&descriptor),
     }
   }
 }
@@ -116,7 +116,7 @@ impl Instance {
   pub fn request_adapter<'surface, 'window>(
     &self,
     options: &wgpu::RequestAdapterOptions<'surface, 'window>,
-  ) -> Option<wgpu::Adapter> {
+  ) -> Result<wgpu::Adapter, wgpu::RequestAdapterError> {
     block_on(self.instance.request_adapter(options))
   }
 }
@@ -408,7 +408,7 @@ impl GpuBuilder {
         force_fallback_adapter: self.force_fallback_adapter,
         compatible_surface: surface.map(|surface| surface.surface()),
       })
-      .ok_or(GpuBuildError::AdapterUnavailable)?;
+      .map_err(|_| GpuBuildError::AdapterUnavailable)?;
 
     let adapter_features = adapter.features();
     if !adapter_features.contains(self.required_features) {
@@ -423,9 +423,10 @@ impl GpuBuilder {
       required_features: self.required_features,
       required_limits: adapter.limits(),
       memory_hints: self.memory_hints,
+      trace: wgpu::Trace::Off,
     };
 
-    let (device, queue) = block_on(adapter.request_device(&descriptor, None))?;
+    let (device, queue) = block_on(adapter.request_device(&descriptor))?;
 
     Ok(Gpu {
       adapter,

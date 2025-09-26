@@ -227,6 +227,7 @@ impl RenderContext {
 
           let color_attachment = wgpu::RenderPassColorAttachment {
             view,
+            depth_slice: None,
             resolve_target: None,
             ops: pass.color_ops(),
           };
