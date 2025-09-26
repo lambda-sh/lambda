@@ -1,14 +1,29 @@
 use lambda::{
   component::Component,
-  events::{ComponentEvent, Events, Key, WindowEvent},
+  events::{
+    ComponentEvent,
+    Events,
+    Key,
+    WindowEvent,
+  },
   render::{
     command::RenderCommand,
-    pipeline, render_pass,
-    shader::{Shader, ShaderBuilder, ShaderKind, VirtualShader},
-    viewport, RenderContext,
+    pipeline,
+    render_pass,
+    shader::{
+      Shader,
+      ShaderBuilder,
+      ShaderKind,
+      VirtualShader,
+    },
+    viewport,
+    RenderContext,
   },
   runtime::start_runtime,
-  runtimes::{application::ComponentResult, ApplicationRuntimeBuilder},
+  runtimes::{
+    application::ComponentResult,
+    ApplicationRuntimeBuilder,
+  },
 };
 
 pub struct DemoComponent {

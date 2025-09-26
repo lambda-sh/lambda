@@ -2,7 +2,10 @@
 
 // Expose the platform shader compiler abstraction
 pub use lambda_platform::shader::{
-  ShaderCompiler, ShaderCompilerBuilder, ShaderKind, VirtualShader,
+  ShaderCompiler,
+  ShaderCompilerBuilder,
+  ShaderKind,
+  VirtualShader,
 };
 
 /// Reusable compiler for turning virtual shaders into SPIR‑V modules.

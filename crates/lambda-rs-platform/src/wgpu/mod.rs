@@ -7,11 +7,13 @@
 //! important handles when you need to drop down to raw `wgpu`.
 
 use pollster::block_on;
-use wgpu::rwh::{HasDisplayHandle as _, HasWindowHandle as _};
+pub use wgpu as types;
+use wgpu::rwh::{
+  HasDisplayHandle as _,
+  HasWindowHandle as _,
+};
 
 use crate::winit::WindowHandle;
-
-pub use wgpu as types;
 
 #[derive(Debug, Clone)]
 /// Builder for creating a `wgpu::Instance` with consistent defaults.

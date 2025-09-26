@@ -1,8 +1,14 @@
-use std::{fmt::Debug, time::Duration};
+use std::{
+  fmt::Debug,
+  time::Duration,
+};
 
 use crate::{
   events::Events,
-  render::{command::RenderCommand, RenderContext},
+  render::{
+    command::RenderCommand,
+    RenderContext,
+  },
 };
 
 /// The Component Interface for allowing Component based data structures

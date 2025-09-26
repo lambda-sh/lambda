@@ -2,7 +2,10 @@ use std::io::Read;
 
 use shaderc;
 
-use super::{ShaderKind, VirtualShader};
+use super::{
+  ShaderKind,
+  VirtualShader,
+};
 
 /// Builder for the shaderc platform shader compiler.
 pub struct ShaderCompilerBuilder {}

@@ -1,22 +1,44 @@
-use lambda::render::{pipeline::PipelineStage, ColorFormat};
 use lambda::{
   component::Component,
   events::WindowEvent,
   logging,
-  math::{matrix, matrix::Matrix, vector::Vector},
+  math::{
+    matrix,
+    matrix::Matrix,
+    vector::Vector,
+  },
   render::{
     buffer::BufferBuilder,
     command::RenderCommand,
-    mesh::{Mesh, MeshBuilder},
-    pipeline::RenderPipelineBuilder,
+    mesh::{
+      Mesh,
+      MeshBuilder,
+    },
+    pipeline::{
+      PipelineStage,
+      RenderPipelineBuilder,
+    },
     render_pass::RenderPassBuilder,
-    shader::{Shader, ShaderBuilder, ShaderKind, VirtualShader},
-    vertex::{VertexAttribute, VertexBuilder, VertexElement},
-    viewport, ResourceId,
+    shader::{
+      Shader,
+      ShaderBuilder,
+      ShaderKind,
+      VirtualShader,
+    },
+    vertex::{
+      VertexAttribute,
+      VertexBuilder,
+      VertexElement,
+    },
+    viewport,
+    ColorFormat,
+    ResourceId,
   },
   runtime::start_runtime,
   runtimes::{
-    application::ComponentResult, ApplicationRuntime, ApplicationRuntimeBuilder,
+    application::ComponentResult,
+    ApplicationRuntime,
+    ApplicationRuntimeBuilder,
   },
 };
 

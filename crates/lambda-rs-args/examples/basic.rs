@@ -1,4 +1,9 @@
-use args::{Argument, ArgumentParser, ArgumentType, ArgumentValue};
+use args::{
+  Argument,
+  ArgumentParser,
+  ArgumentType,
+  ArgumentValue,
+};
 
 fn main() {
   let parser = ArgumentParser::new("basic")

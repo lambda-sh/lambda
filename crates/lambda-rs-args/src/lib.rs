@@ -2,8 +2,10 @@
 //! Lambda Args is a simple argument parser for Rust. It is designed to be
 //! simple to use and primarily for use in lambda command line applications.
 
-use std::collections::HashMap;
-use std::fmt;
+use std::{
+  collections::HashMap,
+  fmt,
+};
 
 pub struct ArgumentParser {
   name: String,

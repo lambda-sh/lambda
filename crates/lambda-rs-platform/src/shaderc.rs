@@ -5,5 +5,8 @@
   note = "Use `lambda_platform::shader` instead of `lambda_platform::shaderc`."
 )]
 pub use crate::shader::{
-  ShaderCompiler, ShaderCompilerBuilder, ShaderKind, VirtualShader,
+  ShaderCompiler,
+  ShaderCompilerBuilder,
+  ShaderKind,
+  VirtualShader,
 };

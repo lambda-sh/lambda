@@ -2,9 +2,16 @@
 
 use std::rc::Rc;
 
-use lambda_platform::wgpu::types::{self as wgpu, util::DeviceExt};
+use lambda_platform::wgpu::types::{
+  self as wgpu,
+  util::DeviceExt,
+};
 
-use super::{mesh::Mesh, vertex::Vertex, RenderContext};
+use super::{
+  mesh::Mesh,
+  vertex::Vertex,
+  RenderContext,
+};
 
 #[derive(Clone, Copy, Debug)]
 /// High‑level classification for buffers created by the engine.
