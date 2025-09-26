@@ -59,7 +59,7 @@ jobs:
       - name: Check formatting
         run: |
           rustup component add rustfmt --toolchain nightly-2025-09-26
-          cargo +nightly-nightly-2025-09-26 fmt --all --check
+          cargo +nightly-2025-09-26 fmt --all --check
 
       - name: Build workspace
         run: cargo build --workspace --features ${{ matrix.features }}
