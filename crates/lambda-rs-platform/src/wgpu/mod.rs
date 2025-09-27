@@ -510,10 +510,11 @@ mod tests {
 
   #[test]
   fn gpu_build_error_wraps_request_device_error() {
-    let error = GpuBuildError::from(wgpu::RequestDeviceError::NotFound);
-    assert!(matches!(
-      error,
-      GpuBuildError::RequestDevice(wgpu::RequestDeviceError::NotFound)
-    ));
+    // RequestDeviceError is opaque in wgpu 26 (no public constructors or variants).
+    // This test previously validated pattern matching on a specific variant; now we
+    // simply assert the From<wgpu::RequestDeviceError> implementation exists by
+    // checking the trait bound at compile time.
+    fn assert_from_impl<T: From<wgpu::RequestDeviceError>>() {}
+    assert_from_impl::<GpuBuildError>();
   }
 }
