@@ -27,8 +27,8 @@ pub mod winit_exports {
     event::{
       ElementState,
       Event,
+      KeyEvent,
       MouseButton,
-      VirtualKeyCode,
       WindowEvent,
     },
     event_loop::{
@@ -36,6 +36,10 @@ pub mod winit_exports {
       EventLoop,
       EventLoopProxy,
       EventLoopWindowTarget,
+    },
+    keyboard::{
+      KeyCode,
+      PhysicalKey,
     },
   };
 }
@@ -49,7 +53,9 @@ impl LoopBuilder {
   }
 
   pub fn build<Events: 'static + std::fmt::Debug>(self) -> Loop<Events> {
-    let event_loop = EventLoopBuilder::<Events>::with_user_event().build();
+    let event_loop = EventLoopBuilder::<Events>::with_user_event()
+      .build()
+      .expect("Failed to build event loop");
     return Loop { event_loop };
   }
 }
@@ -212,11 +218,16 @@ impl<E: 'static + std::fmt::Debug> Loop<E> {
   }
 
   /// Uses the winit event loop to run forever
-  pub fn run_forever<Callback>(self, callback: Callback)
+  pub fn run_forever<Callback>(self, mut callback: Callback)
   where
-    Callback: 'static
-      + FnMut(Event<E>, &EventLoopWindowTarget<E>, &mut ControlFlow) -> (),
+    Callback: 'static + FnMut(Event<E>, &EventLoopWindowTarget<E>),
   {
-    self.event_loop.run(callback);
+    self
+      .event_loop
+      .run(move |event, target| {
+        target.set_control_flow(ControlFlow::Poll);
+        callback(event, target);
+      })
+      .expect("Event loop terminated unexpectedly");
   }
 }

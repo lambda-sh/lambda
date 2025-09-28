@@ -12,25 +12,19 @@ pub mod vertex;
 pub mod viewport;
 pub mod window;
 
-use std::{
-  mem::swap,
-  rc::Rc,
-};
+use std::iter;
 
-/// ColorFormat is a type alias for the color format used by the surface and
-/// vertex buffers. They denote the size of the color channels and the number of
-/// channels being used.
-pub use lambda_platform::gfx::surface::ColorFormat;
-use lambda_platform::gfx::{
-  command::{
-    Command,
-    CommandBufferBuilder,
-    CommandBufferFeatures,
-    CommandBufferLevel,
-  },
-  framebuffer::FramebufferBuilder,
-  surface::SwapchainBuilder,
+use lambda_platform::wgpu::{
+  types as wgpu,
+  Gpu,
+  GpuBuilder,
+  Instance,
+  InstanceBuilder,
+  Surface,
+  SurfaceBuilder,
 };
+use logging;
+pub use vertex::ColorFormat;
 
 use self::{
   command::RenderCommand,
@@ -38,87 +32,90 @@ use self::{
   render_pass::RenderPass,
 };
 
-/// A RenderContext is a localized rendering context that can be used to render
-/// to a window. It is localized to a single window at the moment.
+/// Builder for configuring a `RenderContext` tied to a single window.
+///
+/// The builder wires up a `wgpu::Instance`, `Surface`, and `Gpu` using the
+/// cross‑platform platform layer, then configures the surface with reasonable
+/// defaults. Use this when setting up rendering for an application window.
 pub struct RenderContextBuilder {
   name: String,
-  render_timeout: u64,
+  _render_timeout: u64,
 }
 
 impl RenderContextBuilder {
-  /// Create a new localized RenderContext with the given name.
+  /// Create a new builder tagged with a human‑readable `name` used in labels.
   pub fn new(name: &str) -> Self {
-    return Self {
+    Self {
       name: name.to_string(),
-      render_timeout: 1_000_000_000,
-    };
+      _render_timeout: 1_000_000_000,
+    }
   }
 
-  /// The time rendering has to complete before a timeout occurs.
+  /// Set how long rendering may take before timing out (nanoseconds).
   pub fn with_render_timeout(mut self, render_timeout: u64) -> Self {
-    self.render_timeout = render_timeout;
-    return self;
+    self._render_timeout = render_timeout;
+    self
   }
 
-  /// Builds a RenderContext and injects it into the application window.
-  /// Currently only supports building a Rendering Context utilizing the
-  /// systems primary GPU.
+  /// Build a `RenderContext` for the provided `window` and configure the
+  /// presentation surface.
   pub fn build(self, window: &window::Window) -> RenderContext {
-    let RenderContextBuilder {
-      name,
-      render_timeout,
-    } = self;
+    let RenderContextBuilder { name, .. } = self;
 
-    let mut instance = internal::InstanceBuilder::new()
-      .build::<internal::RenderBackend>(name.as_str());
-    let surface = Rc::new(
-      internal::SurfaceBuilder::new().build(&instance, window.window_handle()),
-    );
+    let instance = InstanceBuilder::new()
+      .with_label(&format!("{} Instance", name))
+      .build();
 
-    // Build a GPU with a Graphical Render queue that can render to our surface.
-    let mut gpu = internal::GpuBuilder::new()
-      .with_render_queue_type(internal::RenderQueueType::Graphical)
-      .build(&mut instance, Some(&surface))
-      .expect("Failed to build a GPU with a graphical render queue.");
+    let mut surface = SurfaceBuilder::new()
+      .with_label(&format!("{} Surface", name))
+      .build(&instance, window.window_handle())
+      .expect("Failed to create rendering surface");
 
-    // Build command pool and allocate a single buffer named Primary
-    let command_pool = internal::CommandPoolBuilder::new().build(&gpu);
+    let gpu = GpuBuilder::new()
+      .with_label(&format!("{} Device", name))
+      .build(&instance, Some(&surface))
+      .expect("Failed to create GPU device");
 
-    // Build our rendering submission fence and semaphore.
-    let submission_fence = internal::RenderSubmissionFenceBuilder::new()
-      .with_render_timeout(render_timeout)
-      .build(&mut gpu);
+    let size = window.dimensions();
+    let config = surface
+      .configure_with_defaults(
+        gpu.adapter(),
+        gpu.device(),
+        size,
+        wgpu::PresentMode::Fifo,
+        wgpu::TextureUsages::RENDER_ATTACHMENT,
+      )
+      .expect("Failed to configure surface");
 
-    let render_semaphore =
-      internal::RenderSemaphoreBuilder::new().build(&mut gpu);
-
-    return RenderContext {
-      name,
+    RenderContext {
+      label: name,
       instance,
+      surface,
       gpu,
-      surface: surface.clone(),
-      frame_buffer: None,
-      submission_fence: Some(submission_fence),
-      render_semaphore: Some(render_semaphore),
-      command_pool: Some(command_pool),
+      config,
+      present_mode: wgpu::PresentMode::Fifo,
+      texture_usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+      size,
       render_passes: vec![],
       render_pipelines: vec![],
-    };
+    }
   }
 }
 
-/// Generic Rendering API setup to use the current platforms primary
-/// Rendering Backend
+/// High‑level rendering context backed by `wgpu` for a single window.
+///
+/// The context owns the `Instance`, presentation `Surface`, and `Gpu` device
+/// objects and maintains a set of attached render passes and pipelines used
+/// while encoding command streams for each frame.
 pub struct RenderContext {
-  name: String,
-  instance: internal::Instance<internal::RenderBackend>,
-  gpu: internal::Gpu<internal::RenderBackend>,
-  surface: Rc<internal::Surface<internal::RenderBackend>>,
-  frame_buffer: Option<Rc<internal::Framebuffer<internal::RenderBackend>>>,
-  submission_fence:
-    Option<internal::RenderSubmissionFence<internal::RenderBackend>>,
-  render_semaphore: Option<internal::RenderSemaphore<internal::RenderBackend>>,
-  command_pool: Option<internal::CommandPool<internal::RenderBackend>>,
+  label: String,
+  instance: Instance,
+  surface: Surface<'static>,
+  gpu: Gpu,
+  config: wgpu::SurfaceConfiguration,
+  present_mode: wgpu::PresentMode,
+  texture_usage: wgpu::TextureUsages,
+  size: (u32, u32),
   render_passes: Vec<RenderPass>,
   render_pipelines: Vec<RenderPipeline>,
 }
@@ -126,255 +123,268 @@ pub struct RenderContext {
 pub type ResourceId = usize;
 
 impl RenderContext {
-  /// Permanently transfer a render pipeline to the render context in exchange
-  /// for a resource ID that you can use in render commands.
+  /// Attach a render pipeline and return a handle for use in commands.
   pub fn attach_pipeline(&mut self, pipeline: RenderPipeline) -> ResourceId {
-    let index = self.render_pipelines.len();
+    let id = self.render_pipelines.len();
     self.render_pipelines.push(pipeline);
-    return index;
+    id
   }
 
-  /// Permanently transfer a render pipeline to the render context in exchange
-  /// for a resource ID that you can use in render commands.
+  /// Attach a render pass and return a handle for use in commands.
   pub fn attach_render_pass(&mut self, render_pass: RenderPass) -> ResourceId {
-    let index = self.render_passes.len();
+    let id = self.render_passes.len();
     self.render_passes.push(render_pass);
-    return index;
+    id
   }
 
-  /// destroys the RenderContext and all associated resources.
-  pub fn destroy(mut self) {
-    logging::debug!("{} will now start destroying resources.", self.name);
-
-    // Destroy the submission fence and rendering semaphore.
-    self
-      .submission_fence
-      .take()
-      .expect(
-        "Couldn't take the submission fence from the context and destroy it.",
-      )
-      .destroy(&self.gpu);
-    self
-      .render_semaphore
-      .take()
-      .expect("Couldn't take the rendering semaphore from the context and destroy it.")
-      .destroy(&self.gpu);
-
-    self
-      .command_pool
-      .as_mut()
-      .unwrap()
-      .deallocate_command_buffer("primary");
-
-    self
-      .command_pool
-      .take()
-      .expect("Couldn't take the command pool from the context and destroy it.")
-      .destroy(&self.gpu);
-
-    // Destroy render passes.
-    let mut render_passes = vec![];
-    swap(&mut self.render_passes, &mut render_passes);
-
-    for render_pass in render_passes {
-      render_pass.destroy(&self);
-    }
-
-    // Destroy render pipelines.
-    let mut render_pipelines = vec![];
-    swap(&mut self.render_pipelines, &mut render_pipelines);
-
-    for render_pipeline in render_pipelines {
-      render_pipeline.destroy(&self);
-    }
-
-    // Takes the inner surface and destroys it.
-    let mut surface = Rc::try_unwrap(self.surface)
-      .expect("Couldn't obtain the surface from the context.");
-
-    surface.remove_swapchain(&self.gpu);
-    surface.destroy(&self.instance);
+  /// Explicitly destroy the context. Dropping also releases resources.
+  pub fn destroy(self) {
+    drop(self);
   }
 
-  pub fn allocate_and_get_frame_buffer(
-    &mut self,
-    render_pass: &internal::RenderPass<internal::RenderBackend>,
-  ) -> Rc<lambda_platform::gfx::framebuffer::Framebuffer<internal::RenderBackend>>
-  {
-    let frame_buffer = FramebufferBuilder::new().build(
-      &mut self.gpu,
-      &render_pass,
-      self.surface.as_ref(),
-    );
-
-    // TODO(vmarcella): Update the framebuffer allocation to not be so hacky.
-    // FBAs can only be allocated once a render pass has begun, but must be
-    // cleaned up after commands have been submitted forcing us
-    self.frame_buffer = Some(Rc::new(frame_buffer));
-    return self.frame_buffer.as_ref().unwrap().clone();
-  }
-
-  /// Allocates a command buffer and records commands to the GPU. This is the
-  /// primary entry point for submitting commands to the GPU and where rendering
-  /// will occur.
+  /// Render a list of commands. No‑ops when the list is empty.
+  ///
+  /// Errors are logged and do not panic; see `RenderError` for cases.
   pub fn render(&mut self, commands: Vec<RenderCommand>) {
-    let (width, height) = self
-      .surface
-      .size()
-      .expect("Surface has no size configured.");
-
-    let swapchain = SwapchainBuilder::new()
-      .with_size(width, height)
-      .build(&self.gpu, &self.surface);
-
-    if self.surface.needs_swapchain() {
-      Rc::get_mut(&mut self.surface)
-        .expect("Failed to get mutable reference to surface.")
-        .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
-        .expect("Failed to apply the swapchain to the surface.");
+    if commands.is_empty() {
+      return;
     }
 
-    self
-      .submission_fence
-      .as_mut()
-      .expect("Failed to get the submission fence.")
-      .block_until_ready(&mut self.gpu, None);
-
-    let platform_command_list = commands
-      .into_iter()
-      .map(|command| command.into_platform_command(self))
-      .collect();
-
-    let mut command_buffer =
-      CommandBufferBuilder::new(CommandBufferLevel::Primary)
-        .with_feature(CommandBufferFeatures::ResetEverySubmission)
-        .build(
-          self
-            .command_pool
-            .as_mut()
-            .expect("No command pool to create a buffer from"),
-          "primary",
-        );
-
-    // Start recording commands, issue the high level render commands
-    // that came from an application, and then submit the commands to the GPU
-    // for rendering.
-    command_buffer.issue_command(PlatformRenderCommand::BeginRecording);
-    command_buffer.issue_commands(platform_command_list);
-    command_buffer.issue_command(PlatformRenderCommand::EndRecording);
-
-    self.gpu.submit_command_buffer(
-      &mut command_buffer,
-      vec![self.render_semaphore.as_ref().unwrap()],
-      self.submission_fence.as_mut().unwrap(),
-    );
-
-    self
-      .gpu
-      .render_to_surface(
-        Rc::get_mut(&mut self.surface)
-          .expect("Failed to obtain a surface to render on."),
-        self.render_semaphore.as_mut().unwrap(),
-      )
-      .expect("Failed to render to the surface");
-
-    // Destroys the frame buffer after the commands have been submitted and the
-    // frame buffer is no longer needed.
-    match self.frame_buffer {
-      Some(_) => {
-        Rc::try_unwrap(self.frame_buffer.take().unwrap())
-          .expect("Failed to unwrap the frame buffer.")
-          .destroy(&self.gpu);
-      }
-      None => {}
+    if let Err(err) = self.render_internal(commands) {
+      logging::error!("Render error: {:?}", err);
     }
   }
 
+  /// Resize the surface and update surface configuration.
   pub fn resize(&mut self, width: u32, height: u32) {
-    let swapchain = SwapchainBuilder::new()
-      .with_size(width, height)
-      .build(&self.gpu, &self.surface);
+    if width == 0 || height == 0 {
+      return;
+    }
 
-    if self.surface.needs_swapchain() {
-      Rc::get_mut(&mut self.surface)
-        .expect("Failed to get mutable reference to surface.")
-        .apply_swapchain(&self.gpu, swapchain, 1_000_000_000)
-        .expect("Failed to apply the swapchain to the surface.");
+    self.size = (width, height);
+    if let Err(err) = self.reconfigure_surface(self.size) {
+      logging::error!("Failed to resize surface: {:?}", err);
     }
   }
 
-  /// Get the render pass with the resource ID that was provided upon
-  /// attachment.
+  /// Borrow a previously attached render pass by id.
   pub fn get_render_pass(&self, id: ResourceId) -> &RenderPass {
-    return &self.render_passes[id];
+    &self.render_passes[id]
   }
 
-  /// Get the render pipeline with the resource ID that was provided upon
-  /// attachment.
-  pub fn get_render_pipeline(&mut self, id: ResourceId) -> &RenderPipeline {
-    return &self.render_pipelines[id];
-  }
-}
-
-impl RenderContext {
-  /// Internal access to the RenderContext's GPU.
-  pub(super) fn internal_gpu(&self) -> &internal::Gpu<internal::RenderBackend> {
-    return &self.gpu;
+  /// Borrow a previously attached render pipeline by id.
+  pub fn get_render_pipeline(&self, id: ResourceId) -> &RenderPipeline {
+    &self.render_pipelines[id]
   }
 
-  /// Internal mutable access to the RenderContext's GPU.
-  pub(super) fn internal_mutable_gpu(
+  pub(crate) fn device(&self) -> &wgpu::Device {
+    self.gpu.device()
+  }
+
+  pub(crate) fn queue(&self) -> &wgpu::Queue {
+    self.gpu.queue()
+  }
+
+  pub(crate) fn surface_format(&self) -> wgpu::TextureFormat {
+    self.config.format
+  }
+
+  /// Encode and submit GPU work for a single frame.
+  fn render_internal(
     &mut self,
-  ) -> &mut internal::Gpu<internal::RenderBackend> {
-    return &mut self.gpu;
+    commands: Vec<RenderCommand>,
+  ) -> Result<(), RenderError> {
+    if self.size.0 == 0 || self.size.1 == 0 {
+      return Ok(());
+    }
+
+    let mut frame = match self.surface.acquire_next_frame() {
+      Ok(frame) => frame,
+      Err(wgpu::SurfaceError::Lost) | Err(wgpu::SurfaceError::Outdated) => {
+        self.reconfigure_surface(self.size)?;
+        self
+          .surface
+          .acquire_next_frame()
+          .map_err(RenderError::Surface)?
+      }
+      Err(err) => return Err(RenderError::Surface(err)),
+    };
+
+    let view = frame.texture_view();
+    let mut encoder =
+      self
+        .device()
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+          label: Some("lambda-render-command-encoder"),
+        });
+
+    let mut command_iter = commands.into_iter();
+    while let Some(command) = command_iter.next() {
+      match command {
+        RenderCommand::BeginRenderPass {
+          render_pass,
+          viewport,
+        } => {
+          let pass = self.render_passes.get(render_pass).ok_or_else(|| {
+            RenderError::Configuration(format!(
+              "Unknown render pass {render_pass}"
+            ))
+          })?;
+
+          let color_attachment = wgpu::RenderPassColorAttachment {
+            view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: pass.color_ops(),
+          };
+          let color_attachments = [Some(color_attachment)];
+          let mut pass_encoder =
+            encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+              label: pass.label(),
+              color_attachments: &color_attachments,
+              depth_stencil_attachment: None,
+              timestamp_writes: None,
+              occlusion_query_set: None,
+            });
+
+          self.encode_pass(&mut pass_encoder, viewport, &mut command_iter)?;
+        }
+        other => {
+          logging::warn!(
+            "Ignoring render command outside of a render pass: {:?}",
+            other
+          );
+        }
+      }
+    }
+
+    self.queue().submit(iter::once(encoder.finish()));
+    frame.present();
+    Ok(())
   }
 
-  pub(super) fn internal_surface(
-    &self,
-  ) -> Rc<lambda_platform::gfx::surface::Surface<internal::RenderBackend>> {
-    return self.surface.clone();
+  /// Encode a single render pass and consume commands until `EndRenderPass`.
+  fn encode_pass<I>(
+    &mut self,
+    pass: &mut wgpu::RenderPass<'_>,
+    initial_viewport: viewport::Viewport,
+    commands: &mut I,
+  ) -> Result<(), RenderError>
+  where
+    I: Iterator<Item = RenderCommand>,
+  {
+    Self::apply_viewport(pass, &initial_viewport);
+
+    while let Some(command) = commands.next() {
+      match command {
+        RenderCommand::EndRenderPass => return Ok(()),
+        RenderCommand::SetPipeline { pipeline } => {
+          let pipeline_ref =
+            self.render_pipelines.get(pipeline).ok_or_else(|| {
+              RenderError::Configuration(format!("Unknown pipeline {pipeline}"))
+            })?;
+          pass.set_pipeline(pipeline_ref.pipeline());
+        }
+        RenderCommand::SetViewports { viewports, .. } => {
+          for viewport in viewports {
+            Self::apply_viewport(pass, &viewport);
+          }
+        }
+        RenderCommand::SetScissors { viewports, .. } => {
+          for viewport in viewports {
+            let (x, y, width, height) = viewport.scissor_u32();
+            pass.set_scissor_rect(x, y, width, height);
+          }
+        }
+        RenderCommand::BindVertexBuffer { pipeline, buffer } => {
+          let pipeline_ref =
+            self.render_pipelines.get(pipeline).ok_or_else(|| {
+              RenderError::Configuration(format!("Unknown pipeline {pipeline}"))
+            })?;
+          let buffer_ref =
+            pipeline_ref.buffers().get(buffer as usize).ok_or_else(|| {
+              RenderError::Configuration(format!(
+                "Vertex buffer index {buffer} not found for pipeline {pipeline}"
+              ))
+            })?;
+          pass.set_vertex_buffer(buffer as u32, buffer_ref.raw().slice(..));
+        }
+        RenderCommand::PushConstants {
+          pipeline,
+          stage,
+          offset,
+          bytes,
+        } => {
+          let _ = self.render_pipelines.get(pipeline).ok_or_else(|| {
+            RenderError::Configuration(format!("Unknown pipeline {pipeline}"))
+          })?;
+          let slice = unsafe {
+            std::slice::from_raw_parts(
+              bytes.as_ptr() as *const u8,
+              bytes.len() * std::mem::size_of::<u32>(),
+            )
+          };
+          pass.set_push_constants(stage.to_wgpu(), offset, slice);
+        }
+        RenderCommand::Draw { vertices } => {
+          pass.draw(vertices, 0..1);
+        }
+        RenderCommand::BeginRenderPass { .. } => {
+          return Err(RenderError::Configuration(
+            "Nested render passes are not supported.".to_string(),
+          ));
+        }
+      }
+    }
+
+    Err(RenderError::Configuration(
+      "Render pass did not terminate with EndRenderPass".to_string(),
+    ))
+  }
+
+  /// Apply both viewport and scissor state to the active pass.
+  fn apply_viewport(
+    pass: &mut wgpu::RenderPass<'_>,
+    viewport: &viewport::Viewport,
+  ) {
+    let (x, y, width, height, min_depth, max_depth) = viewport.viewport_f32();
+    pass.set_viewport(x, y, width, height, min_depth, max_depth);
+    let (sx, sy, sw, sh) = viewport.scissor_u32();
+    pass.set_scissor_rect(sx, sy, sw, sh);
+  }
+
+  /// Reconfigure the presentation surface using current present mode/usage.
+  fn reconfigure_surface(
+    &mut self,
+    size: (u32, u32),
+  ) -> Result<(), RenderError> {
+    let config = self
+      .surface
+      .configure_with_defaults(
+        self.gpu.adapter(),
+        self.gpu.device(),
+        size,
+        self.present_mode,
+        self.texture_usage,
+      )
+      .map_err(RenderError::Configuration)?;
+
+    self.present_mode = config.present_mode;
+    self.texture_usage = config.usage;
+    self.config = config;
+    Ok(())
   }
 }
 
-type PlatformRenderCommand = Command<internal::RenderBackend>;
+#[derive(Debug)]
+/// Errors that can occur while preparing or presenting a frame.
+pub enum RenderError {
+  Surface(wgpu::SurfaceError),
+  Configuration(String),
+}
 
-pub(crate) mod internal {
-
-  use lambda_platform::gfx::api::RenderingAPI as RenderContext;
-  pub type RenderBackend = RenderContext::Backend;
-
-  pub use lambda_platform::{
-    gfx::{
-      command::{
-        CommandBuffer,
-        CommandBufferBuilder,
-        CommandPool,
-        CommandPoolBuilder,
-      },
-      fence::{
-        RenderSemaphore,
-        RenderSemaphoreBuilder,
-        RenderSubmissionFence,
-        RenderSubmissionFenceBuilder,
-      },
-      framebuffer::Framebuffer,
-      gpu::{
-        Gpu,
-        GpuBuilder,
-        RenderQueueType,
-      },
-      pipeline::RenderPipelineBuilder,
-      render_pass::{
-        RenderPass,
-        RenderPassBuilder,
-      },
-      surface::{
-        Surface,
-        SurfaceBuilder,
-      },
-      Instance,
-      InstanceBuilder,
-    },
-    shaderc::ShaderKind,
-  };
+impl From<wgpu::SurfaceError> for RenderError {
+  fn from(error: wgpu::SurfaceError) -> Self {
+    RenderError::Surface(error)
+  }
 }

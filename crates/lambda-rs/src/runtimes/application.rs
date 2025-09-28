@@ -8,7 +8,10 @@ use lambda_platform::winit::{
   winit_exports::{
     ElementState,
     Event as WinitEvent,
+    KeyCode as WinitKeyCode,
+    KeyEvent as WinitKeyEvent,
     MouseButton,
+    PhysicalKey as WinitPhysicalKey,
     WindowEvent as WinitWindowEvent,
   },
   Loop,
@@ -107,20 +110,12 @@ impl ApplicationRuntimeBuilder {
   /// component stack that allows components to be dynamically pushed into the
   /// Kernel to receive events & render access.
   pub fn build(self) -> ApplicationRuntime {
-    let name = self.app_name;
-    let mut event_loop = LoopBuilder::new().build();
-    let window = self.window_builder.build(&mut event_loop);
-
-    let component_stack = self.components;
-    let render_context = self.render_context_builder.build(&window);
-
-    return ApplicationRuntime {
-      name,
-      event_loop,
-      window,
-      render_context,
-      component_stack,
-    };
+    ApplicationRuntime {
+      name: self.app_name,
+      render_context_builder: self.render_context_builder,
+      window_builder: self.window_builder,
+      component_stack: self.components,
+    }
   }
 }
 
@@ -128,10 +123,9 @@ impl ApplicationRuntimeBuilder {
 /// scene on the primary GPU across Windows, MacOS, and Linux.
 pub struct ApplicationRuntime {
   name: String,
-  event_loop: Loop<Events>,
-  window: Window,
+  render_context_builder: RenderContextBuilder,
+  window_builder: WindowBuilder,
   component_stack: Vec<Box<dyn Component<ComponentResult, String>>>,
-  render_context: RenderContext,
 }
 
 impl ApplicationRuntime {}
@@ -142,16 +136,11 @@ impl Runtime<(), String> for ApplicationRuntime {
   /// of all components, the windowing the render context, and anything
   /// else relevant to the runtime.
   fn run(self) -> Result<(), String> {
-    // Decompose Runtime components to transfer ownership from the runtime to
-    // the event loop closure which will run until the app is closed.
-    let ApplicationRuntime {
-      window,
-      mut event_loop,
-      mut component_stack,
-      name,
-      render_context,
-    } = self;
-
+    let name = self.name;
+    let mut event_loop = LoopBuilder::new().build();
+    let window = self.window_builder.build(&mut event_loop);
+    let mut component_stack = self.component_stack;
+    let mut render_context = self.render_context_builder.build(&window);
     let mut active_render_context = Some(render_context);
 
     let publisher = event_loop.create_event_publisher();
@@ -163,12 +152,12 @@ impl Runtime<(), String> for ApplicationRuntime {
     let mut current_frame = Instant::now();
     let mut runtime_result: Box<Result<(), String>> = Box::new(Ok(()));
 
-    event_loop.run_forever(move |event, _, control_flow| {
+    event_loop.run_forever(move |event, target| {
       let mapped_event: Option<Events> = match event {
         WinitEvent::WindowEvent { event, .. } => match event {
           WinitWindowEvent::CloseRequested => {
             // Issue a Shutdown event to deallocate resources and clean up.
-            control_flow.set_exit();
+            target.exit();
             Some(Events::Runtime {
               event: RuntimeEvent::Shutdown,
               issued_at: Instant::now(),
@@ -188,56 +177,51 @@ impl Runtime<(), String> for ApplicationRuntime {
               issued_at: Instant::now(),
             })
           }
-          WinitWindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-            active_render_context
-              .as_mut()
-              .unwrap()
-              .resize(new_inner_size.width, new_inner_size.height);
-
-            Some(Events::Window {
-              event: WindowEvent::Resize {
-                width: new_inner_size.width,
-                height: new_inner_size.height,
-              },
-              issued_at: Instant::now(),
-            })
-          }
+          WinitWindowEvent::ScaleFactorChanged { .. } => None,
           WinitWindowEvent::Moved(_) => None,
           WinitWindowEvent::Destroyed => None,
           WinitWindowEvent::DroppedFile(_) => None,
           WinitWindowEvent::HoveredFile(_) => None,
           WinitWindowEvent::HoveredFileCancelled => None,
-          WinitWindowEvent::ReceivedCharacter(_) => None,
+          // Character input is delivered via IME; ignore here for now
           WinitWindowEvent::Focused(_) => None,
           WinitWindowEvent::KeyboardInput {
-            device_id: _,
-            input,
+            event: key_event,
             is_synthetic,
-          } => match (input.state, is_synthetic) {
-            (ElementState::Pressed, false) => Some(Events::Keyboard {
-              event: Key::Pressed {
-                scan_code: input.scancode,
-                virtual_key: input.virtual_keycode,
-              },
-              issued_at: Instant::now(),
-            }),
-            (ElementState::Released, false) => Some(Events::Keyboard {
-              event: Key::Released {
-                scan_code: input.scancode,
-                virtual_key: input.virtual_keycode,
-              },
-              issued_at: Instant::now(),
-            }),
-            _ => {
-              logging::warn!("Unhandled synthetic keyboard event: {:?}", input);
-              None
+            ..
+          } => match (key_event.state, is_synthetic) {
+            (ElementState::Pressed, false) => {
+              let (scan_code, virtual_key) = match key_event.physical_key {
+                WinitPhysicalKey::Code(code) => (0, Some(code)),
+                _ => (0, None),
+              };
+              Some(Events::Keyboard {
+                event: Key::Pressed {
+                  scan_code,
+                  virtual_key,
+                },
+                issued_at: Instant::now(),
+              })
             }
+            (ElementState::Released, false) => {
+              let (scan_code, virtual_key) = match key_event.physical_key {
+                WinitPhysicalKey::Code(code) => (0, Some(code)),
+                _ => (0, None),
+              };
+              Some(Events::Keyboard {
+                event: Key::Released {
+                  scan_code,
+                  virtual_key,
+                },
+                issued_at: Instant::now(),
+              })
+            }
+            _ => None,
           },
           WinitWindowEvent::ModifiersChanged(_) => None,
           WinitWindowEvent::CursorMoved {
-            device_id,
+            device_id: _,
             position,
-            modifiers,
           } => Some(Events::Mouse {
             event: Mouse::Moved {
               x: position.x,
@@ -248,30 +232,30 @@ impl Runtime<(), String> for ApplicationRuntime {
             },
             issued_at: Instant::now(),
           }),
-          WinitWindowEvent::CursorEntered { device_id } => {
+          WinitWindowEvent::CursorEntered { device_id: _ } => {
             Some(Events::Mouse {
               event: Mouse::EnteredWindow { device_id: 0 },
               issued_at: Instant::now(),
             })
           }
-          WinitWindowEvent::CursorLeft { device_id } => Some(Events::Mouse {
-            event: Mouse::LeftWindow { device_id: 0 },
-            issued_at: Instant::now(),
-          }),
+          WinitWindowEvent::CursorLeft { device_id: _ } => {
+            Some(Events::Mouse {
+              event: Mouse::LeftWindow { device_id: 0 },
+              issued_at: Instant::now(),
+            })
+          }
           WinitWindowEvent::MouseWheel {
-            device_id,
-            delta,
-            phase,
-            modifiers,
+            device_id: _,
+            delta: _,
+            phase: _,
           } => Some(Events::Mouse {
             event: Mouse::Scrolled { device_id: 0 },
             issued_at: Instant::now(),
           }),
           WinitWindowEvent::MouseInput {
-            device_id,
+            device_id: _,
             state,
             button,
-            modifiers,
           } => {
             // Map winit button to our button type
             let button = match button {
@@ -279,6 +263,8 @@ impl Runtime<(), String> for ApplicationRuntime {
               MouseButton::Right => Button::Right,
               MouseButton::Middle => Button::Middle,
               MouseButton::Other(other) => Button::Other(other),
+              MouseButton::Back => Button::Other(8),
+              MouseButton::Forward => Button::Other(9),
             };
 
             let event = match state {
@@ -301,21 +287,13 @@ impl Runtime<(), String> for ApplicationRuntime {
               issued_at: Instant::now(),
             })
           }
-          WinitWindowEvent::TouchpadPressure {
-            device_id,
-            pressure,
-            stage,
-          } => None,
-          WinitWindowEvent::AxisMotion {
-            device_id,
-            axis,
-            value,
-          } => None,
+          WinitWindowEvent::TouchpadPressure { .. } => None,
+          WinitWindowEvent::AxisMotion { .. } => None,
           WinitWindowEvent::Touch(_) => None,
           WinitWindowEvent::ThemeChanged(_) => None,
           _ => None,
         },
-        WinitEvent::MainEventsCleared => {
+        WinitEvent::AboutToWait => {
           let last_frame = current_frame.clone();
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
@@ -345,7 +323,7 @@ impl Runtime<(), String> for ApplicationRuntime {
 
           None
         }
-        WinitEvent::RedrawRequested(_) => None,
+        // Redraw requests are handled implicitly when AboutToWait fires; ignore explicit requests
         WinitEvent::NewEvents(_) => None,
         WinitEvent::DeviceEvent { device_id, event } => None,
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
@@ -376,8 +354,9 @@ impl Runtime<(), String> for ApplicationRuntime {
         },
         WinitEvent::Suspended => None,
         WinitEvent::Resumed => None,
-        WinitEvent::RedrawEventsCleared => None,
-        WinitEvent::LoopDestroyed => {
+        WinitEvent::MemoryWarning => None,
+        // No RedrawEventsCleared in winit 0.29
+        WinitEvent::LoopExiting => {
           active_render_context
             .take()
             .expect("[ERROR] The render API has been already taken.")

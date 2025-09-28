@@ -139,8 +139,19 @@ impl Component<ComponentResult, String> for DemoComponent {
     let viewport =
       viewport::ViewportBuilder::new().build(self.width, self.height);
 
-    // This array of commands will be executed in linear order
+    // Begin the pass first, then set pipeline/state inside
     return vec![
+      RenderCommand::BeginRenderPass {
+        render_pass: self
+          .render_pass_id
+          .expect("No render pass attached to the component"),
+        viewport: viewport.clone(),
+      },
+      RenderCommand::SetPipeline {
+        pipeline: self
+          .render_pipeline_id
+          .expect("No pipeline attached to the component"),
+      },
       RenderCommand::SetViewports {
         start_at: 0,
         viewports: vec![viewport.clone()],
@@ -148,17 +159,6 @@ impl Component<ComponentResult, String> for DemoComponent {
       RenderCommand::SetScissors {
         start_at: 0,
         viewports: vec![viewport.clone()],
-      },
-      RenderCommand::SetPipeline {
-        pipeline: self
-          .render_pipeline_id
-          .expect("No pipeline attached to the component"),
-      },
-      RenderCommand::BeginRenderPass {
-        render_pass: self
-          .render_pass_id
-          .expect("No render pass attached to the component"),
-        viewport: viewport.clone(),
       },
       RenderCommand::Draw { vertices: 0..3 },
       RenderCommand::EndRenderPass,

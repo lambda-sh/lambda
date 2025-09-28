@@ -1,7 +1,4 @@
-use rand::{
-  distributions::Uniform,
-  Rng,
-};
+use rand::Rng;
 
 /// Generate a random float within any given range.
 #[inline(always)]

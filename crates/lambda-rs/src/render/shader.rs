@@ -1,13 +1,14 @@
 //! A module for compiling shaders into SPIR-V binary.
 
-// Expose some lower level shader
-pub use lambda_platform::shaderc::{
+// Expose the platform shader compiler abstraction
+pub use lambda_platform::shader::{
   ShaderCompiler,
   ShaderCompilerBuilder,
   ShaderKind,
   VirtualShader,
 };
 
+/// Reusable compiler for turning virtual shaders into SPIR‑V modules.
 pub struct ShaderBuilder {
   compiler: ShaderCompiler,
 }

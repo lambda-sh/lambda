@@ -1,9 +1,44 @@
 //! Vertex data structures.
 
-pub use lambda_platform::gfx::assembler::{
-  VertexAttribute,
-  VertexElement,
-};
+use lambda_platform::wgpu::types as wgpu;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Canonical color/attribute formats used by engine pipelines.
+pub enum ColorFormat {
+  Rgb32Sfloat,
+  Rgba8Srgb,
+}
+
+impl ColorFormat {
+  pub(crate) fn to_texture_format(self) -> wgpu::TextureFormat {
+    match self {
+      ColorFormat::Rgb32Sfloat => wgpu::TextureFormat::Rgba32Float,
+      ColorFormat::Rgba8Srgb => wgpu::TextureFormat::Rgba8UnormSrgb,
+    }
+  }
+
+  pub(crate) fn to_vertex_format(self) -> wgpu::VertexFormat {
+    match self {
+      ColorFormat::Rgb32Sfloat => wgpu::VertexFormat::Float32x3,
+      ColorFormat::Rgba8Srgb => wgpu::VertexFormat::Unorm8x4,
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+/// A single vertex element (format + byte offset).
+pub struct VertexElement {
+  pub format: ColorFormat,
+  pub offset: u32,
+}
+
+#[derive(Clone, Copy, Debug)]
+/// Vertex attribute bound to a shader `location` plus relative offsets.
+pub struct VertexAttribute {
+  pub location: u32,
+  pub offset: u32,
+  pub element: VertexElement,
+}
 
 /// Vertex data structure with position, normal, and color.
 #[repr(C)]
@@ -14,7 +49,7 @@ pub struct Vertex {
   pub color: [f32; 3],
 }
 
-/// Construction for
+/// Builder for constructing a `Vertex` instance incrementally.
 #[derive(Clone, Copy, Debug)]
 pub struct VertexBuilder {
   pub position: [f32; 3],
@@ -25,46 +60,48 @@ pub struct VertexBuilder {
 impl VertexBuilder {
   /// Creates a new vertex builder.
   pub fn new() -> Self {
-    return Self {
+    Self {
       position: [0.0, 0.0, 0.0],
       normal: [0.0, 0.0, 0.0],
       color: [0.0, 0.0, 0.0],
-    };
+    }
   }
 
   /// Set the position of the vertex.
   pub fn with_position(&mut self, position: [f32; 3]) -> &mut Self {
     self.position = position;
-    return self;
+    self
   }
 
   /// Set the normal of the vertex.
   pub fn with_normal(&mut self, normal: [f32; 3]) -> &mut Self {
     self.normal = normal;
-    return self;
+    self
   }
 
   /// Set the color of the vertex.
   pub fn with_color(&mut self, color: [f32; 3]) -> &mut Self {
     self.color = color;
-    return self;
+    self
   }
 
   /// Build the vertex.
   pub fn build(&self) -> Vertex {
-    return Vertex {
+    Vertex {
       position: self.position,
       normal: self.normal,
       color: self.color,
-    };
+    }
   }
 }
 
 #[cfg(test)]
 mod test {
+  use super::*;
+
   #[test]
   fn vertex_building() {
-    let mut vertex = super::VertexBuilder::new();
+    let mut vertex = VertexBuilder::new();
 
     assert_eq!(vertex.position, [0.0, 0.0, 0.0]);
     assert_eq!(vertex.normal, [0.0, 0.0, 0.0]);

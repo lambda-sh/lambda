@@ -1,38 +1,68 @@
 //! Viewport for rendering a frame within the RenderContext.
 
-use lambda_platform::gfx;
-
 #[derive(Debug, Clone, PartialEq)]
+/// Viewport/scissor rectangle applied during rendering.
 pub struct Viewport {
-  viewport: gfx::viewport::ViewPort,
+  pub x: u32,
+  pub y: u32,
+  pub width: u32,
+  pub height: u32,
+  pub min_depth: f32,
+  pub max_depth: f32,
 }
 
 impl Viewport {
-  /// Convert the viewport into a gfx platform viewport.
-  // TODO(vmarcella): implement this using Into<PlatformViewPort>
-  pub(crate) fn clone_gfx_viewport(&self) -> gfx::viewport::ViewPort {
-    return self.viewport.clone();
+  pub(crate) fn viewport_f32(&self) -> (f32, f32, f32, f32, f32, f32) {
+    (
+      self.x as f32,
+      self.y as f32,
+      self.width as f32,
+      self.height as f32,
+      self.min_depth,
+      self.max_depth,
+    )
+  }
+
+  pub(crate) fn scissor_u32(&self) -> (u32, u32, u32, u32) {
+    (self.x, self.y, self.width, self.height)
   }
 }
 
 /// Builder for viewports that are used to render a frame within the RenderContext.
 pub struct ViewportBuilder {
-  x: i16,
-  y: i16,
+  x: i32,
+  y: i32,
+  min_depth: f32,
+  max_depth: f32,
 }
 
 impl ViewportBuilder {
   /// Creates a new viewport builder.
   pub fn new() -> Self {
-    return Self { x: 0, y: 0 };
+    Self {
+      x: 0,
+      y: 0,
+      min_depth: 0.0,
+      max_depth: 1.0,
+    }
   }
 
-  /// Builds a viewport that can be used for defining
-  pub fn build(self, width: u32, height: u32) -> Viewport {
-    let viewport = gfx::viewport::ViewPortBuilder::new()
-      .with_coordinates(self.x, self.y)
-      .build(width, height);
+  /// Set the top‑left coordinates for the viewport and scissor.
+  pub fn with_coordinates(mut self, x: i32, y: i32) -> Self {
+    self.x = x;
+    self.y = y;
+    self
+  }
 
-    return Viewport { viewport };
+  /// Builds a viewport.
+  pub fn build(self, width: u32, height: u32) -> Viewport {
+    Viewport {
+      x: self.x.max(0) as u32,
+      y: self.y.max(0) as u32,
+      width,
+      height,
+      min_depth: self.min_depth,
+      max_depth: self.max_depth,
+    }
   }
 }

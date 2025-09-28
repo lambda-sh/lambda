@@ -26,7 +26,7 @@ pub enum RuntimeEvent {
 }
 
 /// Exports the winit virtual key codes to this namespace for convenience.
-pub use lambda_platform::winit::winit_exports::VirtualKeyCode as VirtualKey;
+pub use lambda_platform::winit::winit_exports::KeyCode as VirtualKey;
 
 /// Keyboard events are generated in response to keyboard events coming from
 /// the windowing system.
