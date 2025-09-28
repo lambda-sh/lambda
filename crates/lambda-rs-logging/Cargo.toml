@@ -8,3 +8,6 @@ license = "MIT"
 [lib]
 name = "logging"
 path = "src/lib.rs"
+
+[dependencies]
+once_cell = "1"
