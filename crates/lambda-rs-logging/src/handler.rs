@@ -1,53 +1,52 @@
 //! Log handling implementations for the logger.
 
 use std::{
-  fmt::Debug,
   fs::OpenOptions,
   io::Write,
+  sync::Mutex,
   time::SystemTime,
 };
 
-use crate::LogLevel;
+use crate::{
+  LogLevel,
+  Record,
+};
 
 /// Pluggable sink for log records emitted by the `Logger`.
-///
-/// Implementors decide how to format and where to deliver messages for each
-/// severity level.
-pub trait Handler {
-  fn trace(&mut self, message: String);
-  fn debug(&mut self, message: String);
-  fn info(&mut self, message: String);
-  fn warn(&mut self, message: String);
-  fn error(&mut self, message: String);
-  fn fatal(&mut self, message: String);
+/// Implementors decide how to format and where to deliver messages.
+pub trait Handler: Send + Sync {
+  fn log(&self, record: &Record);
 }
 
 /// A handler that logs to a file.
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug)]
 pub struct FileHandler {
   file: String,
-  log_buffer: Vec<String>,
+  log_buffer: Mutex<Vec<String>>,
 }
 
 impl FileHandler {
   pub fn new(file: String) -> Self {
     Self {
       file,
-      log_buffer: Vec::new(),
+      log_buffer: Mutex::new(Vec::new()),
     }
   }
+}
 
-  /// Logs a message to the file.
-  fn log(&mut self, log_level: LogLevel, message: String) {
-    let timestamp = SystemTime::now()
+impl Handler for FileHandler {
+  fn log(&self, record: &Record) {
+    let timestamp = record
+      .timestamp
       .duration_since(SystemTime::UNIX_EPOCH)
       .unwrap()
       .as_secs();
 
-    let log_message = format!("[{}]-[{:?}]: {}", timestamp, log_level, message);
+    let log_message =
+      format!("[{}]-[{:?}]: {}", timestamp, record.level, record.message);
 
-    let colored_message = match log_level {
+    // Preserve existing behavior: color codes even in file output.
+    let colored_message = match record.level {
       LogLevel::TRACE => format!("\x1B[37m{}\x1B[0m", log_message),
       LogLevel::DEBUG => format!("\x1B[35m{}\x1B[0m", log_message),
       LogLevel::INFO => format!("\x1B[32m{}\x1B[0m", log_message),
@@ -56,14 +55,15 @@ impl FileHandler {
       LogLevel::FATAL => format!("\x1B[31;1m{}\x1B[0m", log_message),
     };
 
-    self.log_buffer.push(colored_message);
+    let mut buf = self.log_buffer.lock().unwrap();
+    buf.push(colored_message);
 
     // Flush buffer every ten messages.
-    if self.log_buffer.len() < 10 {
+    if buf.len() < 10 {
       return;
     }
 
-    let log_message = self.log_buffer.join("\n");
+    let log_message = buf.join("\n");
 
     let mut file = OpenOptions::new()
       .append(true)
@@ -75,61 +75,37 @@ impl FileHandler {
       .write_all(log_message.as_bytes())
       .expect("Unable to write data");
 
-    self.log_buffer.clear();
-  }
-}
-
-impl Handler for FileHandler {
-  fn trace(&mut self, message: String) {
-    self.log(LogLevel::TRACE, message)
-  }
-
-  fn debug(&mut self, message: String) {
-    self.log(LogLevel::DEBUG, message)
-  }
-
-  fn info(&mut self, message: String) {
-    self.log(LogLevel::INFO, message)
-  }
-
-  fn warn(&mut self, message: String) {
-    self.log(LogLevel::WARN, message)
-  }
-
-  fn error(&mut self, message: String) {
-    self.log(LogLevel::ERROR, message)
-  }
-
-  fn fatal(&mut self, message: String) {
-    self.log(LogLevel::FATAL, message)
+    buf.clear();
   }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-/// A handler that prints colored log lines to stdout.
 pub struct ConsoleHandler {
   name: String,
 }
 
 impl ConsoleHandler {
   pub fn new(name: &str) -> Self {
-    return Self {
+    Self {
       name: name.to_string(),
-    };
+    }
   }
+}
 
-  fn log(&mut self, log_level: LogLevel, message: String) {
-    let timestamp = SystemTime::now()
+impl Handler for ConsoleHandler {
+  fn log(&self, record: &Record) {
+    let timestamp = record
+      .timestamp
       .duration_since(SystemTime::UNIX_EPOCH)
       .unwrap()
       .as_secs();
 
     let log_message = format!(
       "[{}]-[{:?}]-[{}]: {}",
-      timestamp, log_level, self.name, message
+      timestamp, record.level, self.name, record.message
     );
 
-    let colored_message = match log_level {
+    let colored_message = match record.level {
       LogLevel::TRACE => format!("\x1B[37m{}\x1B[0m", log_message),
       LogLevel::DEBUG => format!("\x1B[35m{}\x1B[0m", log_message),
       LogLevel::INFO => format!("\x1B[32m{}\x1B[0m", log_message),
@@ -139,31 +115,5 @@ impl ConsoleHandler {
     };
 
     println!("{}", colored_message);
-  }
-}
-
-impl Handler for ConsoleHandler {
-  fn trace(&mut self, message: String) {
-    self.log(LogLevel::TRACE, message);
-  }
-
-  fn debug(&mut self, message: String) {
-    self.log(LogLevel::DEBUG, message);
-  }
-
-  fn info(&mut self, message: String) {
-    self.log(LogLevel::INFO, message);
-  }
-
-  fn warn(&mut self, message: String) {
-    self.log(LogLevel::WARN, message);
-  }
-
-  fn error(&mut self, message: String) {
-    self.log(LogLevel::ERROR, message);
-  }
-
-  fn fatal(&mut self, message: String) {
-    self.log(LogLevel::FATAL, message);
   }
 }
