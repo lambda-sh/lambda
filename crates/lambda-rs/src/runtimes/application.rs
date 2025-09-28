@@ -42,11 +42,19 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
+/// Result value used by component callbacks executed under
+/// `ApplicationRuntime`.
+///
+/// Components can return `Success` when work completed as expected or
+/// `Failure` to signal a non‑fatal error to the runtime.
 pub enum ComponentResult {
   Success,
   Failure,
 }
 
+/// Builder for constructing an `ApplicationRuntime` with a window, a
+/// configured `RenderContext`, and a stack of components that receive events
+/// and render access.
 pub struct ApplicationRuntimeBuilder {
   app_name: String,
   render_context_builder: RenderContextBuilder,
@@ -55,6 +63,7 @@ pub struct ApplicationRuntimeBuilder {
 }
 
 impl ApplicationRuntimeBuilder {
+  /// Create a new builder seeded with sensible defaults.
   pub fn new(app_name: &str) -> Self {
     return Self {
       app_name: app_name.to_string(),

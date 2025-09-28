@@ -1,3 +1,7 @@
+//! Minimal helpers for loading Wavefront OBJ assets.
+//!
+//! These functions are thin wrappers around the `obj` crate used by examples
+//! and tooling to import meshes.
 use std::{
   fs::File,
   io::BufReader,

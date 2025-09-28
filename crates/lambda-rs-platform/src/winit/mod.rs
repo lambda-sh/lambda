@@ -81,6 +81,7 @@ pub struct WindowSize {
   pub physical: PhysicalSize<u32>,
 }
 
+/// Aggregated window handle with cached sizing and monitor metadata.
 pub struct WindowHandle {
   pub window_handle: Window,
   pub size: WindowSize,
@@ -88,6 +89,7 @@ pub struct WindowHandle {
 }
 
 // Should we take the loop as a field right here? Probably a ref or something? IDK
+/// Builder for constructing a `WindowHandle` from window properties.
 pub struct WindowHandleBuilder {
   window_handle: Option<Window>,
   size: WindowSize,

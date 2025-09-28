@@ -1,3 +1,4 @@
+#![allow(clippy::needless_return)]
 //! A simple logging library for lambda-rs crates.
 
 use std::fmt::Debug;

@@ -120,6 +120,7 @@ pub struct RenderContext {
   render_pipelines: Vec<RenderPipeline>,
 }
 
+/// Opaque handle used to refer to resources attached to a `RenderContext`.
 pub type ResourceId = usize;
 
 impl RenderContext {

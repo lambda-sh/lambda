@@ -1,3 +1,4 @@
+#![allow(clippy::needless_return)]
 //! Minimal application which configures a window & render context before
 //! starting the runtime. You can use this as a starting point for your own
 //! applications or to verify that your system is configured to run lambda
