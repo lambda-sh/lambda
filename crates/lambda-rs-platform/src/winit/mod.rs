@@ -1,46 +1,25 @@
 //! Winit wrapper to easily construct cross platform windows
 
 use winit::{
-  dpi::{
-    LogicalSize,
-    PhysicalSize,
-  },
+  dpi::{LogicalSize, PhysicalSize},
   event::Event,
   event_loop::{
-    ControlFlow,
-    EventLoop,
-    EventLoopBuilder,
-    EventLoopProxy,
+    ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy,
     EventLoopWindowTarget,
   },
   monitor::MonitorHandle,
-  window::{
-    Window,
-    WindowBuilder,
-  },
+  window::{Window, WindowBuilder},
 };
 
 /// Embedded module for exporting data/types from winit as minimally/controlled
 /// as possible. The exports from this module are not guaranteed to be stable.
 pub mod winit_exports {
   pub use winit::{
-    event::{
-      ElementState,
-      Event,
-      KeyEvent,
-      MouseButton,
-      WindowEvent,
-    },
+    event::{ElementState, Event, KeyEvent, MouseButton, WindowEvent},
     event_loop::{
-      ControlFlow,
-      EventLoop,
-      EventLoopProxy,
-      EventLoopWindowTarget,
+      ControlFlow, EventLoop, EventLoopProxy, EventLoopWindowTarget,
     },
-    keyboard::{
-      KeyCode,
-      PhysicalKey,
-    },
+    keyboard::{KeyCode, PhysicalKey},
   };
 }
 
@@ -81,6 +60,7 @@ pub struct WindowSize {
   pub physical: PhysicalSize<u32>,
 }
 
+/// Aggregated window handle with cached sizing and monitor metadata.
 pub struct WindowHandle {
   pub window_handle: Window,
   pub size: WindowSize,
@@ -88,6 +68,7 @@ pub struct WindowHandle {
 }
 
 // Should we take the loop as a field right here? Probably a ref or something? IDK
+/// Builder for constructing a `WindowHandle` from window properties.
 pub struct WindowHandleBuilder {
   window_handle: Option<Window>,
   size: WindowSize,

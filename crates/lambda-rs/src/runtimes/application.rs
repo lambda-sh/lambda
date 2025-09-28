@@ -6,47 +6,40 @@ use std::time::Instant;
 
 use lambda_platform::winit::{
   winit_exports::{
-    ElementState,
-    Event as WinitEvent,
-    KeyCode as WinitKeyCode,
-    KeyEvent as WinitKeyEvent,
-    MouseButton,
-    PhysicalKey as WinitPhysicalKey,
+    ElementState, Event as WinitEvent, KeyCode as WinitKeyCode,
+    KeyEvent as WinitKeyEvent, MouseButton, PhysicalKey as WinitPhysicalKey,
     WindowEvent as WinitWindowEvent,
   },
-  Loop,
-  LoopBuilder,
+  Loop, LoopBuilder,
 };
 use logging;
 
 use crate::{
   component::Component,
   events::{
-    Button,
-    ComponentEvent,
-    Events,
-    Key,
-    Mouse,
-    RuntimeEvent,
-    WindowEvent,
+    Button, ComponentEvent, Events, Key, Mouse, RuntimeEvent, WindowEvent,
   },
   render::{
-    window::{
-      Window,
-      WindowBuilder,
-    },
-    RenderContext,
-    RenderContextBuilder,
+    window::{Window, WindowBuilder},
+    RenderContext, RenderContextBuilder,
   },
   runtime::Runtime,
 };
 
 #[derive(Clone, Debug)]
+/// Result value used by component callbacks executed under
+/// `ApplicationRuntime`.
+///
+/// Components can return `Success` when work completed as expected or
+/// `Failure` to signal a non‑fatal error to the runtime.
 pub enum ComponentResult {
   Success,
   Failure,
 }
 
+/// Builder for constructing an `ApplicationRuntime` with a window, a
+/// configured `RenderContext`, and a stack of components that receive events
+/// and render access.
 pub struct ApplicationRuntimeBuilder {
   app_name: String,
   render_context_builder: RenderContextBuilder,
@@ -55,6 +48,7 @@ pub struct ApplicationRuntimeBuilder {
 }
 
 impl ApplicationRuntimeBuilder {
+  /// Create a new builder seeded with sensible defaults.
   pub fn new(app_name: &str) -> Self {
     return Self {
       app_name: app_name.to_string(),

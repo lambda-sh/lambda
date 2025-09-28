@@ -1,32 +1,15 @@
 use lambda::{
   component::Component,
-  events::{
-    Events,
-    Key,
-    VirtualKey,
-    WindowEvent,
-  },
+  events::{Events, Key, VirtualKey, WindowEvent},
   render::{
     command::RenderCommand,
-    pipeline::{
-      self,
-      PipelineStage,
-    },
+    pipeline::{self, PipelineStage},
     render_pass,
-    shader::{
-      Shader,
-      ShaderBuilder,
-      ShaderKind,
-      VirtualShader,
-    },
-    viewport,
-    RenderContext,
+    shader::{Shader, ShaderBuilder, ShaderKind, VirtualShader},
+    viewport, RenderContext,
   },
   runtime::start_runtime,
-  runtimes::{
-    application::ComponentResult,
-    ApplicationRuntimeBuilder,
-  },
+  runtimes::{application::ComponentResult, ApplicationRuntimeBuilder},
 };
 
 pub struct TrianglesComponent {
@@ -283,3 +266,4 @@ fn main() {
 
   start_runtime(runtime);
 }
+#![allow(clippy::needless_return)]

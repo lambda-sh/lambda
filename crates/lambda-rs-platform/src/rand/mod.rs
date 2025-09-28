@@ -1,3 +1,7 @@
+//! Random number utilities used by examples and tests.
+//!
+//! Functions here delegate to the `rand` crate to generate simple random
+//! values and uniformly distributed sequences.
 use rand::Rng;
 
 /// Generate a random float within any given range.

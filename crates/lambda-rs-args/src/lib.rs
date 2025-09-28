@@ -1,12 +1,22 @@
 //! # Lambda Args
 //! Lambda Args is a simple argument parser for Rust. It is designed to be
 //! simple to use and primarily for use in lambda command line applications.
+#![allow(clippy::needless_return)]
 
-use std::{
-  collections::HashMap,
-  fmt,
-};
+use std::{collections::HashMap, fmt};
 
+/// Configurable command‑line argument parser for Lambda tools and examples.
+///
+/// Features:
+/// - Long/short flags with aliases (e.g., "-o", "--output")
+/// - Positional arguments in declaration order
+/// - Type‑aware parsing (`string`, `integer`, `float`, `boolean`, `count`, lists)
+/// - Optional environment variable and config‑file integration
+/// - Mutually exclusive groups and simple requires relationships
+/// - Subcommands with their own parsers
+///
+/// Use the builder to register arguments and then call `parse` with a slice of
+/// tokens (usually `std::env::args().collect()`).
 pub struct ArgumentParser {
   name: String,
   description: String,
@@ -24,20 +34,32 @@ pub struct ArgumentParser {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
+/// Supported value types for an argument definition.
 pub enum ArgumentType {
+  /// `true`/`false` (or implied by presence when compiled as a flag).
   Boolean,
+  /// 64‑bit signed integer.
   Integer,
+  /// 32‑bit floating point number.
   Float,
+  /// 64‑bit floating point number.
   Double,
+  /// UTF‑8 string.
   String,
+  /// Count of flag occurrences (e.g., `-vvv` => 3).
   Count,
+  /// One or more strings (space‑separated tokens).
   StringList,
+  /// One or more integers.
   IntegerList,
+  /// One or more 32‑bit floats.
   FloatList,
+  /// One or more 64‑bit floats.
   DoubleList,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
+/// Parsed value container used in results and defaults.
 pub enum ArgumentValue {
   None,
   Boolean(bool),
@@ -88,6 +110,7 @@ impl Into<f64> for ArgumentValue {
 }
 
 #[derive(Debug)]
+/// Declarative definition for a single CLI argument or positional parameter.
 pub struct Argument {
   name: String,
   description: String,
@@ -99,7 +122,11 @@ pub struct Argument {
 }
 
 impl Argument {
-  /// Creates a new argument where the name represents
+  /// Create a new argument definition.
+  ///
+  /// The `name` should be the canonical identifier used in help/usage output
+  /// (for example, `--output` or `--count`). For positional parameters call
+  /// `as_positional()` when building.
   pub fn new(name: &str) -> Self {
     return Argument {
       name: name.to_string(),
@@ -118,13 +145,13 @@ impl Argument {
     return self;
   }
 
-  /// Sets the type for the ArgumentParser to parse the arguments value into.
+  /// Sets the type the parser should use when converting the raw value.
   pub fn with_type(mut self, arg_type: ArgumentType) -> Self {
     self.arg_type = arg_type;
     return self;
   }
 
-  /// Sets the description (Help string) of the argument for
+  /// Set a human‑readable description used in help/usage output.
   pub fn with_description(mut self, description: &str) -> Self {
     self.description = description.to_string();
     return self;
@@ -167,27 +194,33 @@ impl Argument {
     return self.arg_type.clone();
   }
 
+  /// Canonical name used for matching and display (e.g., `--output`).
   pub fn name(&self) -> &str {
     return self.name.as_ref();
   }
 
+  /// Default value used when the argument is not present.
   pub fn default_value(&self) -> ArgumentValue {
     return self.default_value.clone();
   }
 
+  /// Description shown in `usage()` output.
   pub fn description(&self) -> &str {
     return self.description.as_ref();
   }
 
+  /// Declared aliases that resolve to this argument (e.g., `-o`).
   pub fn aliases(&self) -> &Vec<String> {
     &self.aliases
   }
+  /// Whether the argument is positional (no leading `-`/`--`).
   pub fn is_positional(&self) -> bool {
     self.positional
   }
 }
 
 #[derive(Debug, Clone)]
+/// A single parsed argument result as `(name, value)`.
 pub struct ParsedArgument {
   name: String,
   value: ArgumentValue,
@@ -205,6 +238,7 @@ impl ParsedArgument {
     return self.name.clone();
   }
 
+  /// Return a clone of the parsed value.
   pub fn value(&self) -> ArgumentValue {
     return self.value.clone();
   }
@@ -240,17 +274,20 @@ impl ArgumentParser {
     return self.args.len();
   }
 
+  /// Add an author string displayed in `usage()`.
   pub fn with_author(mut self, author: &str) -> Self {
     self.authors.push(author.to_string());
     self
   }
 
   // TODO(vmarcella): Add description to the name
+  /// Add a human‑readable description shown in `usage()`.
   pub fn with_description(mut self, description: &str) -> Self {
     self.description = description.to_string();
     self
   }
 
+  /// Register an argument definition with the parser.
   pub fn with_argument(mut self, argument: Argument) -> Self {
     let idx = self.args.len();
     let name = argument.name().to_string();
@@ -264,7 +301,7 @@ impl ArgumentParser {
     return self;
   }
 
-  /// Set an environment variable prefix (e.g., "OBJ_LOADER").
+  /// Set an environment variable prefix to read defaults (e.g., "OBJ_LOADER").
   pub fn with_env_prefix(mut self, prefix: &str) -> Self {
     self.env_prefix = Some(prefix.to_string());
     self
@@ -290,13 +327,13 @@ impl ArgumentParser {
     self
   }
 
-  /// Merge values from a simple key=value config file (optional).
+  /// Merge values from a simple `key=value` config file (optional).
   pub fn with_config_file(mut self, path: &str) -> Self {
     self.config_path = Some(path.to_string());
     self
   }
 
-  /// Add a subcommand parser.
+  /// Add a subcommand parser which activates on a matching first token.
   pub fn with_subcommand(mut self, mut sub: ArgumentParser) -> Self {
     sub.is_subcommand = true;
     let key = sub.name.clone();
@@ -717,7 +754,7 @@ impl ArgumentParser {
     })
   }
 
-  /// Backwards-compatible panicking API. Prefer `parse` for non-panicking behavior.
+  /// Backwards‑compatible panicking API. Prefer `parse` for non‑panicking use.
   pub fn compile(self, args: &[String]) -> Vec<ParsedArgument> {
     match self.parse(args) {
       Ok(parsed) => parsed.into_vec(),
@@ -791,16 +828,23 @@ fn parse_value(arg: &Argument, raw: &str) -> Result<ArgumentValue, ArgsError> {
 }
 
 #[derive(Debug)]
+/// Errors that may occur during argument parsing.
 pub enum ArgsError {
+  /// An unknown flag or option was encountered.
   UnknownArgument(String),
+  /// The same flag/option was specified more than once when not allowed.
   DuplicateArgument(String),
+  /// A flag/option expecting a value did not receive one.
   MissingValue(String),
+  /// A provided value could not be parsed into the expected type.
   InvalidValue {
     name: String,
     expected: String,
     value: String,
   },
+  /// A required option or positional argument was not provided.
   MissingRequired(String),
+  /// Help was requested; contains a preformatted usage string.
   HelpRequested(String),
 }
 
@@ -831,7 +875,7 @@ impl fmt::Display for ArgsError {
 
 impl std::error::Error for ArgsError {}
 
-/// A parsed arguments wrapper with typed getters.
+/// Parsed arguments with typed getters and subcommand support.
 #[derive(Debug, Clone)]
 pub struct ParsedArgs {
   values: Vec<ParsedArgument>,
@@ -839,10 +883,12 @@ pub struct ParsedArgs {
 }
 
 impl ParsedArgs {
+  /// Convert into the raw underlying `(name, value)` vector.
   pub fn into_vec(self) -> Vec<ParsedArgument> {
     self.values
   }
 
+  /// True if the named argument is present (and not `None`).
   pub fn has(&self, name: &str) -> bool {
     self
       .values
@@ -850,6 +896,7 @@ impl ParsedArgs {
       .any(|p| p.name == name && !matches!(p.value, ArgumentValue::None))
   }
 
+  /// Get a `String` value by name, if present and typed as string.
   pub fn get_string(&self, name: &str) -> Option<String> {
     self
       .values
@@ -861,6 +908,7 @@ impl ParsedArgs {
       })
   }
 
+  /// Get an `i64` value by name, if present and typed as integer.
   pub fn get_i64(&self, name: &str) -> Option<i64> {
     self
       .values
@@ -872,6 +920,7 @@ impl ParsedArgs {
       })
   }
 
+  /// Get an `f32` value by name, if present and typed as float.
   pub fn get_f32(&self, name: &str) -> Option<f32> {
     self
       .values
@@ -883,6 +932,7 @@ impl ParsedArgs {
       })
   }
 
+  /// Get an `f64` value by name, if present and typed as double.
   pub fn get_f64(&self, name: &str) -> Option<f64> {
     self
       .values
@@ -894,6 +944,7 @@ impl ParsedArgs {
       })
   }
 
+  /// Get a `bool` value by name, if present and typed as boolean.
   pub fn get_bool(&self, name: &str) -> Option<bool> {
     self
       .values

@@ -3,9 +3,16 @@
 pub mod matrix;
 pub mod vector;
 
+/// Angle units used by conversion helpers and matrix transforms.
+///
+/// Prefer `Angle::Turns` for ergonomic quarter/half rotations when building
+/// camera and model transforms. One full turn equals `2π` radians.
 pub enum Angle {
+  /// Angle expressed in radians.
   Radians(f32),
+  /// Angle expressed in degrees.
   Degrees(f32),
+  /// Angle expressed in turns, where `1.0` is a full revolution.
   Turns(f32),
 }
 

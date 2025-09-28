@@ -8,10 +8,7 @@
 
 use pollster::block_on;
 pub use wgpu as types;
-use wgpu::rwh::{
-  HasDisplayHandle as _,
-  HasWindowHandle as _,
-};
+use wgpu::rwh::{HasDisplayHandle as _, HasWindowHandle as _};
 
 use crate::winit::WindowHandle;
 

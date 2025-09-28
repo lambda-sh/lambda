@@ -1,8 +1,4 @@
-use args::{
-  Argument,
-  ArgumentParser,
-  ArgumentType,
-};
+use args::{Argument, ArgumentParser, ArgumentType};
 
 fn main() {
   // Reads APP_HOST and APP_PORT if set. Also reads from ./app.cfg if present

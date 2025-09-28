@@ -1,55 +1,25 @@
 use std::env;
 
 use args::{
-  Argument,
-  ArgumentParser,
-  ArgumentType,
-  ArgumentValue,
-  ParsedArgument,
+  Argument, ArgumentParser, ArgumentType, ArgumentValue, ParsedArgument,
 };
 use lambda::{
   component::Component,
-  events::{
-    ComponentEvent,
-    Events,
-    WindowEvent,
-  },
+  events::{ComponentEvent, Events, WindowEvent},
   logging,
-  math::matrix::{
-    self,
-    Matrix,
-  },
+  math::matrix::{self, Matrix},
   render::{
     buffer::BufferBuilder,
     command::RenderCommand,
-    mesh::{
-      Mesh,
-      MeshBuilder,
-    },
-    pipeline::{
-      PipelineStage,
-      RenderPipelineBuilder,
-    },
+    mesh::{Mesh, MeshBuilder},
+    pipeline::{PipelineStage, RenderPipelineBuilder},
     render_pass::RenderPassBuilder,
-    shader::{
-      Shader,
-      ShaderBuilder,
-      ShaderKind,
-      VirtualShader,
-    },
-    vertex::{
-      Vertex,
-      VertexAttribute,
-      VertexElement,
-    },
-    viewport,
-    ResourceId,
+    shader::{Shader, ShaderBuilder, ShaderKind, VirtualShader},
+    vertex::{Vertex, VertexAttribute, VertexElement},
+    viewport, ResourceId,
   },
   runtime::start_runtime,
-  runtimes::{
-    application::ComponentResult,
-    ApplicationRuntimeBuilder,
-  },
+  runtimes::{application::ComponentResult, ApplicationRuntimeBuilder},
 };
 
 // ------------------------------ SHADER SOURCE --------------------------------

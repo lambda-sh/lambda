@@ -3,18 +3,11 @@ use std::io::Read;
 use naga::{
   back::spv,
   front::glsl,
-  valid::{
-    Capabilities,
-    ValidationFlags,
-    Validator,
-  },
+  valid::{Capabilities, ValidationFlags, Validator},
   ShaderStage,
 };
 
-use super::{
-  ShaderKind,
-  VirtualShader,
-};
+use super::{ShaderKind, VirtualShader};
 
 /// Builder for the naga-backed shader compiler.
 pub struct ShaderCompilerBuilder {}

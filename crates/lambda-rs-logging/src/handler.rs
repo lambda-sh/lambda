@@ -1,14 +1,13 @@
 //! Log handling implementations for the logger.
 
-use std::{
-  fmt::Debug,
-  fs::OpenOptions,
-  io::Write,
-  time::SystemTime,
-};
+use std::{fmt::Debug, fs::OpenOptions, io::Write, time::SystemTime};
 
 use crate::LogLevel;
 
+/// Pluggable sink for log records emitted by the `Logger`.
+///
+/// Implementors decide how to format and where to deliver messages for each
+/// severity level.
 pub trait Handler {
   fn trace(&mut self, message: String);
   fn debug(&mut self, message: String);
@@ -102,6 +101,7 @@ impl Handler for FileHandler {
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
+/// A handler that prints colored log lines to stdout.
 pub struct ConsoleHandler {
   name: String,
 }

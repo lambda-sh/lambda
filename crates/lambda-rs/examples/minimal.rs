@@ -4,10 +4,7 @@
 //! applications correctly.
 
 #[macro_use]
-use lambda::{
-  runtime::start_runtime,
-  runtimes::ApplicationRuntimeBuilder,
-};
+use lambda::{runtime::start_runtime, runtimes::ApplicationRuntimeBuilder};
 
 fn main() {
   let runtime = ApplicationRuntimeBuilder::new("Minimal Demo application")
@@ -20,3 +17,4 @@ fn main() {
 
   start_runtime(runtime);
 }
+#![allow(clippy::needless_return)]

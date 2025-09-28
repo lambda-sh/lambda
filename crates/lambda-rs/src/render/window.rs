@@ -1,10 +1,7 @@
 //! Window implementation for rendering applications.
 
 use lambda_platform::winit::{
-  Loop,
-  WindowHandle,
-  WindowHandleBuilder,
-  WindowProperties,
+  Loop, WindowHandle, WindowHandleBuilder, WindowProperties,
 };
 
 use crate::events::Events;
@@ -42,6 +39,11 @@ impl WindowBuilder {
     return self;
   }
 
+  /// Request vertical sync behavior for the swapchain.
+  ///
+  /// Note: present mode is ultimately selected when configuring the rendering
+  /// surface in `RenderContextBuilder`. This flag is reserved to influence
+  /// that choice and is currently a no‑op.
   pub fn with_vsync(mut self, vsync: bool) -> Self {
     return self;
   }

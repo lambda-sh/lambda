@@ -2,10 +2,7 @@
 
 use std::ops::Range;
 
-use super::{
-  pipeline::PipelineStage,
-  viewport::Viewport,
-};
+use super::{pipeline::PipelineStage, viewport::Viewport};
 
 /// Commands recorded and executed by the `RenderContext` to produce a frame.
 #[derive(Debug, Clone)]

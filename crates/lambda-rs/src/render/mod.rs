@@ -15,21 +15,14 @@ pub mod window;
 use std::iter;
 
 use lambda_platform::wgpu::{
-  types as wgpu,
-  Gpu,
-  GpuBuilder,
-  Instance,
-  InstanceBuilder,
-  Surface,
+  types as wgpu, Gpu, GpuBuilder, Instance, InstanceBuilder, Surface,
   SurfaceBuilder,
 };
 use logging;
 pub use vertex::ColorFormat;
 
 use self::{
-  command::RenderCommand,
-  pipeline::RenderPipeline,
-  render_pass::RenderPass,
+  command::RenderCommand, pipeline::RenderPipeline, render_pass::RenderPass,
 };
 
 /// Builder for configuring a `RenderContext` tied to a single window.
@@ -120,6 +113,7 @@ pub struct RenderContext {
   render_pipelines: Vec<RenderPipeline>,
 }
 
+/// Opaque handle used to refer to resources attached to a `RenderContext`.
 pub type ResourceId = usize;
 
 impl RenderContext {
