@@ -1,6 +1,4 @@
-// When building examples inside the crate, the library is available as `logging`.
-// If you copy this example to another crate, import with `use lambda_rs_logging as logging;`
-use logging;
+// When building examples inside the crate, refer to the library as `logging` directly.
 
 fn main() {
   // Build a custom logger and apply env level

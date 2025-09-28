@@ -151,3 +151,135 @@ impl Handler for ConsoleHandler {
     }
   }
 }
+
+/// A handler that writes newline-delimited JSON log records.
+/// Uses minimal manual escaping to avoid external dependencies.
+pub struct JsonHandler {
+  inner: Mutex<io::BufWriter<std::fs::File>>,
+}
+
+impl JsonHandler {
+  pub fn new(path: String) -> Self {
+    let file = OpenOptions::new()
+      .create(true)
+      .append(true)
+      .open(&path)
+      .expect("open json log file");
+    Self {
+      inner: Mutex::new(io::BufWriter::new(file)),
+    }
+  }
+
+  fn escape_json(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 8);
+    for ch in s.chars() {
+      match ch {
+        '"' => out.push_str("\\\""),
+        '\\' => out.push_str("\\\\"),
+        '\n' => out.push_str("\\n"),
+        '\r' => out.push_str("\\r"),
+        '\t' => out.push_str("\\t"),
+        c if c.is_control() => {
+          use std::fmt::Write as _;
+          let _ = write!(out, "\\u{:04x}", c as u32);
+        }
+        c => out.push(c),
+      }
+    }
+    out
+  }
+}
+
+impl Handler for JsonHandler {
+  fn log(&self, record: &Record) {
+    let ts = record
+      .timestamp
+      .duration_since(SystemTime::UNIX_EPOCH)
+      .unwrap()
+      .as_millis();
+    let msg = Self::escape_json(record.message);
+    let target = Self::escape_json(record.target);
+    let module = record.module_path.unwrap_or("");
+    let file = record.file.unwrap_or("");
+    let line = record.line.unwrap_or(0);
+    let level = match record.level {
+      LogLevel::TRACE => "TRACE",
+      LogLevel::DEBUG => "DEBUG",
+      LogLevel::INFO => "INFO",
+      LogLevel::WARN => "WARN",
+      LogLevel::ERROR => "ERROR",
+      LogLevel::FATAL => "FATAL",
+    };
+    let json = format!(
+      "{{\"ts\":{},\"level\":\"{}\",\"target\":\"{}\",\"message\":\"{}\",\"module\":\"{}\",\"file\":\"{}\",\"line\":{}}}\n",
+      ts, level, target, msg, module, file, line
+    );
+    let mut w = self.inner.lock().unwrap();
+    let _ = w.write_all(json.as_bytes());
+    let _ = w.flush();
+  }
+}
+
+/// A handler that writes to a file and rotates when size exceeds `max_bytes`.
+pub struct RotatingFileHandler {
+  path: String,
+  max_bytes: u64,
+  backups: usize,
+  lock: Mutex<()>,
+}
+
+impl RotatingFileHandler {
+  pub fn new(path: String, max_bytes: u64, backups: usize) -> Self {
+    Self {
+      path,
+      max_bytes,
+      backups,
+      lock: Mutex::new(()),
+    }
+  }
+
+  fn rotate(&self) {
+    // Rotate: file.(n-1) -> file.n, ..., file -> file.1, delete file.n if exists
+    for i in (1..=self.backups).rev() {
+      let from = if i == 1 {
+        std::path::PathBuf::from(&self.path)
+      } else {
+        std::path::PathBuf::from(format!("{}.{}", &self.path, i - 1))
+      };
+      let to = std::path::PathBuf::from(format!("{}.{}", &self.path, i));
+      if from.exists() {
+        let _ = std::fs::rename(&from, &to);
+      }
+    }
+  }
+}
+
+impl Handler for RotatingFileHandler {
+  fn log(&self, record: &Record) {
+    let _guard = self.lock.lock().unwrap();
+
+    // Check file size and rotate if needed
+    if let Ok(meta) = std::fs::metadata(&self.path) {
+      if meta.len() >= self.max_bytes {
+        self.rotate();
+      }
+    }
+
+    let timestamp = record
+      .timestamp
+      .duration_since(SystemTime::UNIX_EPOCH)
+      .unwrap()
+      .as_secs();
+    let line = format!(
+      "[{}]-[{:?}]-[{}]: {}\n",
+      timestamp, record.level, record.target, record.message
+    );
+
+    let mut f = OpenOptions::new()
+      .create(true)
+      .append(true)
+      .open(&self.path)
+      .expect("open rotating file");
+    let _ = f.write_all(line.as_bytes());
+  }
+}
