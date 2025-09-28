@@ -2,6 +2,7 @@
 //! A simple logging library for lambda-rs crates.
 
 use std::{
+  fmt,
   sync::{
     atomic::{
       AtomicU8,
@@ -110,14 +111,28 @@ impl Logger {
     if !self.compare_levels(level) {
       return;
     }
+    self.log_inner_with_meta(level, message, None, None, None);
+  }
+
+  fn log_inner_with_meta(
+    &self,
+    level: LogLevel,
+    message: &str,
+    module_path: Option<&'static str>,
+    file: Option<&'static str>,
+    line: Option<u32>,
+  ) {
+    if !self.compare_levels(level) {
+      return;
+    }
     let record = Record {
       timestamp: SystemTime::now(),
       level,
       target: &self.name,
       message,
-      module_path: None,
-      file: None,
-      line: None,
+      module_path,
+      file,
+      line,
     };
     let lock = self.handlers.read().expect("poisoned handlers lock");
     for handler in lock.iter() {
@@ -161,11 +176,39 @@ impl Logger {
 pub enum InitError {
   AlreadyInitialized,
 }
+/// Returns whether the global logger would log at `level`.
+pub fn enabled(level: LogLevel) -> bool {
+  Logger::global().compare_levels(level)
+}
+
+/// Logs using the global logger, formatting only after an enabled check.
+pub fn log_args(
+  level: LogLevel,
+  module_path: &'static str,
+  file: &'static str,
+  line: u32,
+  args: fmt::Arguments,
+) {
+  let logger = Logger::global().clone();
+  if !logger.compare_levels(level) {
+    return;
+  }
+  let message = args.to_string();
+  logger.log_inner_with_meta(
+    level,
+    &message,
+    Some(module_path),
+    Some(file),
+    Some(line),
+  );
+}
 /// Trace logging macro using the global logger instance.
 #[macro_export]
 macro_rules! trace {
   ($($arg:tt)*) => {
-      logging::Logger::global().trace(format!("{}", format_args!($($arg)*)));
+      if $crate::enabled($crate::LogLevel::TRACE) {
+        $crate::log_args($crate::LogLevel::TRACE, module_path!(), file!(), line!(), format_args!($($arg)*));
+      }
   };
 }
 
@@ -173,7 +216,9 @@ macro_rules! trace {
 #[macro_export]
 macro_rules! debug {
   ($($arg:tt)*) => {
-      logging::Logger::global().debug(format!("{}", format_args!($($arg)*)));
+      if $crate::enabled($crate::LogLevel::DEBUG) {
+        $crate::log_args($crate::LogLevel::DEBUG, module_path!(), file!(), line!(), format_args!($($arg)*));
+      }
   };
 }
 
@@ -181,7 +226,9 @@ macro_rules! debug {
 #[macro_export]
 macro_rules! info {
   ($($arg:tt)*) => {
-      logging::Logger::global().info(format!("{}", format_args!($($arg)*)));
+      if $crate::enabled($crate::LogLevel::INFO) {
+        $crate::log_args($crate::LogLevel::INFO, module_path!(), file!(), line!(), format_args!($($arg)*));
+      }
   };
 }
 
@@ -189,21 +236,27 @@ macro_rules! info {
 #[macro_export]
 macro_rules! warn {
   ($($arg:tt)*) => {
-      logging::Logger::global().warn(format!("{}", format_args!($($arg)*)));
+      if $crate::enabled($crate::LogLevel::WARN) {
+        $crate::log_args($crate::LogLevel::WARN, module_path!(), file!(), line!(), format_args!($($arg)*));
+      }
   };
 }
 
 #[macro_export]
 macro_rules! error {
   ($($arg:tt)*) => {
-      logging::Logger::global().error(format!("{}", format_args!($($arg)*)));
+      if $crate::enabled($crate::LogLevel::ERROR) {
+        $crate::log_args($crate::LogLevel::ERROR, module_path!(), file!(), line!(), format_args!($($arg)*));
+      }
   };
 }
 
 #[macro_export]
 macro_rules! fatal {
   ($($arg:tt)*) => {
-      logging::Logger::global().fatal(format!("{}", format_args!($($arg)*)));
+      if $crate::enabled($crate::LogLevel::FATAL) {
+        $crate::log_args($crate::LogLevel::FATAL, module_path!(), file!(), line!(), format_args!($($arg)*));
+      }
   };
 }
 
@@ -355,5 +408,21 @@ mod tests {
     let content =
       fs::read_to_string(&tmp).expect("file must exist after flush");
     assert!(!content.is_empty());
+  }
+
+  #[test]
+  fn macro_early_guard_avoids_formatting() {
+    // Ensure TRACE is disabled by setting level to INFO.
+    super::Logger::global().set_level(super::LogLevel::INFO);
+
+    struct Boom;
+    impl fmt::Display for Boom {
+      fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        panic!("should not be formatted when level disabled");
+      }
+    }
+
+    // If guard fails, formatting Boom would panic.
+    super::trace!("{}", Boom);
   }
 }
