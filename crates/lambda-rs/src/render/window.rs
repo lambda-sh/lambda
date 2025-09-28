@@ -1,7 +1,10 @@
 //! Window implementation for rendering applications.
 
 use lambda_platform::winit::{
-  Loop, WindowHandle, WindowHandleBuilder, WindowProperties,
+  Loop,
+  WindowHandle,
+  WindowHandleBuilder,
+  WindowProperties,
 };
 
 use crate::events::Events;

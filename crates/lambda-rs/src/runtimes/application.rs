@@ -6,22 +6,37 @@ use std::time::Instant;
 
 use lambda_platform::winit::{
   winit_exports::{
-    ElementState, Event as WinitEvent, KeyCode as WinitKeyCode,
-    KeyEvent as WinitKeyEvent, MouseButton, PhysicalKey as WinitPhysicalKey,
+    ElementState,
+    Event as WinitEvent,
+    KeyCode as WinitKeyCode,
+    KeyEvent as WinitKeyEvent,
+    MouseButton,
+    PhysicalKey as WinitPhysicalKey,
     WindowEvent as WinitWindowEvent,
   },
-  Loop, LoopBuilder,
+  Loop,
+  LoopBuilder,
 };
 use logging;
 
 use crate::{
   component::Component,
   events::{
-    Button, ComponentEvent, Events, Key, Mouse, RuntimeEvent, WindowEvent,
+    Button,
+    ComponentEvent,
+    Events,
+    Key,
+    Mouse,
+    RuntimeEvent,
+    WindowEvent,
   },
   render::{
-    window::{Window, WindowBuilder},
-    RenderContext, RenderContextBuilder,
+    window::{
+      Window,
+      WindowBuilder,
+    },
+    RenderContext,
+    RenderContextBuilder,
   },
   runtime::Runtime,
 };

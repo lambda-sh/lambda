@@ -1,21 +1,46 @@
+#![allow(clippy::needless_return)]
+
 use lambda::{
   component::Component,
   events::WindowEvent,
   logging,
-  math::{matrix, matrix::Matrix, vector::Vector},
+  math::{
+    matrix,
+    matrix::Matrix,
+    vector::Vector,
+  },
   render::{
     buffer::BufferBuilder,
     command::RenderCommand,
-    mesh::{Mesh, MeshBuilder},
-    pipeline::{PipelineStage, RenderPipelineBuilder},
+    mesh::{
+      Mesh,
+      MeshBuilder,
+    },
+    pipeline::{
+      PipelineStage,
+      RenderPipelineBuilder,
+    },
     render_pass::RenderPassBuilder,
-    shader::{Shader, ShaderBuilder, ShaderKind, VirtualShader},
-    vertex::{VertexAttribute, VertexBuilder, VertexElement},
-    viewport, ColorFormat, ResourceId,
+    shader::{
+      Shader,
+      ShaderBuilder,
+      ShaderKind,
+      VirtualShader,
+    },
+    vertex::{
+      VertexAttribute,
+      VertexBuilder,
+      VertexElement,
+    },
+    viewport,
+    ColorFormat,
+    ResourceId,
   },
   runtime::start_runtime,
   runtimes::{
-    application::ComponentResult, ApplicationRuntime, ApplicationRuntimeBuilder,
+    application::ComponentResult,
+    ApplicationRuntime,
+    ApplicationRuntimeBuilder,
   },
 };
 
@@ -346,4 +371,3 @@ fn main() {
 
   start_runtime(runtime);
 }
-#![allow(clippy::needless_return)]

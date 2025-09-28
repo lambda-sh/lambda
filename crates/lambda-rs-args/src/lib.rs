@@ -1,9 +1,12 @@
+#![allow(clippy::needless_return)]
 //! # Lambda Args
 //! Lambda Args is a simple argument parser for Rust. It is designed to be
 //! simple to use and primarily for use in lambda command line applications.
-#![allow(clippy::needless_return)]
 
-use std::{collections::HashMap, fmt};
+use std::{
+  collections::HashMap,
+  fmt,
+};
 
 /// Configurable command‑line argument parser for Lambda tools and examples.
 ///

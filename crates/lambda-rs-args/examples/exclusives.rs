@@ -1,4 +1,9 @@
-use args::{ArgsError, Argument, ArgumentParser, ArgumentType};
+use args::{
+  ArgsError,
+  Argument,
+  ArgumentParser,
+  ArgumentType,
+};
 
 fn main() {
   // --json and --yaml are mutually exclusive; --out requires --format

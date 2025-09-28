@@ -1,13 +1,20 @@
 //! Render pipeline builders and definitions for lambda runtimes and
 //! applications.
 
-use std::{borrow::Cow, ops::Range, rc::Rc};
+use std::{
+  borrow::Cow,
+  ops::Range,
+  rc::Rc,
+};
 
 use lambda_platform::wgpu::types as wgpu;
 
 use super::{
-  buffer::Buffer, render_pass::RenderPass, shader::Shader,
-  vertex::VertexAttribute, RenderContext,
+  buffer::Buffer,
+  render_pass::RenderPass,
+  shader::Shader,
+  vertex::VertexAttribute,
+  RenderContext,
 };
 
 #[derive(Debug)]
