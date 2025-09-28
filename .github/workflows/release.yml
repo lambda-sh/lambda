@@ -1,0 +1,350 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_date:
+        description: "Override date (UTC YYYY.MM.DD). Leave empty for today."
+        required: false
+        type: string
+      dry_run:
+        description: "Do not push/tag/publish (build only)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    name: Validate (fmt, clippy, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace -- --nocapture
+
+  prepare_version:
+    name: Prepare version, tag, push
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.setver.outputs.version }}
+      tag: ${{ steps.setver.outputs.tag }}
+      commit_sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-workspaces
+        run: cargo install cargo-workspaces --locked
+
+      - name: Compute date-based version
+        id: setver
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ inputs.release_date }}"
+          if [[ -z "${BASE}" ]]; then
+            BASE="$(date -u +%Y.%m.%d)"
+          fi
+          git fetch --tags --quiet
+          LAST=$(git tag -l "v${BASE}*" | sed 's/^v//' | sort -V | tail -n1 || true)
+          if [[ -z "${LAST}" ]]; then
+            VERSION="${BASE}"
+          else
+            if [[ "${LAST}" == "${BASE}" ]]; then
+              N=1
+            else
+              SUF="${LAST#${BASE}-}"
+              N=$((10#${SUF} + 1))
+            fi
+            VERSION=$(printf "%s-%02d" "${BASE}" "${N}")
+          fi
+          echo "version=${VERSION}" | tee -a "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" | tee -a "$GITHUB_OUTPUT"
+          echo "${VERSION}" > VERSION
+
+      - name: Bump workspace versions
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Update all crate versions and internal dependency requirements
+          cargo workspaces version ${{ steps.setver.outputs.version }} \
+            --exact --force --yes --no-git-tag --no-git-commit
+          # Align lockfile
+          cargo update -w
+
+      - name: Commit and tag
+        id: commit
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git commit -m "[release] v${{ steps.setver.outputs.version }}"
+          git tag "v${{ steps.setver.outputs.version }}"
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin "v${{ steps.setver.outputs.version }}"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  publish_crates:
+    name: Publish to crates.io
+    needs: prepare_version
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    env:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          ref: ${{ needs.prepare_version.outputs.tag }}
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-workspaces
+        run: cargo install cargo-workspaces --locked
+
+      - name: Publish workspace
+        run: |
+          set -euo pipefail
+          # Publish in dependency order, skipping those already on the registry
+          cargo workspaces publish --from-git --yes --skip-published
+
+  build:
+    name: Build artifacts (${{ matrix.os_slug }})
+    needs: prepare_version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            os_slug: linux
+            archive: tar.gz
+          - os: macos-latest
+            os_slug: macos
+            archive: tar.gz
+          - os: windows-latest
+            os_slug: windows
+            archive: zip
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          ref: ${{ needs.prepare_version.outputs.tag }}
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          profile: minimal
+          components: clippy,rustfmt
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install jq
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y jq
+          else
+            brew update && brew install jq
+          fi
+
+      - name: Install jq (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: choco install jq -y
+
+      - name: Build binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --workspace --release --bins
+
+      - name: Stage files
+        id: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION='${{ needs.prepare_version.outputs.version }}'
+          OUTDIR="stage/lambda-${VERSION}-${{ matrix.os_slug }}"
+          mkdir -p "${OUTDIR}/bin"
+          # List workspace binary targets
+          bins=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[].targets[] | select(.kind[]=="bin") | .name' | sort -u)
+          for b in $bins; do
+            if [[ "${{ runner.os }}" == "Windows" ]]; then
+              src="target/release/${b}.exe"
+            else
+              src="target/release/${b}"
+            fi
+            if [[ -f "$src" ]]; then
+              cp "$src" "${OUTDIR}/bin/"
+            fi
+          done
+          # Include example 'minimal' if present
+          if [[ -f target/release/examples/minimal ]]; then
+            mkdir -p "${OUTDIR}/examples"
+            cp target/release/examples/minimal "${OUTDIR}/examples/"
+          elif [[ -f target/release/examples/minimal.exe ]]; then
+            mkdir -p "${OUTDIR}/examples"
+            cp target/release/examples/minimal.exe "${OUTDIR}/examples/"
+          fi
+          # Include assets if present
+          if [[ -d crates/lambda-rs/assets ]]; then
+            mkdir -p "${OUTDIR}/assets"
+            cp -R crates/lambda-rs/assets/* "${OUTDIR}/assets/" || true
+          fi
+          # Top-level docs
+          for f in LICENSE LICENSE.md README.md README; do
+            [[ -f "$f" ]] && cp "$f" "${OUTDIR}/" || true
+          done
+          echo "${VERSION}" > "${OUTDIR}/VERSION"
+
+      - name: Package (tar.gz)
+        if: ${{ matrix.archive == 'tar.gz' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd stage
+          tar -czf "lambda-${{ needs.prepare_version.outputs.version }}-${{ matrix.os_slug }}.tar.gz" "lambda-${{ needs.prepare_version.outputs.version }}-${{ matrix.os_slug }}"
+          if command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "lambda-${{ needs.prepare_version.outputs.version }}-${{ matrix.os_slug }}.tar.gz" > "lambda-${{ needs.prepare_version.outputs.version }}-${{ matrix.os_slug }}.tar.gz.sha256"
+          elif command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "lambda-${{ needs.prepare_version.outputs.version }}-${{ matrix.os_slug }}.tar.gz" > "lambda-${{ needs.prepare_version.outputs.version }}-${{ matrix.os_slug }}.tar.gz.sha256"
+          fi
+
+      - name: Package (zip)
+        if: ${{ matrix.archive == 'zip' }}
+        shell: pwsh
+        run: |
+          $v = "${{ needs.prepare_version.outputs.version }}"
+          $slug = "${{ matrix.os_slug }}"
+          $src = "stage/lambda-$v-$slug"
+          $zip = "stage/lambda-$v-$slug.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath $zip -CompressionLevel Optimal
+          (Get-FileHash $zip -Algorithm SHA256).Hash + " *$(Split-Path -Leaf $zip)" | Out-File "$zip.sha256" -Encoding ascii
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os_slug }}
+          path: stage/*
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub release
+    needs: [prepare_version, build, publish_crates]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          ref: ${{ needs.prepare_version.outputs.tag }}
+
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG='${{ needs.prepare_version.outputs.tag }}'
+          VERSION='${{ needs.prepare_version.outputs.version }}'
+          REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          git fetch --tags --quiet
+          PREV=$(git tag -l 'v*' | sort -V | awk -v t="$TAG" '$0==t{print last; exit} {last=$0}')
+          if [[ -n "${PREV}" ]]; then
+            RANGE="${PREV}..${TAG}"
+            COMPARE_URL="${REPO_URL}/compare/${PREV}...${TAG}"
+          else
+            RANGE="${TAG}"
+            COMPARE_URL="${REPO_URL}/commits/${TAG}"
+          fi
+          FILE="CHANGELOG-v${VERSION}.md"
+          {
+            echo "# Changelog";
+            echo;
+            echo "Version ${TAG}";
+            echo;
+            if [[ -n "${PREV}" ]]; then
+              echo "Changes since ${PREV}";
+            else
+              echo "Initial release";
+            fi
+            echo;
+            echo "Compare: ${COMPARE_URL}";
+            echo;
+            echo "Commits:";
+            echo;
+          } > "${FILE}"
+          git log --no-merges --pretty=format:"- [%h](${REPO_URL}/commit/%H) %s" ${RANGE} >> "${FILE}"
+          echo "path=${FILE}" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dl
+          merge-multiple: true
+
+      - name: Create release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare_version.outputs.tag }}
+          name: "lambda v${{ needs.prepare_version.outputs.version }}"
+          draft: false
+          prerelease: false
+          body_path: ${{ steps.changelog.outputs.path }}
+          files: |
+            dl/*.tar.gz
+            dl/*.tar.gz.sha256
+            dl/*.zip
+            dl/*.zip.sha256
+            ${{ steps.changelog.outputs.path }}
