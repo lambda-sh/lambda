@@ -51,8 +51,11 @@ fn main() {
 use lambda_rs_logging as logging;
 
 fn main() {
-  let logger = logging::Logger::new(logging::LogLevel::INFO, "my-app");
-  logger.add_handler(Box::new(logging::handler::ConsoleHandler::new("my-app")));
+  let logger = logging::Logger::builder()
+      .name("my-app")
+      .level(logging::LogLevel::INFO)
+      .with_handler(Box::new(logging::handler::ConsoleHandler::new("my-app")))
+      .build();
 
   logger.info("Hello world".to_string());
   logger.warn("Be careful".to_string());
@@ -64,8 +67,11 @@ fn main() {
 use lambda_rs_logging as logging;
 
 fn main() {
-  let logger = logging::Logger::new(logging::LogLevel::DEBUG, "app");
-  logger.add_handler(Box::new(logging::handler::ConsoleHandler::new("app")));
+  let logger = logging::Logger::builder()
+      .name("app")
+      .level(logging::LogLevel::DEBUG)
+      .with_handler(Box::new(logging::handler::ConsoleHandler::new("app")))
+      .build();
 
   // Set the global logger before any macros are used
   logging::Logger::init(logger).expect("global logger can only be initialized once");
@@ -74,10 +80,24 @@ fn main() {
 }
 ```
 
+### Configure level from environment
+```rust
+use lambda_rs_logging as logging;
+
+fn main() {
+  // LAMBDA_LOG can be: trace|debug|info|warn|error|fatal
+  // Example: export LAMBDA_LOG=debug
+  logging::env::init_global_from_env().ok();
+
+  logging::info!("respects env filter");
+}
+```
+
 ## Notes
 - Thread-safe global with `OnceLock<Arc<Logger>>`.
 - Handlers are `Send + Sync` and receive a `Record` internally (phase 1 refactor).
 - `fatal!` logs at FATAL level but does not exit the process. Prefer explicit exits in your app logic.
+- Console handler colors only when attached to a TTY and writes WARN+ to stderr.
 
 ## Examples
 This crate ships with examples. From the repository root:
@@ -85,4 +105,9 @@ This crate ships with examples. From the repository root:
 cargo run -p lambda-rs-logging --example 01_global_macros
 cargo run -p lambda-rs-logging --example 02_custom_logger
 cargo run -p lambda-rs-logging --example 03_global_init
+```
+
+### Environment example
+```bash
+LAMBDA_LOG=debug cargo run -p lambda-rs-logging --example 01_global_macros
 ```

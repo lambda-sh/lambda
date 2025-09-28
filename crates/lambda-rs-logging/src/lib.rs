@@ -71,6 +71,11 @@ impl Logger {
     }
   }
 
+  /// Creates a builder for configuring a `Logger`.
+  pub fn builder() -> LoggerBuilder {
+    LoggerBuilder::default()
+  }
+
   /// Returns the global logger (thread-safe). Initializes with a default
   /// console handler if not explicitly initialized via `init`.
   pub fn global() -> &'static Arc<Self> {
@@ -175,6 +180,93 @@ impl Logger {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InitError {
   AlreadyInitialized,
+}
+
+/// Logger builder for ergonomic configuration.
+pub struct LoggerBuilder {
+  name: String,
+  level: LogLevel,
+  handlers: Vec<Box<dyn handler::Handler>>,
+}
+
+impl Default for LoggerBuilder {
+  fn default() -> Self {
+    Self {
+      name: "lambda-rs".to_string(),
+      level: LogLevel::INFO,
+      handlers: Vec::new(),
+    }
+  }
+}
+
+impl LoggerBuilder {
+  pub fn name(mut self, name: &str) -> Self {
+    self.name = name.to_string();
+    self
+  }
+
+  pub fn level(mut self, level: LogLevel) -> Self {
+    self.level = level;
+    self
+  }
+
+  pub fn with_handler(mut self, handler: Box<dyn handler::Handler>) -> Self {
+    self.handlers.push(handler);
+    self
+  }
+
+  pub fn build(self) -> Logger {
+    let logger = Logger::new(self.level, &self.name);
+    for h in self.handlers {
+      logger.add_handler(h);
+    }
+    logger
+  }
+}
+
+/// Environment configuration helpers.
+pub mod env {
+  use super::{
+    LogLevel,
+    Logger,
+  };
+
+  /// Parse a log level from a string like "trace", "debug", ...
+  pub fn parse_level(s: &str) -> Option<LogLevel> {
+    match s.trim().to_ascii_lowercase().as_str() {
+      "trace" => Some(LogLevel::TRACE),
+      "debug" => Some(LogLevel::DEBUG),
+      "info" => Some(LogLevel::INFO),
+      "warn" | "warning" => Some(LogLevel::WARN),
+      "error" => Some(LogLevel::ERROR),
+      "fatal" => Some(LogLevel::FATAL),
+      _ => None,
+    }
+  }
+
+  /// Applies a level from the environment to the provided logger.
+  ///
+  /// Reads the specified `var` (default: "LAMBDA_LOG"). If it parses to a level,
+  /// updates the logger's level.
+  pub fn apply_env_level(logger: &Logger, var: Option<&str>) {
+    let key = var.unwrap_or("LAMBDA_LOG");
+    if let Ok(val) = std::env::var(key) {
+      if let Some(level) = parse_level(&val) {
+        logger.set_level(level);
+      }
+    }
+  }
+
+  /// Initialize a global logger with a console handler and apply env level.
+  pub fn init_global_from_env() -> Result<(), super::InitError> {
+    let logger = Logger::builder()
+      .name("lambda-rs")
+      .level(LogLevel::INFO)
+      .with_handler(Box::new(crate::handler::ConsoleHandler::new("lambda-rs")))
+      .build();
+    apply_env_level(&logger, Some("LAMBDA_LOG"));
+    super::Logger::init(logger)
+  }
 }
 /// Returns whether the global logger would log at `level`.
 pub fn enabled(level: LogLevel) -> bool {
@@ -424,5 +516,58 @@ mod tests {
 
     // If guard fails, formatting Boom would panic.
     super::trace!("{}", Boom);
+  }
+
+  #[test]
+  fn builder_sets_name_level_and_handlers() {
+    #[derive(Default)]
+    struct Capture {
+      out: Arc<Mutex<Vec<String>>>,
+    }
+    impl handler::Handler for Capture {
+      fn log(&self, record: &Record) {
+        self
+          .out
+          .lock()
+          .unwrap()
+          .push(format!("{}:{}", record.target, record.level as u8));
+      }
+    }
+
+    let out = Arc::new(Mutex::new(Vec::new()));
+    let logger = Logger::builder()
+      .name("builder-app")
+      .level(LogLevel::WARN)
+      .with_handler(Box::new(Capture { out: out.clone() }))
+      .build();
+
+    logger.info("drop".to_string());
+    logger.error("keep".to_string());
+
+    let v = out.lock().unwrap();
+    assert_eq!(v.len(), 1);
+    assert_eq!(v[0], "builder-app:4"); // ERROR => 4 per to_u8 mapping
+  }
+
+  #[test]
+  fn env_parse_and_apply_level() {
+    // no panic if env missing
+    super::env::apply_env_level(
+      &Logger::new(LogLevel::TRACE, "tmp"),
+      Some("__NOT_SET__"),
+    );
+
+    assert_eq!(super::env::parse_level("trace"), Some(LogLevel::TRACE));
+    assert_eq!(super::env::parse_level("DEBUG"), Some(LogLevel::DEBUG));
+    assert_eq!(super::env::parse_level("warning"), Some(LogLevel::WARN));
+    assert_eq!(super::env::parse_level("nope"), None);
+
+    // apply
+    let logger = Logger::new(LogLevel::ERROR, "tmp");
+    std::env::set_var("LAMBDA_LOG", "info");
+    super::env::apply_env_level(&logger, Some("LAMBDA_LOG"));
+    assert!(logger.compare_levels(LogLevel::INFO));
+    // restore
+    std::env::remove_var("LAMBDA_LOG");
   }
 }

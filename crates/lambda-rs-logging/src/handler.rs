@@ -2,7 +2,11 @@
 
 use std::{
   fs::OpenOptions,
-  io::Write,
+  io::{
+    self,
+    IsTerminal,
+    Write,
+  },
   sync::Mutex,
   time::SystemTime,
 };
@@ -105,15 +109,45 @@ impl Handler for ConsoleHandler {
       timestamp, record.level, self.name, record.message
     );
 
-    let colored_message = match record.level {
-      LogLevel::TRACE => format!("\x1B[37m{}\x1B[0m", log_message),
-      LogLevel::DEBUG => format!("\x1B[35m{}\x1B[0m", log_message),
-      LogLevel::INFO => format!("\x1B[32m{}\x1B[0m", log_message),
-      LogLevel::WARN => format!("\x1B[33m{}\x1B[0m", log_message),
-      LogLevel::ERROR => format!("\x1B[31;1m{}\x1B[0m", log_message),
-      LogLevel::FATAL => format!("\x1B[31;1m{}\x1B[0m", log_message),
-    };
-
-    println!("{}", colored_message);
+    // Select output stream based on level.
+    let warn_or_higher = matches!(
+      record.level,
+      LogLevel::WARN | LogLevel::ERROR | LogLevel::FATAL
+    );
+    if warn_or_higher {
+      let mut e = io::stderr().lock();
+      let use_color = io::stderr().is_terminal();
+      if use_color {
+        let colored = match record.level {
+          LogLevel::TRACE => format!("\x1B[37m{}\x1B[0m", log_message),
+          LogLevel::DEBUG => format!("\x1B[35m{}\x1B[0m", log_message),
+          LogLevel::INFO => format!("\x1B[32m{}\x1B[0m", log_message),
+          LogLevel::WARN => format!("\x1B[33m{}\x1B[0m", log_message),
+          LogLevel::ERROR | LogLevel::FATAL => {
+            format!("\x1B[31;1m{}\x1B[0m", log_message)
+          }
+        };
+        let _ = writeln!(e, "{}", colored);
+      } else {
+        let _ = writeln!(e, "{}", log_message);
+      }
+    } else {
+      let mut o = io::stdout().lock();
+      let use_color = io::stdout().is_terminal();
+      if use_color {
+        let colored = match record.level {
+          LogLevel::TRACE => format!("\x1B[37m{}\x1B[0m", log_message),
+          LogLevel::DEBUG => format!("\x1B[35m{}\x1B[0m", log_message),
+          LogLevel::INFO => format!("\x1B[32m{}\x1B[0m", log_message),
+          LogLevel::WARN => format!("\x1B[33m{}\x1B[0m", log_message),
+          LogLevel::ERROR | LogLevel::FATAL => {
+            format!("\x1B[31;1m{}\x1B[0m", log_message)
+          }
+        };
+        let _ = writeln!(o, "{}", colored);
+      } else {
+        let _ = writeln!(o, "{}", log_message);
+      }
+    }
   }
 }
