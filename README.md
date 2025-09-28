@@ -3,6 +3,7 @@
 </p>
 
 [![Cross Platform builds & tests](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml/badge.svg)](https://github.com/lambda-sh/lambda/actions/workflows/compile_lambda_rs.yml)
+[![Release](https://github.com/lambda-sh/lambda/actions/workflows/release.yml/badge.svg)](https://github.com/lambda-sh/lambda/actions/workflows/release.yml)
 ![lambda-rs](https://img.shields.io/crates/d/lambda-rs)
 ![lambda-rs](https://img.shields.io/crates/v/lambda-rs)
 
@@ -18,6 +19,7 @@
 1. [Getting started](#get_started)
 1. [Examples](#examples)
 1. [Planned additions](#plans)
+1. [Releases & Publishing](#publishing)
 1. [How to contribute](#contribute)
 1. [Resources](#resources)
 ## Description <a name="description"></a>
@@ -176,6 +178,13 @@ cargo run --example triangles
   - [ ] Tests & benchmarking.
     - [ ] Unit tests.
   - [ ] Nightly builds.
+
+## Releases & Publishing <a name="publishing"></a>
+For cutting releases, publishing crates to crates.io, and attaching
+multi-platform artifacts to GitHub Releases, see:
+
+- docs/publishing.md
+
 
 ## How to contribute <a name="contribute"></a>
 Fork the current repository and then make the changes that you'd like to
