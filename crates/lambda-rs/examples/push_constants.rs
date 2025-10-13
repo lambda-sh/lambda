@@ -108,14 +108,15 @@ pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
 
 // --------------------------------- COMPONENT ---------------------------------
 
+const ROTATION_TURNS_PER_SECOND: f32 = 0.12;
+
 pub struct PushConstantsExample {
-  frame_number: u64,
+  elapsed_seconds: f32,
   shader: Shader,
   fs: Shader,
   mesh: Option<Mesh>,
   render_pipeline: Option<ResourceId>,
   render_pass: Option<ResourceId>,
-  last_frame: std::time::Duration,
   width: u32,
   height: u32,
 }
@@ -227,13 +228,12 @@ impl Component<ComponentResult, String> for PushConstantsExample {
     return Ok(ComponentResult::Success);
   }
 
-  /// Update the frame number every frame.
+  /// Update elapsed time every frame.
   fn on_update(
     &mut self,
     last_frame: &std::time::Duration,
   ) -> Result<ComponentResult, String> {
-    self.last_frame = *last_frame;
-    self.frame_number += 1;
+    self.elapsed_seconds += last_frame.as_secs_f32();
     return Ok(ComponentResult::Success);
   }
 
@@ -241,20 +241,20 @@ impl Component<ComponentResult, String> for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Vec<lambda::render::command::RenderCommand> {
-    self.frame_number += 1;
     let camera = SimpleCamera {
       position: [0.0, 0.0, 3.0],
       field_of_view_in_turns: 0.25,
       near_clipping_plane: 0.1,
       far_clipping_plane: 100.0,
     };
+    let angle_in_turns = ROTATION_TURNS_PER_SECOND * self.elapsed_seconds;
     let mesh_matrix = compute_model_view_projection_matrix_about_pivot(
       &camera,
       self.width.max(1),
       self.height.max(1),
       [0.0, -1.0 / 3.0, 0.0],
       [0.0, 1.0, 0.0],
-      0.001 * self.frame_number as f32,
+      angle_in_turns,
       0.5,
       [0.0, 1.0 / 3.0, 0.0],
     );
@@ -329,10 +329,9 @@ impl Default for PushConstantsExample {
     let fs = builder.build(triangle_fragment_shader);
 
     return Self {
-      frame_number: 0,
+      elapsed_seconds: 0.0,
       shader,
       fs,
-      last_frame: std::time::Duration::from_secs(0),
       mesh: None,
       render_pipeline: None,
       render_pass: None,
