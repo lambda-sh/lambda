@@ -36,6 +36,36 @@ impl BindingVisibility {
   }
 }
 
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// This test confirms that every high‑level binding visibility option maps
+  /// directly to the corresponding visibility option in the platform layer.
+  /// Matching these values ensures that builder code in this module forwards
+  /// intent without alteration, which is important for readability and for
+  /// maintenance when constructing layouts and groups.
+  #[test]
+  fn binding_visibility_maps_to_platform_enum() {
+    use lambda_platform::wgpu::bind::Visibility as P;
+
+    assert!(matches!(BindingVisibility::Vertex.to_platform(), P::Vertex));
+    assert!(matches!(
+      BindingVisibility::Fragment.to_platform(),
+      P::Fragment
+    ));
+    assert!(matches!(
+      BindingVisibility::Compute.to_platform(),
+      P::Compute
+    ));
+    assert!(matches!(
+      BindingVisibility::VertexAndFragment.to_platform(),
+      P::VertexAndFragment
+    ));
+    assert!(matches!(BindingVisibility::All.to_platform(), P::All));
+  }
+}
+
 #[derive(Debug, Clone)]
 /// Bind group layout used when creating pipelines and bind groups.
 pub struct BindGroupLayout {

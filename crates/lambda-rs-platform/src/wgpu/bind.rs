@@ -70,6 +70,30 @@ impl Visibility {
   }
 }
 
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// This test verifies that each public binding visibility option is
+  /// converted into the correct set of shader stage flags expected by the
+  /// underlying graphics layer. It checks single stage selections, a
+  /// combination of vertex and fragment stages, and the catch‑all option that
+  /// enables all stages. The goal is to demonstrate that the mapping logic is
+  /// precise and predictable so higher level code can rely on it when building
+  /// layouts and groups.
+  #[test]
+  fn visibility_maps_to_expected_shader_stages() {
+    assert_eq!(Visibility::Vertex.to_wgpu(), wgpu::ShaderStages::VERTEX);
+    assert_eq!(Visibility::Fragment.to_wgpu(), wgpu::ShaderStages::FRAGMENT);
+    assert_eq!(Visibility::Compute.to_wgpu(), wgpu::ShaderStages::COMPUTE);
+    assert_eq!(
+      Visibility::VertexAndFragment.to_wgpu(),
+      wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT
+    );
+    assert_eq!(Visibility::All.to_wgpu(), wgpu::ShaderStages::all());
+  }
+}
+
 #[derive(Default)]
 /// Builder for creating a `wgpu::BindGroupLayout`.
 pub struct BindGroupLayoutBuilder {
