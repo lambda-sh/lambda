@@ -70,11 +70,18 @@ mod tests {
 /// Bind group layout used when creating pipelines and bind groups.
 pub struct BindGroupLayout {
   layout: Rc<lambda_platform::wgpu::bind::BindGroupLayout>,
+  /// Total number of dynamic bindings declared in this layout.
+  dynamic_binding_count: u32,
 }
 
 impl BindGroupLayout {
   pub(crate) fn raw(&self) -> &wgpu::BindGroupLayout {
     self.layout.raw()
+  }
+
+  /// Number of dynamic bindings declared in this layout.
+  pub fn dynamic_binding_count(&self) -> u32 {
+    self.dynamic_binding_count
   }
 }
 
@@ -82,11 +89,18 @@ impl BindGroupLayout {
 /// Bind group that binds one or more resources to a pipeline set index.
 pub struct BindGroup {
   group: Rc<lambda_platform::wgpu::bind::BindGroup>,
+  /// Cached number of dynamic bindings expected when binding this group.
+  dynamic_binding_count: u32,
 }
 
 impl BindGroup {
   pub(crate) fn raw(&self) -> &wgpu::BindGroup {
     self.group.raw()
+  }
+
+  /// Number of dynamic bindings expected when calling set_bind_group.
+  pub fn dynamic_binding_count(&self) -> u32 {
+    self.dynamic_binding_count
   }
 }
 
@@ -135,6 +149,8 @@ impl BindGroupLayoutBuilder {
   pub fn build(self, render_context: &RenderContext) -> BindGroupLayout {
     let mut platform =
       lambda_platform::wgpu::bind::BindGroupLayoutBuilder::new();
+    let dynamic_binding_count =
+      self.entries.iter().filter(|(_, _, d)| *d).count() as u32;
     if let Some(label) = &self.label {
       platform = platform.with_label(label);
     }
@@ -148,6 +164,7 @@ impl BindGroupLayoutBuilder {
     let layout = platform.build(render_context.device());
     BindGroupLayout {
       layout: Rc::new(layout),
+      dynamic_binding_count,
     }
   }
 }
@@ -203,12 +220,23 @@ impl<'a> BindGroupBuilder<'a> {
     if let Some(label) = &self.label {
       platform = platform.with_label(label);
     }
+    let max_binding = render_context.limit_max_uniform_buffer_binding_size();
     for (binding, buffer, offset, size) in self.entries.into_iter() {
+      if let Some(sz) = size {
+        assert!(
+          sz.get() <= max_binding,
+          "Uniform binding at binding={} requests size={} > device limit {}",
+          binding,
+          sz.get(),
+          max_binding
+        );
+      }
       platform = platform.with_uniform(binding, buffer.raw(), offset, size);
     }
     let group = platform.build(render_context.device());
     BindGroup {
       group: Rc::new(group),
+      dynamic_binding_count: layout.dynamic_binding_count(),
     }
   }
 }

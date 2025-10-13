@@ -1,15 +1,15 @@
 ---
 title: "Uniform Buffers and Bind Groups"
 document_id: "ubo-spec-2025-10-11"
-status: "draft"
+status: "living"
 created: "2025-10-11T00:00:00Z"
 last_updated: "2025-10-13T00:00:00Z"
-version: "0.1.1"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "a9ecb6df8188fb189e3221598b36f6cf757697bb"
+repo_commit: "3e63f82b0a364bc52a40ae297a5300f998800518"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "uniforms", "bind-groups", "wgpu"]
@@ -61,6 +61,8 @@ layers of the workspace.
   - Extend `RenderPipelineBuilder` to accept bind group layouts, building a
     `wgpu::PipelineLayout` under the hood.
   - Extend `RenderCommand` with `SetBindGroup` to bind resources during a pass.
+  - Avoid exposing `wgpu` types in the public API; surface numeric limits and
+    high-level wrappers only, delegating raw handles to the platform layer.
 
 Data flow (one-time setup → per-frame):
 ```
@@ -92,16 +94,16 @@ Per-frame commands: BeginRenderPass -> SetPipeline -> SetBindGroup -> Draw -> En
     - `fn build(self, device: &wgpu::Device) -> BindGroup`
 
 Validation and limits
-- Current implementation defers validation to `wgpu` and backend validators.
-  Builders do not perform explicit limit checks yet; invalid inputs will surface
-  as `wgpu` validation errors at creation/bind time.
-  - No explicit checks for `max_uniform_buffer_binding_size` in builders.
-  - Dynamic offset alignment is not re-validated; callers must ensure offsets are
-    multiples of `min_uniform_buffer_offset_alignment`.
-  - Pipeline layout size (`max_bind_groups`) is not pre-validated by the builder.
+- High-level validation now checks common cases early:
+  - Bind group uniform binding sizes are asserted to be ≤ `max_uniform_buffer_binding_size`.
+  - Dynamic offset count and alignment are validated before encoding `SetBindGroup`.
+  - Pipeline builder asserts the number of bind group layouts ≤ `max_bind_groups`.
+  - Helpers are provided to compute aligned strides and to validate dynamic offsets.
 
 Helpers
-- No dedicated helpers are exposed in the platform layer yet.
+- High-level exposes small helpers:
+  - `align_up(value, align)` to compute aligned uniform strides (for offsets).
+  - `validate_dynamic_offsets(required, offsets, alignment, set)` used internally and testable.
 
 ## High-Level API Design (lambda-rs)
 
@@ -133,27 +135,9 @@ Render commands
 
 Buffers
 - Continue using `buffer::BufferBuilder` with `Usage::UNIFORM` and CPU-visible
-  properties for frequently updated UBOs. No new types are strictly required,
-  but an optional typed helper improves ergonomics:
-
-```rust
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct UniformBuffer<T> { inner: buffer::Buffer, _phantom: core::marker::PhantomData<T> }
-
-impl<T> UniformBuffer<T> {
-  pub fn raw(&self) -> &buffer::Buffer { &self.inner }
-  pub fn write(&self, rc: &mut RenderContext, value: &T) where T: Copy {
-    let bytes = unsafe {
-      std::slice::from_raw_parts(
-        (value as *const T) as *const u8,
-        core::mem::size_of::<T>(),
-      )
-    };
-    rc.queue().write_buffer(self.inner.raw(), 0, bytes);
-  }
-}
-```
+  properties for frequently updated UBOs.
+- A typed `UniformBuffer<T>` wrapper is available with `new(&mut rc, &T, label)`
+  and `write(&rc, &T)`, and exposes `raw()` to bind.
 
 ## Layout and Alignment Rules
 
@@ -238,15 +222,15 @@ layout(set = 0, binding = 0) uniform Globals { mat4 view_proj; } globals;
 void main() { gl_Position = globals.view_proj * vec4(in_pos, 1.0); }
 ```
 
-Dynamic offsets (optional)
+Dynamic offsets
 ```rust
 let dyn_layout = BindGroupLayoutBuilder::new()
   .with_uniform_dynamic(0, BindingVisibility::Vertex)
   .build(&mut rc);
 
-let align = rc.device().limits().min_uniform_buffer_offset_alignment;
+let align = rc.limit_min_uniform_buffer_offset_alignment() as u64;
 let size = core::mem::size_of::<Globals>() as u64;
-let stride = ((size + align - 1) / align) * align; // manual align-up
+let stride = lambda::render::validation::align_up(size, align);
 let offsets = vec![0u32, stride as u32, (2*stride) as u32];
 RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
 ```
@@ -275,14 +259,13 @@ Phase 0 (minimal, static UBO)
 - Update examples to use one UBO for a transform/camera.
 
 Phase 1 (dynamic offsets)
-- Add `.with_uniform_dynamic` to layout builder and support offsets in
-  `SetBindGroup`. Validate alignment vs device limits.
-- Add small helper to compute aligned strides.
+- Done: `.with_uniform_dynamic` in layout builder, support for dynamic offsets, and
+  validation of count/alignment before binding. Alignment helper implemented.
 
 Phase 2 (ergonomics/testing)
-- Optional `UniformBuffer<T>` wrapper with `.write(&T)` for convenience (not implemented yet).
-- Unit tests for builders and validation; integration test that animates a
-  triangle with a camera UBO.
+- Done: `UniformBuffer<T>` wrapper with `.write(&T)` convenience.
+- Added unit tests for alignment and dynamic offset validation; example animates a
+  triangle with a UBO (integration test remains minimal).
 
 File layout
 - Platform: `crates/lambda-rs-platform/src/wgpu/bind.rs` (+ `mod.rs` re-export).
@@ -293,12 +276,11 @@ File layout
 ## Testing Plan
 
 - Unit tests
-  - Layout builder produces expected `wgpu::BindGroupLayoutEntry` values.
-  - Bind group builder rejects misaligned dynamic offsets.
-  - Pipeline builder errors if too many layouts are provided.
-- Integration tests (`crates/lambda-rs/tests/runnables.rs`)
-  - Simple pipeline using a UBO to transform vertices; compare golden pixels or
-    log successful draw on supported adapters.
+  - Alignment helper (`align_up`) and dynamic offset validation logic.
+  - Visibility enum mapping test (in-place).
+- Integration
+  - Example `uniform_buffer_triangle` exercises the full path; a fuller
+    runnable test remains a future improvement.
 
 ## Open Questions
 
@@ -311,3 +293,6 @@ File layout
 
 - 2025-10-13 (v0.1.1) — Synced spec to implementation: renamed visibility enum variant to `VertexAndFragment`; clarified that builders defer validation to `wgpu`; updated `with_uniform` size type to `Option<NonZeroU64>`; added note on GPU column‑major matrices and CPU transpose guidance; adjusted dynamic offset example.
 - 2025-10-11 (v0.1.0) — Initial draft aligned to roadmap; specifies platform and high-level APIs, commands, validation, examples, and phased delivery.
+- 2025-10-13 (v0.2.0) — Add validation for dynamic offsets (count/alignment),
+  assert uniform binding sizes against device limits, assert max bind groups in
+  pipeline builder; add `UniformBuffer<T>` wrapper; expose `align_up` helper; update examples.

@@ -10,6 +10,7 @@ pub mod pipeline;
 pub mod render_pass;
 pub mod scene_math;
 pub mod shader;
+pub mod validation;
 pub mod vertex;
 pub mod viewport;
 pub mod window;
@@ -213,6 +214,21 @@ impl RenderContext {
     self.config.format
   }
 
+  /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
+  pub fn limit_max_uniform_buffer_binding_size(&self) -> u64 {
+    self.gpu.limits().max_uniform_buffer_binding_size.into()
+  }
+
+  /// Device limit: number of bind groups that can be used by a pipeline layout.
+  pub fn limit_max_bind_groups(&self) -> u32 {
+    self.gpu.limits().max_bind_groups
+  }
+
+  /// Device limit: required alignment in bytes for dynamic uniform buffer offsets.
+  pub fn limit_min_uniform_buffer_offset_alignment(&self) -> u32 {
+    self.gpu.limits().min_uniform_buffer_offset_alignment
+  }
+
   /// Encode and submit GPU work for a single frame.
   fn render_internal(
     &mut self,
@@ -328,6 +344,14 @@ impl RenderContext {
           let group_ref = self.bind_groups.get(group).ok_or_else(|| {
             RenderError::Configuration(format!("Unknown bind group {group}"))
           })?;
+          // Validate dynamic offsets count and alignment before binding.
+          validation::validate_dynamic_offsets(
+            group_ref.dynamic_binding_count(),
+            &dynamic_offsets,
+            self.limit_min_uniform_buffer_offset_alignment(),
+            set,
+          )
+          .map_err(RenderError::Configuration)?;
           pass.set_bind_group(set, group_ref.raw(), &dynamic_offsets);
         }
         RenderCommand::BindVertexBuffer { pipeline, buffer } => {

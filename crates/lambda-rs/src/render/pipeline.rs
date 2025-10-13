@@ -200,6 +200,14 @@ impl RenderPipelineBuilder {
       })
       .collect();
 
+    let max_bind_groups = render_context.limit_max_bind_groups() as usize;
+    assert!(
+      self.bind_group_layouts.len() <= max_bind_groups,
+      "Pipeline declares {} bind group layouts, exceeds device max {}",
+      self.bind_group_layouts.len(),
+      max_bind_groups
+    );
+
     let bind_group_layout_refs: Vec<&wgpu::BindGroupLayout> = self
       .bind_group_layouts
       .iter()

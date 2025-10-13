@@ -138,6 +138,48 @@ impl Buffer {
   }
 }
 
+/// Strongly‑typed uniform buffer wrapper for ergonomics and safety.
+///
+/// Stores a single value of type `T` and provides a convenience method to
+/// upload updates to the GPU. The underlying buffer has `UNIFORM` usage and
+/// is CPU‑visible by default for easy updates via `Queue::write_buffer`.
+pub struct UniformBuffer<T> {
+  inner: Buffer,
+  _phantom: core::marker::PhantomData<T>,
+}
+
+impl<T: Copy> UniformBuffer<T> {
+  /// Create a new uniform buffer initialized with `initial`.
+  pub fn new(
+    render_context: &mut RenderContext,
+    initial: &T,
+    label: Option<&str>,
+  ) -> Result<Self, &'static str> {
+    let mut builder = BufferBuilder::new();
+    builder.with_length(core::mem::size_of::<T>());
+    builder.with_usage(Usage::UNIFORM);
+    builder.with_properties(Properties::CPU_VISIBLE);
+    if let Some(l) = label {
+      builder.with_label(l);
+    }
+    let inner = builder.build(render_context, vec![*initial])?;
+    Ok(Self {
+      inner,
+      _phantom: core::marker::PhantomData,
+    })
+  }
+
+  /// Borrow the underlying generic `Buffer` for binding.
+  pub fn raw(&self) -> &Buffer {
+    &self.inner
+  }
+
+  /// Write a new value to the GPU buffer at offset 0.
+  pub fn write(&self, render_context: &RenderContext, value: &T) {
+    self.inner.write_value(render_context, 0, value);
+  }
+}
+
 /// Builder for creating `Buffer` objects with explicit usage and properties.
 ///
 /// A buffer is a block of memory the GPU can access. You supply a total byte
