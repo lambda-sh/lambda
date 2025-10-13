@@ -15,6 +15,8 @@ use wgpu::rwh::{
 
 use crate::winit::WindowHandle;
 
+pub mod bind;
+
 #[derive(Debug, Clone)]
 /// Builder for creating a `wgpu::Instance` with consistent defaults.
 ///

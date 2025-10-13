@@ -116,6 +116,26 @@ impl Buffer {
   pub fn buffer_type(&self) -> BufferType {
     self.buffer_type
   }
+
+  /// Write a single plain-old-data value into this buffer at the specified
+  /// byte offset. This is intended for updating uniform buffer contents from
+  /// the CPU. The `data` type must be trivially copyable.
+  pub fn write_value<T: Copy>(
+    &self,
+    render_context: &RenderContext,
+    offset: u64,
+    data: &T,
+  ) {
+    let bytes = unsafe {
+      std::slice::from_raw_parts(
+        (data as *const T) as *const u8,
+        std::mem::size_of::<T>(),
+      )
+    };
+    render_context
+      .queue()
+      .write_buffer(self.raw(), offset, bytes);
+  }
 }
 
 /// Builder for creating `Buffer` objects with explicit usage and properties.
