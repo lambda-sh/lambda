@@ -3,13 +3,13 @@ title: "Uniform Buffers and Bind Groups"
 document_id: "ubo-spec-2025-10-11"
 status: "living"
 created: "2025-10-11T00:00:00Z"
-last_updated: "2025-10-13T00:00:00Z"
-version: "0.2.0"
+last_updated: "2025-10-17T00:00:00Z"
+version: "0.4.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "3e63f82b0a364bc52a40ae297a5300f998800518"
+repo_commit: "00aababeb76370ebdeb67fc12ab4393aac5e4193"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "uniforms", "bind-groups", "wgpu"]
@@ -17,16 +17,17 @@ tags: ["spec", "rendering", "uniforms", "bind-groups", "wgpu"]
 
 # Uniform Buffers and Bind Groups
 
-This spec defines uniform buffer objects (UBO) and bind groups for Lambda’s
-wgpu-backed renderer. It follows the existing builder/command patterns and
-splits responsibilities between the platform layer (`lambda-rs-platform`) and
-the high-level API (`lambda-rs`).
+Summary
+- Specifies uniform buffer objects (UBOs) and bind groups for the
+  wgpu‑backed renderer, preserving builder/command patterns and the separation
+  between platform and high‑level layers.
+- Rationale: Enables structured constants (for example, cameras, materials,
+  per‑frame data) beyond push constants and supports dynamic offsets for
+  batching many small records efficiently.
 
-The design enables larger, structured GPU constants (cameras, materials,
-per-frame data) beyond push constants, with an ergonomic path to dynamic
-offsets for batching many small uniforms in a single buffer.
+## Scope
 
-## Goals
+### Goals
 
 - Add first-class uniform buffers and bind groups.
 - Maintain builder ergonomics consistent with buffers, pipelines, and passes.
@@ -34,35 +35,41 @@ offsets for batching many small uniforms in a single buffer.
 - Provide a portable, WGSL/GLSL-friendly layout model and validation.
 - Expose dynamic uniform offsets (opt-in) with correct alignment handling.
 
-## Non-Goals
+### Non-Goals
 
 - Storage buffers, textures/samplers, and compute are referenced but not
   implemented here; separate specs cover them.
 - Descriptor set caching beyond wgpu’s internal caches.
 
-## Background
+## Terminology
 
-Roadmap docs propose UBOs and bind groups to complement push constants and
-unlock cameras/materials. This spec refines those sketches into concrete API
-types, builders, commands, validation, and an implementation plan for both
-layers of the workspace.
+- Uniform buffer object (UBO): Read‑only constant buffer accessed by shaders as
+  `var<uniform>`.
+- Bind group: A collection of bound resources used together by a pipeline.
+- Bind group layout: The declared interface (bindings, types, visibility) for a
+  bind group.
+- Dynamic offset: A per‑draw offset applied to a uniform binding to select a
+  different slice within a larger buffer.
+- Visibility: Shader stage visibility for a binding (vertex, fragment, compute).
 
 ## Architecture Overview
 
 - Platform (`lambda-rs-platform`)
-  - Thin wrappers around `wgpu::BindGroupLayout` and `wgpu::BindGroup` with
-    builder structs that produce concrete `wgpu` descriptors and perform
-    validation against device limits.
-  - Expose the raw `wgpu` handles for use by higher layers.
+  - Wrappers around `wgpu::BindGroupLayout` and `wgpu::BindGroup` with builder
+    types that produce `wgpu` descriptors and perform validation against device
+    limits.
+  - The platform layer owns the raw `wgpu` handles and exposes them to the
+    high-level layer as needed.
 
 - High level (`lambda-rs`)
-  - Public builders/types for bind group layouts and bind groups aligned with
-    `RenderPipelineBuilder` and `BufferBuilder` patterns.
-  - Extend `RenderPipelineBuilder` to accept bind group layouts, building a
-    `wgpu::PipelineLayout` under the hood.
-  - Extend `RenderCommand` with `SetBindGroup` to bind resources during a pass.
-  - Avoid exposing `wgpu` types in the public API; surface numeric limits and
-    high-level wrappers only, delegating raw handles to the platform layer.
+  - Public builders and types for bind group layouts and bind groups, aligned
+    with existing `RenderPipelineBuilder` and `BufferBuilder` patterns.
+  - `RenderPipelineBuilder` accepts bind group layouts and constructs a
+    `wgpu::PipelineLayout` during build.
+  - `RenderCommand` includes `SetBindGroup` to bind resources during a pass.
+  - The public application programming interface avoids exposing `wgpu` types.
+    Numeric limits and high-level wrappers are surfaced; raw handles live in the
+    platform layer.
 
 Data flow (one-time setup → per-frame):
 ```
@@ -73,86 +80,64 @@ BufferBuilder (Usage::UNIFORM) --------------+--> BindGroupBuilder (uniform bind
 Per-frame commands: BeginRenderPass -> SetPipeline -> SetBindGroup -> Draw -> End
 ```
 
-## Platform API Design (lambda-rs-platform)
+## Design
 
-- Module: `lambda_platform::wgpu::bind`
-  - `struct BindGroupLayout { raw: wgpu::BindGroupLayout, label: Option<String> }`
-  - `struct BindGroup { raw: wgpu::BindGroup, label: Option<String> }`
-  - `enum Visibility { Vertex, Fragment, Compute, VertexAndFragment, All }`
-    - Maps to `wgpu::ShaderStages`.
-  - `struct BindGroupLayoutBuilder { entries: Vec<wgpu::BindGroupLayoutEntry>, label: Option<String> }`
-    - `fn new() -> Self`
-    - `fn with_uniform(mut self, binding: u32, visibility: Visibility) -> Self`
-    - `fn with_uniform_dynamic(mut self, binding: u32, visibility: Visibility) -> Self`
-    - `fn with_label(mut self, label: &str) -> Self`
-    - `fn build(self, device: &wgpu::Device) -> BindGroupLayout`
-  - `struct BindGroupBuilder { layout: wgpu::BindGroupLayout, entries: Vec<wgpu::BindGroupEntry>, label: Option<String> }`
-    - `fn new() -> Self`
-    - `fn with_layout(mut self, layout: &BindGroupLayout) -> Self`
-    - `fn with_uniform(mut self, binding: u32, buffer: &wgpu::Buffer, offset: u64, size: Option<NonZeroU64>) -> Self`
-    - `fn with_label(mut self, label: &str) -> Self`
-    - `fn build(self, device: &wgpu::Device) -> BindGroup`
+### API Surface
 
-Validation and limits
-- High-level validation now checks common cases early:
-  - Bind group uniform binding sizes are asserted to be ≤ `max_uniform_buffer_binding_size`.
-  - Dynamic offset count and alignment are validated before encoding `SetBindGroup`.
-  - Pipeline builder asserts the number of bind group layouts ≤ `max_bind_groups`.
-  - Helpers are provided to compute aligned strides and to validate dynamic offsets.
+- Platform layer (`lambda-rs-platform`, module `lambda_platform::wgpu::bind`)
+  - Types: `BindGroupLayout`, `BindGroup`, and `Visibility` (maps to
+    `wgpu::ShaderStages`).
+  - Builders: `BindGroupLayoutBuilder` and `BindGroupBuilder` for declaring
+    uniform bindings (static and dynamic), setting labels, and creating
+    resources.
+- High-level layer (`lambda-rs`, module `lambda::render::bind`)
+  - Types: high-level `BindGroupLayout` and `BindGroup` wrappers, and
+    `BindingVisibility` enumeration.
+  - Builders: mirror the platform builders; integrate with `RenderContext`.
+- Pipeline integration: `RenderPipelineBuilder::with_layouts(&[&BindGroupLayout])`
+  stores layouts and constructs a `wgpu::PipelineLayout` during `build`.
+- Render commands: `RenderCommand::SetBindGroup { set, group, dynamic_offsets }`
+  encodes `wgpu::RenderPass::set_bind_group` via `RenderContext`.
+- Buffers: Uniform buffers MUST be created with `Usage::UNIFORM`. For frequently
+  updated data, pair with CPU-visible properties. A typed `UniformBuffer<T>`
+  provides `new(&mut rc, &T, label)`, `write(&rc, &T)`, and exposes `raw()`.
 
-Helpers
-- High-level exposes small helpers:
-  - `align_up(value, align)` to compute aligned uniform strides (for offsets).
-  - `validate_dynamic_offsets(required, offsets, alignment, set)` used internally and testable.
+### Behavior
 
-## High-Level API Design (lambda-rs)
+- Bind group layouts declare uniform bindings and their stage visibility. Layout
+  indices correspond to set numbers; binding indices map one-to-one to shader
+  `@binding(N)` declarations.
+- Bind groups bind a buffer (with optional size slice) to a binding declared in
+  the layout. When a binding is dynamic, the actual offset is supplied at draw
+  time using `dynamic_offsets`.
+- Pipelines reference one or more bind group layouts; all render passes that use
+  that pipeline MUST supply compatible bind groups at the expected sets.
 
-New module: `lambda::render::bind`
-- `pub struct BindGroupLayout { /* holds Rc<wgpu::BindGroupLayout> */ }`
-- `pub struct BindGroup { /* holds Rc<wgpu::BindGroup> */ }`
-- `pub enum BindingVisibility { Vertex, Fragment, Compute, VertexAndFragment, All }`
-- `pub struct BindGroupLayoutBuilder { /* mirrors platform builder */ }`
-  - `pub fn new() -> Self`
-  - `pub fn with_uniform(self, binding: u32, visibility: BindingVisibility) -> Self`
-  - `pub fn with_uniform_dynamic(self, binding: u32, visibility: BindingVisibility) -> Self`
-  - `pub fn with_label(self, label: &str) -> Self`
-  - `pub fn build(self, rc: &RenderContext) -> BindGroupLayout`
-- `pub struct BindGroupBuilder { /* mirrors platform builder */ }`
-  - `pub fn new() -> Self`
-  - `pub fn with_layout(self, layout: &BindGroupLayout) -> Self`
-  - `pub fn with_uniform(self, binding: u32, buffer: &buffer::Buffer, offset: u64, size: Option<NonZeroU64>) -> Self`
-  - `pub fn with_label(self, label: &str) -> Self`
-  - `pub fn build(self, rc: &RenderContext) -> BindGroup`
+### Validation and Errors
 
-Pipeline integration
-- `RenderPipelineBuilder::with_layouts(&[&BindGroupLayout])` stores layouts and
-  constructs a `wgpu::PipelineLayout` during `build(...)`.
+- Uniform binding ranges MUST NOT exceed
+  `limits.max_uniform_buffer_binding_size`.
+- Dynamic uniform offsets MUST be aligned to
+  `limits.min_uniform_buffer_offset_alignment` and the count MUST match the
+  number of dynamic bindings set.
+- The number of bind group layouts in a pipeline MUST be ≤ `limits.max_bind_groups`.
+- Violations surface as wgpu validation errors during resource creation or when
+  encoding `set_bind_group`. Helper functions validate alignment and counts.
 
-Render commands
-- Extend `RenderCommand` with:
-  - `SetBindGroup { set: u32, group: super::ResourceId, dynamic_offsets: Vec<u32> }`
-- `RenderContext::encode_pass` maps to `wgpu::RenderPass::set_bind_group`.
+## Constraints and Rules
 
-Buffers
-- Continue using `buffer::BufferBuilder` with `Usage::UNIFORM` and CPU-visible
-  properties for frequently updated UBOs.
-- A typed `UniformBuffer<T>` wrapper is available with `new(&mut rc, &T, label)`
-  and `write(&rc, &T)`, and exposes `raw()` to bind.
-
-## Layout and Alignment Rules
-
-- WGSL/std140-like layout for uniform buffers (via naga/wgpu):
+- WGSL/std140-like layout for uniform buffers (as enforced by wgpu):
   - Scalars 4 B; `vec2` 8 B; `vec3/vec4` 16 B; matrices 16 B column alignment.
   - Struct members rounded up to their alignment; struct size rounded up to the
     max alignment of its fields.
-- Rust-side structs used as UBOs must be `#[repr(C)]` and plain-old-data.
-  Recommend `bytemuck::{Pod, Zeroable}` in examples for safety.
+- Rust-side structs used as UBOs MUST be `#[repr(C)]` and plain old data. Using
+  `bytemuck::{Pod, Zeroable}` in examples is recommended for safety.
 - Dynamic offsets must be multiples of
   `limits.min_uniform_buffer_offset_alignment`.
 - Respect `limits.max_uniform_buffer_binding_size` when slicing UBOs.
- - Matrices are column‑major in GLSL/WGSL. If your CPU math builds row‑major
-   matrices, either transpose before uploading to the GPU or mark GLSL uniform
-   blocks with `layout(row_major)` to avoid unexpected transforms.
+- Matrices are column‑major in GLSL/WGSL. If CPU math constructs row‑major
+  matrices, transpose before uploading or mark GLSL uniform
+  blocks with `layout(row_major)` to avoid unexpected transforms.
 
 ## Example Usage
 
@@ -234,63 +219,86 @@ let stride = lambda::render::validation::align_up(size, align);
 let offsets = vec![0u32, stride as u32, (2*stride) as u32];
 RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
 ```
+## Performance Considerations
 
-## Error Handling
+- Prefer `Properties::DEVICE_LOCAL` for long‑lived uniform buffers that are
+  updated infrequently; otherwise use CPU‑visible memory with
+  `Queue::write_buffer` for per‑frame updates.
+  - Rationale: Device‑local memory provides higher bandwidth and lower latency
+    for repeated reads. When updates are rare, the staging copy cost is
+    amortized and the GPU benefits every frame. For small
+    per‑frame updates, writing directly to CPU‑visible memory avoids additional
+    copies and reduces driver synchronization. On integrated graphics, the hint
+    still guides an efficient path and helps avoid stalls.
+- Use dynamic offsets to reduce bind group churn; align and pack many objects in
+  a single uniform buffer.
+  - Rationale: Reusing one bind group and changing only a 32‑bit offset turns
+    descriptor updates into a cheap command. This lowers CPU
+    overhead, reduces driver validation and allocation, improves cache locality
+    by keeping per‑object blocks contiguous, and reduces the number of bind
+    groups created and cached. Align slices to
+    `min_uniform_buffer_offset_alignment` to satisfy hardware requirements and
+    avoid implicit padding or copies.
+- Separate stable data (for example, camera) from frequently changing data (for
+  example, per‑object).
+  - Rationale: Bind stable data once per pass and vary only the hot set per
+    draw. This reduces state changes, keeps descriptor caches warm, avoids
+    rebinding large constant blocks when only small data changes, and lowers
+    bandwidth while improving cache effectiveness.
 
-- `BufferBuilder` already errors on zero length; keep behavior.
-- Bind group and layout builders currently do not pre‑validate against device limits.
-  Invalid sizes/offsets typically surface as `wgpu` validation errors during creation
-  or when calling `set_bind_group`. Ensure dynamic offsets are aligned to device limits
-  and uniform ranges respect `max_uniform_buffer_binding_size`.
+## Requirements Checklist
 
-## Performance Notes
+- Functionality
+  - [x] Core behavior implemented — crates/lambda-rs/src/render/bind.rs
+  - [x] Dynamic offsets supported — crates/lambda-rs/src/render/command.rs
+  - [x] Edge cases validated (alignment/size) — crates/lambda-rs/src/render/validation.rs
+- API Surface
+  - [x] Platform types and builders — crates/lambda-rs-platform/src/wgpu/bind.rs
+  - [x] High-level wrappers and builders — crates/lambda-rs/src/render/bind.rs
+  - [x] Pipeline layout integration — crates/lambda-rs/src/render/pipeline.rs
+- Validation and Errors
+  - [x] Uniform binding size checks — crates/lambda-rs/src/render/mod.rs
+  - [x] Dynamic offset alignment/count checks — crates/lambda-rs/src/render/validation.rs
+- Performance
+  - [x] Recommendations documented (this section)
+  - [x] Dynamic offsets example provided — docs/specs/uniform-buffers-and-bind-groups.md
+- Documentation and Examples
+  - [x] Spec updated (this document)
+  - [x] Example added — crates/lambda-rs/examples/uniform_buffer_triangle.rs
 
-- Prefer `Properties::DEVICE_LOCAL` for long-lived UBOs updated infrequently;
-  otherwise CPU-visible + `Queue::write_buffer` for per-frame updates.
-- Dynamic offsets reduce bind group churn; align and pack many objects per UBO.
-- Group stable data (camera) separate from frequently changing data (object).
-
-## Implementation Plan
-
-Phase 0 (minimal, static UBO)
-- Platform: add bind module, layout/bind builders, validation helpers.
-- High level: expose `bind` module; add pipeline `.with_layouts`; extend
-  `RenderCommand` and encoder with `SetBindGroup`.
-- Update examples to use one UBO for a transform/camera.
-
-Phase 1 (dynamic offsets)
-- Done: `.with_uniform_dynamic` in layout builder, support for dynamic offsets, and
-  validation of count/alignment before binding. Alignment helper implemented.
-
-Phase 2 (ergonomics/testing)
-- Done: `UniformBuffer<T>` wrapper with `.write(&T)` convenience.
-- Added unit tests for alignment and dynamic offset validation; example animates a
-  triangle with a UBO (integration test remains minimal).
-
-File layout
-- Platform: `crates/lambda-rs-platform/src/wgpu/bind.rs` (+ `mod.rs` re-export).
-- High level: `crates/lambda-rs/src/render/bind.rs`, plus edits to
-  `render/pipeline.rs`, `render/command.rs`, and `render/mod.rs` to wire in
-  pipeline layouts and `SetBindGroup` encoding.
-
-## Testing Plan
+## Verification and Testing
 
 - Unit tests
-  - Alignment helper (`align_up`) and dynamic offset validation logic.
-  - Visibility enum mapping test (in-place).
-- Integration
-  - Example `uniform_buffer_triangle` exercises the full path; a fuller
-    runnable test remains a future improvement.
+  - Alignment helper and dynamic offset validation — crates/lambda-rs/src/render/validation.rs
+  - Visibility mapping — crates/lambda-rs-platform/src/wgpu/bind.rs
+  - Command encoding satisfies device limits — crates/lambda-rs/src/render/command.rs
+  - Command: `cargo test --workspace`
+- Integration tests and examples
+  - `uniform_buffer_triangle` exercises the full path — crates/lambda-rs/examples/uniform_buffer_triangle.rs
+  - Command: `cargo run -p lambda-rs --example uniform_buffer_triangle`
+- Manual checks (optional)
+  - Validate dynamic offsets across multiple objects render correctly (no
+    misaligned reads) by varying object counts and strides.
 
-## Open Questions
+## Compatibility and Migration
 
-- Should we introduce a typed `Uniform<T>` handle now, or wait until there is a
-  second typed resource (e.g., storage) to avoid a one-off abstraction?
-- Do we want a tiny cache for bind groups keyed by buffer+offset for frequent
-  reuse, or rely entirely on wgpu’s internal caches?
+- No breaking changes. The feature is additive. Existing pipelines without bind
+  groups continue to function. New pipelines MAY specify layouts via
+  `with_layouts` without impacting prior behavior.
+
+
 
 ## Changelog
 
+- 2025-10-17 (v0.4.0) — Restructure to match spec template: add Summary, Scope,
+  Terminology, Design (API/Behavior/Validation), Constraints and Rules,
+  Requirements Checklist, Verification and Testing, and Compatibility. Remove
+  Implementation Plan and Open Questions. No functional changes.
+- 2025-10-17 (v0.3.0) — Edit for professional tone; adopt clearer normative
+  phrasing; convert Performance Notes to concise rationale; no functional
+  changes to the specification; update metadata.
+- 2025-10-17 (v0.2.1) — Expand Performance Notes with rationale; update
+  metadata (`last_updated`, `version`, `repo_commit`).
 - 2025-10-13 (v0.1.1) — Synced spec to implementation: renamed visibility enum variant to `VertexAndFragment`; clarified that builders defer validation to `wgpu`; updated `with_uniform` size type to `Option<NonZeroU64>`; added note on GPU column‑major matrices and CPU transpose guidance; adjusted dynamic offset example.
 - 2025-10-11 (v0.1.0) — Initial draft aligned to roadmap; specifies platform and high-level APIs, commands, validation, examples, and phased delivery.
 - 2025-10-13 (v0.2.0) — Add validation for dynamic offsets (count/alignment),
