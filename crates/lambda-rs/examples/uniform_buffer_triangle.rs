@@ -1,25 +1,34 @@
 #![allow(clippy::needless_return)]
 
+//! Example: Spinning triangle in 3D using a uniform buffer and a bind group.
+//!
+//! This example mirrors the push constants demo but uses a uniform buffer
+//! bound at group(0) binding(0) and a bind group layout declared in Rust.
+//! The model, view, and projection matrices are computed via the shared
+//! `scene_math` helpers so the example does not hand-roll the math.
+
 use lambda::{
   component::Component,
   events::WindowEvent,
   logging,
-  math::{
-    matrix,
-    matrix::Matrix,
-    vector::Vector,
-  },
+  math::matrix::Matrix,
   render::{
-    buffer::BufferBuilder,
+    bind::{
+      BindGroupBuilder,
+      BindGroupLayoutBuilder,
+      BindingVisibility,
+    },
+    buffer::{
+      BufferBuilder,
+      Properties,
+      Usage,
+    },
     command::RenderCommand,
     mesh::{
       Mesh,
       MeshBuilder,
     },
-    pipeline::{
-      PipelineStage,
-      RenderPipelineBuilder,
-    },
+    pipeline::RenderPipelineBuilder,
     render_pass::RenderPassBuilder,
     scene_math::{
       compute_model_view_projection_matrix_about_pivot,
@@ -59,13 +68,12 @@ layout (location = 2) in vec3 vertex_color;
 
 layout (location = 0) out vec3 frag_color;
 
-layout ( push_constant ) uniform PushConstant {
-  vec4 data;
+layout (set = 0, binding = 0) uniform Globals {
   mat4 render_matrix;
-} push_constants;
+} globals;
 
 void main() {
-  gl_Position = push_constants.render_matrix * vec4(vertex_position, 1.0);
+  gl_Position = globals.render_matrix * vec4(vertex_position, 1.0);
   frag_color = vertex_color;
 }
 
@@ -75,7 +83,6 @@ const FRAGMENT_SHADER_SOURCE: &str = r#"
 #version 450
 
 layout (location = 0) in vec3 frag_color;
-
 layout (location = 0) out vec4 fragment_color;
 
 void main() {
@@ -84,50 +91,35 @@ void main() {
 
 "#;
 
-// ------------------------------ PUSH CONSTANTS -------------------------------
+// ---------------------------- UNIFORM STRUCTURE ------------------------------
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct PushConstant {
-  data: [f32; 4],
-  render_matrix: [[f32; 4]; 4],
+pub struct GlobalsUniform {
+  pub render_matrix: [[f32; 4]; 4],
 }
-
-pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
-  let bytes = unsafe {
-    let size_in_bytes = std::mem::size_of::<PushConstant>();
-    let size_in_u32 = size_in_bytes / std::mem::size_of::<u32>();
-    let ptr = push_constants as *const PushConstant as *const u32;
-    std::slice::from_raw_parts(ptr, size_in_u32)
-  };
-
-  return bytes;
-}
-
-// Model, view, and projection matrix computations are handled by `scene_math`.
 
 // --------------------------------- COMPONENT ---------------------------------
 
-const ROTATION_TURNS_PER_SECOND: f32 = 0.12;
-
-pub struct PushConstantsExample {
+pub struct UniformBufferExample {
   elapsed_seconds: f32,
   shader: Shader,
-  fs: Shader,
+  fragment_shader: Shader,
   mesh: Option<Mesh>,
   render_pipeline: Option<ResourceId>,
   render_pass: Option<ResourceId>,
+  uniform_buffer: Option<lambda::render::buffer::Buffer>,
+  bind_group: Option<ResourceId>,
   width: u32,
   height: u32,
 }
 
-impl Component<ComponentResult, String> for PushConstantsExample {
+impl Component<ComponentResult, String> for UniformBufferExample {
   fn on_attach(
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
     let render_pass = RenderPassBuilder::new().build(render_context);
-    let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
 
     // Create triangle mesh.
     let vertices = [
@@ -184,18 +176,67 @@ impl Component<ComponentResult, String> for PushConstantsExample {
 
     logging::trace!("mesh: {:?}", mesh);
 
+    // Create a bind group layout with a single uniform buffer at binding 0.
+    let layout = BindGroupLayoutBuilder::new()
+      .with_uniform(0, BindingVisibility::Vertex)
+      .build(&render_context);
+
+    // Create the uniform buffer with an initial matrix.
+    let camera = SimpleCamera {
+      position: [0.0, 0.0, 3.0],
+      field_of_view_in_turns: 0.25,
+      near_clipping_plane: 0.1,
+      far_clipping_plane: 100.0,
+    };
+    let initial_matrix = compute_model_view_projection_matrix_about_pivot(
+      &camera,
+      self.width.max(1),
+      self.height.max(1),
+      [0.0, -1.0 / 3.0, 0.0],
+      [0.0, 1.0, 0.0],
+      0.0,
+      0.5,
+      [0.0, 1.0 / 3.0, 0.0],
+    );
+
+    let initial_uniform = GlobalsUniform {
+      // Transpose to match GPU column‑major layout.
+      render_matrix: initial_matrix.transpose(),
+    };
+
+    let uniform_buffer = BufferBuilder::new()
+      .with_length(std::mem::size_of::<GlobalsUniform>())
+      .with_usage(Usage::UNIFORM)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_label("globals-uniform")
+      .build(render_context, vec![initial_uniform])
+      .expect("Failed to create uniform buffer");
+
+    // Create the bind group using the layout and uniform buffer.
+    let bind_group = BindGroupBuilder::new()
+      .with_layout(&layout)
+      .with_uniform(0, &uniform_buffer, 0, None)
+      .build(render_context);
+
     let pipeline = RenderPipelineBuilder::new()
       .with_culling(lambda::render::pipeline::CullingMode::None)
-      .with_push_constant(PipelineStage::VERTEX, push_constant_size)
+      .with_layouts(&[&layout])
       .with_buffer(
         BufferBuilder::build_from_mesh(&mesh, render_context)
           .expect("Failed to create buffer"),
         mesh.attributes().to_vec(),
       )
-      .build(render_context, &render_pass, &self.shader, Some(&self.fs));
+      .build(
+        render_context,
+        &render_pass,
+        &self.shader,
+        Some(&self.fragment_shader),
+      );
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
+    self.bind_group = Some(render_context.attach_bind_group(bind_group));
+    self.uniform_buffer = Some(uniform_buffer);
     self.mesh = Some(mesh);
 
     return Ok(ComponentResult::Success);
@@ -203,7 +244,7 @@ impl Component<ComponentResult, String> for PushConstantsExample {
 
   fn on_detach(
     &mut self,
-    render_context: &mut lambda::render::RenderContext,
+    _render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
     logging::info!("Detaching component");
     return Ok(ComponentResult::Success);
@@ -213,9 +254,11 @@ impl Component<ComponentResult, String> for PushConstantsExample {
     &mut self,
     event: lambda::events::Events,
   ) -> Result<ComponentResult, String> {
-    // Only handle resizes.
     match event {
-      lambda::events::Events::Window { event, issued_at } => match event {
+      lambda::events::Events::Window {
+        event,
+        issued_at: _,
+      } => match event {
         WindowEvent::Resize { width, height } => {
           self.width = width;
           self.height = height;
@@ -228,7 +271,6 @@ impl Component<ComponentResult, String> for PushConstantsExample {
     return Ok(ComponentResult::Success);
   }
 
-  /// Update elapsed time every frame.
   fn on_update(
     &mut self,
     last_frame: &std::time::Duration,
@@ -241,6 +283,9 @@ impl Component<ComponentResult, String> for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Vec<lambda::render::command::RenderCommand> {
+    const ROTATION_TURNS_PER_SECOND: f32 = 0.12;
+
+    // Compute the model, view, projection matrix for this frame.
     let camera = SimpleCamera {
       position: [0.0, 0.0, 3.0],
       field_of_view_in_turns: 0.25,
@@ -248,7 +293,7 @@ impl Component<ComponentResult, String> for PushConstantsExample {
       far_clipping_plane: 100.0,
     };
     let angle_in_turns = ROTATION_TURNS_PER_SECOND * self.elapsed_seconds;
-    let mesh_matrix = compute_model_view_projection_matrix_about_pivot(
+    let render_matrix = compute_model_view_projection_matrix_about_pivot(
       &camera,
       self.width.max(1),
       self.height.max(1),
@@ -259,6 +304,15 @@ impl Component<ComponentResult, String> for PushConstantsExample {
       [0.0, 1.0 / 3.0, 0.0],
     );
 
+    // Update the uniform buffer with the new matrix.
+    if let Some(ref uniform_buffer) = self.uniform_buffer {
+      // Transpose to match GPU column‑major layout.
+      let value = GlobalsUniform {
+        render_matrix: render_matrix.transpose(),
+      };
+      uniform_buffer.write_value(render_context, 0, &value);
+    }
+
     // Create viewport.
     let viewport =
       viewport::ViewportBuilder::new().build(self.width, self.height);
@@ -266,12 +320,13 @@ impl Component<ComponentResult, String> for PushConstantsExample {
     let render_pipeline = self
       .render_pipeline
       .expect("No render pipeline actively set for rendering.");
+    let group_id = self.bind_group.expect("Bind group must exist");
 
     return vec![
       RenderCommand::BeginRenderPass {
         render_pass: self
           .render_pass
-          .expect("Cannot begin the render pass when it doesn't exist.")
+          .expect("Cannot begin the render pass when it does not exist.")
           .clone(),
         viewport: viewport.clone(),
       },
@@ -290,15 +345,10 @@ impl Component<ComponentResult, String> for PushConstantsExample {
         pipeline: render_pipeline.clone(),
         buffer: 0,
       },
-      RenderCommand::PushConstants {
-        pipeline: render_pipeline.clone(),
-        stage: PipelineStage::VERTEX,
-        offset: 0,
-        bytes: Vec::from(push_constants_to_bytes(&PushConstant {
-          data: [0.0, 0.0, 0.0, 0.0],
-          // Transpose to match GPU's column‑major expectation.
-          render_matrix: mesh_matrix.transpose(),
-        })),
+      RenderCommand::SetBindGroup {
+        set: 0,
+        group: group_id,
+        dynamic_offsets: vec![],
       },
       RenderCommand::Draw {
         vertices: 0..self.mesh.as_ref().unwrap().vertices().len() as u32,
@@ -308,33 +358,35 @@ impl Component<ComponentResult, String> for PushConstantsExample {
   }
 }
 
-impl Default for PushConstantsExample {
+impl Default for UniformBufferExample {
   fn default() -> Self {
-    let triangle_in_3d = VirtualShader::Source {
+    let vertex_virtual_shader = VirtualShader::Source {
       source: VERTEX_SHADER_SOURCE.to_string(),
       kind: ShaderKind::Vertex,
       entry_point: "main".to_string(),
-      name: "push_constants".to_string(),
+      name: "uniform_buffer_triangle".to_string(),
     };
 
-    let triangle_fragment_shader = VirtualShader::Source {
+    let fragment_virtual_shader = VirtualShader::Source {
       source: FRAGMENT_SHADER_SOURCE.to_string(),
       kind: ShaderKind::Fragment,
       entry_point: "main".to_string(),
-      name: "push_constants".to_string(),
+      name: "uniform_buffer_triangle".to_string(),
     };
 
     let mut builder = ShaderBuilder::new();
-    let shader = builder.build(triangle_in_3d);
-    let fs = builder.build(triangle_fragment_shader);
+    let shader = builder.build(vertex_virtual_shader);
+    let fragment_shader = builder.build(fragment_virtual_shader);
 
     return Self {
       elapsed_seconds: 0.0,
       shader,
-      fs,
+      fragment_shader,
       mesh: None,
       render_pipeline: None,
       render_pass: None,
+      uniform_buffer: None,
+      bind_group: None,
       width: 800,
       height: 600,
     };
@@ -342,17 +394,17 @@ impl Default for PushConstantsExample {
 }
 
 fn main() {
-  let runtime = ApplicationRuntimeBuilder::new("3D Push Constants Example")
+  let runtime = ApplicationRuntimeBuilder::new("3D Uniform Buffer Example")
     .with_window_configured_as(move |window_builder| {
       return window_builder
         .with_dimensions(800, 600)
-        .with_name("3D Push Constants Example");
+        .with_name("3D Uniform Buffer Example");
     })
     .with_renderer_configured_as(|renderer_builder| {
       return renderer_builder.with_render_timeout(1_000_000_000);
     })
-    .with_component(move |runtime, triangles: PushConstantsExample| {
-      return (runtime, triangles);
+    .with_component(move |runtime, example: UniformBufferExample| {
+      return (runtime, example);
     })
     .build();
 

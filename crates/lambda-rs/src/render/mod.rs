@@ -2,12 +2,15 @@
 //! windowing.
 
 // Module Exports
+pub mod bind;
 pub mod buffer;
 pub mod command;
 pub mod mesh;
 pub mod pipeline;
 pub mod render_pass;
+pub mod scene_math;
 pub mod shader;
+pub mod validation;
 pub mod vertex;
 pub mod viewport;
 pub mod window;
@@ -98,6 +101,8 @@ impl RenderContextBuilder {
       size,
       render_passes: vec![],
       render_pipelines: vec![],
+      bind_group_layouts: vec![],
+      bind_groups: vec![],
     }
   }
 }
@@ -118,6 +123,8 @@ pub struct RenderContext {
   size: (u32, u32),
   render_passes: Vec<RenderPass>,
   render_pipelines: Vec<RenderPipeline>,
+  bind_group_layouts: Vec<bind::BindGroupLayout>,
+  bind_groups: Vec<bind::BindGroup>,
 }
 
 /// Opaque handle used to refer to resources attached to a `RenderContext`.
@@ -135,6 +142,23 @@ impl RenderContext {
   pub fn attach_render_pass(&mut self, render_pass: RenderPass) -> ResourceId {
     let id = self.render_passes.len();
     self.render_passes.push(render_pass);
+    id
+  }
+
+  /// Attach a bind group layout and return a handle for use in pipeline layout composition.
+  pub fn attach_bind_group_layout(
+    &mut self,
+    layout: bind::BindGroupLayout,
+  ) -> ResourceId {
+    let id = self.bind_group_layouts.len();
+    self.bind_group_layouts.push(layout);
+    id
+  }
+
+  /// Attach a bind group and return a handle for use in render commands.
+  pub fn attach_bind_group(&mut self, group: bind::BindGroup) -> ResourceId {
+    let id = self.bind_groups.len();
+    self.bind_groups.push(group);
     id
   }
 
@@ -188,6 +212,21 @@ impl RenderContext {
 
   pub(crate) fn surface_format(&self) -> wgpu::TextureFormat {
     self.config.format
+  }
+
+  /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
+  pub fn limit_max_uniform_buffer_binding_size(&self) -> u64 {
+    self.gpu.limits().max_uniform_buffer_binding_size.into()
+  }
+
+  /// Device limit: number of bind groups that can be used by a pipeline layout.
+  pub fn limit_max_bind_groups(&self) -> u32 {
+    self.gpu.limits().max_bind_groups
+  }
+
+  /// Device limit: required alignment in bytes for dynamic uniform buffer offsets.
+  pub fn limit_min_uniform_buffer_offset_alignment(&self) -> u32 {
+    self.gpu.limits().min_uniform_buffer_offset_alignment
   }
 
   /// Encode and submit GPU work for a single frame.
@@ -296,6 +335,24 @@ impl RenderContext {
             let (x, y, width, height) = viewport.scissor_u32();
             pass.set_scissor_rect(x, y, width, height);
           }
+        }
+        RenderCommand::SetBindGroup {
+          set,
+          group,
+          dynamic_offsets,
+        } => {
+          let group_ref = self.bind_groups.get(group).ok_or_else(|| {
+            RenderError::Configuration(format!("Unknown bind group {group}"))
+          })?;
+          // Validate dynamic offsets count and alignment before binding.
+          validation::validate_dynamic_offsets(
+            group_ref.dynamic_binding_count(),
+            &dynamic_offsets,
+            self.limit_min_uniform_buffer_offset_alignment(),
+            set,
+          )
+          .map_err(RenderError::Configuration)?;
+          pass.set_bind_group(set, group_ref.raw(), &dynamic_offsets);
         }
         RenderCommand::BindVertexBuffer { pipeline, buffer } => {
           let pipeline_ref =

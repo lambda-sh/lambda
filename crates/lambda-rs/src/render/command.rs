@@ -44,4 +44,17 @@ pub enum RenderCommand {
   },
   /// Issue a non‑indexed draw for the provided vertex range.
   Draw { vertices: Range<u32> },
+
+  /// Bind a previously created bind group to a set index with optional
+  /// dynamic offsets. Dynamic offsets are counted in bytes and must obey the
+  /// device's minimum uniform buffer offset alignment when using dynamic
+  /// uniform bindings.
+  SetBindGroup {
+    /// The pipeline layout set index to bind this group to.
+    set: u32,
+    /// Resource identifier returned by `RenderContext::attach_bind_group`.
+    group: super::ResourceId,
+    /// Dynamic offsets in bytes to apply to bindings marked as dynamic.
+    dynamic_offsets: Vec<u32>,
+  },
 }

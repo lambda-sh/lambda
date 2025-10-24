@@ -17,6 +17,7 @@
         1. [Optional dependencies](#opt_deps)
         1. [Linux, Macos, Windows](#bash)
 1. [Getting started](#get_started)
+1. [Tutorials](#tutorials)
 1. [Examples](#examples)
 1. [Planned additions](#plans)
 1. [Releases & Publishing](#publishing)
@@ -110,7 +111,19 @@ If this works successfully, then lambda is ready to work on your system!
 ## Getting started <a name="get_started"></a>
 Coming soon.
 
+## Tutorials <a name="tutorials"></a>
+Start with the tutorials to build features step by step:
+
+- Tutorials index: [docs/tutorials/](./docs/tutorials/)
+- Uniform Buffers: Build a Spinning Triangle: [docs/tutorials/uniform-buffers.md](./docs/tutorials/uniform-buffers.md)
+
 ## Examples <a name="examples"></a>
+Browse example sources:
+
+- Core API examples: [crates/lambda-rs/examples/](./crates/lambda-rs/examples/)
+- Logging examples: [crates/lambda-rs-logging/examples/](./crates/lambda-rs-logging/examples/)
+- Argument parsing examples: [crates/lambda-rs-args/examples/](./crates/lambda-rs-args/examples/)
+
 ### Minimal
 A minimal example of an application with a working window using lambda.
 ```rust
