@@ -147,25 +147,40 @@ impl BindGroupLayoutBuilder {
 
   /// Build the layout using the `RenderContext` device.
   pub fn build(self, render_context: &RenderContext) -> BindGroupLayout {
-    let mut platform =
+    let mut builder =
       lambda_platform::wgpu::bind::BindGroupLayoutBuilder::new();
+
+    #[cfg(debug_assertions)]
+    {
+      // In debug builds, check for duplicate binding indices.
+      use std::collections::HashSet;
+      let mut seen = HashSet::new();
+
+      for (binding, _, _) in &self.entries {
+        assert!(
+          seen.insert(binding),
+          "BindGroupLayoutBuilder: duplicate binding index {}",
+          binding
+        );
+      }
+    }
 
     let dynamic_binding_count =
       self.entries.iter().filter(|(_, _, d)| *d).count() as u32;
 
     if let Some(label) = &self.label {
-      platform = platform.with_label(label);
+      builder = builder.with_label(label);
     }
 
-    for (binding, vis, dynamic) in self.entries.into_iter() {
-      platform = if dynamic {
-        platform.with_uniform_dynamic(binding, vis.to_platform())
+    for (binding, visibility, dynamic) in self.entries.into_iter() {
+      builder = if dynamic {
+        builder.with_uniform_dynamic(binding, visibility.to_platform())
       } else {
-        platform.with_uniform(binding, vis.to_platform())
+        builder.with_uniform(binding, visibility.to_platform())
       };
     }
 
-    let layout = platform.build(render_context.device());
+    let layout = builder.build(render_context.device());
 
     return BindGroupLayout {
       layout: Rc::new(layout),
