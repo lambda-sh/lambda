@@ -26,13 +26,13 @@ pub enum BindingVisibility {
 impl BindingVisibility {
   fn to_platform(self) -> lambda_platform::wgpu::bind::Visibility {
     use lambda_platform::wgpu::bind::Visibility as V;
-    match self {
+    return match self {
       BindingVisibility::Vertex => V::Vertex,
       BindingVisibility::Fragment => V::Fragment,
       BindingVisibility::Compute => V::Compute,
       BindingVisibility::VertexAndFragment => V::VertexAndFragment,
       BindingVisibility::All => V::All,
-    }
+    };
   }
 }
 
@@ -76,12 +76,12 @@ pub struct BindGroupLayout {
 
 impl BindGroupLayout {
   pub(crate) fn raw(&self) -> &wgpu::BindGroupLayout {
-    self.layout.raw()
+    return self.layout.raw();
   }
 
   /// Number of dynamic bindings declared in this layout.
   pub fn dynamic_binding_count(&self) -> u32 {
-    self.dynamic_binding_count
+    return self.dynamic_binding_count;
   }
 }
 
@@ -95,12 +95,12 @@ pub struct BindGroup {
 
 impl BindGroup {
   pub(crate) fn raw(&self) -> &wgpu::BindGroup {
-    self.group.raw()
+    return self.group.raw();
   }
 
   /// Number of dynamic bindings expected when calling set_bind_group.
   pub fn dynamic_binding_count(&self) -> u32 {
-    self.dynamic_binding_count
+    return self.dynamic_binding_count;
   }
 }
 
@@ -122,7 +122,7 @@ impl BindGroupLayoutBuilder {
   /// Attach a label for debugging and profiling.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
-    self
+    return self;
   }
 
   /// Add a uniform buffer binding visible to the specified stages.
@@ -132,7 +132,7 @@ impl BindGroupLayoutBuilder {
     visibility: BindingVisibility,
   ) -> Self {
     self.entries.push((binding, visibility, false));
-    self
+    return self;
   }
 
   /// Add a uniform buffer binding with dynamic offset support.
@@ -142,18 +142,21 @@ impl BindGroupLayoutBuilder {
     visibility: BindingVisibility,
   ) -> Self {
     self.entries.push((binding, visibility, true));
-    self
+    return self;
   }
 
   /// Build the layout using the `RenderContext` device.
   pub fn build(self, render_context: &RenderContext) -> BindGroupLayout {
     let mut platform =
       lambda_platform::wgpu::bind::BindGroupLayoutBuilder::new();
+
     let dynamic_binding_count =
       self.entries.iter().filter(|(_, _, d)| *d).count() as u32;
+
     if let Some(label) = &self.label {
       platform = platform.with_label(label);
     }
+
     for (binding, vis, dynamic) in self.entries.into_iter() {
       platform = if dynamic {
         platform.with_uniform_dynamic(binding, vis.to_platform())
@@ -161,11 +164,13 @@ impl BindGroupLayoutBuilder {
         platform.with_uniform(binding, vis.to_platform())
       };
     }
+
     let layout = platform.build(render_context.device());
-    BindGroupLayout {
+
+    return BindGroupLayout {
       layout: Rc::new(layout),
       dynamic_binding_count,
-    }
+    };
   }
 }
 
@@ -179,23 +184,23 @@ pub struct BindGroupBuilder<'a> {
 impl<'a> BindGroupBuilder<'a> {
   /// Create a new builder with no layout.
   pub fn new() -> Self {
-    Self {
+    return Self {
       label: None,
       layout: None,
       entries: Vec::new(),
-    }
+    };
   }
 
   /// Attach a label for debugging and profiling.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
-    self
+    return self;
   }
 
   /// Use a previously created layout for this bind group.
   pub fn with_layout(mut self, layout: &'a BindGroupLayout) -> Self {
     self.layout = Some(layout);
-    self
+    return self;
   }
 
   /// Bind a uniform buffer to the specified binding index.
@@ -207,7 +212,7 @@ impl<'a> BindGroupBuilder<'a> {
     size: Option<std::num::NonZeroU64>,
   ) -> Self {
     self.entries.push((binding, buffer, offset, size));
-    self
+    return self;
   }
 
   /// Build the bind group on the current device.
@@ -215,12 +220,16 @@ impl<'a> BindGroupBuilder<'a> {
     let layout = self
       .layout
       .expect("BindGroupBuilder requires a layout before build");
+
     let mut platform = lambda_platform::wgpu::bind::BindGroupBuilder::new()
       .with_layout(&layout.layout);
+
     if let Some(label) = &self.label {
       platform = platform.with_label(label);
     }
+
     let max_binding = render_context.limit_max_uniform_buffer_binding_size();
+
     for (binding, buffer, offset, size) in self.entries.into_iter() {
       if let Some(sz) = size {
         assert!(
@@ -233,10 +242,11 @@ impl<'a> BindGroupBuilder<'a> {
       }
       platform = platform.with_uniform(binding, buffer.raw(), offset, size);
     }
+
     let group = platform.build(render_context.device());
-    BindGroup {
+    return BindGroup {
       group: Rc::new(group),
       dynamic_binding_count: layout.dynamic_binding_count(),
-    }
+    };
   }
 }
