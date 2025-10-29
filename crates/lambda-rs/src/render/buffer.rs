@@ -256,6 +256,9 @@ impl BufferBuilder {
       return Err("Attempted to create a buffer with zero length.");
     }
 
+    // SAFETY: Converting data to bytes is safe because it's underlying
+    // type, Data, is constrianed to Copy and the lifetime of the slice does
+    // not outlive data.
     let bytes = unsafe {
       std::slice::from_raw_parts(
         data.as_ptr() as *const u8,
