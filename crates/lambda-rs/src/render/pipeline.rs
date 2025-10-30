@@ -108,7 +108,7 @@ pub struct RenderPipelineBuilder {
   push_constants: Vec<PushConstantUpload>,
   bindings: Vec<BufferBinding>,
   culling: CullingMode,
-  bind_group_layouts: Vec<std::rc::Rc<wgpu::BindGroupLayout>>,
+  bind_group_layouts: Vec<bind::BindGroupLayout>,
   label: Option<String>,
 }
 
@@ -161,10 +161,7 @@ impl RenderPipelineBuilder {
 
   /// Provide one or more bind group layouts used to create the pipeline layout.
   pub fn with_layouts(mut self, layouts: &[&bind::BindGroupLayout]) -> Self {
-    self.bind_group_layouts = layouts
-      .iter()
-      .map(|l| std::rc::Rc::new(l.raw().clone()))
-      .collect();
+    self.bind_group_layouts = layouts.iter().map(|l| (*l).clone()).collect();
     return self;
   }
 
@@ -212,11 +209,8 @@ impl RenderPipelineBuilder {
       max_bind_groups
     );
 
-    let bind_group_layout_refs: Vec<&wgpu::BindGroupLayout> = self
-      .bind_group_layouts
-      .iter()
-      .map(|rc| rc.as_ref())
-      .collect();
+    let bind_group_layout_refs: Vec<&wgpu::BindGroupLayout> =
+      self.bind_group_layouts.iter().map(|l| l.raw()).collect();
     let pipeline_layout =
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("lambda-pipeline-layout"),
