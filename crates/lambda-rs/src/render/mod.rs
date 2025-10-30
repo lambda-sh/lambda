@@ -10,6 +10,7 @@ pub mod pipeline;
 pub mod render_pass;
 pub mod scene_math;
 pub mod shader;
+pub mod texture;
 pub mod validation;
 pub mod vertex;
 pub mod viewport;
