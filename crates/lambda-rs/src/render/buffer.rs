@@ -101,20 +101,20 @@ impl Buffer {
   pub fn destroy(self, _render_context: &RenderContext) {}
 
   pub(super) fn raw(&self) -> &wgpu::Buffer {
-    self.buffer.as_ref()
+    return self.buffer.as_ref();
   }
 
   pub(super) fn raw_rc(&self) -> Rc<wgpu::Buffer> {
-    self.buffer.clone()
+    return self.buffer.clone();
   }
 
   pub(super) fn stride(&self) -> wgpu::BufferAddress {
-    self.stride
+    return self.stride;
   }
 
   /// The logical buffer type used by the engine (e.g., Vertex).
   pub fn buffer_type(&self) -> BufferType {
-    self.buffer_type
+    return self.buffer_type;
   }
 
   /// Write a single plain-old-data value into this buffer at the specified
@@ -163,15 +163,15 @@ impl<T: Copy> UniformBuffer<T> {
       builder.with_label(l);
     }
     let inner = builder.build(render_context, vec![*initial])?;
-    Ok(Self {
+    return Ok(Self {
       inner,
       _phantom: core::marker::PhantomData,
-    })
+    });
   }
 
   /// Borrow the underlying generic `Buffer` for binding.
   pub fn raw(&self) -> &Buffer {
-    &self.inner
+    return &self.inner;
   }
 
   /// Write a new value to the GPU buffer at offset 0.
@@ -209,31 +209,31 @@ impl BufferBuilder {
   /// Set the length of the buffer in bytes. Defaults to the size of `data`.
   pub fn with_length(&mut self, size: usize) -> &mut Self {
     self.buffer_length = size;
-    self
+    return self;
   }
 
   /// Set the logical type of buffer to be created (vertex/index/...).
   pub fn with_buffer_type(&mut self, buffer_type: BufferType) -> &mut Self {
     self.buffer_type = buffer_type;
-    self
+    return self;
   }
 
   /// Set `wgpu` usage flags (bit‑or `Usage` values).
   pub fn with_usage(&mut self, usage: Usage) -> &mut Self {
     self.usage = usage;
-    self
+    return self;
   }
 
   /// Control CPU visibility and residency preferences.
   pub fn with_properties(&mut self, properties: Properties) -> &mut Self {
     self.properties = properties;
-    self
+    return self;
   }
 
   /// Attach a human‑readable label for debugging/profiling.
   pub fn with_label(&mut self, label: &str) -> &mut Self {
     self.label = Some(label.to_string());
-    self
+    return self;
   }
 
   /// Create a buffer initialized with the provided `data`.
@@ -277,11 +277,11 @@ impl BufferBuilder {
       usage,
     });
 
-    Ok(Buffer {
+    return Ok(Buffer {
       buffer: Rc::new(buffer),
       stride: element_size as wgpu::BufferAddress,
       buffer_type: self.buffer_type,
-    })
+    });
   }
 
   /// Convenience: create a vertex buffer from a `Mesh`'s vertices.
@@ -290,11 +290,11 @@ impl BufferBuilder {
     render_context: &mut RenderContext,
   ) -> Result<Buffer, &'static str> {
     let mut builder = Self::new();
-    builder.with_length(mesh.vertices().len() * std::mem::size_of::<Vertex>());
-    builder.with_usage(Usage::VERTEX);
-    builder.with_properties(Properties::CPU_VISIBLE);
-    builder.with_buffer_type(BufferType::Vertex);
-
-    builder.build(render_context, mesh.vertices().to_vec())
+    return builder
+      .with_length(mesh.vertices().len() * std::mem::size_of::<Vertex>())
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(render_context, mesh.vertices().to_vec());
   }
 }

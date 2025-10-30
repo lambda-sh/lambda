@@ -90,7 +90,7 @@ impl RenderContextBuilder {
       )
       .expect("Failed to configure surface");
 
-    RenderContext {
+    return RenderContext {
       label: name,
       instance,
       surface,
@@ -103,7 +103,7 @@ impl RenderContextBuilder {
       render_pipelines: vec![],
       bind_group_layouts: vec![],
       bind_groups: vec![],
-    }
+    };
   }
 }
 
@@ -135,14 +135,14 @@ impl RenderContext {
   pub fn attach_pipeline(&mut self, pipeline: RenderPipeline) -> ResourceId {
     let id = self.render_pipelines.len();
     self.render_pipelines.push(pipeline);
-    id
+    return id;
   }
 
   /// Attach a render pass and return a handle for use in commands.
   pub fn attach_render_pass(&mut self, render_pass: RenderPass) -> ResourceId {
     let id = self.render_passes.len();
     self.render_passes.push(render_pass);
-    id
+    return id;
   }
 
   /// Attach a bind group layout and return a handle for use in pipeline layout composition.
