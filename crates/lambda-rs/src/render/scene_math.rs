@@ -15,12 +15,12 @@ use crate::math::{
 ///
 /// This matrix leaves X and Y unchanged and remaps Z as `z = 0.5 * z + 0.5`.
 fn opengl_to_wgpu_ndc() -> [[f32; 4]; 4] {
-  [
+  return [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],
     [0.0, 0.0, 0.5, 0.0],
     [0.0, 0.0, 0.5, 1.0],
-  ]
+  ];
 }
 
 /// Simple camera parameters used to produce a perspective projection
@@ -63,7 +63,7 @@ pub fn compute_model_matrix(
 
   let translation_matrix: [[f32; 4]; 4] =
     matrix::translation_matrix(translation);
-  translation_matrix.multiply(&model)
+  return translation_matrix.multiply(&model);
 }
 
 /// Compute a model matrix that applies a rotation and uniform scale about a
@@ -98,10 +98,10 @@ pub fn compute_model_matrix_about_pivot(
     matrix::translation_matrix(translation);
 
   // For column-vector convention: T_world * ( T_pivot * (R*S) * T_-pivot )
-  world_translation
+  return world_translation
     .multiply(&to_pivot)
     .multiply(&base)
-    .multiply(&from_pivot)
+    .multiply(&from_pivot);
 }
 
 /// Compute a simple view matrix from a camera position.
@@ -116,7 +116,7 @@ pub fn compute_view_matrix(camera_position: [f32; 3]) -> [[f32; 4]; 4] {
     -camera_position[1],
     -camera_position[2],
   ];
-  matrix::translation_matrix(inverse)
+  return matrix::translation_matrix(inverse);
 }
 
 /// Compute a perspective projection matrix from camera parameters and the
@@ -138,7 +138,7 @@ pub fn compute_perspective_projection(
     far_clipping_plane,
   );
   let conversion = opengl_to_wgpu_ndc();
-  conversion.multiply(&projection_gl)
+  return conversion.multiply(&projection_gl);
 }
 
 /// Compute a full model-view-projection matrix given a simple camera, a
@@ -166,7 +166,7 @@ pub fn compute_model_view_projection_matrix(
     camera.near_clipping_plane,
     camera.far_clipping_plane,
   );
-  projection.multiply(&view).multiply(&model)
+  return projection.multiply(&view).multiply(&model);
 }
 
 /// Compute a full model-view-projection matrix for a rotation around a specific
@@ -196,7 +196,7 @@ pub fn compute_model_view_projection_matrix_about_pivot(
     camera.near_clipping_plane,
     camera.far_clipping_plane,
   );
-  projection.multiply(&view).multiply(&model)
+  return projection.multiply(&view).multiply(&model);
 }
 
 #[cfg(test)]

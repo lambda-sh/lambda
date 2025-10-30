@@ -7,7 +7,7 @@ pub fn align_up(value: u64, align: u64) -> u64 {
     return value;
   }
   let mask = align - 1;
-  (value + mask) & !mask
+  return (value + mask) & !mask;
 }
 
 /// Validate a set of dynamic offsets against the required count and alignment.
@@ -28,14 +28,14 @@ pub fn validate_dynamic_offsets(
   }
   let align = alignment.max(1);
   for (i, off) in offsets.iter().enumerate() {
-    if (*off as u32) % align != 0 {
+    if *off % align != 0 {
       return Err(format!(
         "Dynamic offset[{}]={} is not {}-byte aligned",
         i, off, align
       ));
     }
   }
-  Ok(())
+  return Ok(());
 }
 
 #[cfg(test)]
