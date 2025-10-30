@@ -18,12 +18,12 @@ pub struct BindGroupLayout {
 impl BindGroupLayout {
   /// Borrow the underlying `wgpu::BindGroupLayout`.
   pub fn raw(&self) -> &wgpu::BindGroupLayout {
-    &self.raw
+    return &self.raw;
   }
 
   /// Optional debug label used during creation.
   pub fn label(&self) -> Option<&str> {
-    self.label.as_deref()
+    return self.label.as_deref();
   }
 }
 
@@ -37,12 +37,12 @@ pub struct BindGroup {
 impl BindGroup {
   /// Borrow the underlying `wgpu::BindGroup`.
   pub fn raw(&self) -> &wgpu::BindGroup {
-    &self.raw
+    return &self.raw;
   }
 
   /// Optional debug label used during creation.
   pub fn label(&self) -> Option<&str> {
-    self.label.as_deref()
+    return self.label.as_deref();
   }
 }
 
@@ -58,7 +58,7 @@ pub enum Visibility {
 
 impl Visibility {
   fn to_wgpu(self) -> wgpu::ShaderStages {
-    match self {
+    return match self {
       Visibility::Vertex => wgpu::ShaderStages::VERTEX,
       Visibility::Fragment => wgpu::ShaderStages::FRAGMENT,
       Visibility::Compute => wgpu::ShaderStages::COMPUTE,
@@ -66,7 +66,7 @@ impl Visibility {
         wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT
       }
       Visibility::All => wgpu::ShaderStages::all(),
-    }
+    };
   }
 }
 
@@ -104,16 +104,16 @@ pub struct BindGroupLayoutBuilder {
 impl BindGroupLayoutBuilder {
   /// Create a builder with no entries.
   pub fn new() -> Self {
-    Self {
+    return Self {
       label: None,
       entries: Vec::new(),
-    }
+    };
   }
 
   /// Attach a human‑readable label.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
-    self
+    return self;
   }
 
   /// Declare a uniform buffer binding at the provided index.
@@ -128,7 +128,7 @@ impl BindGroupLayoutBuilder {
       },
       count: None,
     });
-    self
+    return self;
   }
 
   /// Declare a uniform buffer binding with dynamic offsets at the provided index.
@@ -147,7 +147,7 @@ impl BindGroupLayoutBuilder {
       },
       count: None,
     });
-    self
+    return self;
   }
 
   /// Build the layout using the provided device.
@@ -157,10 +157,10 @@ impl BindGroupLayoutBuilder {
         label: self.label.as_deref(),
         entries: &self.entries,
       });
-    BindGroupLayout {
+    return BindGroupLayout {
       raw,
       label: self.label,
-    }
+    };
   }
 }
 
@@ -175,23 +175,23 @@ pub struct BindGroupBuilder<'a> {
 impl<'a> BindGroupBuilder<'a> {
   /// Create a new builder with no layout or entries.
   pub fn new() -> Self {
-    Self {
+    return Self {
       label: None,
       layout: None,
       entries: Vec::new(),
-    }
+    };
   }
 
   /// Attach a human‑readable label.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
-    self
+    return self;
   }
 
   /// Specify the layout to use for this bind group.
   pub fn with_layout(mut self, layout: &'a BindGroupLayout) -> Self {
     self.layout = Some(layout.raw());
-    self
+    return self;
   }
 
   /// Bind a uniform buffer at a binding index with optional size slice.
@@ -210,7 +210,7 @@ impl<'a> BindGroupBuilder<'a> {
         size,
       }),
     });
-    self
+    return self;
   }
 
   /// Build the bind group with the accumulated entries.
@@ -223,9 +223,9 @@ impl<'a> BindGroupBuilder<'a> {
       layout,
       entries: &self.entries,
     });
-    BindGroup {
+    return BindGroup {
       raw,
       label: self.label,
-    }
+    };
   }
 }
