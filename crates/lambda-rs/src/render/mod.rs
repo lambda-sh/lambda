@@ -2,12 +2,15 @@
 //! windowing.
 
 // Module Exports
+pub mod bind;
 pub mod buffer;
 pub mod command;
 pub mod mesh;
 pub mod pipeline;
 pub mod render_pass;
+pub mod scene_math;
 pub mod shader;
+pub mod validation;
 pub mod vertex;
 pub mod viewport;
 pub mod window;
@@ -87,7 +90,7 @@ impl RenderContextBuilder {
       )
       .expect("Failed to configure surface");
 
-    RenderContext {
+    return RenderContext {
       label: name,
       instance,
       surface,
@@ -98,7 +101,9 @@ impl RenderContextBuilder {
       size,
       render_passes: vec![],
       render_pipelines: vec![],
-    }
+      bind_group_layouts: vec![],
+      bind_groups: vec![],
+    };
   }
 }
 
@@ -118,6 +123,8 @@ pub struct RenderContext {
   size: (u32, u32),
   render_passes: Vec<RenderPass>,
   render_pipelines: Vec<RenderPipeline>,
+  bind_group_layouts: Vec<bind::BindGroupLayout>,
+  bind_groups: Vec<bind::BindGroup>,
 }
 
 /// Opaque handle used to refer to resources attached to a `RenderContext`.
@@ -128,14 +135,31 @@ impl RenderContext {
   pub fn attach_pipeline(&mut self, pipeline: RenderPipeline) -> ResourceId {
     let id = self.render_pipelines.len();
     self.render_pipelines.push(pipeline);
-    id
+    return id;
   }
 
   /// Attach a render pass and return a handle for use in commands.
   pub fn attach_render_pass(&mut self, render_pass: RenderPass) -> ResourceId {
     let id = self.render_passes.len();
     self.render_passes.push(render_pass);
-    id
+    return id;
+  }
+
+  /// Attach a bind group layout and return a handle for use in pipeline layout composition.
+  pub fn attach_bind_group_layout(
+    &mut self,
+    layout: bind::BindGroupLayout,
+  ) -> ResourceId {
+    let id = self.bind_group_layouts.len();
+    self.bind_group_layouts.push(layout);
+    return id;
+  }
+
+  /// Attach a bind group and return a handle for use in render commands.
+  pub fn attach_bind_group(&mut self, group: bind::BindGroup) -> ResourceId {
+    let id = self.bind_groups.len();
+    self.bind_groups.push(group);
+    return id;
   }
 
   /// Explicitly destroy the context. Dropping also releases resources.
@@ -170,24 +194,39 @@ impl RenderContext {
 
   /// Borrow a previously attached render pass by id.
   pub fn get_render_pass(&self, id: ResourceId) -> &RenderPass {
-    &self.render_passes[id]
+    return &self.render_passes[id];
   }
 
   /// Borrow a previously attached render pipeline by id.
   pub fn get_render_pipeline(&self, id: ResourceId) -> &RenderPipeline {
-    &self.render_pipelines[id]
+    return &self.render_pipelines[id];
   }
 
   pub(crate) fn device(&self) -> &wgpu::Device {
-    self.gpu.device()
+    return self.gpu.device();
   }
 
   pub(crate) fn queue(&self) -> &wgpu::Queue {
-    self.gpu.queue()
+    return self.gpu.queue();
   }
 
   pub(crate) fn surface_format(&self) -> wgpu::TextureFormat {
-    self.config.format
+    return self.config.format;
+  }
+
+  /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
+  pub fn limit_max_uniform_buffer_binding_size(&self) -> u64 {
+    return self.gpu.limits().max_uniform_buffer_binding_size.into();
+  }
+
+  /// Device limit: number of bind groups that can be used by a pipeline layout.
+  pub fn limit_max_bind_groups(&self) -> u32 {
+    return self.gpu.limits().max_bind_groups;
+  }
+
+  /// Device limit: required alignment in bytes for dynamic uniform buffer offsets.
+  pub fn limit_min_uniform_buffer_offset_alignment(&self) -> u32 {
+    return self.gpu.limits().min_uniform_buffer_offset_alignment;
   }
 
   /// Encode and submit GPU work for a single frame.
@@ -261,7 +300,7 @@ impl RenderContext {
 
     self.queue().submit(iter::once(encoder.finish()));
     frame.present();
-    Ok(())
+    return Ok(());
   }
 
   /// Encode a single render pass and consume commands until `EndRenderPass`.
@@ -282,7 +321,9 @@ impl RenderContext {
         RenderCommand::SetPipeline { pipeline } => {
           let pipeline_ref =
             self.render_pipelines.get(pipeline).ok_or_else(|| {
-              RenderError::Configuration(format!("Unknown pipeline {pipeline}"))
+              return RenderError::Configuration(format!(
+                "Unknown pipeline {pipeline}"
+              ));
             })?;
           pass.set_pipeline(pipeline_ref.pipeline());
         }
@@ -297,17 +338,40 @@ impl RenderContext {
             pass.set_scissor_rect(x, y, width, height);
           }
         }
+        RenderCommand::SetBindGroup {
+          set,
+          group,
+          dynamic_offsets,
+        } => {
+          let group_ref = self.bind_groups.get(group).ok_or_else(|| {
+            return RenderError::Configuration(format!(
+              "Unknown bind group {group}"
+            ));
+          })?;
+          // Validate dynamic offsets count and alignment before binding.
+          validation::validate_dynamic_offsets(
+            group_ref.dynamic_binding_count(),
+            &dynamic_offsets,
+            self.limit_min_uniform_buffer_offset_alignment(),
+            set,
+          )
+          .map_err(RenderError::Configuration)?;
+          pass.set_bind_group(set, group_ref.raw(), &dynamic_offsets);
+        }
         RenderCommand::BindVertexBuffer { pipeline, buffer } => {
           let pipeline_ref =
             self.render_pipelines.get(pipeline).ok_or_else(|| {
-              RenderError::Configuration(format!("Unknown pipeline {pipeline}"))
+              return RenderError::Configuration(format!(
+                "Unknown pipeline {pipeline}"
+              ));
             })?;
           let buffer_ref =
             pipeline_ref.buffers().get(buffer as usize).ok_or_else(|| {
-              RenderError::Configuration(format!(
+              return RenderError::Configuration(format!(
                 "Vertex buffer index {buffer} not found for pipeline {pipeline}"
-              ))
+              ));
             })?;
+
           pass.set_vertex_buffer(buffer as u32, buffer_ref.raw().slice(..));
         }
         RenderCommand::PushConstants {
@@ -317,7 +381,9 @@ impl RenderContext {
           bytes,
         } => {
           let _ = self.render_pipelines.get(pipeline).ok_or_else(|| {
-            RenderError::Configuration(format!("Unknown pipeline {pipeline}"))
+            return RenderError::Configuration(format!(
+              "Unknown pipeline {pipeline}"
+            ));
           })?;
           let slice = unsafe {
             std::slice::from_raw_parts(
@@ -338,9 +404,9 @@ impl RenderContext {
       }
     }
 
-    Err(RenderError::Configuration(
+    return Err(RenderError::Configuration(
       "Render pass did not terminate with EndRenderPass".to_string(),
-    ))
+    ));
   }
 
   /// Apply both viewport and scissor state to the active pass.
@@ -373,7 +439,7 @@ impl RenderContext {
     self.present_mode = config.present_mode;
     self.texture_usage = config.usage;
     self.config = config;
-    Ok(())
+    return Ok(());
   }
 }
 
@@ -386,6 +452,6 @@ pub enum RenderError {
 
 impl From<wgpu::SurfaceError> for RenderError {
   fn from(error: wgpu::SurfaceError) -> Self {
-    RenderError::Surface(error)
+    return RenderError::Surface(error);
   }
 }

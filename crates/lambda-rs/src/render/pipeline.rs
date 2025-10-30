@@ -10,6 +10,7 @@ use std::{
 use lambda_platform::wgpu::types as wgpu;
 
 use super::{
+  bind,
   buffer::Buffer,
   render_pass::RenderPass,
   shader::Shader,
@@ -28,12 +29,14 @@ impl RenderPipeline {
   /// Destroy the render pipeline with the render context that created it.
   pub fn destroy(self, _render_context: &RenderContext) {}
 
+  /// Access the vertex buffers associated with this pipeline.
   pub(super) fn buffers(&self) -> &Vec<Rc<Buffer>> {
-    &self.buffers
+    return &self.buffers;
   }
 
+  /// Access the underlying wgpu render pipeline.
   pub(super) fn pipeline(&self) -> &wgpu::RenderPipeline {
-    self.pipeline.as_ref()
+    return self.pipeline.as_ref();
   }
 }
 
@@ -51,18 +54,20 @@ impl PipelineStage {
   pub const COMPUTE: PipelineStage = PipelineStage(wgpu::ShaderStages::COMPUTE);
 
   pub(crate) fn to_wgpu(self) -> wgpu::ShaderStages {
-    self.0
+    return self.0;
   }
 }
 
+/// Bitwise OR for combining pipeline stages.
 impl std::ops::BitOr for PipelineStage {
   type Output = PipelineStage;
 
   fn bitor(self, rhs: PipelineStage) -> PipelineStage {
-    PipelineStage(self.0 | rhs.0)
+    return PipelineStage(self.0 | rhs.0);
   }
 }
 
+/// Bitwise OR assignment for combining pipeline stages.
 impl std::ops::BitOrAssign for PipelineStage {
   fn bitor_assign(&mut self, rhs: PipelineStage) {
     self.0 |= rhs.0;
@@ -77,10 +82,33 @@ struct BufferBinding {
   attributes: Vec<VertexAttribute>,
 }
 
+#[derive(Clone, Copy, Debug)]
+/// Controls triangle face culling for the graphics pipeline.
+pub enum CullingMode {
+  /// Disable face culling; render both triangle faces.
+  None,
+  /// Cull triangles whose winding is counterclockwise after projection.
+  Front,
+  /// Cull triangles whose winding is clockwise after projection.
+  Back,
+}
+
+impl CullingMode {
+  fn to_wgpu(self) -> Option<wgpu::Face> {
+    return match self {
+      CullingMode::None => None,
+      CullingMode::Front => Some(wgpu::Face::Front),
+      CullingMode::Back => Some(wgpu::Face::Back),
+    };
+  }
+}
+
 /// Builder for creating a graphics `RenderPipeline`.
 pub struct RenderPipelineBuilder {
   push_constants: Vec<PushConstantUpload>,
   bindings: Vec<BufferBinding>,
+  culling: CullingMode,
+  bind_group_layouts: Vec<bind::BindGroupLayout>,
   label: Option<String>,
 }
 
@@ -90,6 +118,8 @@ impl RenderPipelineBuilder {
     Self {
       push_constants: Vec::new(),
       bindings: Vec::new(),
+      culling: CullingMode::Back,
+      bind_group_layouts: Vec::new(),
       label: None,
     }
   }
@@ -104,7 +134,7 @@ impl RenderPipelineBuilder {
       buffer: Rc::new(buffer),
       attributes,
     });
-    self
+    return self;
   }
 
   /// Declare a push constant range for a shader stage in bytes.
@@ -114,13 +144,25 @@ impl RenderPipelineBuilder {
     bytes: u32,
   ) -> Self {
     self.push_constants.push((stage, 0..bytes));
-    self
+    return self;
   }
 
   /// Attach a debug label to the pipeline.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
-    self
+    return self;
+  }
+
+  /// Configure triangle face culling. Defaults to culling back faces.
+  pub fn with_culling(mut self, mode: CullingMode) -> Self {
+    self.culling = mode;
+    return self;
+  }
+
+  /// Provide one or more bind group layouts used to create the pipeline layout.
+  pub fn with_layouts(mut self, layouts: &[&bind::BindGroupLayout]) -> Self {
+    self.bind_group_layouts = layouts.iter().map(|l| (*l).clone()).collect();
+    return self;
   }
 
   /// Build a graphics pipeline using the provided shader modules and
@@ -159,10 +201,20 @@ impl RenderPipelineBuilder {
       })
       .collect();
 
+    let max_bind_groups = render_context.limit_max_bind_groups() as usize;
+    assert!(
+      self.bind_group_layouts.len() <= max_bind_groups,
+      "Pipeline declares {} bind group layouts, exceeds device max {}",
+      self.bind_group_layouts.len(),
+      max_bind_groups
+    );
+
+    let bind_group_layout_refs: Vec<&wgpu::BindGroupLayout> =
+      self.bind_group_layouts.iter().map(|l| l.raw()).collect();
     let pipeline_layout =
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("lambda-pipeline-layout"),
-        bind_group_layouts: &[],
+        bind_group_layouts: &bind_group_layout_refs,
         push_constant_ranges: &push_constant_ranges,
       });
 
@@ -224,11 +276,16 @@ impl RenderPipelineBuilder {
       buffers: vertex_buffer_layouts.as_slice(),
     };
 
+    let primitive_state = wgpu::PrimitiveState {
+      cull_mode: self.culling.to_wgpu(),
+      ..wgpu::PrimitiveState::default()
+    };
+
     let pipeline_descriptor = wgpu::RenderPipelineDescriptor {
       label: self.label.as_deref(),
       layout: Some(&pipeline_layout),
       vertex: vertex_state,
-      primitive: wgpu::PrimitiveState::default(),
+      primitive: primitive_state,
       depth_stencil: None,
       multisample: wgpu::MultisampleState::default(),
       fragment,
@@ -238,9 +295,9 @@ impl RenderPipelineBuilder {
 
     let pipeline = device.create_render_pipeline(&pipeline_descriptor);
 
-    RenderPipeline {
+    return RenderPipeline {
       pipeline: Rc::new(pipeline),
       buffers,
-    }
+    };
   }
 }
