@@ -3,46 +3,82 @@ title: "Uniform Buffers: Build a Spinning Triangle"
 document_id: "uniform-buffers-tutorial-2025-10-17"
 status: "draft"
 created: "2025-10-17T00:00:00Z"
-last_updated: "2025-10-17T00:15:00Z"
-version: "0.2.0"
+last_updated: "2025-10-30T00:10:00Z"
+version: "0.4.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "00aababeb76370ebdeb67fc12ab4393aac5e4193"
+repo_commit: "88e99500def9a1c1a123c960ba46b5ba7bdc7bab"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "uniform-buffers", "rust", "wgpu"]
 ---
 
+## Overview <a name="overview"></a>
 Uniform buffer objects (UBOs) are a standard mechanism to pass per‑frame or per‑draw constants to shaders. This document demonstrates a minimal 3D spinning triangle that uses a UBO to provide a model‑view‑projection matrix to the vertex shader.
 
 Reference implementation: `crates/lambda-rs/examples/uniform_buffer_triangle.rs`.
 
-Goals
+## Table of Contents
+- [Overview](#overview)
+- [Goals](#goals)
+- [Prerequisites](#prerequisites)
+- [Requirements and Constraints](#requirements-and-constraints)
+- [Data Flow](#data-flow)
+- [Implementation Steps](#implementation-steps)
+  - [Step 1 — Runtime and Component Skeleton](#step-1)
+  - [Step 2 — Vertex and Fragment Shaders](#step-2)
+  - [Step 3 — Mesh Data and Vertex Layout](#step-3)
+  - [Step 4 — Uniform Data Layout in Rust](#step-4)
+  - [Step 5 — Bind Group Layout at Set 0](#step-5)
+  - [Step 6 — Create the Uniform Buffer and Bind Group](#step-6)
+  - [Step 7 — Build the Render Pipeline](#step-7)
+  - [Step 8 — Per‑Frame Update and Write](#step-8)
+  - [Step 9 — Issue Draw Commands](#step-9)
+  - [Step 10 — Handle Window Resize](#step-10)
+- [Validation](#validation)
+- [Notes](#notes)
+- [Exercises](#exercises)
+- [Changelog](#changelog)
+
+## Goals <a name="goals"></a>
+
 - Build a spinning triangle that reads a model‑view‑projection matrix from a uniform buffer.
 - Learn how to define a uniform block in shaders and mirror it in Rust.
 - Learn how to create a bind group layout, allocate a uniform buffer, and write per‑frame data.
 - Learn how to construct a render pipeline and issue draw commands using Lambda’s builders.
 
-Prerequisites
+## Prerequisites <a name="prerequisites"></a>
 - Rust toolchain installed and the workspace builds: `cargo build --workspace`.
 - Familiarity with basic Rust and the repository’s example layout.
 - Ability to run examples: `cargo run --example minimal` verifies setup.
 
-Requirements and constraints
+## Requirements and Constraints <a name="requirements-and-constraints"></a>
 - The uniform block layout in the shader and the Rust structure MUST match in size, alignment, and field order.
 - The bind group layout in Rust MUST match the shader `set` and `binding` indices.
 - Matrices MUST be provided in the order expected by the shader (column‑major in this example). Rationale: prevents implicit driver conversions and avoids incorrect transforms.
 - Acronyms MUST be defined on first use (e.g., uniform buffer object (UBO)).
 
-Data flow
+## Data Flow <a name="data-flow"></a>
 - CPU writes → UBO → bind group (set 0) → pipeline layout → vertex shader.
 - A single UBO MAY be reused across multiple draws and pipelines.
 
-Implementation Steps
+ASCII diagram
 
-1) Runtime and component skeleton
+```
+CPU (matrix calc)
+   │  write_value
+   ▼
+Uniform Buffer (UBO)
+   │  binding 0, set 0
+   ▼
+Bind Group ──▶ Pipeline Layout ──▶ Render Pipeline ──▶ Vertex Shader
+```
+
+## Implementation Steps <a name="implementation-steps"></a>
+
+### Step 1 — Runtime and Component Skeleton <a name="step-1"></a>
 Before rendering, create a minimal application entry point and a `Component` that receives lifecycle callbacks. The engine routes initialization, input, updates, and rendering through the component interface, which provides the context needed to create GPU resources and submit commands.
 
 ```rust
@@ -83,7 +119,7 @@ fn main() {
 }
 ```
 
-2) Vertex and fragment shaders
+### Step 2 — Vertex and Fragment Shaders <a name="step-2"></a>
 Define shader stages next. The vertex shader declares three vertex attributes and a uniform block at set 0, binding 0. It multiplies the incoming position by the matrix stored in the UBO. The fragment shader returns the interpolated color. Declaring the uniform block now establishes the contract that the Rust side will satisfy via a matching bind group layout and buffer.
 
 ```glsl
@@ -138,7 +174,7 @@ let vertex_shader: Shader = shader_builder.build(vertex_virtual);
 let fragment_shader: Shader = shader_builder.build(fragment_virtual);
 ```
 
-3) Mesh data and vertex layout
+### Step 3 — Mesh Data and Vertex Layout <a name="step-3"></a>
 Provide vertex data for a single triangle and describe how the pipeline reads it. Each vertex stores position, normal, and color as three `f32` values. The attribute descriptors specify locations and byte offsets so the pipeline can interpret the packed buffer consistently across platforms.
 
 ```rust
@@ -175,7 +211,7 @@ let mesh: Mesh = mesh_builder
   .build();
 ```
 
-4) Uniform data layout in Rust
+### Step 4 — Uniform Data Layout in Rust <a name="step-4"></a>
 Mirror the shader’s uniform block with a Rust structure. Use `#[repr(C)]` so the memory layout is predictable. A `mat4` in the shader corresponds to a 4×4 `f32` array here. Many GPU interfaces expect column‑major matrices; transpose before upload if the local math library is row‑major. This avoids implicit driver conversions and prevents incorrect transforms.
 
 ```rust
@@ -186,7 +222,7 @@ pub struct GlobalsUniform {
 }
 ```
 
-5) Bind group layout at set 0
+### Step 5 — Bind Group Layout at Set 0 <a name="step-5"></a>
 Create a bind group layout that matches the shader declaration. This layout says: at set 0, binding 0 there is a uniform buffer visible to the vertex stage. The pipeline layout will incorporate this, ensuring the shader and the bound resources agree at draw time.
 
 ```rust
@@ -197,7 +233,7 @@ let layout = BindGroupLayoutBuilder::new()
   .build(render_context);
 ```
 
-6) Create the uniform buffer and bind group
+### Step 6 — Create the Uniform Buffer and Bind Group <a name="step-6"></a>
 Allocate the uniform buffer, seed it with an initial matrix, and create a bind group using the layout. Mark the buffer usage as `UNIFORM` and properties as `CPU_VISIBLE` to permit direct per‑frame writes from the CPU. This is the simplest path for frequently updated data.
 
 ```rust
@@ -221,7 +257,7 @@ let bind_group = BindGroupBuilder::new()
   .build(render_context);
 ```
 
-7) Build the render pipeline
+### Step 7 — Build the Render Pipeline <a name="step-7"></a>
 Construct the render pipeline, supplying the bind group layouts, vertex buffer, and the shader pair. Disable face culling for simplicity so both sides of the triangle remain visible regardless of winding during early experimentation.
 
 ```rust
@@ -242,7 +278,7 @@ let pipeline = RenderPipelineBuilder::new()
   .build(render_context, &render_pass, &vertex_shader, Some(&fragment_shader));
 ```
 
-8) Per‑frame update and write
+### Step 8 — Per‑Frame Update and Write <a name="step-8"></a>
 Animate by recomputing the model‑view‑projection matrix each frame and writing it into the uniform buffer. The helper `compute_model_view_projection_matrix_about_pivot` maintains a correct aspect ratio using the current window dimensions and rotates the model around a chosen pivot.
 
 ```rust
@@ -269,7 +305,7 @@ fn update_uniform_each_frame(
     &camera,
     width.max(1),
     height.max(1),
-    [0.0, -1.0 / 3.0, 0.0], // pivot
+    [0.0, -1.0 / 3.0, 0.0], // pivot at triangle centroid (geometric center)
     [0.0, 1.0, 0.0],        // axis
     angle_in_turns,
     0.5,                    // scale
@@ -281,7 +317,7 @@ fn update_uniform_each_frame(
 }
 ```
 
-9) Issue draw commands
+### Step 9 — Issue Draw Commands <a name="step-9"></a>
 Record commands in the order the GPU expects: begin the render pass, set the pipeline, configure viewport and scissors, bind the vertex buffer and the uniform bind group, draw the vertices, then end the pass. This sequence describes the full state required for a single draw.
 
 ```rust
@@ -304,7 +340,7 @@ let commands = vec![
 ];
 ```
 
-10) Handle window resize
+### Step 10 — Handle Window Resize <a name="step-10"></a>
 Track window dimensions and update the per‑frame matrix using the new aspect ratio. Forwarding resize events into stored `width` and `height` maintains consistent camera projection across resizes.
 
 ```rust
@@ -321,18 +357,18 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 }
 ```
 
-Validation
+## Validation <a name="validation"></a>
 - Build the workspace: `cargo build --workspace`
 - Run the example: `cargo run --example uniform_buffer_triangle`
 
-Notes
+## Notes <a name="notes"></a>
 - Layout matching: The Rust `GlobalsUniform` MUST match the shader block layout. Keep `#[repr(C)]` and follow alignment rules.
 - Matrix order: The shader expects column‑major matrices, so the uploaded matrix MUST be transposed if the local math library uses row‑major.
 - Binding indices: The Rust bind group layout and `.with_uniform(0, ...)`, plus the shader `set = 0, binding = 0`, MUST be consistent.
 - Update strategy: `CPU_VISIBLE` buffers SHOULD be used for per‑frame updates; device‑local memory MAY be preferred for static data.
 - Pipeline layout: All bind group layouts used by the pipeline MUST be included via `.with_layouts(...)`.
 
-Exercises
+## Exercises <a name="exercises"></a>
 
 - Exercise 1: Time‑based fragment color
   - Implement a second UBO at set 0, binding 1 with a `float time_seconds`.
@@ -344,7 +380,8 @@ Exercises
   - Add input to adjust orbit speed.
 
 - Exercise 3: Two objects with dynamic offsets
-  - Pack two `GlobalsUniform` matrices into one UBO and issue two draws with different dynamic offsets.
+  - Pack two `GlobalsUniform` matrices into one UBO and issue two draws with
+  different dynamic offsets.
   - Use `dynamic_offsets` in `RenderCommand::SetBindGroup`.
 
 - Exercise 4: Basic Lambert lighting
@@ -352,14 +389,20 @@ Exercises
   - Provide a lighting UBO at binding 2 with light position and color.
 
 - Exercise 5: Push constants comparison
-  - Port to push constants (see `crates/lambda-rs/examples/push_constants.rs`) and compare trade‑offs.
+  - Port to push constants (see `crates/lambda-rs/examples/push_constants.rs`)
+  and compare trade‑offs.
 
 - Exercise 6: Per‑material uniforms
-  - Split per‑frame and per‑material data; use a shared frame UBO and a per‑material UBO (e.g., tint color).
+  - Split per‑frame and per‑material data; use a shared frame UBO and a
+  per‑material UBO (e.g., tint color).
 
 - Exercise 7: Shader hot‑reload (stretch)
-  - Rebuild shaders on file changes and re‑create the pipeline while preserving UBOs and bind groups.
+  - Rebuild shaders on file changes and re‑create the pipeline while preserving
+  UBOs and bind groups.
 
-Changelog
-- 0.2.0 (2025‑10‑17): Added goals and book‑style step explanations; expanded rationale before code blocks; refined validation and notes.
+## Changelog <a name="changelog"></a>
+
+- 0.4.0 (2025‑10‑30): Added table of contents with links; converted sections to anchored headings; added ASCII data flow diagram; metadata updated.
+- 0.2.0 (2025‑10‑17): Added goals and book‑style step explanations; expanded
+rationale before code blocks; refined validation and notes.
 - 0.1.0 (2025‑10‑17): Initial draft aligned with `crates/lambda-rs/examples/uniform_buffer_triangle.rs`.
