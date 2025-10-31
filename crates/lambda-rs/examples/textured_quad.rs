@@ -272,8 +272,15 @@ impl Component<ComponentResult, String> for TexturedQuadExample {
     _render_context: &mut lambda::render::RenderContext,
   ) -> Vec<RenderCommand> {
     let mut commands = vec![];
-    let viewport =
-      ViewportBuilder::new().build(self.width.max(1), self.height.max(1));
+    // Center a square viewport to keep aspect ratio and center the quad.
+    let win_w = self.width.max(1);
+    let win_h = self.height.max(1);
+    let side = u32::min(win_w, win_h);
+    let x = ((win_w - side) / 2) as i32;
+    let y = ((win_h - side) / 2) as i32;
+    let viewport = ViewportBuilder::new()
+      .with_coordinates(x, y)
+      .build(side, side);
     commands.push(RenderCommand::BeginRenderPass {
       render_pass: self.render_pass.expect("render pass not set"),
       viewport,
