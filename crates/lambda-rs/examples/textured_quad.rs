@@ -256,7 +256,15 @@ impl Component<ComponentResult, String> for TexturedQuadExample {
     return Ok(ComponentResult::Success);
   }
 
-  fn on_event(&mut self, _event: Events) -> Result<ComponentResult, String> {
+  fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
+    if let Events::Window {
+      event: lambda::events::WindowEvent::Resize { width, height },
+      ..
+    } = event
+    {
+      self.width = width;
+      self.height = height;
+    }
     return Ok(ComponentResult::Success);
   }
 
