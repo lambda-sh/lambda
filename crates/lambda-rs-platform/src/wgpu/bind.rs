@@ -92,6 +92,35 @@ mod tests {
     );
     assert_eq!(Visibility::All.to_wgpu(), wgpu::ShaderStages::all());
   }
+
+  #[test]
+  fn sampled_texture_2d_layout_entry_is_correct() {
+    let builder = BindGroupLayoutBuilder::new()
+      .with_sampled_texture_2d(1, Visibility::Fragment)
+      .with_sampler(2, Visibility::Fragment);
+    assert_eq!(builder.entries.len(), 2);
+    match builder.entries[0].ty {
+      wgpu::BindingType::Texture {
+        sample_type,
+        view_dimension,
+        multisampled,
+      } => {
+        assert_eq!(view_dimension, wgpu::TextureViewDimension::D2);
+        assert_eq!(multisampled, false);
+        match sample_type {
+          wgpu::TextureSampleType::Float { filterable } => assert!(filterable),
+          _ => panic!("expected float sample type"),
+        }
+      }
+      _ => panic!("expected texture binding type"),
+    }
+    match builder.entries[1].ty {
+      wgpu::BindingType::Sampler(kind) => {
+        assert_eq!(kind, wgpu::SamplerBindingType::Filtering);
+      }
+      _ => panic!("expected sampler binding type"),
+    }
+  }
 }
 
 #[derive(Default)]
@@ -145,6 +174,56 @@ impl BindGroupLayoutBuilder {
         has_dynamic_offset: true,
         min_binding_size: None,
       },
+      count: None,
+    });
+    return self;
+  }
+
+  /// Declare a sampled texture binding (2D) at the provided index.
+  pub fn with_sampled_texture_2d(
+    mut self,
+    binding: u32,
+    visibility: Visibility,
+  ) -> Self {
+    self.entries.push(wgpu::BindGroupLayoutEntry {
+      binding,
+      visibility: visibility.to_wgpu(),
+      ty: wgpu::BindingType::Texture {
+        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+        view_dimension: wgpu::TextureViewDimension::D2,
+        multisampled: false,
+      },
+      count: None,
+    });
+    return self;
+  }
+
+  /// Declare a sampled texture binding with an explicit view dimension.
+  pub fn with_sampled_texture_dim(
+    mut self,
+    binding: u32,
+    visibility: Visibility,
+    view_dimension: wgpu::TextureViewDimension,
+  ) -> Self {
+    self.entries.push(wgpu::BindGroupLayoutEntry {
+      binding,
+      visibility: visibility.to_wgpu(),
+      ty: wgpu::BindingType::Texture {
+        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+        view_dimension,
+        multisampled: false,
+      },
+      count: None,
+    });
+    return self;
+  }
+
+  /// Declare a filtering sampler binding at the provided index.
+  pub fn with_sampler(mut self, binding: u32, visibility: Visibility) -> Self {
+    self.entries.push(wgpu::BindGroupLayoutEntry {
+      binding,
+      visibility: visibility.to_wgpu(),
+      ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
       count: None,
     });
     return self;
@@ -209,6 +288,32 @@ impl<'a> BindGroupBuilder<'a> {
         offset,
         size,
       }),
+    });
+    return self;
+  }
+
+  /// Bind a texture view at a binding index.
+  pub fn with_texture(
+    mut self,
+    binding: u32,
+    texture: &'a crate::wgpu::texture::Texture,
+  ) -> Self {
+    self.entries.push(wgpu::BindGroupEntry {
+      binding,
+      resource: wgpu::BindingResource::TextureView(texture.view()),
+    });
+    return self;
+  }
+
+  /// Bind a sampler at a binding index.
+  pub fn with_sampler(
+    mut self,
+    binding: u32,
+    sampler: &'a crate::wgpu::texture::Sampler,
+  ) -> Self {
+    self.entries.push(wgpu::BindGroupEntry {
+      binding,
+      resource: wgpu::BindingResource::Sampler(sampler.raw()),
     });
     return self;
   }

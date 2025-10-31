@@ -113,6 +113,148 @@ impl ViewDimension {
 }
 
 #[derive(Debug)]
+/// Wrapper around `wgpu::Sampler` that preserves a label.
+pub struct Sampler {
+  pub(crate) raw: wgpu::Sampler,
+  pub(crate) label: Option<String>,
+}
+
+impl Sampler {
+  /// Borrow the underlying `wgpu::Sampler`.
+  pub fn raw(&self) -> &wgpu::Sampler {
+    return &self.raw;
+  }
+
+  /// Optional debug label used during creation.
+  pub fn label(&self) -> Option<&str> {
+    return self.label.as_deref();
+  }
+}
+
+/// Builder for creating a sampler.
+pub struct SamplerBuilder {
+  label: Option<String>,
+  min_filter: FilterMode,
+  mag_filter: FilterMode,
+  mipmap_filter: FilterMode,
+  address_u: AddressMode,
+  address_v: AddressMode,
+  address_w: AddressMode,
+  lod_min: f32,
+  lod_max: f32,
+}
+
+impl SamplerBuilder {
+  /// Create a new builder with nearest filtering and clamp addressing.
+  pub fn new() -> Self {
+    return Self {
+      label: None,
+      min_filter: FilterMode::Nearest,
+      mag_filter: FilterMode::Nearest,
+      mipmap_filter: FilterMode::Nearest,
+      address_u: AddressMode::ClampToEdge,
+      address_v: AddressMode::ClampToEdge,
+      address_w: AddressMode::ClampToEdge,
+      lod_min: 0.0,
+      lod_max: 32.0,
+    };
+  }
+
+  /// Set both min and mag filter to nearest.
+  pub fn nearest(mut self) -> Self {
+    self.min_filter = FilterMode::Nearest;
+    self.mag_filter = FilterMode::Nearest;
+    return self;
+  }
+
+  /// Set both min and mag filter to linear.
+  pub fn linear(mut self) -> Self {
+    self.min_filter = FilterMode::Linear;
+    self.mag_filter = FilterMode::Linear;
+    return self;
+  }
+
+  /// Convenience: nearest filtering with clamp-to-edge addressing.
+  pub fn nearest_clamp(mut self) -> Self {
+    self = self.nearest();
+    self.address_u = AddressMode::ClampToEdge;
+    self.address_v = AddressMode::ClampToEdge;
+    self.address_w = AddressMode::ClampToEdge;
+    return self;
+  }
+
+  /// Convenience: linear filtering with clamp-to-edge addressing.
+  pub fn linear_clamp(mut self) -> Self {
+    self = self.linear();
+    self.address_u = AddressMode::ClampToEdge;
+    self.address_v = AddressMode::ClampToEdge;
+    self.address_w = AddressMode::ClampToEdge;
+    return self;
+  }
+
+  /// Set address mode for U (x) coordinate.
+  pub fn with_address_mode_u(mut self, mode: AddressMode) -> Self {
+    self.address_u = mode;
+    return self;
+  }
+
+  /// Set address mode for V (y) coordinate.
+  pub fn with_address_mode_v(mut self, mode: AddressMode) -> Self {
+    self.address_v = mode;
+    return self;
+  }
+
+  /// Set address mode for W (z) coordinate.
+  pub fn with_address_mode_w(mut self, mode: AddressMode) -> Self {
+    self.address_w = mode;
+    return self;
+  }
+
+  /// Set mipmap filtering mode.
+  pub fn with_mip_filter(mut self, mode: FilterMode) -> Self {
+    self.mipmap_filter = mode;
+    return self;
+  }
+
+  /// Set minimum and maximum level-of-detail clamps.
+  pub fn with_lod(mut self, min: f32, max: f32) -> Self {
+    self.lod_min = min;
+    self.lod_max = max;
+    return self;
+  }
+
+  /// Attach a debug label.
+  pub fn with_label(mut self, label: &str) -> Self {
+    self.label = Some(label.to_string());
+    return self;
+  }
+
+  fn to_descriptor(&self) -> wgpu::SamplerDescriptor<'_> {
+    return wgpu::SamplerDescriptor {
+      label: self.label.as_deref(),
+      address_mode_u: self.address_u.to_wgpu(),
+      address_mode_v: self.address_v.to_wgpu(),
+      address_mode_w: self.address_w.to_wgpu(),
+      mag_filter: self.mag_filter.to_wgpu(),
+      min_filter: self.min_filter.to_wgpu(),
+      mipmap_filter: self.mipmap_filter.to_wgpu(),
+      lod_min_clamp: self.lod_min,
+      lod_max_clamp: self.lod_max,
+      ..Default::default()
+    };
+  }
+
+  /// Create the sampler on the provided device.
+  pub fn build(self, device: &wgpu::Device) -> Sampler {
+    let desc = self.to_descriptor();
+    let raw = device.create_sampler(&desc);
+    return Sampler {
+      raw,
+      label: self.label,
+    };
+  }
+}
+#[derive(Debug)]
 /// Wrapper around `wgpu::Texture` and its default `TextureView`.
 pub struct Texture {
   pub(crate) raw: wgpu::Texture,
@@ -372,5 +514,33 @@ mod tests {
     assert_eq!(super::align_up(255, 256), 256);
     assert_eq!(super::align_up(256, 256), 256);
     assert_eq!(super::align_up(300, 256), 512);
+  }
+
+  #[test]
+  fn sampler_builder_defaults_map() {
+    let b = SamplerBuilder::new();
+    let d = b.to_descriptor();
+    assert_eq!(d.address_mode_u, wgpu::AddressMode::ClampToEdge);
+    assert_eq!(d.address_mode_v, wgpu::AddressMode::ClampToEdge);
+    assert_eq!(d.address_mode_w, wgpu::AddressMode::ClampToEdge);
+    assert_eq!(d.mag_filter, wgpu::FilterMode::Nearest);
+    assert_eq!(d.min_filter, wgpu::FilterMode::Nearest);
+    assert_eq!(d.mipmap_filter, wgpu::FilterMode::Nearest);
+    assert_eq!(d.lod_min_clamp, 0.0);
+    assert_eq!(d.lod_max_clamp, 32.0);
+  }
+
+  #[test]
+  fn sampler_builder_linear_clamp_map() {
+    let b = SamplerBuilder::new()
+      .linear_clamp()
+      .with_mip_filter(FilterMode::Linear);
+    let d = b.to_descriptor();
+    assert_eq!(d.address_mode_u, wgpu::AddressMode::ClampToEdge);
+    assert_eq!(d.address_mode_v, wgpu::AddressMode::ClampToEdge);
+    assert_eq!(d.address_mode_w, wgpu::AddressMode::ClampToEdge);
+    assert_eq!(d.mag_filter, wgpu::FilterMode::Linear);
+    assert_eq!(d.min_filter, wgpu::FilterMode::Linear);
+    assert_eq!(d.mipmap_filter, wgpu::FilterMode::Linear);
   }
 }

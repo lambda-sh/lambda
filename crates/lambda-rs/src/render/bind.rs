@@ -10,6 +10,10 @@ use lambda_platform::wgpu::types as wgpu;
 
 use super::{
   buffer::Buffer,
+  texture::{
+    Sampler,
+    Texture,
+  },
   RenderContext,
 };
 
@@ -108,6 +112,8 @@ impl BindGroup {
 pub struct BindGroupLayoutBuilder {
   label: Option<String>,
   entries: Vec<(u32, BindingVisibility, bool)>,
+  textures_2d: Vec<(u32, BindingVisibility)>,
+  samplers: Vec<(u32, BindingVisibility)>,
 }
 
 impl BindGroupLayoutBuilder {
@@ -116,6 +122,8 @@ impl BindGroupLayoutBuilder {
     Self {
       label: None,
       entries: Vec::new(),
+      textures_2d: Vec::new(),
+      samplers: Vec::new(),
     }
   }
 
@@ -145,6 +153,20 @@ impl BindGroupLayoutBuilder {
     return self;
   }
 
+  /// Add a sampled 2D texture binding, defaulting to fragment visibility.
+  pub fn with_sampled_texture(mut self, binding: u32) -> Self {
+    self
+      .textures_2d
+      .push((binding, BindingVisibility::Fragment));
+    return self;
+  }
+
+  /// Add a filtering sampler binding, defaulting to fragment visibility.
+  pub fn with_sampler(mut self, binding: u32) -> Self {
+    self.samplers.push((binding, BindingVisibility::Fragment));
+    return self;
+  }
+
   /// Build the layout using the `RenderContext` device.
   pub fn build(self, render_context: &RenderContext) -> BindGroupLayout {
     let mut builder =
@@ -152,11 +174,24 @@ impl BindGroupLayoutBuilder {
 
     #[cfg(debug_assertions)]
     {
-      // In debug builds, check for duplicate binding indices.
+      // In debug builds, check for duplicate binding indices across all kinds.
       use std::collections::HashSet;
       let mut seen = HashSet::new();
-
       for (binding, _, _) in &self.entries {
+        assert!(
+          seen.insert(binding),
+          "BindGroupLayoutBuilder: duplicate binding index {}",
+          binding
+        );
+      }
+      for (binding, _) in &self.textures_2d {
+        assert!(
+          seen.insert(binding),
+          "BindGroupLayoutBuilder: duplicate binding index {}",
+          binding
+        );
+      }
+      for (binding, _) in &self.samplers {
         assert!(
           seen.insert(binding),
           "BindGroupLayoutBuilder: duplicate binding index {}",
@@ -180,6 +215,15 @@ impl BindGroupLayoutBuilder {
       };
     }
 
+    for (binding, visibility) in self.textures_2d.into_iter() {
+      builder =
+        builder.with_sampled_texture_2d(binding, visibility.to_platform());
+    }
+
+    for (binding, visibility) in self.samplers.into_iter() {
+      builder = builder.with_sampler(binding, visibility.to_platform());
+    }
+
     let layout = builder.build(render_context.device());
 
     return BindGroupLayout {
@@ -194,6 +238,8 @@ pub struct BindGroupBuilder<'a> {
   label: Option<String>,
   layout: Option<&'a BindGroupLayout>,
   entries: Vec<(u32, &'a Buffer, u64, Option<std::num::NonZeroU64>)>,
+  textures: Vec<(u32, Rc<lambda_platform::wgpu::texture::Texture>)>,
+  samplers: Vec<(u32, Rc<lambda_platform::wgpu::texture::Sampler>)>,
 }
 
 impl<'a> BindGroupBuilder<'a> {
@@ -203,6 +249,8 @@ impl<'a> BindGroupBuilder<'a> {
       label: None,
       layout: None,
       entries: Vec::new(),
+      textures: Vec::new(),
+      samplers: Vec::new(),
     };
   }
 
@@ -227,6 +275,18 @@ impl<'a> BindGroupBuilder<'a> {
     size: Option<std::num::NonZeroU64>,
   ) -> Self {
     self.entries.push((binding, buffer, offset, size));
+    return self;
+  }
+
+  /// Bind a 2D texture at the specified binding index.
+  pub fn with_texture(mut self, binding: u32, texture: &'a Texture) -> Self {
+    self.textures.push((binding, texture.platform_texture()));
+    return self;
+  }
+
+  /// Bind a sampler at the specified binding index.
+  pub fn with_sampler(mut self, binding: u32, sampler: &'a Sampler) -> Self {
+    self.samplers.push((binding, sampler.platform_sampler()));
     return self;
   }
 
@@ -256,6 +316,17 @@ impl<'a> BindGroupBuilder<'a> {
         );
       }
       platform = platform.with_uniform(binding, buffer.raw(), offset, size);
+    }
+
+    let textures_hold = self.textures;
+    let samplers_hold = self.samplers;
+
+    for (binding, texture_handle) in textures_hold.iter() {
+      platform = platform.with_texture(*binding, texture_handle.as_ref());
+    }
+
+    for (binding, sampler_handle) in samplers_hold.iter() {
+      platform = platform.with_sampler(*binding, sampler_handle.as_ref());
     }
 
     let group = platform.build(render_context.device());
