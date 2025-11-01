@@ -239,15 +239,7 @@ impl BufferBuilder {
     data: Vec<Data>,
   ) -> Result<Buffer, &'static str> {
     let element_size = std::mem::size_of::<Data>();
-    let buffer_length = if self.buffer_length == 0 {
-      element_size * data.len()
-    } else {
-      self.buffer_length
-    };
-
-    if buffer_length == 0 {
-      return Err("Attempted to create a buffer with zero length.");
-    }
+    let buffer_length = self.resolve_length(element_size, data.len())?;
 
     // SAFETY: Converting data to bytes is safe because it's underlying
     // type, Data, is constrianed to Copy and the lifetime of the slice does
@@ -288,5 +280,53 @@ impl BufferBuilder {
       .with_properties(Properties::CPU_VISIBLE)
       .with_buffer_type(BufferType::Vertex)
       .build(render_context, mesh.vertices().to_vec());
+  }
+}
+
+impl BufferBuilder {
+  /// Resolve the effective buffer length from explicit size or data length.
+  /// Returns an error if the resulting length would be zero.
+  pub(crate) fn resolve_length(
+    &self,
+    element_size: usize,
+    data_len: usize,
+  ) -> Result<usize, &'static str> {
+    let buffer_length = if self.buffer_length == 0 {
+      element_size * data_len
+    } else {
+      self.buffer_length
+    };
+    if buffer_length == 0 {
+      return Err("Attempted to create a buffer with zero length.");
+    }
+    return Ok(buffer_length);
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn resolve_length_rejects_zero() {
+    let builder = BufferBuilder::new();
+    let result = builder.resolve_length(std::mem::size_of::<u32>(), 0);
+    assert!(result.is_err());
+  }
+
+  #[test]
+  fn label_is_recorded_on_builder() {
+    let mut builder = BufferBuilder::new();
+    builder.with_label("buffer-test");
+    // Indirect check via building a small buffer would require a device; ensure
+    // the label setter stores the value locally instead.
+    // Access through an internal helper to avoid exposing label publicly.
+    #[allow(clippy::redundant_closure_call)]
+    {
+      // Create a small closure to read the private label field.
+      // The test module shares the parent scope, so it can access fields.
+      let read = |b: &BufferBuilder| b.label.as_deref();
+      assert_eq!(read(&builder), Some("buffer-test"));
+    }
   }
 }
