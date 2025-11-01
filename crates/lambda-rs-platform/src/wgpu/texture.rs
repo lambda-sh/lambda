@@ -4,10 +4,10 @@
 //! dimensions, filtering, and addressing. It provides explicit mappings to the
 //! underlying `wgpu` types and basic helpers such as bytes‑per‑pixel.
 
-use super::types as wgpu;
+use wgpu;
 
 #[derive(Debug)]
-/// Errors returned when building textures fails validation.
+/// Errors returned when building a texture or preparing its initial upload.
 pub enum TextureBuildError {
   /// Width or height is zero or exceeds device limits.
   InvalidDimensions { width: u32, height: u32 },
@@ -17,6 +17,10 @@ pub enum TextureBuildError {
   Overflow,
 }
 
+/// Align `value` up to the next multiple of `alignment`.
+///
+/// `alignment` must be a power of two. This is used to compute
+/// `bytes_per_row` for `Queue::write_texture` (256‑byte requirement).
 fn align_up(value: u32, alignment: u32) -> u32 {
   let mask = alignment - 1;
   return (value + mask) & !mask;
@@ -256,6 +260,10 @@ impl SamplerBuilder {
 }
 #[derive(Debug)]
 /// Wrapper around `wgpu::Texture` and its default `TextureView`.
+///
+/// The view covers the full resource with a view dimension that matches the
+/// texture (D2/D3). The view usage mirrors the texture usage to satisfy wgpu
+/// validation rules.
 pub struct Texture {
   pub(crate) raw: wgpu::Texture,
   pub(crate) view: wgpu::TextureView,
@@ -279,16 +287,32 @@ impl Texture {
   }
 }
 
-/// Builder for creating a 2D sampled texture with optional initial data upload.
+/// Builder for creating a sampled texture with optional initial data upload.
+///
+/// - 2D path: call `new_2d()` then `with_size(w, h)`.
+/// - 3D path: call `new_3d()` then `with_size_3d(w, h, d)`.
+///
+/// The `with_data` payload is expected to be tightly packed (no row or image
+/// padding). Row padding and `rows_per_image` are computed internally.
 pub struct TextureBuilder {
+  /// Optional debug label propagated to the created texture.
   label: Option<String>,
+  /// Color format for the texture (filterable formats only).
   format: TextureFormat,
+  /// Physical storage dimension (D2/D3).
   dimension: TextureDimension,
+  /// Width in texels.
   width: u32,
+  /// Height in texels.
   height: u32,
+  /// Depth in texels (1 for 2D).
+  depth: u32,
+  /// Include `TEXTURE_BINDING` usage.
   usage_texture_binding: bool,
+  /// Include `COPY_DST` usage when uploading initial data.
   usage_copy_dst: bool,
-  data: Option<Vec<u8>>, // tightly packed rows (width * bpp)
+  /// Optional tightly‑packed pixel payload for level 0 (rows are `width*bpp`).
+  data: Option<Vec<u8>>,
 }
 
 impl TextureBuilder {
@@ -300,6 +324,22 @@ impl TextureBuilder {
       dimension: TextureDimension::TwoDimensional,
       width: 0,
       height: 0,
+      depth: 1,
+      usage_texture_binding: true,
+      usage_copy_dst: true,
+      data: None,
+    };
+  }
+
+  /// Construct a new 3D texture builder for a color format.
+  pub fn new_3d(format: TextureFormat) -> Self {
+    return Self {
+      label: None,
+      format,
+      dimension: TextureDimension::ThreeDimensional,
+      width: 0,
+      height: 0,
+      depth: 0,
       usage_texture_binding: true,
       usage_copy_dst: true,
       data: None,
@@ -310,6 +350,15 @@ impl TextureBuilder {
   pub fn with_size(mut self, width: u32, height: u32) -> Self {
     self.width = width;
     self.height = height;
+    self.depth = 1;
+    return self;
+  }
+
+  /// Set the 3D texture size in voxels.
+  pub fn with_size_3d(mut self, width: u32, height: u32, depth: u32) -> Self {
+    self.width = width;
+    self.height = height;
+    self.depth = depth;
     return self;
   }
 
@@ -345,20 +394,39 @@ impl TextureBuilder {
         height: self.height,
       });
     }
+    if let TextureDimension::ThreeDimensional = self.dimension {
+      if self.depth == 0 {
+        return Err(TextureBuildError::InvalidDimensions {
+          width: self.width,
+          height: self.height,
+        });
+      }
+    }
 
     let size = wgpu::Extent3d {
       width: self.width,
       height: self.height,
-      depth_or_array_layers: 1,
+      depth_or_array_layers: match self.dimension {
+        TextureDimension::TwoDimensional => 1,
+        TextureDimension::ThreeDimensional => self.depth,
+      },
     };
 
     // Validate data length if provided
     if let Some(ref pixels) = self.data {
       let bpp = self.format.bytes_per_pixel() as usize;
-      let expected = (self.width as usize)
+      let wh = (self.width as usize)
         .checked_mul(self.height as usize)
-        .and_then(|n| n.checked_mul(bpp))
         .ok_or(TextureBuildError::Overflow)?;
+      let expected = match self.dimension {
+        TextureDimension::TwoDimensional => {
+          wh.checked_mul(bpp).ok_or(TextureBuildError::Overflow)?
+        }
+        TextureDimension::ThreeDimensional => wh
+          .checked_mul(self.depth as usize)
+          .and_then(|n| n.checked_mul(bpp))
+          .ok_or(TextureBuildError::Overflow)?,
+      };
       if pixels.len() != expected {
         return Err(TextureBuildError::DataLengthMismatch {
           expected,
@@ -388,7 +456,21 @@ impl TextureBuilder {
     };
 
     let texture = device.create_texture(&descriptor);
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let view_dimension = match self.dimension {
+      TextureDimension::TwoDimensional => wgpu::TextureViewDimension::D2,
+      TextureDimension::ThreeDimensional => wgpu::TextureViewDimension::D3,
+    };
+    let view = texture.create_view(&wgpu::TextureViewDescriptor {
+      label: None,
+      format: None,
+      dimension: Some(view_dimension),
+      aspect: wgpu::TextureAspect::All,
+      base_mip_level: 0,
+      mip_level_count: None,
+      base_array_layer: 0,
+      array_layer_count: None,
+      usage: Some(usage),
+    });
 
     if let Some(pixels) = self.data.as_ref() {
       // Compute 256-byte aligned bytes_per_row and pad rows if necessary.
@@ -399,23 +481,66 @@ impl TextureBuilder {
         .ok_or(TextureBuildError::Overflow)?;
       let padded_row_bytes = align_up(row_bytes, 256);
 
-      // Prepare a staging buffer with zeroed padding between rows.
+      // Prepare a staging buffer with zeroed padding between rows (and images).
+      let images = match self.dimension {
+        TextureDimension::TwoDimensional => 1,
+        TextureDimension::ThreeDimensional => self.depth,
+      } as u64;
       let total_bytes = (padded_row_bytes as u64)
         .checked_mul(self.height as u64)
+        .and_then(|n| n.checked_mul(images))
         .ok_or(TextureBuildError::Overflow)? as usize;
       let mut staging = vec![0u8; total_bytes];
 
       let src_row_stride = row_bytes as usize;
       let dst_row_stride = padded_row_bytes as usize;
-      for row in 0..(self.height as usize) {
-        let src_off = row
-          .checked_mul(src_row_stride)
-          .ok_or(TextureBuildError::Overflow)?;
-        let dst_off = row
-          .checked_mul(dst_row_stride)
-          .ok_or(TextureBuildError::Overflow)?;
-        staging[dst_off..(dst_off + src_row_stride)]
-          .copy_from_slice(&pixels[src_off..(src_off + src_row_stride)]);
+      match self.dimension {
+        TextureDimension::TwoDimensional => {
+          for row in 0..(self.height as usize) {
+            let src_off = row
+              .checked_mul(src_row_stride)
+              .ok_or(TextureBuildError::Overflow)?;
+            let dst_off = row
+              .checked_mul(dst_row_stride)
+              .ok_or(TextureBuildError::Overflow)?;
+            staging[dst_off..(dst_off + src_row_stride)]
+              .copy_from_slice(&pixels[src_off..(src_off + src_row_stride)]);
+          }
+        }
+        TextureDimension::ThreeDimensional => {
+          let slice_stride = (self.height as usize)
+            .checked_mul(src_row_stride)
+            .ok_or(TextureBuildError::Overflow)?;
+          let dst_image_stride = (self.height as usize)
+            .checked_mul(dst_row_stride)
+            .ok_or(TextureBuildError::Overflow)?;
+          for z in 0..(self.depth as usize) {
+            for y in 0..(self.height as usize) {
+              let z_base_src = z
+                .checked_mul(slice_stride)
+                .ok_or(TextureBuildError::Overflow)?;
+              let y_off_src = y
+                .checked_mul(src_row_stride)
+                .ok_or(TextureBuildError::Overflow)?;
+              let src_off = z_base_src
+                .checked_add(y_off_src)
+                .ok_or(TextureBuildError::Overflow)?;
+
+              let z_base_dst = z
+                .checked_mul(dst_image_stride)
+                .ok_or(TextureBuildError::Overflow)?;
+              let y_off_dst = y
+                .checked_mul(dst_row_stride)
+                .ok_or(TextureBuildError::Overflow)?;
+              let dst_off = z_base_dst
+                .checked_add(y_off_dst)
+                .ok_or(TextureBuildError::Overflow)?;
+
+              staging[dst_off..(dst_off + src_row_stride)]
+                .copy_from_slice(&pixels[src_off..(src_off + src_row_stride)]);
+            }
+          }
+        }
       }
 
       let data_layout = wgpu::TexelCopyBufferLayout {

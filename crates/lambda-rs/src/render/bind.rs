@@ -13,6 +13,7 @@ use super::{
   texture::{
     Sampler,
     Texture,
+    ViewDimension,
   },
   RenderContext,
 };
@@ -113,6 +114,7 @@ pub struct BindGroupLayoutBuilder {
   label: Option<String>,
   entries: Vec<(u32, BindingVisibility, bool)>,
   textures_2d: Vec<(u32, BindingVisibility)>,
+  textures_dim: Vec<(u32, BindingVisibility, ViewDimension)>,
   samplers: Vec<(u32, BindingVisibility)>,
 }
 
@@ -123,6 +125,7 @@ impl BindGroupLayoutBuilder {
       label: None,
       entries: Vec::new(),
       textures_2d: Vec::new(),
+      textures_dim: Vec::new(),
       samplers: Vec::new(),
     }
   }
@@ -167,6 +170,17 @@ impl BindGroupLayoutBuilder {
     return self;
   }
 
+  /// Add a sampled texture binding with an explicit view dimension and visibility.
+  pub fn with_sampled_texture_dim(
+    mut self,
+    binding: u32,
+    dim: ViewDimension,
+    visibility: BindingVisibility,
+  ) -> Self {
+    self.textures_dim.push((binding, visibility, dim));
+    return self;
+  }
+
   /// Build the layout using the `RenderContext` device.
   pub fn build(self, render_context: &RenderContext) -> BindGroupLayout {
     let mut builder =
@@ -185,6 +199,13 @@ impl BindGroupLayoutBuilder {
         );
       }
       for (binding, _) in &self.textures_2d {
+        assert!(
+          seen.insert(binding),
+          "BindGroupLayoutBuilder: duplicate binding index {}",
+          binding
+        );
+      }
+      for (binding, _, _) in &self.textures_dim {
         assert!(
           seen.insert(binding),
           "BindGroupLayoutBuilder: duplicate binding index {}",
@@ -218,6 +239,14 @@ impl BindGroupLayoutBuilder {
     for (binding, visibility) in self.textures_2d.into_iter() {
       builder =
         builder.with_sampled_texture_2d(binding, visibility.to_platform());
+    }
+
+    for (binding, visibility, dim) in self.textures_dim.into_iter() {
+      builder = builder.with_sampled_texture_dim(
+        binding,
+        visibility.to_platform(),
+        dim.to_wgpu(),
+      );
     }
 
     for (binding, visibility) in self.samplers.into_iter() {

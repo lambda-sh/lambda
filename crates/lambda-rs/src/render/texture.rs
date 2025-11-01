@@ -25,6 +25,61 @@ impl TextureFormat {
   }
 }
 
+#[derive(Debug, Clone, Copy)]
+/// View dimensionality exposed to shaders when sampling.
+pub enum ViewDimension {
+  D2,
+  D3,
+}
+
+impl ViewDimension {
+  pub(crate) fn to_wgpu(
+    self,
+  ) -> lambda_platform::wgpu::types::TextureViewDimension {
+    match self {
+      ViewDimension::D2 => {
+        lambda_platform::wgpu::types::TextureViewDimension::D2
+      }
+      ViewDimension::D3 => {
+        lambda_platform::wgpu::types::TextureViewDimension::D3
+      }
+    }
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+/// Sampler filtering mode.
+pub enum FilterMode {
+  Nearest,
+  Linear,
+}
+
+impl FilterMode {
+  fn to_platform(self) -> platform::FilterMode {
+    match self {
+      FilterMode::Nearest => platform::FilterMode::Nearest,
+      FilterMode::Linear => platform::FilterMode::Linear,
+    }
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+/// Sampler address mode.
+pub enum AddressMode {
+  ClampToEdge,
+  Repeat,
+  MirrorRepeat,
+}
+
+impl AddressMode {
+  fn to_platform(self) -> platform::AddressMode {
+    match self {
+      AddressMode::ClampToEdge => platform::AddressMode::ClampToEdge,
+      AddressMode::Repeat => platform::AddressMode::Repeat,
+      AddressMode::MirrorRepeat => platform::AddressMode::MirrorRepeat,
+    }
+  }
+}
 #[derive(Debug, Clone)]
 /// High‑level texture wrapper that owns a platform texture.
 pub struct Texture {
@@ -55,6 +110,7 @@ pub struct TextureBuilder {
   format: TextureFormat,
   width: u32,
   height: u32,
+  depth: u32,
   data: Option<Vec<u8>>, // tightly packed rows
 }
 
@@ -66,6 +122,7 @@ impl TextureBuilder {
       format,
       width: 0,
       height: 0,
+      depth: 1,
       data: None,
     };
   }
@@ -74,6 +131,15 @@ impl TextureBuilder {
   pub fn with_size(mut self, width: u32, height: u32) -> Self {
     self.width = width;
     self.height = height;
+    self.depth = 1;
+    return self;
+  }
+
+  /// Set the 3D texture size in voxels.
+  pub fn with_size_3d(mut self, width: u32, height: u32, depth: u32) -> Self {
+    self.width = width;
+    self.height = height;
+    self.depth = depth;
     return self;
   }
 
@@ -95,8 +161,13 @@ impl TextureBuilder {
     render_context: &mut RenderContext,
   ) -> Result<Texture, &'static str> {
     let mut builder =
-      platform::TextureBuilder::new_2d(self.format.to_platform())
-        .with_size(self.width, self.height);
+      if self.depth <= 1 {
+        platform::TextureBuilder::new_2d(self.format.to_platform())
+          .with_size(self.width, self.height)
+      } else {
+        platform::TextureBuilder::new_3d(self.format.to_platform())
+          .with_size_3d(self.width, self.height, self.depth)
+      };
     if let Some(ref label) = self.label {
       builder = builder.with_label(label);
     }
@@ -154,6 +225,36 @@ impl SamplerBuilder {
   /// Convenience: nearest filter + clamp addressing.
   pub fn nearest_clamp(mut self) -> Self {
     self.inner = self.inner.nearest_clamp();
+    return self;
+  }
+
+  /// Set address mode for U (x) coordinate.
+  pub fn with_address_mode_u(mut self, mode: AddressMode) -> Self {
+    self.inner = self.inner.with_address_mode_u(mode.to_platform());
+    return self;
+  }
+
+  /// Set address mode for V (y) coordinate.
+  pub fn with_address_mode_v(mut self, mode: AddressMode) -> Self {
+    self.inner = self.inner.with_address_mode_v(mode.to_platform());
+    return self;
+  }
+
+  /// Set address mode for W (z) coordinate.
+  pub fn with_address_mode_w(mut self, mode: AddressMode) -> Self {
+    self.inner = self.inner.with_address_mode_w(mode.to_platform());
+    return self;
+  }
+
+  /// Set mipmap filtering.
+  pub fn with_mip_filter(mut self, mode: FilterMode) -> Self {
+    self.inner = self.inner.with_mip_filter(mode.to_platform());
+    return self;
+  }
+
+  /// Set LOD clamp range.
+  pub fn with_lod(mut self, min: f32, max: f32) -> Self {
+    self.inner = self.inner.with_lod(min, max);
     return self;
   }
 
