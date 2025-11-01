@@ -2,9 +2,9 @@
 
 use std::rc::Rc;
 
-use lambda_platform::wgpu::types::{
-  self as wgpu,
-  util::DeviceExt,
+use lambda_platform::wgpu::{
+  buffer as platform_buffer,
+  types as wgpu,
 };
 
 use super::{
@@ -26,22 +26,20 @@ pub enum BufferType {
 }
 
 #[derive(Clone, Copy, Debug)]
-/// A thin newtype for `wgpu::BufferUsages` that supports bitwise ops while
-/// keeping explicit construction points in the API surface.
-pub struct Usage(wgpu::BufferUsages);
+/// Buffer usage flags (engine-facing), mapped to platform usage internally.
+pub struct Usage(platform_buffer::Usage);
 
 impl Usage {
   /// Mark buffer usable as a vertex buffer.
-  pub const VERTEX: Usage = Usage(wgpu::BufferUsages::VERTEX);
+  pub const VERTEX: Usage = Usage(platform_buffer::Usage::VERTEX);
   /// Mark buffer usable as an index buffer.
-  pub const INDEX: Usage = Usage(wgpu::BufferUsages::INDEX);
+  pub const INDEX: Usage = Usage(platform_buffer::Usage::INDEX);
   /// Mark buffer usable as a uniform buffer.
-  pub const UNIFORM: Usage = Usage(wgpu::BufferUsages::UNIFORM);
+  pub const UNIFORM: Usage = Usage(platform_buffer::Usage::UNIFORM);
   /// Mark buffer usable as a storage buffer.
-  pub const STORAGE: Usage = Usage(wgpu::BufferUsages::STORAGE);
+  pub const STORAGE: Usage = Usage(platform_buffer::Usage::STORAGE);
 
-  /// Extract the inner `wgpu` flags.
-  pub fn to_wgpu(self) -> wgpu::BufferUsages {
+  fn to_platform(self) -> platform_buffer::Usage {
     self.0
   }
 }
@@ -50,7 +48,7 @@ impl std::ops::BitOr for Usage {
   type Output = Usage;
 
   fn bitor(self, rhs: Usage) -> Usage {
-    Usage(self.0 | rhs.0)
+    return Usage(self.0 | rhs.0);
   }
 }
 
@@ -90,8 +88,8 @@ impl Default for Properties {
 /// when binding to pipeline inputs.
 #[derive(Debug)]
 pub struct Buffer {
-  buffer: Rc<wgpu::Buffer>,
-  stride: wgpu::BufferAddress,
+  buffer: Rc<platform_buffer::Buffer>,
+  stride: u64,
   buffer_type: BufferType,
 }
 
@@ -101,14 +99,10 @@ impl Buffer {
   pub fn destroy(self, _render_context: &RenderContext) {}
 
   pub(super) fn raw(&self) -> &wgpu::Buffer {
-    return self.buffer.as_ref();
+    return self.buffer.raw();
   }
 
-  pub(super) fn raw_rc(&self) -> Rc<wgpu::Buffer> {
-    return self.buffer.clone();
-  }
-
-  pub(super) fn stride(&self) -> wgpu::BufferAddress {
+  pub(super) fn stride(&self) -> u64 {
     return self.stride;
   }
 
@@ -244,7 +238,6 @@ impl BufferBuilder {
     render_context: &mut RenderContext,
     data: Vec<Data>,
   ) -> Result<Buffer, &'static str> {
-    let device = render_context.device();
     let element_size = std::mem::size_of::<Data>();
     let buffer_length = if self.buffer_length == 0 {
       element_size * data.len()
@@ -266,20 +259,19 @@ impl BufferBuilder {
       )
     };
 
-    let mut usage = self.usage.to_wgpu();
-    if self.properties.cpu_visible() {
-      usage |= wgpu::BufferUsages::COPY_DST;
+    let mut builder = platform_buffer::BufferBuilder::new()
+      .with_size(buffer_length)
+      .with_usage(self.usage.to_platform())
+      .with_cpu_visible(self.properties.cpu_visible());
+    if let Some(label) = &self.label {
+      builder = builder.with_label(label);
     }
 
-    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-      label: self.label.as_deref(),
-      contents: bytes,
-      usage,
-    });
+    let buffer = builder.build_init(render_context.device(), bytes);
 
     return Ok(Buffer {
       buffer: Rc::new(buffer),
-      stride: element_size as wgpu::BufferAddress,
+      stride: element_size as u64,
       buffer_type: self.buffer_type,
     });
   }
