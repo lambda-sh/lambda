@@ -16,6 +16,7 @@ use wgpu::rwh::{
 use crate::winit::WindowHandle;
 
 pub mod bind;
+pub mod buffer;
 
 #[derive(Debug, Clone)]
 /// Builder for creating a `wgpu::Instance` with consistent defaults.
@@ -339,6 +340,117 @@ impl Frame {
   /// Present the frame to the swapchain.
   pub fn present(self) {
     self.texture.present();
+  }
+}
+
+// ---------------------- Command Encoding Abstractions -----------------------
+
+#[derive(Debug)]
+/// Thin wrapper around `wgpu::CommandEncoder` with convenience helpers.
+pub struct CommandEncoder {
+  raw: wgpu::CommandEncoder,
+}
+
+impl CommandEncoder {
+  /// Create a new command encoder with an optional label.
+  pub fn new(device: &wgpu::Device, label: Option<&str>) -> Self {
+    let raw =
+      device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label });
+    return Self { raw };
+  }
+
+  /// Begin a render pass targeting a single color attachment with the provided
+  /// load/store operations. Depth/stencil is not attached by this helper.
+  pub fn begin_render_pass<'view>(
+    &'view mut self,
+    label: Option<&str>,
+    view: &'view wgpu::TextureView,
+    ops: wgpu::Operations<wgpu::Color>,
+  ) -> RenderPass<'view> {
+    let color_attachment = wgpu::RenderPassColorAttachment {
+      view,
+      resolve_target: None,
+      depth_slice: None,
+      ops,
+    };
+    let color_attachments = [Some(color_attachment)];
+    let pass = self.raw.begin_render_pass(&wgpu::RenderPassDescriptor {
+      label,
+      color_attachments: &color_attachments,
+      depth_stencil_attachment: None,
+      timestamp_writes: None,
+      occlusion_query_set: None,
+    });
+    return RenderPass { raw: pass };
+  }
+
+  /// Finish recording and return the command buffer.
+  pub fn finish(self) -> wgpu::CommandBuffer {
+    return self.raw.finish();
+  }
+}
+
+#[derive(Debug)]
+/// Wrapper around `wgpu::RenderPass<'_>` exposing the operations needed by the
+/// Lambda renderer without leaking raw `wgpu` types at the call sites.
+pub struct RenderPass<'a> {
+  raw: wgpu::RenderPass<'a>,
+}
+
+impl<'a> RenderPass<'a> {
+  /// Set the active render pipeline.
+  pub fn set_pipeline(&mut self, pipeline: &wgpu::RenderPipeline) {
+    self.raw.set_pipeline(pipeline);
+  }
+
+  /// Apply viewport state.
+  pub fn set_viewport(
+    &mut self,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    min_depth: f32,
+    max_depth: f32,
+  ) {
+    self
+      .raw
+      .set_viewport(x, y, width, height, min_depth, max_depth);
+  }
+
+  /// Apply scissor rectangle.
+  pub fn set_scissor_rect(&mut self, x: u32, y: u32, width: u32, height: u32) {
+    self.raw.set_scissor_rect(x, y, width, height);
+  }
+
+  /// Bind a group with optional dynamic offsets.
+  pub fn set_bind_group(
+    &mut self,
+    set: u32,
+    group: &wgpu::BindGroup,
+    dynamic_offsets: &[u32],
+  ) {
+    self.raw.set_bind_group(set, group, dynamic_offsets);
+  }
+
+  /// Bind a vertex buffer slot.
+  pub fn set_vertex_buffer(&mut self, slot: u32, buffer: &wgpu::Buffer) {
+    self.raw.set_vertex_buffer(slot, buffer.slice(..));
+  }
+
+  /// Upload push constants.
+  pub fn set_push_constants(
+    &mut self,
+    stages: wgpu::ShaderStages,
+    offset: u32,
+    data: &[u8],
+  ) {
+    self.raw.set_push_constants(stages, offset, data);
+  }
+
+  /// Issue a non-indexed draw over a vertex range.
+  pub fn draw(&mut self, vertices: std::ops::Range<u32>) {
+    self.raw.draw(vertices, 0..1);
   }
 }
 
