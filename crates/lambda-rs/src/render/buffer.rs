@@ -318,15 +318,8 @@ mod tests {
   fn label_is_recorded_on_builder() {
     let mut builder = BufferBuilder::new();
     builder.with_label("buffer-test");
-    // Indirect check via building a small buffer would require a device; ensure
-    // the label setter stores the value locally instead.
-    // Access through an internal helper to avoid exposing label publicly.
-    #[allow(clippy::redundant_closure_call)]
-    {
-      // Create a small closure to read the private label field.
-      // The test module shares the parent scope, so it can access fields.
-      let read = |b: &BufferBuilder| b.label.as_deref();
-      assert_eq!(read(&builder), Some("buffer-test"));
-    }
+    // Indirect check: validate the internal label is stored on the builder.
+    // Test module is a child of this module and can access private fields.
+    assert_eq!(builder.label.as_deref(), Some("buffer-test"));
   }
 }
