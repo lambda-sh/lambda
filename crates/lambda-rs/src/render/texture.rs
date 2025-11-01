@@ -127,6 +127,23 @@ impl TextureBuilder {
     };
   }
 
+  /// Begin building a 3D texture.
+  ///
+  /// Call `with_size_3d(width, height, depth)` to specify the voxel size
+  /// before building. The builder will select the 3D upload path based on the
+  /// configured depth.
+  pub fn new_3d(format: TextureFormat) -> Self {
+    return Self {
+      label: None,
+      format,
+      width: 0,
+      height: 0,
+      // Depth > 1 ensures the 3D path is chosen once size is provided.
+      depth: 2,
+      data: None,
+    };
+  }
+
   /// Set the texture size in pixels.
   pub fn with_size(mut self, width: u32, height: u32) -> Self {
     self.width = width;

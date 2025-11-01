@@ -110,6 +110,7 @@ pub struct RenderPipelineBuilder {
   culling: CullingMode,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   label: Option<String>,
+  use_depth: bool,
 }
 
 impl RenderPipelineBuilder {
@@ -121,6 +122,7 @@ impl RenderPipelineBuilder {
       culling: CullingMode::Back,
       bind_group_layouts: Vec::new(),
       label: None,
+      use_depth: false,
     }
   }
 
@@ -162,6 +164,12 @@ impl RenderPipelineBuilder {
   /// Provide one or more bind group layouts used to create the pipeline layout.
   pub fn with_layouts(mut self, layouts: &[&bind::BindGroupLayout]) -> Self {
     self.bind_group_layouts = layouts.iter().map(|l| (*l).clone()).collect();
+    return self;
+  }
+
+  /// Enable depth testing/writes using the render context's depth format.
+  pub fn with_depth(mut self) -> Self {
+    self.use_depth = true;
     return self;
   }
 
@@ -281,12 +289,24 @@ impl RenderPipelineBuilder {
       ..wgpu::PrimitiveState::default()
     };
 
+    let depth_stencil = if self.use_depth {
+      Some(wgpu::DepthStencilState {
+        format: render_context.depth_format(),
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::Less,
+        stencil: wgpu::StencilState::default(),
+        bias: wgpu::DepthBiasState::default(),
+      })
+    } else {
+      None
+    };
+
     let pipeline_descriptor = wgpu::RenderPipelineDescriptor {
       label: self.label.as_deref(),
       layout: Some(&pipeline_layout),
       vertex: vertex_state,
       primitive: primitive_state,
-      depth_stencil: None,
+      depth_stencil,
       multisample: wgpu::MultisampleState::default(),
       fragment,
       multiview: None,

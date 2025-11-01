@@ -91,6 +91,14 @@ impl RenderContextBuilder {
       )
       .expect("Failed to configure surface");
 
+    let depth = Some(
+      lambda_platform::wgpu::texture::DepthTextureBuilder::new()
+        .with_label("lambda-depth")
+        .with_size(size.0, size.1)
+        .with_format(lambda_platform::wgpu::texture::DepthFormat::Depth32Float)
+        .build(gpu.device()),
+    );
+
     return RenderContext {
       label: name,
       instance,
@@ -104,6 +112,7 @@ impl RenderContextBuilder {
       render_pipelines: vec![],
       bind_group_layouts: vec![],
       bind_groups: vec![],
+      depth,
     };
   }
 }
@@ -126,6 +135,7 @@ pub struct RenderContext {
   render_pipelines: Vec<RenderPipeline>,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   bind_groups: Vec<bind::BindGroup>,
+  depth: Option<lambda_platform::wgpu::texture::DepthTexture>,
 }
 
 /// Opaque handle used to refer to resources attached to a `RenderContext`.
@@ -215,6 +225,11 @@ impl RenderContext {
     return self.config.format;
   }
 
+  /// Depth format used for pipelines and attachments.
+  pub(crate) fn depth_format(&self) -> wgpu::TextureFormat {
+    return wgpu::TextureFormat::Depth32Float;
+  }
+
   /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
   pub fn limit_max_uniform_buffer_binding_size(&self) -> u64 {
     return self.gpu.limits().max_uniform_buffer_binding_size.into();
@@ -279,11 +294,22 @@ impl RenderContext {
             ops: pass.color_ops(),
           };
           let color_attachments = [Some(color_attachment)];
+          let depth_attachment = self.depth.as_ref().map(|d| {
+            wgpu::RenderPassDepthStencilAttachment {
+              view: d.view(),
+              depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(1.0),
+                store: wgpu::StoreOp::Store,
+              }),
+              stencil_ops: None,
+            }
+          });
+
           let mut pass_encoder =
             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
               label: pass.label(),
               color_attachments: &color_attachments,
-              depth_stencil_attachment: None,
+              depth_stencil_attachment: depth_attachment,
               timestamp_writes: None,
               occlusion_query_set: None,
             });
@@ -440,6 +466,14 @@ impl RenderContext {
     self.present_mode = config.present_mode;
     self.texture_usage = config.usage;
     self.config = config;
+    // Recreate depth attachment with the new surface size
+    self.depth = Some(
+      lambda_platform::wgpu::texture::DepthTextureBuilder::new()
+        .with_label("lambda-depth")
+        .with_size(size.0, size.1)
+        .with_format(lambda_platform::wgpu::texture::DepthFormat::Depth32Float)
+        .build(self.gpu.device()),
+    );
     return Ok(());
   }
 }

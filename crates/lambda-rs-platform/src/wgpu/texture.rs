@@ -84,6 +84,140 @@ impl TextureFormat {
   }
 }
 
+/// Depth/stencil texture formats supported for render attachments.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum DepthFormat {
+  Depth32Float,
+  Depth24Plus,
+  Depth24PlusStencil8,
+}
+
+impl DepthFormat {
+  pub(crate) fn to_wgpu(self) -> wgpu::TextureFormat {
+    return match self {
+      DepthFormat::Depth32Float => wgpu::TextureFormat::Depth32Float,
+      DepthFormat::Depth24Plus => wgpu::TextureFormat::Depth24Plus,
+      DepthFormat::Depth24PlusStencil8 => {
+        wgpu::TextureFormat::Depth24PlusStencil8
+      }
+    };
+  }
+}
+
+#[derive(Debug)]
+/// Wrapper for a depth (and optional stencil) texture used as a render attachment.
+pub struct DepthTexture {
+  pub(crate) raw: wgpu::Texture,
+  pub(crate) view: wgpu::TextureView,
+  pub(crate) label: Option<String>,
+  pub(crate) format: DepthFormat,
+}
+
+impl DepthTexture {
+  /// Borrow the underlying `wgpu::Texture`.
+  pub fn raw(&self) -> &wgpu::Texture {
+    return &self.raw;
+  }
+
+  /// Borrow the full‑range `wgpu::TextureView` for depth attachment.
+  pub fn view(&self) -> &wgpu::TextureView {
+    return &self.view;
+  }
+
+  /// The depth format used by this attachment.
+  pub fn format(&self) -> DepthFormat {
+    return self.format;
+  }
+}
+
+/// Builder for a depth texture attachment sized to the current framebuffer.
+pub struct DepthTextureBuilder {
+  label: Option<String>,
+  width: u32,
+  height: u32,
+  format: DepthFormat,
+  sample_count: u32,
+}
+
+impl DepthTextureBuilder {
+  /// Create a builder with no size and `Depth32Float` format.
+  pub fn new() -> Self {
+    return Self {
+      label: None,
+      width: 0,
+      height: 0,
+      format: DepthFormat::Depth32Float,
+      sample_count: 1,
+    };
+  }
+
+  /// Set the 2D attachment size in pixels.
+  pub fn with_size(mut self, width: u32, height: u32) -> Self {
+    self.width = width;
+    self.height = height;
+    return self;
+  }
+
+  /// Choose a depth format.
+  pub fn with_format(mut self, format: DepthFormat) -> Self {
+    self.format = format;
+    return self;
+  }
+
+  /// Configure multi‑sampling.
+  pub fn with_sample_count(mut self, count: u32) -> Self {
+    self.sample_count = count.max(1);
+    return self;
+  }
+
+  /// Attach a debug label for the created texture.
+  pub fn with_label(mut self, label: &str) -> Self {
+    self.label = Some(label.to_string());
+    return self;
+  }
+
+  /// Create the depth texture on the device.
+  pub fn build(self, device: &wgpu::Device) -> DepthTexture {
+    let size = wgpu::Extent3d {
+      width: self.width.max(1),
+      height: self.height.max(1),
+      depth_or_array_layers: 1,
+    };
+    let format = self.format.to_wgpu();
+    let raw = device.create_texture(&wgpu::TextureDescriptor {
+      label: self.label.as_deref(),
+      size,
+      mip_level_count: 1,
+      sample_count: self.sample_count,
+      dimension: wgpu::TextureDimension::D2,
+      format,
+      usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+      view_formats: &[],
+    });
+    let view = raw.create_view(&wgpu::TextureViewDescriptor {
+      label: None,
+      format: Some(format),
+      dimension: Some(wgpu::TextureViewDimension::D2),
+      aspect: match self.format {
+        DepthFormat::Depth24PlusStencil8 => wgpu::TextureAspect::All,
+        _ => wgpu::TextureAspect::DepthOnly,
+      },
+      base_mip_level: 0,
+      mip_level_count: None,
+      base_array_layer: 0,
+      array_layer_count: None,
+      usage: Some(wgpu::TextureUsages::RENDER_ATTACHMENT),
+    });
+
+    return DepthTexture {
+      raw,
+      view,
+      label: self.label,
+      format: self.format,
+    };
+  }
+}
+
 /// Physical storage dimension of a texture.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TextureDimension {
