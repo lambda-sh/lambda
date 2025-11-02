@@ -17,6 +17,7 @@ use crate::winit::WindowHandle;
 
 pub mod bind;
 pub mod buffer;
+pub mod pipeline;
 
 #[derive(Debug, Clone)]
 /// Builder for creating a `wgpu::Instance` with consistent defaults.

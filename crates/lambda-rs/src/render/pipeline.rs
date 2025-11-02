@@ -2,12 +2,14 @@
 //! applications.
 
 use std::{
-  borrow::Cow,
   ops::Range,
   rc::Rc,
 };
 
-use lambda_platform::wgpu::types as wgpu;
+use lambda_platform::wgpu::{
+  pipeline as platform_pipeline,
+  types as wgpu,
+};
 
 use super::{
   bind,
@@ -177,21 +179,21 @@ impl RenderPipelineBuilder {
     let device = render_context.device();
     let surface_format = render_context.surface_format();
 
-    let vertex_shader_module =
-      device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("lambda-vertex-shader"),
-        source: wgpu::ShaderSource::SpirV(Cow::Owned(
-          vertex_shader.as_binary(),
-        )),
-      });
-
-    let fragment_shader_module = fragment_shader.map(|shader| {
-      device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("lambda-fragment-shader"),
-        source: wgpu::ShaderSource::SpirV(Cow::Owned(shader.as_binary())),
-      })
+    // Shader modules
+    let vertex_module = platform_pipeline::ShaderModule::from_spirv(
+      device,
+      &vertex_shader.as_binary(),
+      Some("lambda-vertex-shader"),
+    );
+    let fragment_module = fragment_shader.map(|shader| {
+      platform_pipeline::ShaderModule::from_spirv(
+        device,
+        &shader.as_binary(),
+        Some("lambda-fragment-shader"),
+      )
     });
 
+    // Push constant ranges
     let push_constant_ranges: Vec<wgpu::PushConstantRange> = self
       .push_constants
       .iter()
@@ -201,6 +203,7 @@ impl RenderPipelineBuilder {
       })
       .collect();
 
+    // Bind group layouts limit check
     let max_bind_groups = render_context.limit_max_bind_groups() as usize;
     assert!(
       self.bind_group_layouts.len() <= max_bind_groups,
@@ -209,22 +212,22 @@ impl RenderPipelineBuilder {
       max_bind_groups
     );
 
-    let bind_group_layout_refs: Vec<&wgpu::BindGroupLayout> =
+    // Pipeline layout via platform
+    let bgl_raw: Vec<&wgpu::BindGroupLayout> =
       self.bind_group_layouts.iter().map(|l| l.raw()).collect();
-    let pipeline_layout =
-      device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("lambda-pipeline-layout"),
-        bind_group_layouts: &bind_group_layout_refs,
-        push_constant_ranges: &push_constant_ranges,
-      });
+    let pipeline_layout = platform_pipeline::PipelineLayoutBuilder::new()
+      .with_label("lambda-pipeline-layout")
+      .with_layouts(&bgl_raw)
+      .with_push_constants(push_constant_ranges)
+      .build(device);
 
-    let mut attribute_storage: Vec<Box<[wgpu::VertexAttribute]>> =
-      Vec::with_capacity(self.bindings.len());
-    let mut vertex_buffer_layouts: Vec<wgpu::VertexBufferLayout<'_>> =
-      Vec::with_capacity(self.bindings.len());
+    // Vertex buffers and attributes
     let mut buffers = Vec::with_capacity(self.bindings.len());
+    let mut rp_builder = platform_pipeline::RenderPipelineBuilder::new()
+      .with_label(self.label.as_deref().unwrap_or("lambda-render-pipeline"))
+      .with_layout(&pipeline_layout)
+      .with_cull_mode(self.culling.to_wgpu());
 
-    // First, collect attributes and buffers
     for binding in &self.bindings {
       let attributes: Vec<wgpu::VertexAttribute> = binding
         .attributes
@@ -235,68 +238,23 @@ impl RenderPipelineBuilder {
           format: attribute.element.format.to_vertex_format(),
         })
         .collect();
-      attribute_storage.push(attributes.into_boxed_slice());
+      rp_builder =
+        rp_builder.with_vertex_buffer(binding.buffer.stride(), attributes);
       buffers.push(binding.buffer.clone());
     }
 
-    // Then, build layouts referencing the stable storage
-    for (i, binding) in self.bindings.iter().enumerate() {
-      let attributes_slice = attribute_storage[i].as_ref();
-      vertex_buffer_layouts.push(wgpu::VertexBufferLayout {
-        array_stride: binding.buffer.stride(),
-        step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: attributes_slice,
-      });
-    }
-
-    // Stable storage for color targets to satisfy borrow checker
-    let mut color_targets: Vec<Option<wgpu::ColorTargetState>> = Vec::new();
-    if fragment_shader_module.is_some() {
-      color_targets.push(Some(wgpu::ColorTargetState {
+    if fragment_module.is_some() {
+      rp_builder = rp_builder.with_color_target(wgpu::ColorTargetState {
         format: surface_format,
         blend: Some(wgpu::BlendState::ALPHA_BLENDING),
         write_mask: wgpu::ColorWrites::ALL,
-      }));
+      });
     }
 
-    let fragment =
-      fragment_shader_module
-        .as_ref()
-        .map(|module| wgpu::FragmentState {
-          module,
-          entry_point: Some("main"),
-          compilation_options: wgpu::PipelineCompilationOptions::default(),
-          targets: color_targets.as_slice(),
-        });
-
-    let vertex_state = wgpu::VertexState {
-      module: &vertex_shader_module,
-      entry_point: Some("main"),
-      compilation_options: wgpu::PipelineCompilationOptions::default(),
-      buffers: vertex_buffer_layouts.as_slice(),
-    };
-
-    let primitive_state = wgpu::PrimitiveState {
-      cull_mode: self.culling.to_wgpu(),
-      ..wgpu::PrimitiveState::default()
-    };
-
-    let pipeline_descriptor = wgpu::RenderPipelineDescriptor {
-      label: self.label.as_deref(),
-      layout: Some(&pipeline_layout),
-      vertex: vertex_state,
-      primitive: primitive_state,
-      depth_stencil: None,
-      multisample: wgpu::MultisampleState::default(),
-      fragment,
-      multiview: None,
-      cache: None,
-    };
-
-    let pipeline = device.create_render_pipeline(&pipeline_descriptor);
+    let rp = rp_builder.build(device, &vertex_module, fragment_module.as_ref());
 
     return RenderPipeline {
-      pipeline: Rc::new(pipeline),
+      pipeline: Rc::new(rp.into_raw()),
       buffers,
     };
   }
