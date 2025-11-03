@@ -82,6 +82,8 @@ use self::{
 /// to that window.
 pub struct RenderContextBuilder {
   name: String,
+  /// Reserved for future timeout handling during rendering (nanoseconds).
+  /// Not currently enforced; kept for forward compatibility with runtime controls.
   _render_timeout: u64,
 }
 
@@ -102,7 +104,13 @@ impl RenderContextBuilder {
 
   /// Build a `RenderContext` for the provided `window` and configure the
   /// presentation surface.
-  pub fn build(self, window: &window::Window) -> RenderContext {
+  ///
+  /// Errors are returned instead of panicking to allow callers to surface
+  /// actionable initialization failures.
+  pub fn build(
+    self,
+    window: &window::Window,
+  ) -> Result<RenderContext, RenderContextError> {
     let RenderContextBuilder { name, .. } = self;
 
     let instance = InstanceBuilder::new()
@@ -112,12 +120,22 @@ impl RenderContextBuilder {
     let mut surface = SurfaceBuilder::new()
       .with_label(&format!("{} Surface", name))
       .build(&instance, window.window_handle())
-      .expect("Failed to create rendering surface");
+      .map_err(|e| {
+        RenderContextError::SurfaceCreate(format!(
+          "Failed to create rendering surface: {:?}",
+          e
+        ))
+      })?;
 
     let gpu = GpuBuilder::new()
       .with_label(&format!("{} Device", name))
       .build(&instance, Some(&surface))
-      .expect("Failed to create GPU device");
+      .map_err(|e| {
+        RenderContextError::GpuCreate(format!(
+          "Failed to create GPU device: {:?}",
+          e
+        ))
+      })?;
 
     let size = window.dimensions();
     surface
@@ -127,16 +145,22 @@ impl RenderContextBuilder {
         lambda_platform::wgpu::PresentMode::Fifo,
         lambda_platform::wgpu::TextureUsages::RENDER_ATTACHMENT,
       )
-      .expect("Failed to configure surface");
+      .map_err(|e| {
+        RenderContextError::SurfaceConfig(format!(
+          "Failed to configure surface: {:?}",
+          e
+        ))
+      })?;
 
-    let config = surface
-      .configuration()
-      .cloned()
-      .expect("Surface was not configured");
+    let config = surface.configuration().cloned().ok_or_else(|| {
+      RenderContextError::SurfaceConfig(
+        "Surface was not configured".to_string(),
+      )
+    })?;
     let present_mode = config.present_mode;
     let texture_usage = config.usage;
 
-    return RenderContext {
+    return Ok(RenderContext {
       label: name,
       instance,
       surface,
@@ -150,7 +174,7 @@ impl RenderContextBuilder {
       bind_group_layouts: vec![],
       bind_groups: vec![],
       buffers: vec![],
-    };
+    });
   }
 }
 
@@ -547,3 +571,29 @@ impl From<lambda_platform::wgpu::SurfaceError> for RenderError {
     return RenderError::Surface(error);
   }
 }
+
+#[derive(Debug)]
+/// Errors encountered while creating a `RenderContext`.
+///
+/// Returned by `RenderContextBuilder::build` to avoid panics during
+/// initialization and provide actionable error messages to callers.
+pub enum RenderContextError {
+  /// Failure creating the presentation surface for the provided window.
+  SurfaceCreate(String),
+  /// Failure creating the logical GPU device/queue.
+  GpuCreate(String),
+  /// Failure configuring or retrieving the surface configuration.
+  SurfaceConfig(String),
+}
+
+impl core::fmt::Display for RenderContextError {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    match self {
+      RenderContextError::SurfaceCreate(s) => write!(f, "{}", s),
+      RenderContextError::GpuCreate(s) => write!(f, "{}", s),
+      RenderContextError::SurfaceConfig(s) => write!(f, "{}", s),
+    }
+  }
+}
+
+impl std::error::Error for RenderContextError {}

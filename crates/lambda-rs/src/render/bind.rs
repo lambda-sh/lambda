@@ -278,7 +278,15 @@ impl<'a> BindGroupBuilder<'a> {
 
     for (binding, buffer, offset, size) in self.entries.into_iter() {
       if let Some(sz) = size {
-        assert!(
+        if sz.get() > max_binding {
+          logging::error!(
+            "Uniform binding at binding={} requests size={} > device limit {}",
+            binding,
+            sz.get(),
+            max_binding
+          );
+        }
+        debug_assert!(
           sz.get() <= max_binding,
           "Uniform binding at binding={} requests size={} > device limit {}",
           binding,
