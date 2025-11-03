@@ -1,4 +1,12 @@
-//! Mesh Implementation
+//! Simple mesh container used by examples and helpers.
+//!
+//! Purpose
+//! - Hold a `Vec<Vertex>` and matching `VertexAttribute` layout used to build
+//!   vertex buffers and pipelines.
+//! - Provide minimal builders plus an OBJ loader path for quick iteration.
+//!
+//! Note: this is a convenience structure for examples; larger applications may
+//! want dedicated asset/geometry systems.
 
 use lambda_platform::obj::load_textured_obj_from_file;
 
@@ -32,7 +40,7 @@ impl Mesh {
 
 // ------------------------------ MeshBuilder ---------------------------------
 
-/// Construction for a mesh.
+/// Builder for constructing a `Mesh` from vertices and attributes.
 #[derive(Clone, Debug)]
 pub struct MeshBuilder {
   capacity: usize,

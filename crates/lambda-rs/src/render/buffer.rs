@@ -1,4 +1,22 @@
-//! Buffers for allocating memory on the GPU.
+//! GPU buffers for vertex/index data and uniforms.
+//!
+//! Purpose
+//! - Allocate memory on the GPU for vertex and index streams, per‑draw or
+//!   per‑frame uniform data, and general storage when needed.
+//! - Provide a stable engine‑facing `Buffer` with logical type and stride so
+//!   pipelines and commands can bind and validate buffers correctly.
+//!
+//! Usage
+//! - Use `BufferBuilder` to create typed buffers with explicit usage and
+//!   residency properties.
+//! - Use `UniformBuffer<T>` for a concise pattern when a single `T` value is
+//!   updated on the CPU and bound as a uniform.
+//!
+//! Examples
+//! - Creating a vertex buffer from a mesh: `BufferBuilder::build_from_mesh`.
+//! - Creating a uniform buffer and updating it each frame:
+//!   see `UniformBuffer<T>` below and the runnable example
+//!   `crates/lambda-rs/examples/uniform_buffer_triangle.rs`.
 
 use std::rc::Rc;
 
@@ -14,7 +32,11 @@ use super::{
 /// High‑level classification for buffers created by the engine.
 ///
 /// The type guides default usage flags and how a buffer is bound during
-/// encoding (e.g., as a vertex or index buffer).
+/// encoding:
+/// - `Vertex`: per‑vertex attribute streams consumed by the vertex stage.
+/// - `Index`: index streams used for indexed drawing.
+/// - `Uniform`: small, read‑only parameters used by shaders.
+/// - `Storage`: general read/write data (not yet surfaced by high‑level APIs).
 pub enum BufferType {
   Vertex,
   Index,
@@ -23,7 +45,7 @@ pub enum BufferType {
 }
 
 #[derive(Clone, Copy, Debug)]
-/// Buffer usage flags (engine-facing), mapped to platform usage internally.
+/// Buffer usage flags (engine‑facing), mapped to platform usage internally.
 pub struct Usage(platform_buffer::Usage);
 
 impl Usage {
@@ -57,6 +79,9 @@ impl Default for Usage {
 
 #[derive(Clone, Copy, Debug)]
 /// Buffer allocation properties that control residency and CPU visibility.
+///
+/// Use `CPU_VISIBLE` for frequently updated data (e.g., uniform uploads).
+/// Prefer `DEVICE_LOCAL` for static geometry uploaded once.
 pub struct Properties {
   cpu_visible: bool,
 }
@@ -83,6 +108,11 @@ impl Default for Properties {
 ///
 /// Wraps a platform GPU buffer and tracks the element stride and logical type
 /// used when binding to pipeline inputs.
+///
+/// Notes
+/// - Writing is performed via the device queue using `write_value` or by
+///   creating CPU‑visible buffers and re‑building with new contents when
+///   appropriate.
 #[derive(Debug)]
 pub struct Buffer {
   buffer: Rc<platform_buffer::Buffer>,
@@ -132,7 +162,20 @@ impl Buffer {
 ///
 /// Stores a single value of type `T` and provides a convenience method to
 /// upload updates to the GPU. The underlying buffer has `UNIFORM` usage and
-/// is CPU‑visible by default for easy updates via `Queue::write_buffer`.
+/// is CPU‑visible by default for direct queue writes.
+///
+/// Example
+/// ```rust
+/// // Model‑view‑projection updated every frame
+/// #[repr(C)]
+/// #[derive(Clone, Copy)]
+/// struct Mvp { m: [[f32;4];4] }
+/// let mut mvp = Mvp { m: [[0.0;4];4] };
+/// let mvp_ubo = UniformBuffer::new(render_context, &mvp, Some("mvp")).unwrap();
+/// // ... later per‑frame
+/// mvp = compute_next_mvp();
+/// mvp_ubo.write(&render_context, &mvp);
+/// ```
 pub struct UniformBuffer<T> {
   inner: Buffer,
   _phantom: core::marker::PhantomData<T>,
@@ -174,10 +217,22 @@ impl<T: Copy> UniformBuffer<T> {
 
 /// Builder for creating `Buffer` objects with explicit usage and properties.
 ///
-/// A buffer is a block of memory the GPU can access. You supply a total byte
-/// length, usage flags, and residency properties; the builder will initialize
-/// the buffer with provided contents and add `COPY_DST` when CPU visibility is
-/// requested.
+/// A buffer is a block of memory the GPU can access. Supply a total byte
+/// length, usage flags, and residency properties; the builder initializes the
+/// buffer with provided contents and adds the necessary copy usage when CPU
+/// visibility is requested.
+///
+/// Example (vertex buffer)
+/// ```rust
+/// use lambda::render::buffer::{BufferBuilder, Usage, Properties, BufferType};
+/// let vertices: Vec<Vertex> = build_vertices();
+/// let vb = BufferBuilder::new()
+///   .with_usage(Usage::VERTEX)
+///   .with_properties(Properties::DEVICE_LOCAL)
+///   .with_buffer_type(BufferType::Vertex)
+///   .build(render_context, vertices)
+///   .unwrap();
+/// ```
 pub struct BufferBuilder {
   buffer_length: usize,
   usage: Usage,

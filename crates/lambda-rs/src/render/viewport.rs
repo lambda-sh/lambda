@@ -1,4 +1,8 @@
-//! Viewport for rendering a frame within the RenderContext.
+//! Viewport and scissor state for a render pass.
+//!
+//! A `Viewport` applies both viewport and scissor rectangles to the active
+//! render pass. Coordinates are specified in pixels with origin at the
+//! top‑left of the surface.
 
 #[derive(Debug, Clone, PartialEq)]
 /// Viewport/scissor rectangle applied during rendering.
@@ -28,7 +32,7 @@ impl Viewport {
   }
 }
 
-/// Builder for viewports that are used to render a frame within the RenderContext.
+/// Builder for viewports used within a render pass.
 pub struct ViewportBuilder {
   x: i32,
   y: i32,

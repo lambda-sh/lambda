@@ -1,4 +1,8 @@
-//! Vertex data structures.
+//! Vertex attribute formats and a simple `Vertex` type.
+//!
+//! Pipelines declare per‑buffer `VertexAttribute`s that map engine vertex
+//! data into shader inputs by `location`. This module hosts common color
+//! formats and a convenience `Vertex`/`VertexBuilder` used in examples.
 
 /// Canonical color/attribute formats used by engine pipelines.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,6 +28,9 @@ impl ColorFormat {
 
 #[derive(Clone, Copy, Debug)]
 /// A single vertex element (format + byte offset).
+///
+/// Combine one or more elements to form a `VertexAttribute` bound at a shader
+/// location. Offsets are in bytes from the start of the vertex and the element.
 pub struct VertexElement {
   pub format: ColorFormat,
   pub offset: u32,
@@ -31,6 +38,9 @@ pub struct VertexElement {
 
 #[derive(Clone, Copy, Debug)]
 /// Vertex attribute bound to a shader `location` plus relative offsets.
+///
+/// `location` MUST match the shader input. The final attribute byte offset is
+/// `offset + element.offset`.
 pub struct VertexAttribute {
   pub location: u32,
   pub offset: u32,

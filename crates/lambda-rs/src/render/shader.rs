@@ -1,4 +1,12 @@
-//! A module for compiling shaders into SPIR-V binary.
+//! Shader compilation to SPIR‑V modules.
+//!
+//! Purpose
+//! - Provide a reusable `ShaderBuilder` that turns a `VirtualShader` (inline
+//!   GLSL source or file path + metadata) into a SPIR‑V binary suitable for
+//!   pipeline creation.
+//!
+//! Use the platform’s shader backend configured for the workspace (e.g., naga
+//! or shaderc) without exposing backend‑specific types in the public API.
 
 // Expose the platform shader compiler abstraction
 pub use lambda_platform::shader::{
@@ -9,6 +17,20 @@ pub use lambda_platform::shader::{
 };
 
 /// Reusable compiler for turning virtual shaders into SPIR‑V modules.
+///
+/// Example
+/// ```rust
+/// use lambda_platform::shader::{VirtualShader, ShaderKind};
+/// use lambda::render::shader::ShaderBuilder;
+/// let vs = VirtualShader::File {
+///   path: "crates/lambda-rs/assets/shaders/triangle.vert".into(),
+///   kind: ShaderKind::Vertex,
+///   name: "triangle-vert".into(),
+///   entry_point: "main".into(),
+/// };
+/// let mut builder = ShaderBuilder::new();
+/// let vertex_shader = builder.build(vs);
+/// ```
 pub struct ShaderBuilder {
   compiler: ShaderCompiler,
 }
@@ -33,9 +55,7 @@ impl ShaderBuilder {
   }
 }
 
-/// A shader that has been compiled into SPIR-V binary. Contains the binary
-/// representation of the shader as well as the virtual shader that was used
-/// to compile it.
+/// A shader compiled into SPIR‑V binary along with its `VirtualShader` source.
 pub struct Shader {
   binary: Vec<u32>,
   virtual_shader: VirtualShader,

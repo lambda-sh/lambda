@@ -141,8 +141,28 @@ pub fn compute_perspective_projection(
   return conversion.multiply(&projection_gl);
 }
 
-/// Compute a full model-view-projection matrix given a simple camera, a
+/// Compute a full model‑view‑projection matrix given a simple camera, a
 /// viewport, and the model transform parameters.
+///
+/// Example
+/// ```rust
+/// use lambda::render::scene_math::{SimpleCamera, compute_model_view_projection_matrix};
+/// let camera = SimpleCamera {
+///   position: [0.0, 0.0, 3.0],
+///   field_of_view_in_turns: 0.25,
+///   near_clipping_plane: 0.01,
+///   far_clipping_plane: 100.0,
+/// };
+/// let mvp = compute_model_view_projection_matrix(
+///   &camera,
+///   800,
+///   600,
+///   [0.0, 0.0, 0.0],
+///   [0.0, 1.0, 0.0],
+///   0.0,
+///   1.0,
+/// );
+/// ```
 pub fn compute_model_view_projection_matrix(
   camera: &SimpleCamera,
   viewport_width: u32,

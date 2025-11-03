@@ -1,5 +1,29 @@
-//! Render pipeline builders and definitions for lambda runtimes and
-//! applications.
+//! Graphics render pipelines and builders.
+//!
+//! Purpose
+//! - Define how vertex data flows into the vertex shader (buffer layouts and
+//!   attributes) and how fragments are produced (optional fragment stage and
+//!   color target).
+//! - Compose a pipeline layout from bind group layouts and optional push
+//!   constant ranges.
+//!
+//! Usage
+//! - Accumulate vertex buffers and `VertexAttribute` lists matching shader
+//!   `location`s.
+//! - Provide one or more `BindGroupLayout`s used by the shaders.
+//! - Supply a vertex shader and optional fragment shader compiled to SPIR‑V.
+//!
+//! Example
+//! ```rust
+//! // Single vertex buffer with position/color; one push constant range for the vertex stage
+//! use lambda::render::pipeline::{RenderPipelineBuilder, PipelineStage, CullingMode};
+//! let pipeline = RenderPipelineBuilder::new()
+//!   .with_buffer(vertex_buffer, attributes)
+//!   .with_push_constant(PipelineStage::VERTEX, 64)
+//!   .with_layouts(&[&globals_bgl])
+//!   .with_culling(CullingMode::Back)
+//!   .build(&mut render_context, &render_pass, &vs, Some(&fs));
+//! ```
 
 use std::{
   ops::Range,
@@ -19,6 +43,8 @@ use super::{
 
 #[derive(Debug)]
 /// A created graphics pipeline and the vertex buffers it expects.
+///
+/// Pipelines are immutable; destroy them with the context when no longer needed.
 pub struct RenderPipeline {
   pipeline: Rc<platform_pipeline::RenderPipeline>,
   buffers: Vec<Rc<Buffer>>,
@@ -54,6 +80,12 @@ struct BufferBinding {
 pub use platform_pipeline::CullingMode;
 
 /// Builder for creating a graphics `RenderPipeline`.
+///
+/// Notes
+/// - The number of bind group layouts MUST NOT exceed the device limit; the
+///   builder asserts this against the current device.
+/// - If a fragment shader is omitted, no color target is attached and the
+///   pipeline can still be used for vertex‑only workloads.
 pub struct RenderPipelineBuilder {
   push_constants: Vec<PushConstantUpload>,
   bindings: Vec<BufferBinding>,

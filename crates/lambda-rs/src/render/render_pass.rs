@@ -1,9 +1,16 @@
-//! Render pass builders and definitions for lambda runtimes and applications.
+//! Render pass descriptions used to clear and begin drawing.
+//!
+//! A `RenderPass` captures immutable parameters used when beginning a pass
+//! against the swapchain (currently a single color attachment and clear color).
+//! The pass is referenced by handle from `RenderCommand::BeginRenderPass`.
 
 use super::RenderContext;
 
 #[derive(Debug, Clone)]
 /// Immutable parameters used when beginning a render pass.
+///
+/// The pass defines the initial clear for the color attachment and an optional
+/// label. Depth/stencil may be added in a future iteration.
 pub struct RenderPass {
   clear_color: [f64; 4],
   label: Option<String>,
@@ -23,6 +30,10 @@ impl RenderPass {
 }
 
 /// Builder for a `RenderPass` description.
+///
+/// The default pass clears to opaque black. Attach a label and a clear color
+/// as needed, then register the pass on a `RenderContext` and reference it by
+/// handle in a command stream.
 pub struct RenderPassBuilder {
   clear_color: [f64; 4],
   label: Option<String>,

@@ -1,5 +1,32 @@
-//! High level Rendering API designed for cross platform rendering and
-//! windowing.
+//! High‑level rendering API for cross‑platform windowed applications.
+//!
+//! The rendering module provides a small set of stable, engine‑facing types
+//! that assemble a frame using explicit commands. It hides lower‑level
+//! platform details (the `wgpu` device, queue, surfaces, and raw descriptors)
+//! behind builders and handles while keeping configuration visible and
+//! predictable.
+//!
+//! Concepts
+//! - `RenderContext`: owns the graphics instance, presentation surface, and
+//!   GPU device/queue for a single window. It is the submit point for per‑frame
+//!   command encoding.
+//! - `RenderPass` and `RenderPipeline`: immutable descriptions used when
+//!   beginning a pass and binding a pipeline. Pipelines declare their vertex
+//!   inputs, push constants, and layout (bind group layouts).
+//! - `Buffer`, `BindGroupLayout`, and `BindGroup`: GPU resources created via
+//!   builders and attached to the context, then referenced by small integer
+//!   handles when encoding commands.
+//! - `RenderCommand`: an explicit, validated sequence that begins with
+//!   `BeginRenderPass`, binds state, draws, and ends with `EndRenderPass`.
+//!
+//! Minimal flow
+//! 1) Create a window and a `RenderContext` with `RenderContextBuilder`.
+//! 2) Build resources (buffers, bind group layouts, shaders, pipelines).
+//! 3) Record a `Vec<RenderCommand>` each frame and pass it to
+//!    `RenderContext::render`.
+//!
+//! See workspace examples under `crates/lambda-rs/examples/` for runnable
+//! end‑to‑end snippets.
 
 // Module Exports
 pub mod bind;
@@ -37,11 +64,22 @@ use self::{
   render_pass::RenderPass,
 };
 
-/// Builder for configuring a `RenderContext` tied to a single window.
+/// Builder for configuring a `RenderContext` tied to one window.
 ///
-/// The builder wires up a platform graphics instance, `Surface`, and `Gpu`
-/// using the cross‑platform platform layer, then configures the surface with reasonable
-/// defaults. Use this when setting up rendering for an application window.
+/// Purpose
+/// - Construct the graphics `Instance`, presentation `Surface`, and logical
+///   `Gpu` using the platform layer.
+/// - Configure the surface with sane defaults (sRGB when available,
+///   `Fifo`/vsync‑compatible present mode, `RENDER_ATTACHMENT` usage).
+///
+/// Usage
+/// - Create with a human‑readable name used in debug labels.
+/// - Optionally adjust timeouts, then `build(window)` to obtain a
+///   `RenderContext`.
+///
+/// Typical use is in an application runtime immediately after creating a
+/// window. The returned `RenderContext` owns all GPU objects required to render
+/// to that window.
 pub struct RenderContextBuilder {
   name: String,
   _render_timeout: u64,
@@ -116,11 +154,22 @@ impl RenderContextBuilder {
   }
 }
 
-/// High‑level rendering context backed by the platform GPU for a single window.
+/// High‑level rendering context for a single window.
 ///
-/// The context owns the `Instance`, presentation `Surface`, and `Gpu` device
-/// objects and maintains a set of attached render passes and pipelines used
-/// while encoding command streams for each frame.
+/// Purpose
+/// - Own the platform `Instance`, presentation `Surface`, and logical `Gpu`
+///   objects bound to one window.
+/// - Host immutable resources (`RenderPass`, `RenderPipeline`, bind layouts,
+///   bind groups, and buffers) and expose small integer handles to reference
+///   them when recording commands.
+/// - Encode and submit per‑frame work based on an explicit `RenderCommand`
+///   list.
+///
+/// Behavior
+/// - All methods avoid panics unless explicitly documented; recoverable errors
+///   are logged and dropped to keep the app running where possible.
+/// - Surface loss or outdated configuration triggers transparent
+///   reconfiguration with preserved present mode and usage.
 pub struct RenderContext {
   label: String,
   instance: Instance,
@@ -186,7 +235,15 @@ impl RenderContext {
 
   /// Render a list of commands. No‑ops when the list is empty.
   ///
-  /// Errors are logged and do not panic; see `RenderError` for cases.
+  /// Expectations
+  /// - The sequence MUST begin a render pass before issuing draw‑related
+  ///   commands and MUST terminate that pass with `EndRenderPass`.
+  /// - Referenced resource handles (passes, pipelines, buffers, bind groups)
+  ///   MUST have been attached to this context.
+  ///
+  /// Error handling
+  /// - Errors are logged and do not panic (e.g., lost/outdated surface,
+  ///   missing resources, invalid dynamic offsets). See `RenderError`.
   pub fn render(&mut self, commands: Vec<RenderCommand>) {
     if commands.is_empty() {
       return;
@@ -210,11 +267,15 @@ impl RenderContext {
   }
 
   /// Borrow a previously attached render pass by id.
+  ///
+  /// Panics if `id` does not refer to an attached pass.
   pub fn get_render_pass(&self, id: ResourceId) -> &RenderPass {
     return &self.render_passes[id];
   }
 
   /// Borrow a previously attached render pipeline by id.
+  ///
+  /// Panics if `id` does not refer to an attached pipeline.
   pub fn get_render_pipeline(&self, id: ResourceId) -> &RenderPipeline {
     return &self.render_pipelines[id];
   }
@@ -471,7 +532,11 @@ impl RenderContext {
 }
 
 #[derive(Debug)]
-/// Errors that can occur while preparing or presenting a frame.
+/// Errors reported while preparing or presenting a frame.
+///
+/// Variants summarize recoverable issues that can appear during frame
+/// acquisition or command encoding. The renderer logs these and continues when
+/// possible; callers SHOULD treat them as warnings unless persistent.
 pub enum RenderError {
   Surface(lambda_platform::wgpu::SurfaceError),
   Configuration(String),

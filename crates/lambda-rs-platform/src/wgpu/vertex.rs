@@ -1,3 +1,9 @@
+//! Vertex color/attribute formats used by the platform layer.
+//!
+//! These map directly to `wgpu` texture/vertex formats and are re‑exported via
+//! the high‑level rendering module. This is an internal surface that may
+//! evolve with engine needs.
+
 /// Canonical color/attribute formats used by engine pipelines.
 #[derive(Clone, Copy, Debug)]
 pub enum ColorFormat {

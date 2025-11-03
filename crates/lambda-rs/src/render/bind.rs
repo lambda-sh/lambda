@@ -1,13 +1,30 @@
-//! High-level bind group and bind group layout wrappers and builders.
+//! Bind group layouts and bind groups for resource binding.
 //!
-//! This module exposes ergonomic builders for declaring uniform buffer
-//! bindings and constructing bind groups, following the same style used by the
-//! buffer, pipeline, and render pass builders.
+//! Purpose
+//! - Describe how shader stages access resources via `BindGroupLayout`.
+//! - Create `BindGroup` instances that bind buffers to specific indices for a
+//!   pipeline layout set.
+//!
+//! Scope and usage
+//! - The engine exposes uniform buffer bindings first, with optional dynamic
+//!   offsets. Storage textures and samplers may be added in the future.
+//! - A layout declares binding indices and stage visibility. A bind group then
+//!   provides concrete buffers for those indices. At draw time, a group is
+//!   bound to a set index on the pipeline.
+//! - For dynamic uniform bindings, pass one offset per dynamic binding at
+//!   `SetBindGroup` time. Offsets MUST follow the device’s
+//!   `min_uniform_buffer_offset_alignment`.
+//!
+//! See `crates/lambda-rs/examples/uniform_buffer_triangle.rs` for a complete
+//! example.
 
 use std::rc::Rc;
 
 #[derive(Clone, Copy, Debug)]
-/// Visibility of a binding across shader stages (engine facing).
+/// Visibility of a binding across shader stages (engine‑facing).
+///
+/// Select one or more shader stages that read a bound resource. Use
+/// `VertexAndFragment` for shared layouts in typical graphics pipelines.
 pub enum BindingVisibility {
   Vertex,
   Fragment,
@@ -48,6 +65,9 @@ mod tests {
 
 #[derive(Debug, Clone)]
 /// Bind group layout used when creating pipelines and bind groups.
+///
+/// Holds a platform layout and the number of dynamic bindings so callers can
+/// validate dynamic offset counts at bind time.
 pub struct BindGroupLayout {
   layout: Rc<lambda_platform::wgpu::bind::BindGroupLayout>,
   /// Total number of dynamic bindings declared in this layout.
@@ -70,6 +90,10 @@ impl BindGroupLayout {
 
 #[derive(Debug, Clone)]
 /// Bind group that binds one or more resources to a pipeline set index.
+///
+/// The group mirrors the structure of its `BindGroupLayout`. When using
+/// dynamic uniforms, record a corresponding list of byte offsets in the
+/// `RenderCommand::SetBindGroup` command.
 pub struct BindGroup {
   group: Rc<lambda_platform::wgpu::bind::BindGroup>,
   /// Cached number of dynamic bindings expected when binding this group.
@@ -90,6 +114,16 @@ impl BindGroup {
 }
 
 /// Builder for creating a bind group layout with uniform buffer bindings.
+///
+/// Example
+/// ```rust
+/// // One static camera UBO at binding 0 and one dynamic model UBO at 1.
+/// // Visible in both vertex and fragment stages.
+/// use lambda::render::bind::{BindGroupLayoutBuilder, BindingVisibility};
+/// let bgl = BindGroupLayoutBuilder::new()
+///   .with_uniform(0, BindingVisibility::VertexAndFragment)
+///   .with_uniform_dynamic(1, BindingVisibility::VertexAndFragment);
+/// ```
 pub struct BindGroupLayoutBuilder {
   label: Option<String>,
   entries: Vec<(u32, BindingVisibility, bool)>,
@@ -175,6 +209,18 @@ impl BindGroupLayoutBuilder {
 }
 
 /// Builder for creating a bind group for a previously built layout.
+///
+/// Example
+/// ```rust
+/// // Assume `camera_ubo` and `model_ubo` are created `UniformBuffer<T>`.
+/// // Bind them to match the layout: camera at 0, model at 1 with dynamic offset.
+/// use lambda::render::bind::BindGroupBuilder;
+/// let group = BindGroupBuilder::new()
+///   .with_layout(&layout)
+///   .with_uniform(0, camera_ubo.raw(), 0, None)
+///   .with_uniform(1, model_ubo.raw(), 0, None);
+/// // During rendering, provide a dynamic offset for binding 1 in bytes.
+/// ```
 pub struct BindGroupBuilder<'a> {
   label: Option<String>,
   layout: Option<&'a BindGroupLayout>,
