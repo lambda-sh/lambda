@@ -62,7 +62,19 @@ pub struct Shader {
 }
 
 impl Shader {
-  /// Returns a copy of the SPIR-V binary representation of the shader.
+  /// Borrow the SPIR‑V binary representation of the shader as a word slice.
+  ///
+  /// Prefer this accessor to avoid unnecessary allocations when passing the
+  /// shader to pipeline builders. Use `as_binary` when an owned buffer is
+  /// explicitly required.
+  pub fn binary(&self) -> &[u32] {
+    return &self.binary;
+  }
+
+  /// Returns a copy of the SPIR‑V binary representation of the shader.
+  ///
+  /// Retained for compatibility with existing code that expects an owned
+  /// `Vec<u32>`. Prefer `binary()` for zero‑copy borrowing.
   pub fn as_binary(&self) -> Vec<u32> {
     return self.binary.clone();
   }

@@ -52,6 +52,7 @@ impl WindowBuilder {
   /// surface in `RenderContextBuilder`. This flag is reserved to influence
   /// that choice and is currently a no‑op.
   pub fn with_vsync(mut self, vsync: bool) -> Self {
+    self.vsync = vsync;
     return self;
   }
 

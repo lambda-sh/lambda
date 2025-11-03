@@ -121,7 +121,7 @@ pub struct Buffer {
 }
 
 impl Buffer {
-  /// Destroy the buffer and all it's resources with the render context that
+  /// Destroy the buffer and all its resources with the render context that
   /// created it. Dropping the buffer will release GPU resources.
   pub fn destroy(self, _render_context: &RenderContext) {}
 
@@ -294,8 +294,8 @@ impl BufferBuilder {
     let element_size = std::mem::size_of::<Data>();
     let buffer_length = self.resolve_length(element_size, data.len())?;
 
-    // SAFETY: Converting data to bytes is safe because it's underlying
-    // type, Data, is constrianed to Copy and the lifetime of the slice does
+    // SAFETY: Converting data to bytes is safe because its underlying
+    // type, Data, is constrained to Copy and the lifetime of the slice does
     // not outlive data.
     let bytes = unsafe {
       std::slice::from_raw_parts(

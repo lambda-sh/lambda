@@ -161,13 +161,13 @@ impl RenderPipelineBuilder {
     // Shader modules
     let vertex_module = platform_pipeline::ShaderModule::from_spirv(
       render_context.gpu(),
-      &vertex_shader.as_binary(),
+      vertex_shader.binary(),
       Some("lambda-vertex-shader"),
     );
     let fragment_module = fragment_shader.map(|shader| {
       platform_pipeline::ShaderModule::from_spirv(
         render_context.gpu(),
-        &shader.as_binary(),
+        shader.binary(),
         Some("lambda-fragment-shader"),
       )
     });

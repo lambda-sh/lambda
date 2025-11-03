@@ -43,7 +43,6 @@ impl Mesh {
 /// Builder for constructing a `Mesh` from vertices and attributes.
 #[derive(Clone, Debug)]
 pub struct MeshBuilder {
-  capacity: usize,
   vertices: Vec<Vertex>,
   attributes: Vec<VertexAttribute>,
 }
@@ -52,7 +51,6 @@ impl MeshBuilder {
   /// Creates a new mesh builder.
   pub fn new() -> Self {
     return Self {
-      capacity: 0,
       vertices: Vec::new(),
       attributes: Vec::new(),
     };
@@ -61,7 +59,6 @@ impl MeshBuilder {
   /// Allocates memory for the given number of vertices and fills
   /// the mesh with empty vertices.
   pub fn with_capacity(&mut self, size: usize) -> &mut Self {
-    self.capacity = size;
     self.vertices.resize(
       size,
       Vertex {
