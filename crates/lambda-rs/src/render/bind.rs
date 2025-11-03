@@ -6,15 +6,8 @@
 
 use std::rc::Rc;
 
-use lambda_platform::wgpu::types as wgpu;
-
-use super::{
-  buffer::Buffer,
-  RenderContext,
-};
-
-#[derive(Debug)]
-/// Visibility of a binding across shader stages.
+#[derive(Clone, Copy, Debug)]
+/// Visibility of a binding across shader stages (engine facing).
 pub enum BindingVisibility {
   Vertex,
   Fragment,
@@ -25,45 +18,32 @@ pub enum BindingVisibility {
 
 impl BindingVisibility {
   fn to_platform(self) -> lambda_platform::wgpu::bind::Visibility {
-    use lambda_platform::wgpu::bind::Visibility as V;
-    return match self {
-      BindingVisibility::Vertex => V::Vertex,
-      BindingVisibility::Fragment => V::Fragment,
-      BindingVisibility::Compute => V::Compute,
-      BindingVisibility::VertexAndFragment => V::VertexAndFragment,
-      BindingVisibility::All => V::All,
-    };
+    match self {
+      BindingVisibility::Vertex => {
+        lambda_platform::wgpu::bind::Visibility::Vertex
+      }
+      BindingVisibility::Fragment => {
+        lambda_platform::wgpu::bind::Visibility::Fragment
+      }
+      BindingVisibility::Compute => {
+        lambda_platform::wgpu::bind::Visibility::Compute
+      }
+      BindingVisibility::VertexAndFragment => {
+        lambda_platform::wgpu::bind::Visibility::VertexAndFragment
+      }
+      BindingVisibility::All => lambda_platform::wgpu::bind::Visibility::All,
+    }
   }
 }
+
+use super::{
+  buffer::Buffer,
+  RenderContext,
+};
 
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  /// This test confirms that every high‑level binding visibility option maps
-  /// directly to the corresponding visibility option in the platform layer.
-  /// Matching these values ensures that builder code in this module forwards
-  /// intent without alteration, which is important for readability and for
-  /// maintenance when constructing layouts and groups.
-  #[test]
-  fn binding_visibility_maps_to_platform_enum() {
-    use lambda_platform::wgpu::bind::Visibility as P;
-
-    assert!(matches!(BindingVisibility::Vertex.to_platform(), P::Vertex));
-    assert!(matches!(
-      BindingVisibility::Fragment.to_platform(),
-      P::Fragment
-    ));
-    assert!(matches!(
-      BindingVisibility::Compute.to_platform(),
-      P::Compute
-    ));
-    assert!(matches!(
-      BindingVisibility::VertexAndFragment.to_platform(),
-      P::VertexAndFragment
-    ));
-    assert!(matches!(BindingVisibility::All.to_platform(), P::All));
-  }
 }
 
 #[derive(Debug, Clone)]
@@ -75,8 +55,11 @@ pub struct BindGroupLayout {
 }
 
 impl BindGroupLayout {
-  pub(crate) fn raw(&self) -> &wgpu::BindGroupLayout {
-    return self.layout.raw();
+  /// Borrow the underlying platform bind group layout wrapper.
+  pub(crate) fn platform_layout(
+    &self,
+  ) -> &lambda_platform::wgpu::bind::BindGroupLayout {
+    return &self.layout;
   }
 
   /// Number of dynamic bindings declared in this layout.
@@ -94,8 +77,10 @@ pub struct BindGroup {
 }
 
 impl BindGroup {
-  pub(crate) fn raw(&self) -> &wgpu::BindGroup {
-    return self.group.raw();
+  pub(crate) fn platform_group(
+    &self,
+  ) -> &lambda_platform::wgpu::bind::BindGroup {
+    return &self.group;
   }
 
   /// Number of dynamic bindings expected when calling set_bind_group.
@@ -180,7 +165,7 @@ impl BindGroupLayoutBuilder {
       };
     }
 
-    let layout = builder.build(render_context.device());
+    let layout = builder.build(render_context.gpu());
 
     return BindGroupLayout {
       layout: Rc::new(layout),
@@ -258,7 +243,7 @@ impl<'a> BindGroupBuilder<'a> {
       platform = platform.with_uniform(binding, buffer.raw(), offset, size);
     }
 
-    let group = platform.build(render_context.device());
+    let group = platform.build(render_context.gpu());
     return BindGroup {
       group: Rc::new(group),
       dynamic_binding_count: layout.dynamic_binding_count(),

@@ -1,13 +1,11 @@
 //! Render pass builders and definitions for lambda runtimes and applications.
 
-use lambda_platform::wgpu::types as wgpu;
-
 use super::RenderContext;
 
 #[derive(Debug, Clone)]
 /// Immutable parameters used when beginning a render pass.
 pub struct RenderPass {
-  clear_color: wgpu::Color,
+  clear_color: [f64; 4],
   label: Option<String>,
 }
 
@@ -15,11 +13,8 @@ impl RenderPass {
   /// Destroy the pass. Kept for symmetry with other resources.
   pub fn destroy(self, _render_context: &RenderContext) {}
 
-  pub(crate) fn color_ops(&self) -> wgpu::Operations<wgpu::Color> {
-    wgpu::Operations {
-      load: wgpu::LoadOp::Clear(self.clear_color),
-      store: wgpu::StoreOp::Store,
-    }
+  pub(crate) fn clear_color(&self) -> [f64; 4] {
+    return self.clear_color;
   }
 
   pub(crate) fn label(&self) -> Option<&str> {
@@ -29,7 +24,7 @@ impl RenderPass {
 
 /// Builder for a `RenderPass` description.
 pub struct RenderPassBuilder {
-  clear_color: wgpu::Color,
+  clear_color: [f64; 4],
   label: Option<String>,
 }
 
@@ -37,13 +32,13 @@ impl RenderPassBuilder {
   /// Creates a new render pass builder.
   pub fn new() -> Self {
     Self {
-      clear_color: wgpu::Color::BLACK,
+      clear_color: [0.0, 0.0, 0.0, 1.0],
       label: None,
     }
   }
 
   /// Specify the clear color used for the first color attachment.
-  pub fn with_clear_color(mut self, color: wgpu::Color) -> Self {
+  pub fn with_clear_color(mut self, color: [f64; 4]) -> Self {
     self.clear_color = color;
     self
   }

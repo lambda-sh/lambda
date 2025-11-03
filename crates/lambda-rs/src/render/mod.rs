@@ -18,7 +18,6 @@ pub mod window;
 use std::iter;
 
 use lambda_platform::wgpu::{
-  types as wgpu,
   CommandEncoder as PlatformCommandEncoder,
   Gpu,
   GpuBuilder,
@@ -28,7 +27,6 @@ use lambda_platform::wgpu::{
   SurfaceBuilder,
 };
 use logging;
-pub use vertex::ColorFormat;
 
 use self::{
   command::RenderCommand,
@@ -81,15 +79,21 @@ impl RenderContextBuilder {
       .expect("Failed to create GPU device");
 
     let size = window.dimensions();
-    let config = surface
+    surface
       .configure_with_defaults(
-        gpu.adapter(),
-        gpu.device(),
+        &gpu,
         size,
-        wgpu::PresentMode::Fifo,
-        wgpu::TextureUsages::RENDER_ATTACHMENT,
+        lambda_platform::wgpu::PresentMode::Fifo,
+        lambda_platform::wgpu::TextureUsages::RENDER_ATTACHMENT,
       )
       .expect("Failed to configure surface");
+
+    let config = surface
+      .configuration()
+      .cloned()
+      .expect("Surface was not configured");
+    let present_mode = config.present_mode;
+    let texture_usage = config.usage;
 
     return RenderContext {
       label: name,
@@ -97,8 +101,8 @@ impl RenderContextBuilder {
       surface,
       gpu,
       config,
-      present_mode: wgpu::PresentMode::Fifo,
-      texture_usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+      present_mode,
+      texture_usage,
       size,
       render_passes: vec![],
       render_pipelines: vec![],
@@ -118,9 +122,9 @@ pub struct RenderContext {
   instance: Instance,
   surface: Surface<'static>,
   gpu: Gpu,
-  config: wgpu::SurfaceConfiguration,
-  present_mode: wgpu::PresentMode,
-  texture_usage: wgpu::TextureUsages,
+  config: lambda_platform::wgpu::SurfaceConfig,
+  present_mode: lambda_platform::wgpu::PresentMode,
+  texture_usage: lambda_platform::wgpu::TextureUsages,
   size: (u32, u32),
   render_passes: Vec<RenderPass>,
   render_pipelines: Vec<RenderPipeline>,
@@ -203,21 +207,17 @@ impl RenderContext {
     return &self.render_pipelines[id];
   }
 
-  pub(crate) fn device(&self) -> &wgpu::Device {
-    return self.gpu.device();
+  pub(crate) fn gpu(&self) -> &Gpu {
+    return &self.gpu;
   }
 
-  pub(crate) fn queue(&self) -> &wgpu::Queue {
-    return self.gpu.queue();
-  }
-
-  pub(crate) fn surface_format(&self) -> wgpu::TextureFormat {
+  pub(crate) fn surface_format(&self) -> lambda_platform::wgpu::SurfaceFormat {
     return self.config.format;
   }
 
   /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
   pub fn limit_max_uniform_buffer_binding_size(&self) -> u64 {
-    return self.gpu.limits().max_uniform_buffer_binding_size.into();
+    return self.gpu.limits().max_uniform_buffer_binding_size;
   }
 
   /// Device limit: number of bind groups that can be used by a pipeline layout.
@@ -241,7 +241,8 @@ impl RenderContext {
 
     let mut frame = match self.surface.acquire_next_frame() {
       Ok(frame) => frame,
-      Err(wgpu::SurfaceError::Lost) | Err(wgpu::SurfaceError::Outdated) => {
+      Err(lambda_platform::wgpu::SurfaceError::Lost)
+      | Err(lambda_platform::wgpu::SurfaceError::Outdated) => {
         self.reconfigure_surface(self.size)?;
         self
           .surface
@@ -253,7 +254,7 @@ impl RenderContext {
 
     let view = frame.texture_view();
     let mut encoder = PlatformCommandEncoder::new(
-      self.device(),
+      self.gpu(),
       Some("lambda-render-command-encoder"),
     );
 
@@ -270,8 +271,11 @@ impl RenderContext {
             ))
           })?;
 
-          let mut pass_encoder =
-            encoder.begin_render_pass(pass.label(), view, pass.color_ops());
+          let mut pass_encoder = encoder.begin_render_pass_clear(
+            pass.label(),
+            &view,
+            pass.clear_color(),
+          );
 
           self.encode_pass(&mut pass_encoder, viewport, &mut command_iter)?;
         }
@@ -284,7 +288,7 @@ impl RenderContext {
       }
     }
 
-    self.queue().submit(iter::once(encoder.finish()));
+    self.gpu.submit(iter::once(encoder.finish()));
     frame.present();
     return Ok(());
   }
@@ -342,7 +346,11 @@ impl RenderContext {
             set,
           )
           .map_err(RenderError::Configuration)?;
-          pass.set_bind_group(set, group_ref.raw(), &dynamic_offsets);
+          pass.set_bind_group(
+            set,
+            group_ref.platform_group(),
+            &dynamic_offsets,
+          );
         }
         RenderCommand::BindVertexBuffer { pipeline, buffer } => {
           let pipeline_ref =
@@ -377,7 +385,7 @@ impl RenderContext {
               bytes.len() * std::mem::size_of::<u32>(),
             )
           };
-          pass.set_push_constants(stage.to_wgpu(), offset, slice);
+          pass.set_push_constants(stage, offset, slice);
         }
         RenderCommand::Draw { vertices } => {
           pass.draw(vertices);
@@ -411,16 +419,19 @@ impl RenderContext {
     &mut self,
     size: (u32, u32),
   ) -> Result<(), RenderError> {
-    let config = self
+    self
       .surface
       .configure_with_defaults(
-        self.gpu.adapter(),
-        self.gpu.device(),
+        &self.gpu,
         size,
         self.present_mode,
         self.texture_usage,
       )
       .map_err(RenderError::Configuration)?;
+
+    let config = self.surface.configuration().cloned().ok_or_else(|| {
+      RenderError::Configuration("Surface was not configured".to_string())
+    })?;
 
     self.present_mode = config.present_mode;
     self.texture_usage = config.usage;
@@ -432,12 +443,12 @@ impl RenderContext {
 #[derive(Debug)]
 /// Errors that can occur while preparing or presenting a frame.
 pub enum RenderError {
-  Surface(wgpu::SurfaceError),
+  Surface(lambda_platform::wgpu::SurfaceError),
   Configuration(String),
 }
 
-impl From<wgpu::SurfaceError> for RenderError {
-  fn from(error: wgpu::SurfaceError) -> Self {
+impl From<lambda_platform::wgpu::SurfaceError> for RenderError {
+  fn from(error: lambda_platform::wgpu::SurfaceError) -> Self {
     return RenderError::Surface(error);
   }
 }

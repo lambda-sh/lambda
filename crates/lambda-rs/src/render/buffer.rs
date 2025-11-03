@@ -2,10 +2,7 @@
 
 use std::rc::Rc;
 
-use lambda_platform::wgpu::{
-  buffer as platform_buffer,
-  types as wgpu,
-};
+use lambda_platform::wgpu::buffer as platform_buffer;
 
 use super::{
   mesh::Mesh,
@@ -98,8 +95,8 @@ impl Buffer {
   /// created it. Dropping the buffer will release GPU resources.
   pub fn destroy(self, _render_context: &RenderContext) {}
 
-  pub(super) fn raw(&self) -> &wgpu::Buffer {
-    return self.buffer.raw();
+  pub(super) fn raw(&self) -> &platform_buffer::Buffer {
+    return self.buffer.as_ref();
   }
 
   pub(super) fn stride(&self) -> u64 {
@@ -126,9 +123,8 @@ impl Buffer {
         std::mem::size_of::<T>(),
       )
     };
-    render_context
-      .queue()
-      .write_buffer(self.raw(), offset, bytes);
+
+    self.buffer.write_bytes(render_context.gpu(), offset, bytes);
   }
 }
 
@@ -149,13 +145,15 @@ impl<T: Copy> UniformBuffer<T> {
     initial: &T,
     label: Option<&str>,
   ) -> Result<Self, &'static str> {
-    let mut builder = BufferBuilder::new();
-    builder.with_length(core::mem::size_of::<T>());
-    builder.with_usage(Usage::UNIFORM);
-    builder.with_properties(Properties::CPU_VISIBLE);
+    let mut builder = BufferBuilder::new()
+      .with_length(core::mem::size_of::<T>())
+      .with_usage(Usage::UNIFORM)
+      .with_properties(Properties::CPU_VISIBLE);
+
     if let Some(l) = label {
-      builder.with_label(l);
+      builder = builder.with_label(l);
     }
+
     let inner = builder.build(render_context, vec![*initial])?;
     return Ok(Self {
       inner,
@@ -201,31 +199,31 @@ impl BufferBuilder {
   }
 
   /// Set the length of the buffer in bytes. Defaults to the size of `data`.
-  pub fn with_length(&mut self, size: usize) -> &mut Self {
+  pub fn with_length(mut self, size: usize) -> Self {
     self.buffer_length = size;
     return self;
   }
 
   /// Set the logical type of buffer to be created (vertex/index/...).
-  pub fn with_buffer_type(&mut self, buffer_type: BufferType) -> &mut Self {
+  pub fn with_buffer_type(mut self, buffer_type: BufferType) -> Self {
     self.buffer_type = buffer_type;
     return self;
   }
 
   /// Set `wgpu` usage flags (bit‑or `Usage` values).
-  pub fn with_usage(&mut self, usage: Usage) -> &mut Self {
+  pub fn with_usage(mut self, usage: Usage) -> Self {
     self.usage = usage;
     return self;
   }
 
   /// Control CPU visibility and residency preferences.
-  pub fn with_properties(&mut self, properties: Properties) -> &mut Self {
+  pub fn with_properties(mut self, properties: Properties) -> Self {
     self.properties = properties;
     return self;
   }
 
   /// Attach a human‑readable label for debugging/profiling.
-  pub fn with_label(&mut self, label: &str) -> &mut Self {
+  pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
     return self;
   }
@@ -259,7 +257,7 @@ impl BufferBuilder {
       builder = builder.with_label(label);
     }
 
-    let buffer = builder.build_init(render_context.device(), bytes);
+    let buffer = builder.build_init(render_context.gpu(), bytes);
 
     return Ok(Buffer {
       buffer: Rc::new(buffer),
@@ -316,8 +314,7 @@ mod tests {
 
   #[test]
   fn label_is_recorded_on_builder() {
-    let mut builder = BufferBuilder::new();
-    builder.with_label("buffer-test");
+    let builder = BufferBuilder::new().with_label("buffer-test");
     // Indirect check: validate the internal label is stored on the builder.
     // Test module is a child of this module and can access private fields.
     assert_eq!(builder.label.as_deref(), Some("buffer-test"));

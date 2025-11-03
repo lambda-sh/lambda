@@ -6,7 +6,12 @@
 
 use std::num::NonZeroU64;
 
-use crate::wgpu::types as wgpu;
+use wgpu;
+
+use crate::wgpu::{
+  buffer,
+  Gpu,
+};
 
 #[derive(Debug)]
 /// Wrapper around `wgpu::BindGroupLayout` that preserves a label.
@@ -151,12 +156,14 @@ impl BindGroupLayoutBuilder {
   }
 
   /// Build the layout using the provided device.
-  pub fn build(self, device: &wgpu::Device) -> BindGroupLayout {
+  pub fn build(self, gpu: &Gpu) -> BindGroupLayout {
     let raw =
-      device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: self.label.as_deref(),
-        entries: &self.entries,
-      });
+      gpu
+        .device()
+        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+          label: self.label.as_deref(),
+          entries: &self.entries,
+        });
     return BindGroupLayout {
       raw,
       label: self.label,
@@ -198,14 +205,14 @@ impl<'a> BindGroupBuilder<'a> {
   pub fn with_uniform(
     mut self,
     binding: u32,
-    buffer: &'a wgpu::Buffer,
+    buffer: &'a buffer::Buffer,
     offset: u64,
     size: Option<NonZeroU64>,
   ) -> Self {
     self.entries.push(wgpu::BindGroupEntry {
       binding,
       resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-        buffer,
+        buffer: buffer.raw(),
         offset,
         size,
       }),
@@ -214,11 +221,11 @@ impl<'a> BindGroupBuilder<'a> {
   }
 
   /// Build the bind group with the accumulated entries.
-  pub fn build(self, device: &wgpu::Device) -> BindGroup {
+  pub fn build(self, gpu: &Gpu) -> BindGroup {
     let layout = self
       .layout
       .expect("BindGroupBuilder requires a layout before build");
-    let raw = device.create_bind_group(&wgpu::BindGroupDescriptor {
+    let raw = gpu.device().create_bind_group(&wgpu::BindGroupDescriptor {
       label: self.label.as_deref(),
       layout,
       entries: &self.entries,

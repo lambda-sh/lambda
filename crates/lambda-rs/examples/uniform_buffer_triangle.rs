@@ -41,12 +41,12 @@ use lambda::{
       VirtualShader,
     },
     vertex::{
+      ColorFormat,
       VertexAttribute,
       VertexBuilder,
       VertexElement,
     },
     viewport,
-    ColorFormat,
     ResourceId,
   },
   runtime::start_runtime,

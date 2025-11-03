@@ -3,11 +3,12 @@
 //! This module provides a thin wrapper over `wgpu::Buffer` plus a small
 //! builder that handles common initialization patterns and keeps label and
 //! usage metadata for debugging/inspection.
-
-use crate::wgpu::{
-  types as wgpu,
-  types::util::DeviceExt,
+use wgpu::{
+  self,
+  util::DeviceExt,
 };
+
+use crate::wgpu::Gpu;
 
 #[derive(Clone, Copy, Debug)]
 /// Platform buffer usage flags.
@@ -54,7 +55,7 @@ pub struct Buffer {
 
 impl Buffer {
   /// Borrow the underlying `wgpu::Buffer`.
-  pub fn raw(&self) -> &wgpu::Buffer {
+  pub(crate) fn raw(&self) -> &wgpu::Buffer {
     return &self.raw;
   }
 
@@ -71,6 +72,11 @@ impl Buffer {
   /// Usage flags used to create the buffer.
   pub fn usage(&self) -> wgpu::BufferUsages {
     return self.usage;
+  }
+
+  /// Write raw bytes into the buffer at the given offset.
+  pub fn write_bytes(&self, gpu: &Gpu, offset: u64, data: &[u8]) {
+    gpu.queue().write_buffer(&self.raw, offset, data);
   }
 }
 
@@ -119,7 +125,7 @@ impl BufferBuilder {
   }
 
   /// Create a buffer initialized with `contents`.
-  pub fn build_init(self, device: &wgpu::Device, contents: &[u8]) -> Buffer {
+  pub fn build_init(self, gpu: &Gpu, contents: &[u8]) -> Buffer {
     let size = if self.size == 0 {
       contents.len()
     } else {
@@ -131,11 +137,14 @@ impl BufferBuilder {
       usage |= wgpu::BufferUsages::COPY_DST;
     }
 
-    let raw = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-      label: self.label.as_deref(),
-      contents,
-      usage,
-    });
+    let raw =
+      gpu
+        .device()
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+          label: self.label.as_deref(),
+          contents,
+          usage,
+        });
 
     return Buffer {
       raw,

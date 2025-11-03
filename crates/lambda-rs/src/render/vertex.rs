@@ -1,26 +1,23 @@
 //! Vertex data structures.
 
-use lambda_platform::wgpu::types as wgpu;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Canonical color/attribute formats used by engine pipelines.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorFormat {
   Rgb32Sfloat,
   Rgba8Srgb,
 }
 
 impl ColorFormat {
-  pub(crate) fn to_texture_format(self) -> wgpu::TextureFormat {
+  pub(crate) fn to_platform(
+    self,
+  ) -> lambda_platform::wgpu::vertex::ColorFormat {
     match self {
-      ColorFormat::Rgb32Sfloat => wgpu::TextureFormat::Rgba32Float,
-      ColorFormat::Rgba8Srgb => wgpu::TextureFormat::Rgba8UnormSrgb,
-    }
-  }
-
-  pub(crate) fn to_vertex_format(self) -> wgpu::VertexFormat {
-    match self {
-      ColorFormat::Rgb32Sfloat => wgpu::VertexFormat::Float32x3,
-      ColorFormat::Rgba8Srgb => wgpu::VertexFormat::Unorm8x4,
+      ColorFormat::Rgb32Sfloat => {
+        lambda_platform::wgpu::vertex::ColorFormat::Rgb32Sfloat
+      }
+      ColorFormat::Rgba8Srgb => {
+        lambda_platform::wgpu::vertex::ColorFormat::Rgba8Srgb
+      }
     }
   }
 }

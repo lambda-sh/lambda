@@ -2,13 +2,11 @@
 
 use lambda_platform::obj::load_textured_obj_from_file;
 
-use super::{
-  vertex::{
-    Vertex,
-    VertexAttribute,
-    VertexElement,
-  },
+use super::vertex::{
   ColorFormat,
+  Vertex,
+  VertexAttribute,
+  VertexElement,
 };
 
 // ---------------------------------- Mesh ------------------------------------
