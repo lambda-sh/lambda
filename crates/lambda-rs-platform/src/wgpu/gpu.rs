@@ -5,6 +5,60 @@ use super::{
   Instance,
 };
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Power preference for selecting a GPU adapter.
+pub enum PowerPreference {
+  HighPerformance,
+  LowPower,
+}
+
+impl PowerPreference {
+  pub(crate) fn to_wgpu(self) -> wgpu::PowerPreference {
+    return match self {
+      PowerPreference::HighPerformance => {
+        wgpu::PowerPreference::HighPerformance
+      }
+      PowerPreference::LowPower => wgpu::PowerPreference::LowPower,
+    };
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Memory allocation hints for device and resource creation.
+pub enum MemoryHints {
+  Performance,
+  MemoryUsage,
+}
+
+impl MemoryHints {
+  pub(crate) fn to_wgpu(self) -> wgpu::MemoryHints {
+    return match self {
+      MemoryHints::Performance => wgpu::MemoryHints::Performance,
+      MemoryHints::MemoryUsage => wgpu::MemoryHints::MemoryUsage,
+    };
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Feature bitset required/enabled on the device.
+pub struct Features(wgpu::Features);
+
+impl Features {
+  /// Enable push constants support.
+  pub const PUSH_CONSTANTS: Features = Features(wgpu::Features::PUSH_CONSTANTS);
+
+  pub(crate) fn to_wgpu(self) -> wgpu::Features {
+    self.0
+  }
+}
+
+impl std::ops::BitOr for Features {
+  type Output = Features;
+  fn bitor(self, rhs: Features) -> Features {
+    return Features(self.0 | rhs.0);
+  }
+}
+
 #[derive(Clone, Copy, Debug)]
 /// Public, engine-facing subset of device limits.
 pub struct GpuLimits {
@@ -17,10 +71,10 @@ pub struct GpuLimits {
 /// Builder for a `Gpu` (adapter, device, queue) with feature validation.
 pub struct GpuBuilder {
   label: Option<String>,
-  power_preference: wgpu::PowerPreference,
+  power_preference: PowerPreference,
   force_fallback_adapter: bool,
-  required_features: wgpu::Features,
-  memory_hints: wgpu::MemoryHints,
+  required_features: Features,
+  memory_hints: MemoryHints,
 }
 
 impl GpuBuilder {
@@ -28,10 +82,10 @@ impl GpuBuilder {
   pub fn new() -> Self {
     Self {
       label: Some("Lambda GPU".to_string()),
-      power_preference: wgpu::PowerPreference::HighPerformance,
+      power_preference: PowerPreference::HighPerformance,
       force_fallback_adapter: false,
-      required_features: wgpu::Features::PUSH_CONSTANTS,
-      memory_hints: wgpu::MemoryHints::Performance,
+      required_features: Features::PUSH_CONSTANTS,
+      memory_hints: MemoryHints::Performance,
     }
   }
 
@@ -42,10 +96,7 @@ impl GpuBuilder {
   }
 
   /// Select the adapter power preference (e.g., LowPower for laptops).
-  pub fn with_power_preference(
-    mut self,
-    preference: wgpu::PowerPreference,
-  ) -> Self {
+  pub fn with_power_preference(mut self, preference: PowerPreference) -> Self {
     self.power_preference = preference;
     self
   }
@@ -57,13 +108,13 @@ impl GpuBuilder {
   }
 
   /// Require `wgpu::Features` to be present on the adapter.
-  pub fn with_required_features(mut self, features: wgpu::Features) -> Self {
+  pub fn with_required_features(mut self, features: Features) -> Self {
     self.required_features = features;
     self
   }
 
   /// Provide memory allocation hints for the device.
-  pub fn with_memory_hints(mut self, hints: wgpu::MemoryHints) -> Self {
+  pub fn with_memory_hints(mut self, hints: MemoryHints) -> Self {
     self.memory_hints = hints;
     self
   }
@@ -79,25 +130,25 @@ impl GpuBuilder {
   ) -> Result<Gpu, GpuBuildError> {
     let adapter = instance
       .request_adapter(&wgpu::RequestAdapterOptions {
-        power_preference: self.power_preference,
+        power_preference: self.power_preference.to_wgpu(),
         force_fallback_adapter: self.force_fallback_adapter,
         compatible_surface: surface.map(|surface| surface.surface()),
       })
       .map_err(|_| GpuBuildError::AdapterUnavailable)?;
 
     let adapter_features = adapter.features();
-    if !adapter_features.contains(self.required_features) {
+    if !adapter_features.contains(self.required_features.to_wgpu()) {
       return Err(GpuBuildError::MissingFeatures {
         requested: self.required_features,
-        available: adapter_features,
+        available: Features(adapter_features),
       });
     }
 
     let descriptor = wgpu::DeviceDescriptor {
       label: self.label.as_deref(),
-      required_features: self.required_features,
+      required_features: self.required_features.to_wgpu(),
       required_limits: adapter.limits(),
-      memory_hints: self.memory_hints,
+      memory_hints: self.memory_hints.to_wgpu(),
       trace: wgpu::Trace::Off,
     };
 
@@ -120,16 +171,16 @@ pub enum GpuBuildError {
   AdapterUnavailable,
   /// The requested features are not supported by the selected adapter.
   MissingFeatures {
-    requested: wgpu::Features,
-    available: wgpu::Features,
+    requested: Features,
+    available: Features,
   },
   /// Wrapper for `wgpu::RequestDeviceError`.
-  RequestDevice(wgpu::RequestDeviceError),
+  RequestDevice(String),
 }
 
 impl From<wgpu::RequestDeviceError> for GpuBuildError {
   fn from(error: wgpu::RequestDeviceError) -> Self {
-    return GpuBuildError::RequestDevice(error);
+    return GpuBuildError::RequestDevice(format!("{:?}", error));
   }
 }
 

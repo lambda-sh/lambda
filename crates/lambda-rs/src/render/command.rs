@@ -42,8 +42,20 @@ pub enum RenderCommand {
     pipeline: super::ResourceId,
     buffer: u32,
   },
+  /// Bind an index buffer by resource id with format.
+  BindIndexBuffer {
+    /// Resource identifier returned by `RenderContext::attach_buffer`.
+    buffer: super::ResourceId,
+    /// Index format for this buffer.
+    format: lambda_platform::wgpu::buffer::IndexFormat,
+  },
   /// Issue a non‑indexed draw for the provided vertex range.
   Draw { vertices: Range<u32> },
+  /// Issue an indexed draw for the provided index range.
+  DrawIndexed {
+    indices: Range<u32>,
+    base_vertex: i32,
+  },
 
   /// Bind a previously created bind group to a set index with optional
   /// dynamic offsets. Dynamic offsets are counted in bytes and must obey the

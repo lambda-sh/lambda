@@ -10,6 +10,22 @@ use wgpu::{
 
 use crate::wgpu::Gpu;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Index format for indexed drawing.
+pub enum IndexFormat {
+  Uint16,
+  Uint32,
+}
+
+impl IndexFormat {
+  pub(crate) fn to_wgpu(self) -> wgpu::IndexFormat {
+    return match self {
+      IndexFormat::Uint16 => wgpu::IndexFormat::Uint16,
+      IndexFormat::Uint32 => wgpu::IndexFormat::Uint32,
+    };
+  }
+}
+
 #[derive(Clone, Copy, Debug)]
 /// Platform buffer usage flags.
 pub struct Usage(pub(crate) wgpu::BufferUsages);
@@ -65,13 +81,13 @@ impl Buffer {
   }
 
   /// Size in bytes at creation time.
-  pub fn size(&self) -> wgpu::BufferAddress {
+  pub fn size(&self) -> u64 {
     return self.size;
   }
 
   /// Usage flags used to create the buffer.
-  pub fn usage(&self) -> wgpu::BufferUsages {
-    return self.usage;
+  pub fn usage(&self) -> Usage {
+    return Usage(self.usage);
   }
 
   /// Write raw bytes into the buffer at the given offset.

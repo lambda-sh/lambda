@@ -15,7 +15,10 @@ pub mod vertex;
 pub mod viewport;
 pub mod window;
 
-use std::iter;
+use std::{
+  iter,
+  rc::Rc,
+};
 
 use lambda_platform::wgpu::{
   CommandEncoder as PlatformCommandEncoder,
@@ -36,8 +39,8 @@ use self::{
 
 /// Builder for configuring a `RenderContext` tied to a single window.
 ///
-/// The builder wires up a `wgpu::Instance`, `Surface`, and `Gpu` using the
-/// cross‑platform platform layer, then configures the surface with reasonable
+/// The builder wires up a platform graphics instance, `Surface`, and `Gpu`
+/// using the cross‑platform platform layer, then configures the surface with reasonable
 /// defaults. Use this when setting up rendering for an application window.
 pub struct RenderContextBuilder {
   name: String,
@@ -108,11 +111,12 @@ impl RenderContextBuilder {
       render_pipelines: vec![],
       bind_group_layouts: vec![],
       bind_groups: vec![],
+      buffers: vec![],
     };
   }
 }
 
-/// High‑level rendering context backed by `wgpu` for a single window.
+/// High‑level rendering context backed by the platform GPU for a single window.
 ///
 /// The context owns the `Instance`, presentation `Surface`, and `Gpu` device
 /// objects and maintains a set of attached render passes and pipelines used
@@ -130,6 +134,7 @@ pub struct RenderContext {
   render_pipelines: Vec<RenderPipeline>,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   bind_groups: Vec<bind::BindGroup>,
+  buffers: Vec<Rc<buffer::Buffer>>,
 }
 
 /// Opaque handle used to refer to resources attached to a `RenderContext`.
@@ -164,6 +169,13 @@ impl RenderContext {
   pub fn attach_bind_group(&mut self, group: bind::BindGroup) -> ResourceId {
     let id = self.bind_groups.len();
     self.bind_groups.push(group);
+    return id;
+  }
+
+  /// Attach a generic GPU buffer and return a handle for render commands.
+  pub fn attach_buffer(&mut self, buffer: buffer::Buffer) -> ResourceId {
+    let id = self.buffers.len();
+    self.buffers.push(Rc::new(buffer));
     return id;
   }
 
@@ -368,6 +380,23 @@ impl RenderContext {
 
           pass.set_vertex_buffer(buffer as u32, buffer_ref.raw());
         }
+        RenderCommand::BindIndexBuffer { buffer, format } => {
+          let buffer_ref = self.buffers.get(buffer).ok_or_else(|| {
+            return RenderError::Configuration(format!(
+              "Index buffer id {} not found",
+              buffer
+            ));
+          })?;
+          // Soft validation: encourage correct logical type.
+          if buffer_ref.buffer_type() != buffer::BufferType::Index {
+            logging::warn!(
+              "Binding buffer id {} as index but logical type is {:?}",
+              buffer,
+              buffer_ref.buffer_type()
+            );
+          }
+          pass.set_index_buffer(buffer_ref.raw(), format);
+        }
         RenderCommand::PushConstants {
           pipeline,
           stage,
@@ -389,6 +418,12 @@ impl RenderContext {
         }
         RenderCommand::Draw { vertices } => {
           pass.draw(vertices);
+        }
+        RenderCommand::DrawIndexed {
+          indices,
+          base_vertex,
+        } => {
+          pass.draw_indexed(indices, base_vertex);
         }
         RenderCommand::BeginRenderPass { .. } => {
           return Err(RenderError::Configuration(

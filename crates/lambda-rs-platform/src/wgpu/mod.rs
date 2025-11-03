@@ -16,9 +16,12 @@ pub mod surface;
 pub mod vertex;
 
 pub use gpu::{
+  Features,
   Gpu,
   GpuBuildError,
   GpuBuilder,
+  MemoryHints,
+  PowerPreference,
 };
 pub use surface::{
   Frame,
@@ -131,7 +134,7 @@ impl Instance {
   ///
   /// This simply blocks on `wgpu::Instance::request_adapter` and returns
   /// `None` if no suitable adapter is found.
-  pub fn request_adapter<'surface, 'window>(
+  pub(crate) fn request_adapter<'surface, 'window>(
     &self,
     options: &wgpu::RequestAdapterOptions<'surface, 'window>,
   ) -> Result<wgpu::Adapter, wgpu::RequestAdapterError> {
@@ -170,7 +173,7 @@ impl CommandEncoder {
 
   /// Begin a render pass targeting a single color attachment with the provided
   /// load/store operations. Depth/stencil is not attached by this helper.
-  pub fn begin_render_pass<'view>(
+  pub(crate) fn begin_render_pass<'view>(
     &'view mut self,
     label: Option<&str>,
     view: &'view surface::TextureViewRef<'view>,
@@ -270,6 +273,17 @@ impl<'a> RenderPass<'a> {
     self.raw.set_vertex_buffer(slot, buffer.raw().slice(..));
   }
 
+  /// Bind an index buffer with the provided index format.
+  pub fn set_index_buffer(
+    &mut self,
+    buffer: &buffer::Buffer,
+    format: buffer::IndexFormat,
+  ) {
+    self
+      .raw
+      .set_index_buffer(buffer.raw().slice(..), format.to_wgpu());
+  }
+
   /// Upload push constants.
   pub fn set_push_constants(
     &mut self,
@@ -283,6 +297,15 @@ impl<'a> RenderPass<'a> {
   /// Issue a non-indexed draw over a vertex range.
   pub fn draw(&mut self, vertices: std::ops::Range<u32>) {
     self.raw.draw(vertices, 0..1);
+  }
+
+  /// Issue an indexed draw with a base vertex applied.
+  pub fn draw_indexed(
+    &mut self,
+    indices: std::ops::Range<u32>,
+    base_vertex: i32,
+  ) {
+    self.raw.draw_indexed(indices, base_vertex, 0..1);
   }
 }
 

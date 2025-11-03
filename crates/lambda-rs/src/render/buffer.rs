@@ -10,7 +10,7 @@ use super::{
   RenderContext,
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// High‑level classification for buffers created by the engine.
 ///
 /// The type guides default usage flags and how a buffer is bound during
@@ -81,8 +81,8 @@ impl Default for Properties {
 
 /// Buffer for storing data on the GPU.
 ///
-/// Wraps a `wgpu::Buffer` and tracks the element stride and logical type used
-/// when binding to pipeline inputs.
+/// Wraps a platform GPU buffer and tracks the element stride and logical type
+/// used when binding to pipeline inputs.
 #[derive(Debug)]
 pub struct Buffer {
   buffer: Rc<platform_buffer::Buffer>,

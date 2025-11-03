@@ -198,7 +198,7 @@ impl RenderPipeline {
     return &self.raw;
   }
   /// Consume and return the raw pipeline.
-  pub fn into_raw(self) -> wgpu::RenderPipeline {
+  pub(crate) fn into_raw(self) -> wgpu::RenderPipeline {
     return self.raw;
   }
 }
