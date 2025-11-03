@@ -456,12 +456,7 @@ impl RenderContext {
   ) -> Result<(), RenderError> {
     self
       .surface
-      .configure_with_defaults(
-        &self.gpu,
-        size,
-        self.present_mode,
-        self.texture_usage,
-      )
+      .resize(&self.gpu, size)
       .map_err(RenderError::Configuration)?;
 
     let config = self.surface.configuration().cloned().ok_or_else(|| {
