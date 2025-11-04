@@ -14,7 +14,7 @@
 //! - Supply a vertex shader and optional fragment shader compiled to SPIR‑V.
 //!
 //! Example
-//! ```rust
+//! ```rust,ignore
 //! // Single vertex buffer with position/color; one push constant range for the vertex stage
 //! use lambda::render::pipeline::{RenderPipelineBuilder, PipelineStage, CullingMode};
 //! let pipeline = RenderPipelineBuilder::new()

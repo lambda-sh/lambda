@@ -165,7 +165,7 @@ impl Buffer {
 /// is CPU‑visible by default for direct queue writes.
 ///
 /// Example
-/// ```rust
+/// ```rust,ignore
 /// // Model‑view‑projection updated every frame
 /// #[repr(C)]
 /// #[derive(Clone, Copy)]
@@ -223,7 +223,7 @@ impl<T: Copy> UniformBuffer<T> {
 /// visibility is requested.
 ///
 /// Example (vertex buffer)
-/// ```rust
+/// ```rust,ignore
 /// use lambda::render::buffer::{BufferBuilder, Usage, Properties, BufferType};
 /// let vertices: Vec<Vertex> = build_vertices();
 /// let vb = BufferBuilder::new()

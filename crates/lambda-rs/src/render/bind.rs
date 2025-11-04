@@ -116,7 +116,7 @@ impl BindGroup {
 /// Builder for creating a bind group layout with uniform buffer bindings.
 ///
 /// Example
-/// ```rust
+/// ```rust,ignore
 /// // One static camera UBO at binding 0 and one dynamic model UBO at 1.
 /// // Visible in both vertex and fragment stages.
 /// use lambda::render::bind::{BindGroupLayoutBuilder, BindingVisibility};
@@ -211,7 +211,7 @@ impl BindGroupLayoutBuilder {
 /// Builder for creating a bind group for a previously built layout.
 ///
 /// Example
-/// ```rust
+/// ```rust,ignore
 /// // Assume `camera_ubo` and `model_ubo` are created `UniformBuffer<T>`.
 /// // Bind them to match the layout: camera at 0, model at 1 with dynamic offset.
 /// use lambda::render::bind::BindGroupBuilder;

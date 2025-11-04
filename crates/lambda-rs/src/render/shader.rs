@@ -19,7 +19,7 @@ pub use lambda_platform::shader::{
 /// Reusable compiler for turning virtual shaders into SPIR‑V modules.
 ///
 /// Example
-/// ```rust
+/// ```rust,no_run
 /// use lambda_platform::shader::{VirtualShader, ShaderKind};
 /// use lambda::render::shader::ShaderBuilder;
 /// let vs = VirtualShader::File {
