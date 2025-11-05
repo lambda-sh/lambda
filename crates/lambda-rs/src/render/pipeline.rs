@@ -41,8 +41,8 @@ use super::{
   RenderContext,
 };
 
-#[derive(Debug)]
 /// A created graphics pipeline and the vertex buffers it expects.
+#[derive(Debug)]
 ///
 /// Pipelines are immutable; destroy them with the context when no longer needed.
 pub struct RenderPipeline {

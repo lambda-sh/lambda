@@ -9,8 +9,8 @@ use super::{
 };
 use crate::winit::WindowHandle;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Present modes supported by the surface.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 ///
 /// This wrapper hides the underlying `wgpu` type from higher layers while
 /// preserving the same semantics.
@@ -48,8 +48,8 @@ impl PresentMode {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Wrapper for texture usage flags used by surfaces.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TextureUsages(wgpu::TextureUsages);
 
 impl TextureUsages {
@@ -88,8 +88,8 @@ impl std::ops::BitOr for TextureUsages {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Wrapper around a surface color format.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SurfaceFormat(wgpu::TextureFormat);
 
 impl SurfaceFormat {
@@ -112,8 +112,8 @@ impl SurfaceFormat {
   }
 }
 
-#[derive(Clone, Debug)]
 /// Public, engine-facing surface configuration that avoids exposing `wgpu`.
+#[derive(Clone, Debug)]
 pub struct SurfaceConfig {
   pub width: u32,
   pub height: u32,
@@ -158,8 +158,8 @@ impl SurfaceConfig {
   }
 }
 
-#[derive(Clone, Debug)]
 /// Error wrapper for surface acquisition and presentation errors.
+#[derive(Clone, Debug)]
 pub enum SurfaceError {
   /// The surface has been lost and must be recreated.
   Lost,
@@ -186,8 +186,8 @@ impl From<wgpu::SurfaceError> for SurfaceError {
   }
 }
 
-#[derive(Debug, Clone)]
 /// Builder for creating a `Surface` bound to a `winit` window.
+#[derive(Debug, Clone)]
 pub struct SurfaceBuilder {
   label: Option<String>,
 }
@@ -247,8 +247,8 @@ impl SurfaceBuilder {
   }
 }
 
-#[derive(Debug)]
 /// Opaque error returned when surface creation fails.
+#[derive(Debug)]
 pub struct CreateSurfaceError;
 
 impl From<wgpu::CreateSurfaceError> for CreateSurfaceError {
@@ -257,8 +257,8 @@ impl From<wgpu::CreateSurfaceError> for CreateSurfaceError {
   }
 }
 
-#[derive(Debug)]
 /// Presentation surface wrapper with cached configuration and format.
+#[derive(Debug)]
 pub struct Surface<'window> {
   label: String,
   surface: wgpu::Surface<'window>,
@@ -387,15 +387,15 @@ impl<'window> Surface<'window> {
   }
 }
 
-#[derive(Debug)]
 /// A single acquired frame and its default `TextureView`.
+#[derive(Debug)]
 pub struct Frame {
   texture: wgpu::SurfaceTexture,
   view: wgpu::TextureView,
 }
 
-#[derive(Clone, Copy)]
 /// Borrowed reference to a texture view used for render passes.
+#[derive(Clone, Copy)]
 pub struct TextureViewRef<'a> {
   pub(crate) raw: &'a wgpu::TextureView,
 }

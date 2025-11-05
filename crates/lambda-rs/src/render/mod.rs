@@ -574,8 +574,8 @@ impl RenderContext {
   }
 }
 
-#[derive(Debug)]
 /// Errors reported while preparing or presenting a frame.
+#[derive(Debug)]
 ///
 /// Variants summarize recoverable issues that can appear during frame
 /// acquisition or command encoding. The renderer logs these and continues when
@@ -591,8 +591,8 @@ impl From<platform::surface::SurfaceError> for RenderError {
   }
 }
 
-#[derive(Debug)]
 /// Errors encountered while creating a `RenderContext`.
+#[derive(Debug)]
 ///
 /// Returned by `RenderContextBuilder::build` to avoid panics during
 /// initialization and provide actionable error messages to callers.

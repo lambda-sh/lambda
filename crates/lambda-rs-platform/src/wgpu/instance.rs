@@ -4,8 +4,8 @@
 
 use pollster::block_on;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Wrapper over `wgpu::Backends` as a bitset.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Backends(wgpu::Backends);
 
 impl Backends {
@@ -40,8 +40,8 @@ impl std::ops::BitOr for Backends {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Wrapper over `wgpu::InstanceFlags` as a bitset.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InstanceFlags(wgpu::InstanceFlags);
 
 impl InstanceFlags {
@@ -69,8 +69,8 @@ impl std::ops::BitOr for InstanceFlags {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Which DX12 shader compiler to use on Windows platforms.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Dx12Compiler {
   Fxc,
 }
@@ -83,8 +83,8 @@ impl Dx12Compiler {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// OpenGL ES 3 minor version (used by GL/Web targets).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Gles3MinorVersion {
   Automatic,
   Version0,
@@ -103,8 +103,8 @@ impl Gles3MinorVersion {
   }
 }
 
-#[derive(Debug, Clone)]
 /// Builder for creating a `wgpu::Instance` with consistent defaults.
+#[derive(Debug, Clone)]
 ///
 /// Defaults to primary backends and no special flags. Options map to
 /// `wgpu::InstanceDescriptor` internally without leaking raw types.

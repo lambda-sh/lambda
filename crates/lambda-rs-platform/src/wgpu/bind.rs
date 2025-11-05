@@ -13,8 +13,8 @@ use crate::wgpu::{
   gpu::Gpu,
 };
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::BindGroupLayout` that preserves a label.
+#[derive(Debug)]
 pub struct BindGroupLayout {
   pub(crate) raw: wgpu::BindGroupLayout,
   pub(crate) label: Option<String>,
@@ -32,8 +32,8 @@ impl BindGroupLayout {
   }
 }
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::BindGroup` that preserves a label.
+#[derive(Debug)]
 pub struct BindGroup {
   pub(crate) raw: wgpu::BindGroup,
   pub(crate) label: Option<String>,
@@ -51,8 +51,8 @@ impl BindGroup {
   }
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Visibility of a binding across shader stages.
+#[derive(Clone, Copy, Debug)]
 pub enum Visibility {
   Vertex,
   Fragment,
@@ -99,8 +99,8 @@ mod tests {
   }
 }
 
-#[derive(Default)]
 /// Builder for creating a `wgpu::BindGroupLayout`.
+#[derive(Default)]
 pub struct BindGroupLayoutBuilder {
   label: Option<String>,
   entries: Vec<wgpu::BindGroupLayoutEntry>,
@@ -171,8 +171,8 @@ impl BindGroupLayoutBuilder {
   }
 }
 
-#[derive(Default)]
 /// Builder for creating a `wgpu::BindGroup`.
+#[derive(Default)]
 pub struct BindGroupBuilder<'a> {
   label: Option<String>,
   layout: Option<&'a wgpu::BindGroupLayout>,

@@ -20,11 +20,11 @@
 
 use std::rc::Rc;
 
-#[derive(Clone, Copy, Debug)]
 /// Visibility of a binding across shader stages (engine‑facing).
 ///
 /// Select one or more shader stages that read a bound resource. Use
 /// `VertexAndFragment` for shared layouts in typical graphics pipelines.
+#[derive(Clone, Copy, Debug)]
 pub enum BindingVisibility {
   Vertex,
   Fragment,
@@ -63,8 +63,8 @@ mod tests {
   use super::*;
 }
 
-#[derive(Debug, Clone)]
 /// Bind group layout used when creating pipelines and bind groups.
+#[derive(Debug, Clone)]
 ///
 /// Holds a platform layout and the number of dynamic bindings so callers can
 /// validate dynamic offset counts at bind time.
@@ -88,8 +88,8 @@ impl BindGroupLayout {
   }
 }
 
-#[derive(Debug, Clone)]
 /// Bind group that binds one or more resources to a pipeline set index.
+#[derive(Debug, Clone)]
 ///
 /// The group mirrors the structure of its `BindGroupLayout`. When using
 /// dynamic uniforms, record a corresponding list of byte offsets in the

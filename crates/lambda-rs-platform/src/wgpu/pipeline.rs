@@ -11,8 +11,8 @@ use crate::wgpu::{
   vertex::ColorFormat,
 };
 
-#[derive(Clone, Copy, Debug)]
 /// Shader stage flags for push constants and visibility.
+#[derive(Clone, Copy, Debug)]
 ///
 /// This wrapper avoids exposing `wgpu` directly to higher layers while still
 /// allowing flexible combinations when needed.
@@ -47,15 +47,15 @@ impl std::ops::BitOrAssign for PipelineStage {
   }
 }
 
-#[derive(Clone, Debug)]
 /// Push constant declaration for a stage and byte range.
+#[derive(Clone, Debug)]
 pub struct PushConstantRange {
   pub stages: PipelineStage,
   pub range: Range<u32>,
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Face culling mode for graphics pipelines.
+#[derive(Clone, Copy, Debug)]
 pub enum CullingMode {
   None,
   Front,
@@ -72,16 +72,16 @@ impl CullingMode {
   }
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Description of a single vertex attribute used by a pipeline.
+#[derive(Clone, Copy, Debug)]
 pub struct VertexAttributeDesc {
   pub shader_location: u32,
   pub offset: u64,
   pub format: ColorFormat,
 }
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::ShaderModule` that preserves a label.
+#[derive(Debug)]
 pub struct ShaderModule {
   raw: wgpu::ShaderModule,
   label: Option<String>,
@@ -108,8 +108,8 @@ impl ShaderModule {
   }
 }
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::PipelineLayout`.
+#[derive(Debug)]
 pub struct PipelineLayout {
   raw: wgpu::PipelineLayout,
   label: Option<String>,
@@ -185,8 +185,8 @@ impl<'a> PipelineLayoutBuilder<'a> {
   }
 }
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::RenderPipeline`.
+#[derive(Debug)]
 pub struct RenderPipeline {
   raw: wgpu::RenderPipeline,
   label: Option<String>,

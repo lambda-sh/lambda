@@ -4,8 +4,8 @@
 //! render pass. Coordinates are specified in pixels with origin at the
 //! top‑left of the surface.
 
-#[derive(Debug, Clone, PartialEq)]
 /// Viewport/scissor rectangle applied during rendering.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Viewport {
   pub x: u32,
   pub y: u32,

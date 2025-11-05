@@ -20,8 +20,8 @@ use super::{
   surface,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq)]
 /// Color load operation for a render pass color attachment.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ColorLoadOp {
   /// Load the existing contents of the attachment.
   Load,
@@ -29,8 +29,8 @@ pub enum ColorLoadOp {
   Clear([f64; 4]),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Store operation for a render pass attachment.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StoreOp {
   /// Store the results to the attachment at the end of the pass.
   Store,
@@ -38,8 +38,8 @@ pub enum StoreOp {
   Discard,
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Combined load and store operations for the color attachment.
+#[derive(Clone, Copy, Debug)]
 pub struct ColorOperations {
   pub load: ColorLoadOp,
   pub store: StoreOp,
@@ -54,16 +54,16 @@ impl Default for ColorOperations {
   }
 }
 
-#[derive(Clone, Debug, Default)]
 /// Configuration for beginning a render pass.
+#[derive(Clone, Debug, Default)]
 pub struct RenderPassConfig {
   pub label: Option<String>,
   pub color_operations: ColorOperations,
 }
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::RenderPass<'_>` exposing the operations needed by the
 /// engine without leaking raw `wgpu` types at the call sites.
+#[derive(Debug)]
 pub struct RenderPass<'a> {
   pub(super) raw: wgpu::RenderPass<'a>,
 }
@@ -151,10 +151,10 @@ impl<'a> RenderPass<'a> {
   }
 }
 
-#[derive(Debug, Default)]
 /// Wrapper for a variably sized list of color attachments passed into a render
 /// pass. The attachments borrow `TextureView` references for the duration of
 /// the pass.
+#[derive(Debug, Default)]
 pub struct RenderColorAttachments<'a> {
   attachments: Vec<Option<wgpu::RenderPassColorAttachment<'a>>>,
 }

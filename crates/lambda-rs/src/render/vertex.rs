@@ -26,8 +26,8 @@ impl ColorFormat {
   }
 }
 
-#[derive(Clone, Copy, Debug)]
 /// A single vertex element (format + byte offset).
+#[derive(Clone, Copy, Debug)]
 ///
 /// Combine one or more elements to form a `VertexAttribute` bound at a shader
 /// location. Offsets are in bytes from the start of the vertex and the element.
@@ -36,8 +36,8 @@ pub struct VertexElement {
   pub offset: u32,
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Vertex attribute bound to a shader `location` plus relative offsets.
+#[derive(Clone, Copy, Debug)]
 ///
 /// `location` MUST match the shader input. The final attribute byte offset is
 /// `offset + element.offset`.

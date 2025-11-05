@@ -41,9 +41,9 @@ use crate::{
   runtime::Runtime,
 };
 
-#[derive(Clone, Debug)]
 /// Result value used by component callbacks executed under
 /// `ApplicationRuntime`.
+#[derive(Clone, Debug)]
 ///
 /// Components can return `Success` when work completed as expected or
 /// `Failure` to signal a non‑fatal error to the runtime.

@@ -165,8 +165,8 @@ impl GpuBuilder {
   }
 }
 
-#[derive(Debug)]
 /// Errors emitted while building a `Gpu`.
+#[derive(Debug)]
 pub enum GpuBuildError {
   /// No compatible adapter could be found.
   AdapterUnavailable,
@@ -185,9 +185,9 @@ impl From<wgpu::RequestDeviceError> for GpuBuildError {
   }
 }
 
-#[derive(Debug)]
 /// Holds the chosen adapter along with its logical device and submission queue
 /// plus immutable copies of features and limits used to create the device.
+#[derive(Debug)]
 pub struct Gpu {
   adapter: wgpu::Adapter,
   device: wgpu::Device,

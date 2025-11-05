@@ -4,14 +4,14 @@
 
 use super::gpu;
 
-#[derive(Debug)]
 /// Thin wrapper around `wgpu::CommandEncoder` with convenience helpers.
+#[derive(Debug)]
 pub struct CommandEncoder {
   raw: wgpu::CommandEncoder,
 }
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::CommandBuffer` to avoid exposing raw types upstream.
+#[derive(Debug)]
 pub struct CommandBuffer {
   raw: wgpu::CommandBuffer,
 }

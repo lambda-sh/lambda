@@ -28,8 +28,8 @@ use super::{
   RenderContext,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// High‑level classification for buffers created by the engine.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 ///
 /// The type guides default usage flags and how a buffer is bound during
 /// encoding:
@@ -44,8 +44,8 @@ pub enum BufferType {
   Storage,
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Buffer usage flags (engine‑facing), mapped to platform usage internally.
+#[derive(Clone, Copy, Debug)]
 pub struct Usage(platform_buffer::Usage);
 
 impl Usage {
@@ -77,8 +77,8 @@ impl Default for Usage {
   }
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Buffer allocation properties that control residency and CPU visibility.
+#[derive(Clone, Copy, Debug)]
 ///
 /// Use `CPU_VISIBLE` for frequently updated data (e.g., uniform uploads).
 /// Prefer `DEVICE_LOCAL` for static geometry uploaded once.

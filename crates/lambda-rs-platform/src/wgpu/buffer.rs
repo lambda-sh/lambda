@@ -10,8 +10,8 @@ use wgpu::{
 
 use crate::wgpu::gpu::Gpu;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Index format for indexed drawing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IndexFormat {
   Uint16,
   Uint32,
@@ -26,8 +26,8 @@ impl IndexFormat {
   }
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Platform buffer usage flags.
+#[derive(Clone, Copy, Debug)]
 pub struct Usage(pub(crate) wgpu::BufferUsages);
 
 impl Usage {
@@ -60,8 +60,8 @@ impl Default for Usage {
   }
 }
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::Buffer` with metadata.
+#[derive(Debug)]
 pub struct Buffer {
   pub(crate) raw: wgpu::Buffer,
   pub(crate) label: Option<String>,
@@ -96,8 +96,8 @@ impl Buffer {
   }
 }
 
-#[derive(Default)]
 /// Builder for creating a `Buffer` with optional initial contents.
+#[derive(Default)]
 pub struct BufferBuilder {
   label: Option<String>,
   size: usize,

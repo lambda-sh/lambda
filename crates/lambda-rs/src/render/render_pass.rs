@@ -6,8 +6,8 @@
 
 use super::RenderContext;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
 /// Color load operation for the first color attachment.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ColorLoadOp {
   /// Load existing contents.
   Load,
@@ -15,8 +15,8 @@ pub enum ColorLoadOp {
   Clear([f64; 4]),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Store operation for the first color attachment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreOp {
   /// Store results at the end of the pass.
   Store,
@@ -24,8 +24,8 @@ pub enum StoreOp {
   Discard,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
 /// Combined color operations for the first color attachment.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ColorOperations {
   pub load: ColorLoadOp,
   pub store: StoreOp,
@@ -40,8 +40,8 @@ impl Default for ColorOperations {
   }
 }
 
-#[derive(Debug, Clone)]
 /// Immutable parameters used when beginning a render pass.
+#[derive(Debug, Clone)]
 ///
 /// The pass defines the initial clear for the color attachment and an optional
 /// label. Depth/stencil may be added in a future iteration.
