@@ -47,21 +47,13 @@ use std::{
   rc::Rc,
 };
 
-use lambda_platform::wgpu::{
-  CommandEncoder as PlatformCommandEncoder,
-  Gpu,
-  GpuBuilder,
-  Instance,
-  InstanceBuilder,
-  Surface,
-  SurfaceBuilder,
-};
+use lambda_platform::wgpu as platform;
 use logging;
 
 use self::{
   command::RenderCommand,
   pipeline::RenderPipeline,
-  render_pass::RenderPass,
+  render_pass::RenderPass as RenderPassDesc,
 };
 
 /// Builder for configuring a `RenderContext` tied to one window.
@@ -113,11 +105,11 @@ impl RenderContextBuilder {
   ) -> Result<RenderContext, RenderContextError> {
     let RenderContextBuilder { name, .. } = self;
 
-    let instance = InstanceBuilder::new()
+    let instance = platform::instance::InstanceBuilder::new()
       .with_label(&format!("{} Instance", name))
       .build();
 
-    let mut surface = SurfaceBuilder::new()
+    let mut surface = platform::surface::SurfaceBuilder::new()
       .with_label(&format!("{} Surface", name))
       .build(&instance, window.window_handle())
       .map_err(|e| {
@@ -127,7 +119,7 @@ impl RenderContextBuilder {
         ))
       })?;
 
-    let gpu = GpuBuilder::new()
+    let gpu = platform::gpu::GpuBuilder::new()
       .with_label(&format!("{} Device", name))
       .build(&instance, Some(&surface))
       .map_err(|e| {
@@ -142,8 +134,8 @@ impl RenderContextBuilder {
       .configure_with_defaults(
         &gpu,
         size,
-        lambda_platform::wgpu::PresentMode::Fifo,
-        lambda_platform::wgpu::TextureUsages::RENDER_ATTACHMENT,
+        platform::surface::PresentMode::Fifo,
+        platform::surface::TextureUsages::RENDER_ATTACHMENT,
       )
       .map_err(|e| {
         RenderContextError::SurfaceConfig(format!(
@@ -196,14 +188,14 @@ impl RenderContextBuilder {
 ///   reconfiguration with preserved present mode and usage.
 pub struct RenderContext {
   label: String,
-  instance: Instance,
-  surface: Surface<'static>,
-  gpu: Gpu,
-  config: lambda_platform::wgpu::SurfaceConfig,
-  present_mode: lambda_platform::wgpu::PresentMode,
-  texture_usage: lambda_platform::wgpu::TextureUsages,
+  instance: platform::instance::Instance,
+  surface: platform::surface::Surface<'static>,
+  gpu: platform::gpu::Gpu,
+  config: platform::surface::SurfaceConfig,
+  present_mode: platform::surface::PresentMode,
+  texture_usage: platform::surface::TextureUsages,
   size: (u32, u32),
-  render_passes: Vec<RenderPass>,
+  render_passes: Vec<RenderPassDesc>,
   render_pipelines: Vec<RenderPipeline>,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   bind_groups: Vec<bind::BindGroup>,
@@ -222,7 +214,10 @@ impl RenderContext {
   }
 
   /// Attach a render pass and return a handle for use in commands.
-  pub fn attach_render_pass(&mut self, render_pass: RenderPass) -> ResourceId {
+  pub fn attach_render_pass(
+    &mut self,
+    render_pass: RenderPassDesc,
+  ) -> ResourceId {
     let id = self.render_passes.len();
     self.render_passes.push(render_pass);
     return id;
@@ -293,7 +288,7 @@ impl RenderContext {
   /// Borrow a previously attached render pass by id.
   ///
   /// Panics if `id` does not refer to an attached pass.
-  pub fn get_render_pass(&self, id: ResourceId) -> &RenderPass {
+  pub fn get_render_pass(&self, id: ResourceId) -> &RenderPassDesc {
     return &self.render_passes[id];
   }
 
@@ -304,11 +299,11 @@ impl RenderContext {
     return &self.render_pipelines[id];
   }
 
-  pub(crate) fn gpu(&self) -> &Gpu {
+  pub(crate) fn gpu(&self) -> &platform::gpu::Gpu {
     return &self.gpu;
   }
 
-  pub(crate) fn surface_format(&self) -> lambda_platform::wgpu::SurfaceFormat {
+  pub(crate) fn surface_format(&self) -> platform::surface::SurfaceFormat {
     return self.config.format;
   }
 
@@ -338,8 +333,8 @@ impl RenderContext {
 
     let mut frame = match self.surface.acquire_next_frame() {
       Ok(frame) => frame,
-      Err(lambda_platform::wgpu::SurfaceError::Lost)
-      | Err(lambda_platform::wgpu::SurfaceError::Outdated) => {
+      Err(platform::surface::SurfaceError::Lost)
+      | Err(platform::surface::SurfaceError::Outdated) => {
         self.reconfigure_surface(self.size)?;
         self
           .surface
@@ -350,7 +345,7 @@ impl RenderContext {
     };
 
     let view = frame.texture_view();
-    let mut encoder = PlatformCommandEncoder::new(
+    let mut encoder = platform::command::CommandEncoder::new(
       self.gpu(),
       Some("lambda-render-command-encoder"),
     );
@@ -368,11 +363,35 @@ impl RenderContext {
             ))
           })?;
 
-          let mut pass_encoder = encoder.begin_render_pass_clear(
-            pass.label(),
-            &view,
-            pass.clear_color(),
-          );
+          // Build (begin) the platform render pass using the builder API.
+          let mut rp_builder = platform::render_pass::RenderPassBuilder::new();
+          if let Some(label) = pass.label() {
+            rp_builder = rp_builder.with_label(label);
+          }
+          let ops = pass.color_operations();
+          rp_builder = match ops.load {
+            self::render_pass::ColorLoadOp::Load => rp_builder
+              .with_color_load_op(platform::render_pass::ColorLoadOp::Load),
+            self::render_pass::ColorLoadOp::Clear(color) => rp_builder
+              .with_color_load_op(platform::render_pass::ColorLoadOp::Clear(
+                color,
+              )),
+          };
+          rp_builder = match ops.store {
+            self::render_pass::StoreOp::Store => {
+              rp_builder.with_store_op(platform::render_pass::StoreOp::Store)
+            }
+            self::render_pass::StoreOp::Discard => {
+              rp_builder.with_store_op(platform::render_pass::StoreOp::Discard)
+            }
+          };
+          // Create variably sized color attachments and begin the pass.
+          let mut color_attachments =
+            platform::render_pass::RenderColorAttachments::new();
+          color_attachments.push_color(view);
+
+          let mut pass_encoder =
+            rp_builder.build(&mut encoder, &mut color_attachments);
 
           self.encode_pass(&mut pass_encoder, viewport, &mut command_iter)?;
         }
@@ -393,7 +412,7 @@ impl RenderContext {
   /// Encode a single render pass and consume commands until `EndRenderPass`.
   fn encode_pass<I>(
     &mut self,
-    pass: &mut lambda_platform::wgpu::RenderPass<'_>,
+    pass: &mut platform::render_pass::RenderPass<'_>,
     initial_viewport: viewport::Viewport,
     commands: &mut I,
   ) -> Result<(), RenderError>
@@ -525,7 +544,7 @@ impl RenderContext {
 
   /// Apply both viewport and scissor state to the active pass.
   fn apply_viewport(
-    pass: &mut lambda_platform::wgpu::RenderPass<'_>,
+    pass: &mut platform::render_pass::RenderPass<'_>,
     viewport: &viewport::Viewport,
   ) {
     let (x, y, width, height, min_depth, max_depth) = viewport.viewport_f32();
@@ -562,12 +581,12 @@ impl RenderContext {
 /// acquisition or command encoding. The renderer logs these and continues when
 /// possible; callers SHOULD treat them as warnings unless persistent.
 pub enum RenderError {
-  Surface(lambda_platform::wgpu::SurfaceError),
+  Surface(platform::surface::SurfaceError),
   Configuration(String),
 }
 
-impl From<lambda_platform::wgpu::SurfaceError> for RenderError {
-  fn from(error: lambda_platform::wgpu::SurfaceError) -> Self {
+impl From<platform::surface::SurfaceError> for RenderError {
+  fn from(error: platform::surface::SurfaceError) -> Self {
     return RenderError::Surface(error);
   }
 }

@@ -1,8 +1,9 @@
 use pollster::block_on;
 
 use super::{
+  command::CommandBuffer,
+  instance::Instance,
   surface::Surface,
-  Instance,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -239,7 +240,7 @@ impl Gpu {
   /// Submit one or more command buffers to the device queue.
   pub fn submit<I>(&self, list: I)
   where
-    I: IntoIterator<Item = super::CommandBuffer>,
+    I: IntoIterator<Item = CommandBuffer>,
   {
     let iter = list.into_iter().map(|cb| cb.into_raw());
     self.queue.submit(iter);

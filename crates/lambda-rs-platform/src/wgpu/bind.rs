@@ -10,7 +10,7 @@ use wgpu;
 
 use crate::wgpu::{
   buffer,
-  Gpu,
+  gpu::Gpu,
 };
 
 #[derive(Debug)]

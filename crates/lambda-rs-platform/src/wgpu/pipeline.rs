@@ -6,9 +6,9 @@ use wgpu;
 
 use crate::wgpu::{
   bind,
+  gpu::Gpu,
   surface::SurfaceFormat,
   vertex::ColorFormat,
-  Gpu,
 };
 
 #[derive(Clone, Copy, Debug)]

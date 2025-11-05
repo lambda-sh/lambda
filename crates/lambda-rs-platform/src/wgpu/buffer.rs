@@ -8,7 +8,7 @@ use wgpu::{
   util::DeviceExt,
 };
 
-use crate::wgpu::Gpu;
+use crate::wgpu::gpu::Gpu;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Index format for indexed drawing.

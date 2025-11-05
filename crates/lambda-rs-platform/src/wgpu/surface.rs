@@ -5,7 +5,7 @@ use wgpu::rwh::{
 
 use super::{
   gpu::Gpu,
-  Instance,
+  instance::Instance,
 };
 use crate::winit::WindowHandle;
 
