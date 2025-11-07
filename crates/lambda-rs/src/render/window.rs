@@ -1,4 +1,8 @@
-//! Window implementation for rendering applications.
+//! Window construction and handle wrapper for rendering applications.
+//!
+//! This module wraps a `winit` window with sizing metadata and provides a
+//! builder used by runtimes to create a window before constructing a
+//! `RenderContext`.
 
 use lambda_platform::winit::{
   Loop,
@@ -48,6 +52,7 @@ impl WindowBuilder {
   /// surface in `RenderContextBuilder`. This flag is reserved to influence
   /// that choice and is currently a no‑op.
   pub fn with_vsync(mut self, vsync: bool) -> Self {
+    self.vsync = vsync;
     return self;
   }
 

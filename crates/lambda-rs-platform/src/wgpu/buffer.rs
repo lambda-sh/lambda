@@ -3,14 +3,31 @@
 //! This module provides a thin wrapper over `wgpu::Buffer` plus a small
 //! builder that handles common initialization patterns and keeps label and
 //! usage metadata for debugging/inspection.
-
-use crate::wgpu::{
-  types as wgpu,
-  types::util::DeviceExt,
+use wgpu::{
+  self,
+  util::DeviceExt,
 };
 
-#[derive(Clone, Copy, Debug)]
+use crate::wgpu::gpu::Gpu;
+
+/// Index format for indexed drawing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IndexFormat {
+  Uint16,
+  Uint32,
+}
+
+impl IndexFormat {
+  pub(crate) fn to_wgpu(self) -> wgpu::IndexFormat {
+    return match self {
+      IndexFormat::Uint16 => wgpu::IndexFormat::Uint16,
+      IndexFormat::Uint32 => wgpu::IndexFormat::Uint32,
+    };
+  }
+}
+
 /// Platform buffer usage flags.
+#[derive(Clone, Copy, Debug)]
 pub struct Usage(pub(crate) wgpu::BufferUsages);
 
 impl Usage {
@@ -43,8 +60,8 @@ impl Default for Usage {
   }
 }
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::Buffer` with metadata.
+#[derive(Debug)]
 pub struct Buffer {
   pub(crate) raw: wgpu::Buffer,
   pub(crate) label: Option<String>,
@@ -54,7 +71,7 @@ pub struct Buffer {
 
 impl Buffer {
   /// Borrow the underlying `wgpu::Buffer`.
-  pub fn raw(&self) -> &wgpu::Buffer {
+  pub(crate) fn raw(&self) -> &wgpu::Buffer {
     return &self.raw;
   }
 
@@ -64,18 +81,23 @@ impl Buffer {
   }
 
   /// Size in bytes at creation time.
-  pub fn size(&self) -> wgpu::BufferAddress {
+  pub fn size(&self) -> u64 {
     return self.size;
   }
 
   /// Usage flags used to create the buffer.
-  pub fn usage(&self) -> wgpu::BufferUsages {
-    return self.usage;
+  pub fn usage(&self) -> Usage {
+    return Usage(self.usage);
+  }
+
+  /// Write raw bytes into the buffer at the given offset.
+  pub fn write_bytes(&self, gpu: &Gpu, offset: u64, data: &[u8]) {
+    gpu.queue().write_buffer(&self.raw, offset, data);
   }
 }
 
-#[derive(Default)]
 /// Builder for creating a `Buffer` with optional initial contents.
+#[derive(Default)]
 pub struct BufferBuilder {
   label: Option<String>,
   size: usize,
@@ -119,7 +141,7 @@ impl BufferBuilder {
   }
 
   /// Create a buffer initialized with `contents`.
-  pub fn build_init(self, device: &wgpu::Device, contents: &[u8]) -> Buffer {
+  pub fn build_init(self, gpu: &Gpu, contents: &[u8]) -> Buffer {
     let size = if self.size == 0 {
       contents.len()
     } else {
@@ -131,11 +153,14 @@ impl BufferBuilder {
       usage |= wgpu::BufferUsages::COPY_DST;
     }
 
-    let raw = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-      label: self.label.as_deref(),
-      contents,
-      usage,
-    });
+    let raw =
+      gpu
+        .device()
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+          label: self.label.as_deref(),
+          contents,
+          usage,
+        });
 
     return Buffer {
       raw,

@@ -1,14 +1,20 @@
-//! Mesh Implementation
+//! Simple mesh container used by examples and helpers.
+//!
+//! Purpose
+//! - Hold a `Vec<Vertex>` and matching `VertexAttribute` layout used to build
+//!   vertex buffers and pipelines.
+//! - Provide minimal builders plus an OBJ loader path for quick iteration.
+//!
+//! Note: this is a convenience structure for examples; larger applications may
+//! want dedicated asset/geometry systems.
 
 use lambda_platform::obj::load_textured_obj_from_file;
 
-use super::{
-  vertex::{
-    Vertex,
-    VertexAttribute,
-    VertexElement,
-  },
+use super::vertex::{
   ColorFormat,
+  Vertex,
+  VertexAttribute,
+  VertexElement,
 };
 
 // ---------------------------------- Mesh ------------------------------------
@@ -34,10 +40,9 @@ impl Mesh {
 
 // ------------------------------ MeshBuilder ---------------------------------
 
-/// Construction for a mesh.
+/// Builder for constructing a `Mesh` from vertices and attributes.
 #[derive(Clone, Debug)]
 pub struct MeshBuilder {
-  capacity: usize,
   vertices: Vec<Vertex>,
   attributes: Vec<VertexAttribute>,
 }
@@ -46,7 +51,6 @@ impl MeshBuilder {
   /// Creates a new mesh builder.
   pub fn new() -> Self {
     return Self {
-      capacity: 0,
       vertices: Vec::new(),
       attributes: Vec::new(),
     };
@@ -55,7 +59,6 @@ impl MeshBuilder {
   /// Allocates memory for the given number of vertices and fills
   /// the mesh with empty vertices.
   pub fn with_capacity(&mut self, size: usize) -> &mut Self {
-    self.capacity = size;
     self.vertices.resize(
       size,
       Vertex {

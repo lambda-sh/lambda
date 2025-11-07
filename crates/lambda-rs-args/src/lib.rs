@@ -36,8 +36,8 @@ pub struct ArgumentParser {
   is_subcommand: bool,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 /// Supported value types for an argument definition.
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub enum ArgumentType {
   /// `true`/`false` (or implied by presence when compiled as a flag).
   Boolean,
@@ -61,8 +61,8 @@ pub enum ArgumentType {
   DoubleList,
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
 /// Parsed value container used in results and defaults.
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum ArgumentValue {
   None,
   Boolean(bool),
@@ -112,8 +112,8 @@ impl Into<f64> for ArgumentValue {
   }
 }
 
-#[derive(Debug)]
 /// Declarative definition for a single CLI argument or positional parameter.
+#[derive(Debug)]
 pub struct Argument {
   name: String,
   description: String,
@@ -222,8 +222,8 @@ impl Argument {
   }
 }
 
-#[derive(Debug, Clone)]
 /// A single parsed argument result as `(name, value)`.
+#[derive(Debug, Clone)]
 pub struct ParsedArgument {
   name: String,
   value: ArgumentValue,
@@ -830,8 +830,8 @@ fn parse_value(arg: &Argument, raw: &str) -> Result<ArgumentValue, ArgsError> {
   }
 }
 
-#[derive(Debug)]
 /// Errors that may occur during argument parsing.
+#[derive(Debug)]
 pub enum ArgsError {
   /// An unknown flag or option was encountered.
   UnknownArgument(String),

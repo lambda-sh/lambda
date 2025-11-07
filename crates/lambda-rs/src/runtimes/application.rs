@@ -41,9 +41,9 @@ use crate::{
   runtime::Runtime,
 };
 
-#[derive(Clone, Debug)]
 /// Result value used by component callbacks executed under
 /// `ApplicationRuntime`.
+#[derive(Clone, Debug)]
 ///
 /// Components can return `Success` when work completed as expected or
 /// `Failure` to signal a non‑fatal error to the runtime.
@@ -149,7 +149,14 @@ impl Runtime<(), String> for ApplicationRuntime {
     let mut event_loop = LoopBuilder::new().build();
     let window = self.window_builder.build(&mut event_loop);
     let mut component_stack = self.component_stack;
-    let mut render_context = self.render_context_builder.build(&window);
+    let mut render_context = match self.render_context_builder.build(&window) {
+      Ok(ctx) => ctx,
+      Err(err) => {
+        let msg = format!("Failed to initialize render context: {}", err);
+        logging::error!("{}", msg);
+        return Err(msg);
+      }
+    };
     let mut active_render_context = Some(render_context);
 
     let publisher = event_loop.create_event_publisher();

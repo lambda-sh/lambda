@@ -1,4 +1,9 @@
-//! Render command definitions for lambda runtimes.
+//! Render command definitions for Lambda runtimes.
+//!
+//! A frame is described as a linear list of `RenderCommand`s. The sequence
+//! MUST start a render pass before any draw‑related commands and MUST end the
+//! pass explicitly. Resource and pipeline handles referenced by the commands
+//! MUST have been attached to the active `RenderContext`.
 
 use std::ops::Range;
 
@@ -8,6 +13,10 @@ use super::{
 };
 
 /// Commands recorded and executed by the `RenderContext` to produce a frame.
+///
+/// Order and validity are enforced by the encoder where possible. Invalid
+/// sequences (e.g., nested passes or missing `EndRenderPass`) are reported as
+/// configuration errors.
 #[derive(Debug, Clone)]
 pub enum RenderCommand {
   /// Set one or more viewports starting at `start_at` slot.
@@ -22,7 +31,7 @@ pub enum RenderCommand {
   },
   /// Bind a previously attached graphics pipeline by id.
   SetPipeline { pipeline: super::ResourceId },
-  /// Begin a render pass that targets the swapchain.
+  /// Begin a render pass that targets the swapchain color attachment.
   BeginRenderPass {
     render_pass: super::ResourceId,
     viewport: Viewport,
@@ -31,6 +40,9 @@ pub enum RenderCommand {
   EndRenderPass,
 
   /// Upload push constants for the active pipeline/stage at `offset`.
+  ///
+  /// The byte vector is interpreted as tightly packed `u32` words; the
+  /// builder turns it into raw bytes when encoding.
   PushConstants {
     pipeline: super::ResourceId,
     stage: PipelineStage,
@@ -42,8 +54,20 @@ pub enum RenderCommand {
     pipeline: super::ResourceId,
     buffer: u32,
   },
+  /// Bind an index buffer by resource id with format.
+  BindIndexBuffer {
+    /// Resource identifier returned by `RenderContext::attach_buffer`.
+    buffer: super::ResourceId,
+    /// Index format for this buffer.
+    format: lambda_platform::wgpu::buffer::IndexFormat,
+  },
   /// Issue a non‑indexed draw for the provided vertex range.
   Draw { vertices: Range<u32> },
+  /// Issue an indexed draw for the provided index range.
+  DrawIndexed {
+    indices: Range<u32>,
+    base_vertex: i32,
+  },
 
   /// Bind a previously created bind group to a set index with optional
   /// dynamic offsets. Dynamic offsets are counted in bytes and must obey the

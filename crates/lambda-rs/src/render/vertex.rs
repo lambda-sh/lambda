@@ -1,39 +1,46 @@
-//! Vertex data structures.
+//! Vertex attribute formats and a simple `Vertex` type.
+//!
+//! Pipelines declare per‑buffer `VertexAttribute`s that map engine vertex
+//! data into shader inputs by `location`. This module hosts common color
+//! formats and a convenience `Vertex`/`VertexBuilder` used in examples.
 
-use lambda_platform::wgpu::types as wgpu;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Canonical color/attribute formats used by engine pipelines.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorFormat {
   Rgb32Sfloat,
   Rgba8Srgb,
 }
 
 impl ColorFormat {
-  pub(crate) fn to_texture_format(self) -> wgpu::TextureFormat {
+  pub(crate) fn to_platform(
+    self,
+  ) -> lambda_platform::wgpu::vertex::ColorFormat {
     match self {
-      ColorFormat::Rgb32Sfloat => wgpu::TextureFormat::Rgba32Float,
-      ColorFormat::Rgba8Srgb => wgpu::TextureFormat::Rgba8UnormSrgb,
-    }
-  }
-
-  pub(crate) fn to_vertex_format(self) -> wgpu::VertexFormat {
-    match self {
-      ColorFormat::Rgb32Sfloat => wgpu::VertexFormat::Float32x3,
-      ColorFormat::Rgba8Srgb => wgpu::VertexFormat::Unorm8x4,
+      ColorFormat::Rgb32Sfloat => {
+        lambda_platform::wgpu::vertex::ColorFormat::Rgb32Sfloat
+      }
+      ColorFormat::Rgba8Srgb => {
+        lambda_platform::wgpu::vertex::ColorFormat::Rgba8Srgb
+      }
     }
   }
 }
 
-#[derive(Clone, Copy, Debug)]
 /// A single vertex element (format + byte offset).
+#[derive(Clone, Copy, Debug)]
+///
+/// Combine one or more elements to form a `VertexAttribute` bound at a shader
+/// location. Offsets are in bytes from the start of the vertex and the element.
 pub struct VertexElement {
   pub format: ColorFormat,
   pub offset: u32,
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Vertex attribute bound to a shader `location` plus relative offsets.
+#[derive(Clone, Copy, Debug)]
+///
+/// `location` MUST match the shader input. The final attribute byte offset is
+/// `offset + element.offset`.
 pub struct VertexAttribute {
   pub location: u32,
   pub offset: u32,
