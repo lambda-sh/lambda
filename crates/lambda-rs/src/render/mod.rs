@@ -20,6 +20,7 @@ use std::iter;
 
 use lambda_platform::wgpu::{
   types as wgpu,
+  CommandEncoder as PlatformCommandEncoder,
   Gpu,
   GpuBuilder,
   Instance,
@@ -267,12 +268,10 @@ impl RenderContext {
     };
 
     let view = frame.texture_view();
-    let mut encoder =
-      self
-        .device()
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-          label: Some("lambda-render-command-encoder"),
-        });
+    let mut encoder = PlatformCommandEncoder::new(
+      self.device(),
+      Some("lambda-render-command-encoder"),
+    );
 
     let mut command_iter = commands.into_iter();
     while let Some(command) = command_iter.next() {
@@ -287,32 +286,8 @@ impl RenderContext {
             ))
           })?;
 
-          let color_attachment = wgpu::RenderPassColorAttachment {
-            view,
-            depth_slice: None,
-            resolve_target: None,
-            ops: pass.color_ops(),
-          };
-          let color_attachments = [Some(color_attachment)];
-          let depth_attachment = self.depth.as_ref().map(|d| {
-            wgpu::RenderPassDepthStencilAttachment {
-              view: d.view(),
-              depth_ops: Some(wgpu::Operations {
-                load: wgpu::LoadOp::Clear(1.0),
-                store: wgpu::StoreOp::Store,
-              }),
-              stencil_ops: None,
-            }
-          });
-
           let mut pass_encoder =
-            encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-              label: pass.label(),
-              color_attachments: &color_attachments,
-              depth_stencil_attachment: depth_attachment,
-              timestamp_writes: None,
-              occlusion_query_set: None,
-            });
+            encoder.begin_render_pass(pass.label(), view, pass.color_ops());
 
           self.encode_pass(&mut pass_encoder, viewport, &mut command_iter)?;
         }
@@ -333,7 +308,7 @@ impl RenderContext {
   /// Encode a single render pass and consume commands until `EndRenderPass`.
   fn encode_pass<I>(
     &mut self,
-    pass: &mut wgpu::RenderPass<'_>,
+    pass: &mut lambda_platform::wgpu::RenderPass<'_>,
     initial_viewport: viewport::Viewport,
     commands: &mut I,
   ) -> Result<(), RenderError>
@@ -399,7 +374,7 @@ impl RenderContext {
               ));
             })?;
 
-          pass.set_vertex_buffer(buffer as u32, buffer_ref.raw().slice(..));
+          pass.set_vertex_buffer(buffer as u32, buffer_ref.raw());
         }
         RenderCommand::PushConstants {
           pipeline,
@@ -421,7 +396,7 @@ impl RenderContext {
           pass.set_push_constants(stage.to_wgpu(), offset, slice);
         }
         RenderCommand::Draw { vertices } => {
-          pass.draw(vertices, 0..1);
+          pass.draw(vertices);
         }
         RenderCommand::BeginRenderPass { .. } => {
           return Err(RenderError::Configuration(
@@ -438,7 +413,7 @@ impl RenderContext {
 
   /// Apply both viewport and scissor state to the active pass.
   fn apply_viewport(
-    pass: &mut wgpu::RenderPass<'_>,
+    pass: &mut lambda_platform::wgpu::RenderPass<'_>,
     viewport: &viewport::Viewport,
   ) {
     let (x, y, width, height, min_depth, max_depth) = viewport.viewport_f32();
