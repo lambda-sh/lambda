@@ -1,5 +1,32 @@
-//! High level Rendering API designed for cross platform rendering and
-//! windowing.
+//! High‑level rendering API for cross‑platform windowed applications.
+//!
+//! The rendering module provides a small set of stable, engine‑facing types
+//! that assemble a frame using explicit commands. It hides lower‑level
+//! platform details (the `wgpu` device, queue, surfaces, and raw descriptors)
+//! behind builders and handles while keeping configuration visible and
+//! predictable.
+//!
+//! Concepts
+//! - `RenderContext`: owns the graphics instance, presentation surface, and
+//!   GPU device/queue for a single window. It is the submit point for per‑frame
+//!   command encoding.
+//! - `RenderPass` and `RenderPipeline`: immutable descriptions used when
+//!   beginning a pass and binding a pipeline. Pipelines declare their vertex
+//!   inputs, push constants, and layout (bind group layouts).
+//! - `Buffer`, `BindGroupLayout`, and `BindGroup`: GPU resources created via
+//!   builders and attached to the context, then referenced by small integer
+//!   handles when encoding commands.
+//! - `RenderCommand`: an explicit, validated sequence that begins with
+//!   `BeginRenderPass`, binds state, draws, and ends with `EndRenderPass`.
+//!
+//! Minimal flow
+//! 1) Create a window and a `RenderContext` with `RenderContextBuilder`.
+//! 2) Build resources (buffers, bind group layouts, shaders, pipelines).
+//! 3) Record a `Vec<RenderCommand>` each frame and pass it to
+//!    `RenderContext::render`.
+//!
+//! See workspace examples under `crates/lambda-rs/examples/` for runnable
+//! end‑to‑end snippets.
 
 // Module Exports
 pub mod bind;
@@ -16,34 +43,40 @@ pub mod vertex;
 pub mod viewport;
 pub mod window;
 
-use std::iter;
-
-use lambda_platform::wgpu::{
-  types as wgpu,
-  CommandEncoder as PlatformCommandEncoder,
-  Gpu,
-  GpuBuilder,
-  Instance,
-  InstanceBuilder,
-  Surface,
-  SurfaceBuilder,
+use std::{
+  iter,
+  rc::Rc,
 };
+
+use lambda_platform::wgpu as platform;
 use logging;
-pub use vertex::ColorFormat;
 
 use self::{
   command::RenderCommand,
   pipeline::RenderPipeline,
-  render_pass::RenderPass,
+  render_pass::RenderPass as RenderPassDesc,
 };
 
-/// Builder for configuring a `RenderContext` tied to a single window.
+/// Builder for configuring a `RenderContext` tied to one window.
 ///
-/// The builder wires up a `wgpu::Instance`, `Surface`, and `Gpu` using the
-/// cross‑platform platform layer, then configures the surface with reasonable
-/// defaults. Use this when setting up rendering for an application window.
+/// Purpose
+/// - Construct the graphics `Instance`, presentation `Surface`, and logical
+///   `Gpu` using the platform layer.
+/// - Configure the surface with sane defaults (sRGB when available,
+///   `Fifo`/vsync‑compatible present mode, `RENDER_ATTACHMENT` usage).
+///
+/// Usage
+/// - Create with a human‑readable name used in debug labels.
+/// - Optionally adjust timeouts, then `build(window)` to obtain a
+///   `RenderContext`.
+///
+/// Typical use is in an application runtime immediately after creating a
+/// window. The returned `RenderContext` owns all GPU objects required to render
+/// to that window.
 pub struct RenderContextBuilder {
   name: String,
+  /// Reserved for future timeout handling during rendering (nanoseconds).
+  /// Not currently enforced; kept for forward compatibility with runtime controls.
   _render_timeout: u64,
 }
 
@@ -64,79 +97,110 @@ impl RenderContextBuilder {
 
   /// Build a `RenderContext` for the provided `window` and configure the
   /// presentation surface.
-  pub fn build(self, window: &window::Window) -> RenderContext {
+  ///
+  /// Errors are returned instead of panicking to allow callers to surface
+  /// actionable initialization failures.
+  pub fn build(
+    self,
+    window: &window::Window,
+  ) -> Result<RenderContext, RenderContextError> {
     let RenderContextBuilder { name, .. } = self;
 
-    let instance = InstanceBuilder::new()
+    let instance = platform::instance::InstanceBuilder::new()
       .with_label(&format!("{} Instance", name))
       .build();
 
-    let mut surface = SurfaceBuilder::new()
+    let mut surface = platform::surface::SurfaceBuilder::new()
       .with_label(&format!("{} Surface", name))
       .build(&instance, window.window_handle())
-      .expect("Failed to create rendering surface");
+      .map_err(|e| {
+        RenderContextError::SurfaceCreate(format!(
+          "Failed to create rendering surface: {:?}",
+          e
+        ))
+      })?;
 
-    let gpu = GpuBuilder::new()
+    let gpu = platform::gpu::GpuBuilder::new()
       .with_label(&format!("{} Device", name))
       .build(&instance, Some(&surface))
-      .expect("Failed to create GPU device");
+      .map_err(|e| {
+        RenderContextError::GpuCreate(format!(
+          "Failed to create GPU device: {:?}",
+          e
+        ))
+      })?;
 
     let size = window.dimensions();
-    let config = surface
+    surface
       .configure_with_defaults(
-        gpu.adapter(),
-        gpu.device(),
+        &gpu,
         size,
-        wgpu::PresentMode::Fifo,
-        wgpu::TextureUsages::RENDER_ATTACHMENT,
+        platform::surface::PresentMode::Fifo,
+        platform::surface::TextureUsages::RENDER_ATTACHMENT,
       )
-      .expect("Failed to configure surface");
+      .map_err(|e| {
+        RenderContextError::SurfaceConfig(format!(
+          "Failed to configure surface: {:?}",
+          e
+        ))
+      })?;
 
-    let depth = Some(
-      lambda_platform::wgpu::texture::DepthTextureBuilder::new()
-        .with_label("lambda-depth")
-        .with_size(size.0, size.1)
-        .with_format(lambda_platform::wgpu::texture::DepthFormat::Depth32Float)
-        .build(gpu.device()),
-    );
+    let config = surface.configuration().cloned().ok_or_else(|| {
+      RenderContextError::SurfaceConfig(
+        "Surface was not configured".to_string(),
+      )
+    })?;
+    let present_mode = config.present_mode;
+    let texture_usage = config.usage;
 
-    return RenderContext {
+    return Ok(RenderContext {
       label: name,
       instance,
       surface,
       gpu,
       config,
-      present_mode: wgpu::PresentMode::Fifo,
-      texture_usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+      present_mode,
+      texture_usage,
       size,
       render_passes: vec![],
       render_pipelines: vec![],
       bind_group_layouts: vec![],
       bind_groups: vec![],
-      depth,
-    };
+      buffers: vec![],
+    });
   }
 }
 
-/// High‑level rendering context backed by `wgpu` for a single window.
+/// High‑level rendering context for a single window.
 ///
-/// The context owns the `Instance`, presentation `Surface`, and `Gpu` device
-/// objects and maintains a set of attached render passes and pipelines used
-/// while encoding command streams for each frame.
+/// Purpose
+/// - Own the platform `Instance`, presentation `Surface`, and logical `Gpu`
+///   objects bound to one window.
+/// - Host immutable resources (`RenderPass`, `RenderPipeline`, bind layouts,
+///   bind groups, and buffers) and expose small integer handles to reference
+///   them when recording commands.
+/// - Encode and submit per‑frame work based on an explicit `RenderCommand`
+///   list.
+///
+/// Behavior
+/// - All methods avoid panics unless explicitly documented; recoverable errors
+///   are logged and dropped to keep the app running where possible.
+/// - Surface loss or outdated configuration triggers transparent
+///   reconfiguration with preserved present mode and usage.
 pub struct RenderContext {
   label: String,
-  instance: Instance,
-  surface: Surface<'static>,
-  gpu: Gpu,
-  config: wgpu::SurfaceConfiguration,
-  present_mode: wgpu::PresentMode,
-  texture_usage: wgpu::TextureUsages,
+  instance: platform::instance::Instance,
+  surface: platform::surface::Surface<'static>,
+  gpu: platform::gpu::Gpu,
+  config: platform::surface::SurfaceConfig,
+  present_mode: platform::surface::PresentMode,
+  texture_usage: platform::surface::TextureUsages,
   size: (u32, u32),
-  render_passes: Vec<RenderPass>,
+  render_passes: Vec<RenderPassDesc>,
   render_pipelines: Vec<RenderPipeline>,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   bind_groups: Vec<bind::BindGroup>,
-  depth: Option<lambda_platform::wgpu::texture::DepthTexture>,
+  buffers: Vec<Rc<buffer::Buffer>>,
 }
 
 /// Opaque handle used to refer to resources attached to a `RenderContext`.
@@ -151,7 +215,10 @@ impl RenderContext {
   }
 
   /// Attach a render pass and return a handle for use in commands.
-  pub fn attach_render_pass(&mut self, render_pass: RenderPass) -> ResourceId {
+  pub fn attach_render_pass(
+    &mut self,
+    render_pass: RenderPassDesc,
+  ) -> ResourceId {
     let id = self.render_passes.len();
     self.render_passes.push(render_pass);
     return id;
@@ -174,6 +241,13 @@ impl RenderContext {
     return id;
   }
 
+  /// Attach a generic GPU buffer and return a handle for render commands.
+  pub fn attach_buffer(&mut self, buffer: buffer::Buffer) -> ResourceId {
+    let id = self.buffers.len();
+    self.buffers.push(Rc::new(buffer));
+    return id;
+  }
+
   /// Explicitly destroy the context. Dropping also releases resources.
   pub fn destroy(self) {
     drop(self);
@@ -181,7 +255,15 @@ impl RenderContext {
 
   /// Render a list of commands. No‑ops when the list is empty.
   ///
-  /// Errors are logged and do not panic; see `RenderError` for cases.
+  /// Expectations
+  /// - The sequence MUST begin a render pass before issuing draw‑related
+  ///   commands and MUST terminate that pass with `EndRenderPass`.
+  /// - Referenced resource handles (passes, pipelines, buffers, bind groups)
+  ///   MUST have been attached to this context.
+  ///
+  /// Error handling
+  /// - Errors are logged and do not panic (e.g., lost/outdated surface,
+  ///   missing resources, invalid dynamic offsets). See `RenderError`.
   pub fn render(&mut self, commands: Vec<RenderCommand>) {
     if commands.is_empty() {
       return;
@@ -205,35 +287,30 @@ impl RenderContext {
   }
 
   /// Borrow a previously attached render pass by id.
-  pub fn get_render_pass(&self, id: ResourceId) -> &RenderPass {
+  ///
+  /// Panics if `id` does not refer to an attached pass.
+  pub fn get_render_pass(&self, id: ResourceId) -> &RenderPassDesc {
     return &self.render_passes[id];
   }
 
   /// Borrow a previously attached render pipeline by id.
+  ///
+  /// Panics if `id` does not refer to an attached pipeline.
   pub fn get_render_pipeline(&self, id: ResourceId) -> &RenderPipeline {
     return &self.render_pipelines[id];
   }
 
-  pub(crate) fn device(&self) -> &wgpu::Device {
-    return self.gpu.device();
+  pub(crate) fn gpu(&self) -> &platform::gpu::Gpu {
+    return &self.gpu;
   }
 
-  pub(crate) fn queue(&self) -> &wgpu::Queue {
-    return self.gpu.queue();
-  }
-
-  pub(crate) fn surface_format(&self) -> wgpu::TextureFormat {
+  pub(crate) fn surface_format(&self) -> platform::surface::SurfaceFormat {
     return self.config.format;
-  }
-
-  /// Depth format used for pipelines and attachments.
-  pub(crate) fn depth_format(&self) -> wgpu::TextureFormat {
-    return wgpu::TextureFormat::Depth32Float;
   }
 
   /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
   pub fn limit_max_uniform_buffer_binding_size(&self) -> u64 {
-    return self.gpu.limits().max_uniform_buffer_binding_size.into();
+    return self.gpu.limits().max_uniform_buffer_binding_size;
   }
 
   /// Device limit: number of bind groups that can be used by a pipeline layout.
@@ -257,7 +334,8 @@ impl RenderContext {
 
     let mut frame = match self.surface.acquire_next_frame() {
       Ok(frame) => frame,
-      Err(wgpu::SurfaceError::Lost) | Err(wgpu::SurfaceError::Outdated) => {
+      Err(platform::surface::SurfaceError::Lost)
+      | Err(platform::surface::SurfaceError::Outdated) => {
         self.reconfigure_surface(self.size)?;
         self
           .surface
@@ -268,8 +346,8 @@ impl RenderContext {
     };
 
     let view = frame.texture_view();
-    let mut encoder = PlatformCommandEncoder::new(
-      self.device(),
+    let mut encoder = platform::command::CommandEncoder::new(
+      self.gpu(),
       Some("lambda-render-command-encoder"),
     );
 
@@ -286,8 +364,35 @@ impl RenderContext {
             ))
           })?;
 
+          // Build (begin) the platform render pass using the builder API.
+          let mut rp_builder = platform::render_pass::RenderPassBuilder::new();
+          if let Some(label) = pass.label() {
+            rp_builder = rp_builder.with_label(label);
+          }
+          let ops = pass.color_operations();
+          rp_builder = match ops.load {
+            self::render_pass::ColorLoadOp::Load => rp_builder
+              .with_color_load_op(platform::render_pass::ColorLoadOp::Load),
+            self::render_pass::ColorLoadOp::Clear(color) => rp_builder
+              .with_color_load_op(platform::render_pass::ColorLoadOp::Clear(
+                color,
+              )),
+          };
+          rp_builder = match ops.store {
+            self::render_pass::StoreOp::Store => {
+              rp_builder.with_store_op(platform::render_pass::StoreOp::Store)
+            }
+            self::render_pass::StoreOp::Discard => {
+              rp_builder.with_store_op(platform::render_pass::StoreOp::Discard)
+            }
+          };
+          // Create variably sized color attachments and begin the pass.
+          let mut color_attachments =
+            platform::render_pass::RenderColorAttachments::new();
+          color_attachments.push_color(view);
+
           let mut pass_encoder =
-            encoder.begin_render_pass(pass.label(), view, pass.color_ops());
+            rp_builder.build(&mut encoder, &mut color_attachments);
 
           self.encode_pass(&mut pass_encoder, viewport, &mut command_iter)?;
         }
@@ -300,7 +405,7 @@ impl RenderContext {
       }
     }
 
-    self.queue().submit(iter::once(encoder.finish()));
+    self.gpu.submit(iter::once(encoder.finish()));
     frame.present();
     return Ok(());
   }
@@ -308,7 +413,7 @@ impl RenderContext {
   /// Encode a single render pass and consume commands until `EndRenderPass`.
   fn encode_pass<I>(
     &mut self,
-    pass: &mut lambda_platform::wgpu::RenderPass<'_>,
+    pass: &mut platform::render_pass::RenderPass<'_>,
     initial_viewport: viewport::Viewport,
     commands: &mut I,
   ) -> Result<(), RenderError>
@@ -358,7 +463,11 @@ impl RenderContext {
             set,
           )
           .map_err(RenderError::Configuration)?;
-          pass.set_bind_group(set, group_ref.raw(), &dynamic_offsets);
+          pass.set_bind_group(
+            set,
+            group_ref.platform_group(),
+            &dynamic_offsets,
+          );
         }
         RenderCommand::BindVertexBuffer { pipeline, buffer } => {
           let pipeline_ref =
@@ -375,6 +484,23 @@ impl RenderContext {
             })?;
 
           pass.set_vertex_buffer(buffer as u32, buffer_ref.raw());
+        }
+        RenderCommand::BindIndexBuffer { buffer, format } => {
+          let buffer_ref = self.buffers.get(buffer).ok_or_else(|| {
+            return RenderError::Configuration(format!(
+              "Index buffer id {} not found",
+              buffer
+            ));
+          })?;
+          // Soft validation: encourage correct logical type.
+          if buffer_ref.buffer_type() != buffer::BufferType::Index {
+            logging::warn!(
+              "Binding buffer id {} as index but logical type is {:?}",
+              buffer,
+              buffer_ref.buffer_type()
+            );
+          }
+          pass.set_index_buffer(buffer_ref.raw(), format);
         }
         RenderCommand::PushConstants {
           pipeline,
@@ -393,10 +519,16 @@ impl RenderContext {
               bytes.len() * std::mem::size_of::<u32>(),
             )
           };
-          pass.set_push_constants(stage.to_wgpu(), offset, slice);
+          pass.set_push_constants(stage, offset, slice);
         }
         RenderCommand::Draw { vertices } => {
           pass.draw(vertices);
+        }
+        RenderCommand::DrawIndexed {
+          indices,
+          base_vertex,
+        } => {
+          pass.draw_indexed(indices, base_vertex);
         }
         RenderCommand::BeginRenderPass { .. } => {
           return Err(RenderError::Configuration(
@@ -413,7 +545,7 @@ impl RenderContext {
 
   /// Apply both viewport and scissor state to the active pass.
   fn apply_viewport(
-    pass: &mut lambda_platform::wgpu::RenderPass<'_>,
+    pass: &mut platform::render_pass::RenderPass<'_>,
     viewport: &viewport::Viewport,
   ) {
     let (x, y, width, height, min_depth, max_depth) = viewport.viewport_f32();
@@ -427,41 +559,61 @@ impl RenderContext {
     &mut self,
     size: (u32, u32),
   ) -> Result<(), RenderError> {
-    let config = self
+    self
       .surface
-      .configure_with_defaults(
-        self.gpu.adapter(),
-        self.gpu.device(),
-        size,
-        self.present_mode,
-        self.texture_usage,
-      )
+      .resize(&self.gpu, size)
       .map_err(RenderError::Configuration)?;
+
+    let config = self.surface.configuration().cloned().ok_or_else(|| {
+      RenderError::Configuration("Surface was not configured".to_string())
+    })?;
 
     self.present_mode = config.present_mode;
     self.texture_usage = config.usage;
     self.config = config;
-    // Recreate depth attachment with the new surface size
-    self.depth = Some(
-      lambda_platform::wgpu::texture::DepthTextureBuilder::new()
-        .with_label("lambda-depth")
-        .with_size(size.0, size.1)
-        .with_format(lambda_platform::wgpu::texture::DepthFormat::Depth32Float)
-        .build(self.gpu.device()),
-    );
     return Ok(());
   }
 }
 
+/// Errors reported while preparing or presenting a frame.
 #[derive(Debug)]
-/// Errors that can occur while preparing or presenting a frame.
+///
+/// Variants summarize recoverable issues that can appear during frame
+/// acquisition or command encoding. The renderer logs these and continues when
+/// possible; callers SHOULD treat them as warnings unless persistent.
 pub enum RenderError {
-  Surface(wgpu::SurfaceError),
+  Surface(platform::surface::SurfaceError),
   Configuration(String),
 }
 
-impl From<wgpu::SurfaceError> for RenderError {
-  fn from(error: wgpu::SurfaceError) -> Self {
+impl From<platform::surface::SurfaceError> for RenderError {
+  fn from(error: platform::surface::SurfaceError) -> Self {
     return RenderError::Surface(error);
   }
 }
+
+/// Errors encountered while creating a `RenderContext`.
+#[derive(Debug)]
+///
+/// Returned by `RenderContextBuilder::build` to avoid panics during
+/// initialization and provide actionable error messages to callers.
+pub enum RenderContextError {
+  /// Failure creating the presentation surface for the provided window.
+  SurfaceCreate(String),
+  /// Failure creating the logical GPU device/queue.
+  GpuCreate(String),
+  /// Failure configuring or retrieving the surface configuration.
+  SurfaceConfig(String),
+}
+
+impl core::fmt::Display for RenderContextError {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    match self {
+      RenderContextError::SurfaceCreate(s) => write!(f, "{}", s),
+      RenderContextError::GpuCreate(s) => write!(f, "{}", s),
+      RenderContextError::SurfaceConfig(s) => write!(f, "{}", s),
+    }
+  }
+}
+
+impl std::error::Error for RenderContextError {}

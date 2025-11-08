@@ -6,6 +6,8 @@
 
 use wgpu;
 
+use crate::wgpu::gpu::Gpu;
+
 #[derive(Debug)]
 /// Errors returned when building a texture or preparing its initial upload.
 pub enum TextureBuildError {
@@ -177,14 +179,14 @@ impl DepthTextureBuilder {
   }
 
   /// Create the depth texture on the device.
-  pub fn build(self, device: &wgpu::Device) -> DepthTexture {
+  pub fn build(self, gpu: &Gpu) -> DepthTexture {
     let size = wgpu::Extent3d {
       width: self.width.max(1),
       height: self.height.max(1),
       depth_or_array_layers: 1,
     };
     let format = self.format.to_wgpu();
-    let raw = device.create_texture(&wgpu::TextureDescriptor {
+    let raw = gpu.device().create_texture(&wgpu::TextureDescriptor {
       label: self.label.as_deref(),
       size,
       mip_level_count: 1,
@@ -383,9 +385,9 @@ impl SamplerBuilder {
   }
 
   /// Create the sampler on the provided device.
-  pub fn build(self, device: &wgpu::Device) -> Sampler {
+  pub fn build(self, gpu: &Gpu) -> Sampler {
     let desc = self.to_descriptor();
-    let raw = device.create_sampler(&desc);
+    let raw = gpu.device().create_sampler(&desc);
     return Sampler {
       raw,
       label: self.label,
@@ -516,11 +518,7 @@ impl TextureBuilder {
   }
 
   /// Create the GPU texture and upload initial data if provided.
-  pub fn build(
-    self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-  ) -> Result<Texture, TextureBuildError> {
+  pub fn build(self, gpu: &Gpu) -> Result<Texture, TextureBuildError> {
     // Validate dimensions
     if self.width == 0 || self.height == 0 {
       return Err(TextureBuildError::InvalidDimensions {
@@ -589,7 +587,7 @@ impl TextureBuilder {
       view_formats: &[],
     };
 
-    let texture = device.create_texture(&descriptor);
+    let texture = gpu.device().create_texture(&descriptor);
     let view_dimension = match self.dimension {
       TextureDimension::TwoDimensional => wgpu::TextureViewDimension::D2,
       TextureDimension::ThreeDimensional => wgpu::TextureViewDimension::D3,
@@ -690,7 +688,9 @@ impl TextureBuilder {
         aspect: wgpu::TextureAspect::All,
       };
 
-      queue.write_texture(copy_dst, &staging, data_layout, size);
+      gpu
+        .queue()
+        .write_texture(copy_dst, &staging, data_layout, size);
     }
 
     return Ok(Texture {

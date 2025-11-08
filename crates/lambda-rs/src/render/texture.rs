@@ -33,17 +33,11 @@ pub enum ViewDimension {
 }
 
 impl ViewDimension {
-  pub(crate) fn to_wgpu(
-    self,
-  ) -> lambda_platform::wgpu::types::TextureViewDimension {
-    match self {
-      ViewDimension::D2 => {
-        lambda_platform::wgpu::types::TextureViewDimension::D2
-      }
-      ViewDimension::D3 => {
-        lambda_platform::wgpu::types::TextureViewDimension::D3
-      }
-    }
+  pub(crate) fn to_platform(self) -> platform::ViewDimension {
+    return match self {
+      ViewDimension::D2 => platform::ViewDimension::TwoDimensional,
+      ViewDimension::D3 => platform::ViewDimension::ThreeDimensional,
+    };
   }
 }
 
@@ -191,7 +185,7 @@ impl TextureBuilder {
     if let Some(ref pixels) = self.data {
       builder = builder.with_data(pixels);
     }
-    match builder.build(render_context.device(), render_context.queue()) {
+    match builder.build(render_context.gpu()) {
       Ok(texture) => Ok(Texture {
         inner: Rc::new(texture),
       }),
@@ -283,7 +277,7 @@ impl SamplerBuilder {
 
   /// Create the sampler on the current device.
   pub fn build(self, render_context: &mut RenderContext) -> Sampler {
-    let sampler = self.inner.build(render_context.device());
+    let sampler = self.inner.build(render_context.gpu());
     return Sampler {
       inner: Rc::new(sampler),
     };

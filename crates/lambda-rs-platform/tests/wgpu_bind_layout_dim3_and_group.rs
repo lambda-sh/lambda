@@ -4,15 +4,13 @@
 
 #[test]
 fn wgpu_bind_layout_dim3_and_group() {
-  let instance = lambda_platform::wgpu::InstanceBuilder::new()
+  let instance = lambda_platform::wgpu::instance::InstanceBuilder::new()
     .with_label("p-itest-3d-bind")
     .build();
-  let gpu = lambda_platform::wgpu::GpuBuilder::new()
+  let gpu = lambda_platform::wgpu::gpu::GpuBuilder::new()
     .with_label("p-itest-3d-bind-device")
     .build(&instance, None)
     .expect("create device");
-  let device = gpu.device();
-  let queue = gpu.queue();
 
   let (w, h, d) = (2u32, 2u32, 2u32);
   let pixels = vec![255u8; (w * h * d * 4) as usize];
@@ -22,25 +20,25 @@ fn wgpu_bind_layout_dim3_and_group() {
   .with_size_3d(w, h, d)
   .with_data(&pixels)
   .with_label("p-itest-3d-view")
-  .build(device, queue)
+  .build(&gpu)
   .expect("3D texture build");
 
   let sampler = lambda_platform::wgpu::texture::SamplerBuilder::new()
     .nearest_clamp()
-    .build(device);
+    .build(&gpu);
 
   let layout = lambda_platform::wgpu::bind::BindGroupLayoutBuilder::new()
     .with_sampled_texture_dim(
       1,
       lambda_platform::wgpu::bind::Visibility::Fragment,
-      lambda_platform::wgpu::types::TextureViewDimension::D3,
+      lambda_platform::wgpu::texture::ViewDimension::ThreeDimensional,
     )
     .with_sampler(2, lambda_platform::wgpu::bind::Visibility::Fragment)
-    .build(device);
+    .build(&gpu);
 
   let _group = lambda_platform::wgpu::bind::BindGroupBuilder::new()
     .with_layout(&layout)
     .with_texture(1, &tex3d)
     .with_sampler(2, &sampler)
-    .build(device);
+    .build(&gpu);
 }

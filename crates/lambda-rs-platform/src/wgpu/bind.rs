@@ -6,10 +6,15 @@
 
 use std::num::NonZeroU64;
 
-use crate::wgpu::types as wgpu;
+use wgpu;
 
-#[derive(Debug)]
+use crate::wgpu::{
+  buffer,
+  gpu::Gpu,
+};
+
 /// Wrapper around `wgpu::BindGroupLayout` that preserves a label.
+#[derive(Debug)]
 pub struct BindGroupLayout {
   pub(crate) raw: wgpu::BindGroupLayout,
   pub(crate) label: Option<String>,
@@ -27,8 +32,8 @@ impl BindGroupLayout {
   }
 }
 
-#[derive(Debug)]
 /// Wrapper around `wgpu::BindGroup` that preserves a label.
+#[derive(Debug)]
 pub struct BindGroup {
   pub(crate) raw: wgpu::BindGroup,
   pub(crate) label: Option<String>,
@@ -46,8 +51,8 @@ impl BindGroup {
   }
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Visibility of a binding across shader stages.
+#[derive(Clone, Copy, Debug)]
 pub enum Visibility {
   Vertex,
   Fragment,
@@ -123,8 +128,8 @@ mod tests {
   }
 }
 
-#[derive(Default)]
 /// Builder for creating a `wgpu::BindGroupLayout`.
+#[derive(Default)]
 pub struct BindGroupLayoutBuilder {
   label: Option<String>,
   entries: Vec<wgpu::BindGroupLayoutEntry>,
@@ -203,14 +208,14 @@ impl BindGroupLayoutBuilder {
     mut self,
     binding: u32,
     visibility: Visibility,
-    view_dimension: wgpu::TextureViewDimension,
+    view_dimension: crate::wgpu::texture::ViewDimension,
   ) -> Self {
     self.entries.push(wgpu::BindGroupLayoutEntry {
       binding,
       visibility: visibility.to_wgpu(),
       ty: wgpu::BindingType::Texture {
         sample_type: wgpu::TextureSampleType::Float { filterable: true },
-        view_dimension,
+        view_dimension: view_dimension.to_wgpu(),
         multisampled: false,
       },
       count: None,
@@ -230,12 +235,14 @@ impl BindGroupLayoutBuilder {
   }
 
   /// Build the layout using the provided device.
-  pub fn build(self, device: &wgpu::Device) -> BindGroupLayout {
+  pub fn build(self, gpu: &Gpu) -> BindGroupLayout {
     let raw =
-      device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: self.label.as_deref(),
-        entries: &self.entries,
-      });
+      gpu
+        .device()
+        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+          label: self.label.as_deref(),
+          entries: &self.entries,
+        });
     return BindGroupLayout {
       raw,
       label: self.label,
@@ -243,8 +250,8 @@ impl BindGroupLayoutBuilder {
   }
 }
 
-#[derive(Default)]
 /// Builder for creating a `wgpu::BindGroup`.
+#[derive(Default)]
 pub struct BindGroupBuilder<'a> {
   label: Option<String>,
   layout: Option<&'a wgpu::BindGroupLayout>,
@@ -277,14 +284,14 @@ impl<'a> BindGroupBuilder<'a> {
   pub fn with_uniform(
     mut self,
     binding: u32,
-    buffer: &'a wgpu::Buffer,
+    buffer: &'a buffer::Buffer,
     offset: u64,
     size: Option<NonZeroU64>,
   ) -> Self {
     self.entries.push(wgpu::BindGroupEntry {
       binding,
       resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-        buffer,
+        buffer: buffer.raw(),
         offset,
         size,
       }),
@@ -319,11 +326,11 @@ impl<'a> BindGroupBuilder<'a> {
   }
 
   /// Build the bind group with the accumulated entries.
-  pub fn build(self, device: &wgpu::Device) -> BindGroup {
+  pub fn build(self, gpu: &Gpu) -> BindGroup {
     let layout = self
       .layout
       .expect("BindGroupBuilder requires a layout before build");
-    let raw = device.create_bind_group(&wgpu::BindGroupDescriptor {
+    let raw = gpu.device().create_bind_group(&wgpu::BindGroupDescriptor {
       label: self.label.as_deref(),
       layout,
       entries: &self.entries,

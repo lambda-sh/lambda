@@ -10,6 +10,17 @@ use crate::math::{
   matrix::Matrix,
 };
 
+/// Build a 4x4 uniform scaling matrix with `uniform_scale` on the diagonal
+/// and `1.0` in the homogeneous component.
+fn scaling_matrix(uniform_scale: f32) -> [[f32; 4]; 4] {
+  return [
+    [uniform_scale, 0.0, 0.0, 0.0],
+    [0.0, uniform_scale, 0.0, 0.0],
+    [0.0, 0.0, uniform_scale, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+  ];
+}
+
 /// Convert OpenGL-style normalized device coordinates (Z in [-1, 1]) to
 /// wgpu/Vulkan/Direct3D normalized device coordinates (Z in [0, 1]).
 ///
@@ -48,17 +59,7 @@ pub fn compute_model_matrix(
   let mut model: [[f32; 4]; 4] = matrix::identity_matrix(4, 4);
   // Apply rotation first, then scaling via a diagonal matrix, and finally translation.
   model = matrix::rotate_matrix(model, rotation_axis, angle_in_turns);
-
-  let mut scaled: [[f32; 4]; 4] = [[0.0; 4]; 4];
-  for i in 0..4 {
-    for j in 0..4 {
-      if i == j {
-        scaled[i][j] = if i == 3 { 1.0 } else { uniform_scale };
-      } else {
-        scaled[i][j] = 0.0;
-      }
-    }
-  }
+  let scaled = scaling_matrix(uniform_scale);
   model = model.multiply(&scaled);
 
   let translation_matrix: [[f32; 4]; 4] =
@@ -141,8 +142,28 @@ pub fn compute_perspective_projection(
   return conversion.multiply(&projection_gl);
 }
 
-/// Compute a full model-view-projection matrix given a simple camera, a
+/// Compute a full model‑view‑projection matrix given a simple camera, a
 /// viewport, and the model transform parameters.
+///
+/// Example
+/// ```rust
+/// use lambda::render::scene_math::{SimpleCamera, compute_model_view_projection_matrix};
+/// let camera = SimpleCamera {
+///   position: [0.0, 0.0, 3.0],
+///   field_of_view_in_turns: 0.25,
+///   near_clipping_plane: 0.01,
+///   far_clipping_plane: 100.0,
+/// };
+/// let mvp = compute_model_view_projection_matrix(
+///   &camera,
+///   800,
+///   600,
+///   [0.0, 0.0, 0.0],
+///   [0.0, 1.0, 0.0],
+///   0.0,
+///   1.0,
+/// );
+/// ```
 pub fn compute_model_view_projection_matrix(
   camera: &SimpleCamera,
   viewport_width: u32,

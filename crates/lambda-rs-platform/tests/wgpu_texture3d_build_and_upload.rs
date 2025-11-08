@@ -4,15 +4,13 @@
 
 #[test]
 fn wgpu_texture3d_build_and_upload() {
-  let instance = lambda_platform::wgpu::InstanceBuilder::new()
+  let instance = lambda_platform::wgpu::instance::InstanceBuilder::new()
     .with_label("p-itest-3d")
     .build();
-  let gpu = lambda_platform::wgpu::GpuBuilder::new()
+  let gpu = lambda_platform::wgpu::gpu::GpuBuilder::new()
     .with_label("p-itest-3d-device")
     .build(&instance, None)
     .expect("create device");
-  let device = gpu.device();
-  let queue = gpu.queue();
 
   let (w, h, d) = (4u32, 4u32, 3u32);
   let pixels = vec![180u8; (w * h * d * 4) as usize];
@@ -23,6 +21,6 @@ fn wgpu_texture3d_build_and_upload() {
   .with_size_3d(w, h, d)
   .with_data(&pixels)
   .with_label("p-itest-3d-texture")
-  .build(device, queue)
+  .build(&gpu)
   .expect("3D texture build");
 }

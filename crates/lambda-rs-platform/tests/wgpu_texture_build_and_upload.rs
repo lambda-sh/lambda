@@ -2,11 +2,11 @@
 
 // Integration tests for `lambda-rs-platform::wgpu::texture`
 
-fn create_test_device() -> lambda_platform::wgpu::Gpu {
-  let instance = lambda_platform::wgpu::InstanceBuilder::new()
+fn create_test_device() -> lambda_platform::wgpu::gpu::Gpu {
+  let instance = lambda_platform::wgpu::instance::InstanceBuilder::new()
     .with_label("platform-itest")
     .build();
-  return lambda_platform::wgpu::GpuBuilder::new()
+  return lambda_platform::wgpu::gpu::GpuBuilder::new()
     .with_label("platform-itest-device")
     .build(&instance, None)
     .expect("create offscreen device");
@@ -15,8 +15,6 @@ fn create_test_device() -> lambda_platform::wgpu::Gpu {
 #[test]
 fn wgpu_texture_build_and_upload_succeeds() {
   let gpu = create_test_device();
-  let device = gpu.device();
-  let queue = gpu.queue();
 
   let (w, h) = (8u32, 8u32);
   let mut pixels = vec![0u8; (w * h * 4) as usize];
@@ -37,15 +35,13 @@ fn wgpu_texture_build_and_upload_succeeds() {
   .with_size(w, h)
   .with_data(&pixels)
   .with_label("p-itest-texture")
-  .build(device, queue)
+  .build(&gpu)
   .expect("texture created");
 }
 
 #[test]
 fn wgpu_texture_upload_with_padding_bytes_per_row() {
   let gpu = create_test_device();
-  let device = gpu.device();
-  let queue = gpu.queue();
 
   let (w, h) = (13u32, 7u32);
   let pixels = vec![128u8; (w * h * 4) as usize];
@@ -55,6 +51,6 @@ fn wgpu_texture_upload_with_padding_bytes_per_row() {
   .with_size(w, h)
   .with_data(&pixels)
   .with_label("p-itest-pad")
-  .build(device, queue)
+  .build(&gpu)
   .expect("padded write_texture works");
 }

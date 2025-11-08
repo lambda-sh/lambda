@@ -1,11 +1,26 @@
-//! Buffers for allocating memory on the GPU.
+//! GPU buffers for vertex/index data and uniforms.
+//!
+//! Purpose
+//! - Allocate memory on the GPU for vertex and index streams, per‑draw or
+//!   per‑frame uniform data, and general storage when needed.
+//! - Provide a stable engine‑facing `Buffer` with logical type and stride so
+//!   pipelines and commands can bind and validate buffers correctly.
+//!
+//! Usage
+//! - Use `BufferBuilder` to create typed buffers with explicit usage and
+//!   residency properties.
+//! - Use `UniformBuffer<T>` for a concise pattern when a single `T` value is
+//!   updated on the CPU and bound as a uniform.
+//!
+//! Examples
+//! - Creating a vertex buffer from a mesh: `BufferBuilder::build_from_mesh`.
+//! - Creating a uniform buffer and updating it each frame:
+//!   see `UniformBuffer<T>` below and the runnable example
+//!   `crates/lambda-rs/examples/uniform_buffer_triangle.rs`.
 
 use std::rc::Rc;
 
-use lambda_platform::wgpu::{
-  buffer as platform_buffer,
-  types as wgpu,
-};
+use lambda_platform::wgpu::buffer as platform_buffer;
 
 use super::{
   mesh::Mesh,
@@ -13,11 +28,15 @@ use super::{
   RenderContext,
 };
 
-#[derive(Clone, Copy, Debug)]
 /// High‑level classification for buffers created by the engine.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 ///
 /// The type guides default usage flags and how a buffer is bound during
-/// encoding (e.g., as a vertex or index buffer).
+/// encoding:
+/// - `Vertex`: per‑vertex attribute streams consumed by the vertex stage.
+/// - `Index`: index streams used for indexed drawing.
+/// - `Uniform`: small, read‑only parameters used by shaders.
+/// - `Storage`: general read/write data (not yet surfaced by high‑level APIs).
 pub enum BufferType {
   Vertex,
   Index,
@@ -25,8 +44,8 @@ pub enum BufferType {
   Storage,
 }
 
+/// Buffer usage flags (engine‑facing), mapped to platform usage internally.
 #[derive(Clone, Copy, Debug)]
-/// Buffer usage flags (engine-facing), mapped to platform usage internally.
 pub struct Usage(platform_buffer::Usage);
 
 impl Usage {
@@ -58,8 +77,11 @@ impl Default for Usage {
   }
 }
 
-#[derive(Clone, Copy, Debug)]
 /// Buffer allocation properties that control residency and CPU visibility.
+#[derive(Clone, Copy, Debug)]
+///
+/// Use `CPU_VISIBLE` for frequently updated data (e.g., uniform uploads).
+/// Prefer `DEVICE_LOCAL` for static geometry uploaded once.
 pub struct Properties {
   cpu_visible: bool,
 }
@@ -84,8 +106,13 @@ impl Default for Properties {
 
 /// Buffer for storing data on the GPU.
 ///
-/// Wraps a `wgpu::Buffer` and tracks the element stride and logical type used
-/// when binding to pipeline inputs.
+/// Wraps a platform GPU buffer and tracks the element stride and logical type
+/// used when binding to pipeline inputs.
+///
+/// Notes
+/// - Writing is performed via the device queue using `write_value` or by
+///   creating CPU‑visible buffers and re‑building with new contents when
+///   appropriate.
 #[derive(Debug)]
 pub struct Buffer {
   buffer: Rc<platform_buffer::Buffer>,
@@ -94,12 +121,12 @@ pub struct Buffer {
 }
 
 impl Buffer {
-  /// Destroy the buffer and all it's resources with the render context that
+  /// Destroy the buffer and all its resources with the render context that
   /// created it. Dropping the buffer will release GPU resources.
   pub fn destroy(self, _render_context: &RenderContext) {}
 
-  pub(super) fn raw(&self) -> &wgpu::Buffer {
-    return self.buffer.raw();
+  pub(super) fn raw(&self) -> &platform_buffer::Buffer {
+    return self.buffer.as_ref();
   }
 
   pub(super) fn stride(&self) -> u64 {
@@ -126,9 +153,8 @@ impl Buffer {
         std::mem::size_of::<T>(),
       )
     };
-    render_context
-      .queue()
-      .write_buffer(self.raw(), offset, bytes);
+
+    self.buffer.write_bytes(render_context.gpu(), offset, bytes);
   }
 }
 
@@ -136,7 +162,20 @@ impl Buffer {
 ///
 /// Stores a single value of type `T` and provides a convenience method to
 /// upload updates to the GPU. The underlying buffer has `UNIFORM` usage and
-/// is CPU‑visible by default for easy updates via `Queue::write_buffer`.
+/// is CPU‑visible by default for direct queue writes.
+///
+/// Example
+/// ```rust,ignore
+/// // Model‑view‑projection updated every frame
+/// #[repr(C)]
+/// #[derive(Clone, Copy)]
+/// struct Mvp { m: [[f32;4];4] }
+/// let mut mvp = Mvp { m: [[0.0;4];4] };
+/// let mvp_ubo = UniformBuffer::new(render_context, &mvp, Some("mvp")).unwrap();
+/// // ... later per‑frame
+/// mvp = compute_next_mvp();
+/// mvp_ubo.write(&render_context, &mvp);
+/// ```
 pub struct UniformBuffer<T> {
   inner: Buffer,
   _phantom: core::marker::PhantomData<T>,
@@ -149,13 +188,15 @@ impl<T: Copy> UniformBuffer<T> {
     initial: &T,
     label: Option<&str>,
   ) -> Result<Self, &'static str> {
-    let mut builder = BufferBuilder::new();
-    builder.with_length(core::mem::size_of::<T>());
-    builder.with_usage(Usage::UNIFORM);
-    builder.with_properties(Properties::CPU_VISIBLE);
+    let mut builder = BufferBuilder::new()
+      .with_length(core::mem::size_of::<T>())
+      .with_usage(Usage::UNIFORM)
+      .with_properties(Properties::CPU_VISIBLE);
+
     if let Some(l) = label {
-      builder.with_label(l);
+      builder = builder.with_label(l);
     }
+
     let inner = builder.build(render_context, vec![*initial])?;
     return Ok(Self {
       inner,
@@ -176,10 +217,22 @@ impl<T: Copy> UniformBuffer<T> {
 
 /// Builder for creating `Buffer` objects with explicit usage and properties.
 ///
-/// A buffer is a block of memory the GPU can access. You supply a total byte
-/// length, usage flags, and residency properties; the builder will initialize
-/// the buffer with provided contents and add `COPY_DST` when CPU visibility is
-/// requested.
+/// A buffer is a block of memory the GPU can access. Supply a total byte
+/// length, usage flags, and residency properties; the builder initializes the
+/// buffer with provided contents and adds the necessary copy usage when CPU
+/// visibility is requested.
+///
+/// Example (vertex buffer)
+/// ```rust,ignore
+/// use lambda::render::buffer::{BufferBuilder, Usage, Properties, BufferType};
+/// let vertices: Vec<Vertex> = build_vertices();
+/// let vb = BufferBuilder::new()
+///   .with_usage(Usage::VERTEX)
+///   .with_properties(Properties::DEVICE_LOCAL)
+///   .with_buffer_type(BufferType::Vertex)
+///   .build(render_context, vertices)
+///   .unwrap();
+/// ```
 pub struct BufferBuilder {
   buffer_length: usize,
   usage: Usage,
@@ -201,31 +254,31 @@ impl BufferBuilder {
   }
 
   /// Set the length of the buffer in bytes. Defaults to the size of `data`.
-  pub fn with_length(&mut self, size: usize) -> &mut Self {
+  pub fn with_length(mut self, size: usize) -> Self {
     self.buffer_length = size;
     return self;
   }
 
   /// Set the logical type of buffer to be created (vertex/index/...).
-  pub fn with_buffer_type(&mut self, buffer_type: BufferType) -> &mut Self {
+  pub fn with_buffer_type(mut self, buffer_type: BufferType) -> Self {
     self.buffer_type = buffer_type;
     return self;
   }
 
   /// Set `wgpu` usage flags (bit‑or `Usage` values).
-  pub fn with_usage(&mut self, usage: Usage) -> &mut Self {
+  pub fn with_usage(mut self, usage: Usage) -> Self {
     self.usage = usage;
     return self;
   }
 
   /// Control CPU visibility and residency preferences.
-  pub fn with_properties(&mut self, properties: Properties) -> &mut Self {
+  pub fn with_properties(mut self, properties: Properties) -> Self {
     self.properties = properties;
     return self;
   }
 
   /// Attach a human‑readable label for debugging/profiling.
-  pub fn with_label(&mut self, label: &str) -> &mut Self {
+  pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
     return self;
   }
@@ -241,8 +294,8 @@ impl BufferBuilder {
     let element_size = std::mem::size_of::<Data>();
     let buffer_length = self.resolve_length(element_size, data.len())?;
 
-    // SAFETY: Converting data to bytes is safe because it's underlying
-    // type, Data, is constrianed to Copy and the lifetime of the slice does
+    // SAFETY: Converting data to bytes is safe because its underlying
+    // type, Data, is constrained to Copy and the lifetime of the slice does
     // not outlive data.
     let bytes = unsafe {
       std::slice::from_raw_parts(
@@ -259,7 +312,7 @@ impl BufferBuilder {
       builder = builder.with_label(label);
     }
 
-    let buffer = builder.build_init(render_context.device(), bytes);
+    let buffer = builder.build_init(render_context.gpu(), bytes);
 
     return Ok(Buffer {
       buffer: Rc::new(buffer),
@@ -316,8 +369,7 @@ mod tests {
 
   #[test]
   fn label_is_recorded_on_builder() {
-    let mut builder = BufferBuilder::new();
-    builder.with_label("buffer-test");
+    let builder = BufferBuilder::new().with_label("buffer-test");
     // Indirect check: validate the internal label is stored on the builder.
     // Test module is a child of this module and can access private fields.
     assert_eq!(builder.label.as_deref(), Some("buffer-test"));
