@@ -153,6 +153,16 @@ impl RenderContextBuilder {
     let present_mode = config.present_mode;
     let texture_usage = config.usage;
 
+    // Initialize a depth texture matching the surface size.
+    let depth_format = platform::texture::DepthFormat::Depth32Float;
+    let depth_texture = Some(
+      platform::texture::DepthTextureBuilder::new()
+        .with_size(size.0.max(1), size.1.max(1))
+        .with_format(depth_format)
+        .with_label("lambda-depth")
+        .build(&gpu),
+    );
+
     return Ok(RenderContext {
       label: name,
       instance,
@@ -162,6 +172,8 @@ impl RenderContextBuilder {
       present_mode,
       texture_usage,
       size,
+      depth_texture,
+      depth_format,
       render_passes: vec![],
       render_pipelines: vec![],
       bind_group_layouts: vec![],
@@ -196,6 +208,8 @@ pub struct RenderContext {
   present_mode: platform::surface::PresentMode,
   texture_usage: platform::surface::TextureUsages,
   size: (u32, u32),
+  depth_texture: Option<platform::texture::DepthTexture>,
+  depth_format: platform::texture::DepthFormat,
   render_passes: Vec<RenderPassDesc>,
   render_pipelines: Vec<RenderPipeline>,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
@@ -284,6 +298,15 @@ impl RenderContext {
     if let Err(err) = self.reconfigure_surface(self.size) {
       logging::error!("Failed to resize surface: {:?}", err);
     }
+
+    // Recreate depth texture to match new size.
+    self.depth_texture = Some(
+      platform::texture::DepthTextureBuilder::new()
+        .with_size(self.size.0.max(1), self.size.1.max(1))
+        .with_format(self.depth_format)
+        .with_label("lambda-depth")
+        .build(self.gpu()),
+    );
   }
 
   /// Borrow a previously attached render pass by id.
@@ -391,8 +414,52 @@ impl RenderContext {
             platform::render_pass::RenderColorAttachments::new();
           color_attachments.push_color(view);
 
-          let mut pass_encoder =
-            rp_builder.build(&mut encoder, &mut color_attachments);
+          // Optional depth attachment configured by the pass description.
+          let (depth_view, depth_ops) = match pass.depth_operations() {
+            Some(dops) => {
+              if self.depth_texture.is_none() {
+                self.depth_texture = Some(
+                  platform::texture::DepthTextureBuilder::new()
+                    .with_size(self.size.0.max(1), self.size.1.max(1))
+                    .with_format(self.depth_format)
+                    .with_label("lambda-depth")
+                    .build(self.gpu()),
+                );
+              }
+              let mut view_ref = self
+                .depth_texture
+                .as_ref()
+                .expect("depth texture should be present")
+                .view_ref();
+              let mapped = platform::render_pass::DepthOperations {
+                load: match dops.load {
+                  render_pass::DepthLoadOp::Load => {
+                    platform::render_pass::DepthLoadOp::Load
+                  }
+                  render_pass::DepthLoadOp::Clear(v) => {
+                    platform::render_pass::DepthLoadOp::Clear(v as f32)
+                  }
+                },
+                store: match dops.store {
+                  render_pass::StoreOp::Store => {
+                    platform::render_pass::StoreOp::Store
+                  }
+                  render_pass::StoreOp::Discard => {
+                    platform::render_pass::StoreOp::Discard
+                  }
+                },
+              };
+              (Some(view_ref), Some(mapped))
+            }
+            None => (None, None),
+          };
+
+          let mut pass_encoder = rp_builder.build(
+            &mut encoder,
+            &mut color_attachments,
+            depth_view,
+            depth_ops,
+          );
 
           self.encode_pass(&mut pass_encoder, viewport, &mut command_iter)?;
         }
@@ -412,7 +479,7 @@ impl RenderContext {
 
   /// Encode a single render pass and consume commands until `EndRenderPass`.
   fn encode_pass<I>(
-    &mut self,
+    &self,
     pass: &mut platform::render_pass::RenderPass<'_>,
     initial_viewport: viewport::Viewport,
     commands: &mut I,

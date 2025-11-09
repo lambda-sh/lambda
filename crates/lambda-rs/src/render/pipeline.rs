@@ -30,7 +30,10 @@ use std::{
   rc::Rc,
 };
 
-use lambda_platform::wgpu::pipeline as platform_pipeline;
+use lambda_platform::wgpu::{
+  pipeline as platform_pipeline,
+  texture as platform_texture,
+};
 
 use super::{
   bind,
@@ -243,6 +246,11 @@ impl RenderPipelineBuilder {
 
     if fragment_module.is_some() {
       rp_builder = rp_builder.with_surface_color_target(surface_format);
+    }
+
+    if self.use_depth {
+      rp_builder = rp_builder
+        .with_depth_stencil(platform_texture::DepthFormat::Depth32Float);
     }
 
     let pipeline = rp_builder.build(

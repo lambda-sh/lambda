@@ -2,7 +2,8 @@
 
 //! Example: Spinning 3D cube sampled with a 3D texture.
 //! - Uses MVP push constants (vertex stage) for classic camera + rotation.
-//! - Colors come from a 3D volume (gradient) sampled in the fragment shader.
+//! - Colors come from a 2D checkerboard texture sampled in the fragment
+//!   shader. Each face projects model-space coordinates to UVs.
 
 use lambda::{
   component::Component,
@@ -12,7 +13,6 @@ use lambda::{
     bind::{
       BindGroupBuilder,
       BindGroupLayoutBuilder,
-      BindingVisibility,
     },
     buffer::BufferBuilder,
     command::RenderCommand,
@@ -39,7 +39,6 @@ use lambda::{
       SamplerBuilder,
       TextureBuilder,
       TextureFormat,
-      ViewDimension,
     },
     vertex::{
       ColorFormat,
@@ -91,16 +90,31 @@ layout (location = 1) in vec3 v_normal;
 
 layout (location = 0) out vec4 fragment_color;
 
-layout (set = 0, binding = 1) uniform texture3D tex3d;
+layout (set = 0, binding = 1) uniform texture2D tex;
 layout (set = 0, binding = 2) uniform sampler samp;
 
+// Project model-space position to 2D UVs based on the dominant normal axis.
+vec2 project_uv(vec3 p, vec3 n) {
+  vec3 a = abs(n);
+  if (a.x > a.y && a.x > a.z) {
+    // +/-X faces: map Z,Y
+    return p.zy * 0.5 + 0.5;
+  } else if (a.y > a.z) {
+    // +/-Y faces: map X,Z
+    return p.xz * 0.5 + 0.5;
+  } else {
+    // +/-Z faces: map X,Y
+    return p.xy * 0.5 + 0.5;
+  }
+}
+
 void main() {
-  // Sample color from 3D volume using model-space position mapped to [0,1]
-  vec3 uvw = clamp(v_model_pos * 0.5 + 0.5, 0.0, 1.0);
-  vec3 base = texture(sampler3D(tex3d, samp), uvw).rgb;
+  // Sample color from 2D checkerboard using projected UVs in [0,1]
+  vec3 N = normalize(v_normal);
+  vec2 uv = clamp(project_uv(v_model_pos, N), 0.0, 1.0);
+  vec3 base = texture(sampler2D(tex, samp), uv).rgb;
 
   // Simple lambert lighting to emphasize shape
-  vec3 N = normalize(v_normal);
   vec3 L = normalize(vec3(0.4, 0.7, 1.0));
   float diff = max(dot(N, L), 0.0);
   vec3 color = base * (0.25 + 0.75 * diff);
@@ -145,9 +159,11 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
+    logging::info!("Attaching TexturedCubeExample");
     // Render pass and shaders
     let render_pass = RenderPassBuilder::new()
       .with_label("textured-cube-pass")
+      .with_depth()
       .build(render_context);
 
     let mut shader_builder = ShaderBuilder::new();
@@ -190,28 +206,28 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
         verts.push(p3);
       };
     let h = 0.5f32;
-    // +X
+    // +X (corrected CCW winding)
     add_face(
       1.0,
       0.0,
       0.0,
-      [(h, -h, -h), (h, -h, h), (h, h, h), (h, h, -h)],
+      [(h, -h, -h), (h, h, -h), (h, h, h), (h, -h, h)],
     );
-    // -X
+    // -X (corrected CCW winding)
     add_face(
       -1.0,
       0.0,
       0.0,
-      [(-h, -h, h), (-h, -h, -h), (-h, h, -h), (-h, h, h)],
+      [(-h, -h, -h), (-h, -h, h), (-h, h, h), (-h, h, -h)],
     );
-    // +Y
+    // +Y (original correct winding)
     add_face(
       0.0,
       1.0,
       0.0,
       [(-h, h, -h), (h, h, -h), (h, h, h), (-h, h, h)],
     );
-    // -Y
+    // -Y (original correct winding)
     add_face(
       0.0,
       -1.0,
@@ -266,47 +282,37 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       ])
       .build();
 
-    // 3D checkerboard volume for coloring
-    let (w, h3d, d3d) = (32u32, 32u32, 32u32);
-    let mut voxels = vec![0u8; (w * h3d * d3d * 4) as usize];
-    let block = 4u32;
-    for z in 0..d3d {
-      for y in 0..h3d {
-        for x in 0..w {
-          let idx = ((z * h3d * w + y * w + x) * 4) as usize;
-          let c = ((x / block + y / block + z / block) % 2) as u32;
-          let (r, g, b) = if c == 0 {
-            (40u8, 40u8, 40u8)
-          } else {
-            (220u8, 50u8, 220u8)
-          };
-          voxels[idx + 0] = r;
-          voxels[idx + 1] = g;
-          voxels[idx + 2] = b;
-          voxels[idx + 3] = 255;
-        }
+    // 2D checkerboard texture used on all faces
+    let tex_w = 64u32;
+    let tex_h = 64u32;
+    let mut pixels = vec![0u8; (tex_w * tex_h * 4) as usize];
+    for y in 0..tex_h {
+      for x in 0..tex_w {
+        let i = ((y * tex_w + x) * 4) as usize;
+        let checker = ((x / 8) % 2) ^ ((y / 8) % 2);
+        let c: u8 = if checker == 0 { 40 } else { 220 };
+        pixels[i + 0] = c;
+        pixels[i + 1] = c;
+        pixels[i + 2] = c;
+        pixels[i + 3] = 255;
       }
     }
 
-    let texture3d = TextureBuilder::new_3d(TextureFormat::Rgba8UnormSrgb)
-      .with_size_3d(w, h3d, d3d)
-      .with_data(&voxels)
-      .with_label("cube-volume")
+    let texture2d = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
+      .with_size(tex_w, tex_h)
+      .with_data(&pixels)
+      .with_label("checkerboard")
       .build(render_context)
-      .expect("Failed to create 3D texture");
+      .expect("Failed to create 2D texture");
     let sampler = SamplerBuilder::new().linear_clamp().build(render_context);
 
     let layout = BindGroupLayoutBuilder::new()
-      .with_sampled_texture_dim(
-        1,
-        ViewDimension::D3,
-        BindingVisibility::Fragment,
-      )
+      .with_sampled_texture(1)
       .with_sampler(2)
       .build(render_context);
     let bind_group = BindGroupBuilder::new()
       .with_layout(&layout)
-      .with_texture(1, &texture3d)
+      .with_texture(1, &texture2d)
       .with_sampler(2, &sampler)
       .build(render_context);
 

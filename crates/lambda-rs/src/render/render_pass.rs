@@ -40,6 +40,31 @@ impl Default for ColorOperations {
   }
 }
 
+/// Depth load operation for the depth attachment.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum DepthLoadOp {
+  /// Load existing depth.
+  Load,
+  /// Clear to the provided depth value in [0,1].
+  Clear(f64),
+}
+
+/// Depth operations for the first depth attachment.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DepthOperations {
+  pub load: DepthLoadOp,
+  pub store: StoreOp,
+}
+
+impl Default for DepthOperations {
+  fn default() -> Self {
+    return Self {
+      load: DepthLoadOp::Clear(1.0),
+      store: StoreOp::Store,
+    };
+  }
+}
+
 /// Immutable parameters used when beginning a render pass.
 #[derive(Debug, Clone)]
 ///
@@ -49,6 +74,7 @@ pub struct RenderPass {
   clear_color: [f64; 4],
   label: Option<String>,
   color_operations: ColorOperations,
+  depth_operations: Option<DepthOperations>,
 }
 
 impl RenderPass {
@@ -66,6 +92,10 @@ impl RenderPass {
   pub(crate) fn color_operations(&self) -> ColorOperations {
     return self.color_operations;
   }
+
+  pub(crate) fn depth_operations(&self) -> Option<DepthOperations> {
+    return self.depth_operations;
+  }
 }
 
 /// Builder for a `RenderPass` description.
@@ -77,6 +107,7 @@ pub struct RenderPassBuilder {
   clear_color: [f64; 4],
   label: Option<String>,
   color_operations: ColorOperations,
+  depth_operations: Option<DepthOperations>,
 }
 
 impl RenderPassBuilder {
@@ -86,6 +117,7 @@ impl RenderPassBuilder {
       clear_color: [0.0, 0.0, 0.0, 1.0],
       label: None,
       color_operations: ColorOperations::default(),
+      depth_operations: None,
     }
   }
 
@@ -129,12 +161,28 @@ impl RenderPassBuilder {
     return self;
   }
 
+  /// Enable a depth attachment with default clear to 1.0 and store.
+  pub fn with_depth(mut self) -> Self {
+    self.depth_operations = Some(DepthOperations::default());
+    return self;
+  }
+
+  /// Enable a depth attachment with an explicit clear value.
+  pub fn with_depth_clear(mut self, clear: f64) -> Self {
+    self.depth_operations = Some(DepthOperations {
+      load: DepthLoadOp::Clear(clear),
+      store: StoreOp::Store,
+    });
+    return self;
+  }
+
   /// Build the description used when beginning a render pass.
   pub fn build(self, _render_context: &RenderContext) -> RenderPass {
     RenderPass {
       clear_color: self.clear_color,
       label: self.label,
       color_operations: self.color_operations,
+      depth_operations: self.depth_operations,
     }
   }
 }

@@ -130,6 +130,11 @@ impl DepthTexture {
   pub fn format(&self) -> DepthFormat {
     return self.format;
   }
+
+  /// Convenience: return a `TextureViewRef` for use in render pass attachments.
+  pub fn view_ref(&self) -> crate::wgpu::surface::TextureViewRef<'_> {
+    return crate::wgpu::surface::TextureViewRef { raw: &self.view };
+  }
 }
 
 /// Builder for a depth texture attachment sized to the current framebuffer.
