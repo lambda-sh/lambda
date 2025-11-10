@@ -26,7 +26,8 @@ use lambda::{
     },
     render_pass::RenderPassBuilder,
     scene_math::{
-      compute_model_view_projection_matrix_about_pivot,
+      compute_perspective_projection,
+      compute_view_matrix,
       SimpleCamera,
     },
     shader::{
@@ -382,17 +383,34 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       near_clipping_plane: 0.1,
       far_clipping_plane: 100.0,
     };
-    let angle_turns = 0.15 * self.elapsed; // slow rotation
-    let mvp = compute_model_view_projection_matrix_about_pivot(
-      &camera,
+    // Rotate around both X and Y over time so top/bottom/side faces become visible.
+    let angle_y_turns = 0.15 * self.elapsed; // yaw
+    let angle_x_turns = 0.10 * self.elapsed; // pitch
+
+    // Build model: combine yaw (Y) and pitch (X). The multiplication order in
+    // rotate_matrix composes as model = model * R(axis), so the last call here
+    // (X) applies first to the vertex, then Y.
+    let mut model: [[f32; 4]; 4] = lambda::math::matrix::identity_matrix(4, 4);
+    model = lambda::math::matrix::rotate_matrix(
+      model,
+      [0.0, 1.0, 0.0],
+      angle_y_turns,
+    );
+    model = lambda::math::matrix::rotate_matrix(
+      model,
+      [1.0, 0.0, 0.0],
+      angle_x_turns,
+    );
+
+    let view = compute_view_matrix(camera.position);
+    let projection = compute_perspective_projection(
+      camera.field_of_view_in_turns,
       self.width.max(1),
       self.height.max(1),
-      [0.0, 0.0, 0.0], // pivot
-      [0.0, 1.0, 0.0], // axis
-      angle_turns,
-      1.0,             // scale
-      [0.0, 0.0, 0.0], // translation
+      camera.near_clipping_plane,
+      camera.far_clipping_plane,
     );
+    let mvp = projection.multiply(&view).multiply(&model);
 
     let viewport = ViewportBuilder::new().build(self.width, self.height);
     let pipeline = self.render_pipeline.expect("pipeline not set");
