@@ -3,13 +3,13 @@ title: "Textures and Samplers"
 document_id: "texture-sampler-spec-2025-10-30"
 status: "draft"
 created: "2025-10-30T00:00:00Z"
-last_updated: "2025-10-30T00:10:00Z"
-version: "0.2.0"
+last_updated: "2025-11-10T00:00:00Z"
+version: "0.3.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "d3dc4356c165c596e0b9f84b3687b1018eeb1a91"
+repo_commit: "fc5eb52c74eb0835225959f941db8e991112b87d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "textures", "samplers", "wgpu"]
@@ -41,10 +41,14 @@ Summary
 
 ### Non-Goals
 
-- Storage textures, depth textures, cube maps, and 2D/3D array textures.
-- Multisampled textures and render target (color attachment) workflows.
-- Mipmap generation (automatic or offline); only level 0 is supported.
-- Partial sub-rect updates; uploads are whole-image at creation time.
+- Storage textures, depth textures, cube maps, and 2D/3D array textures
+  are out of scope for this revision and tracked under “Future Extensions”.
+- Multisampled textures and render target (color attachment) workflows are
+  out of scope for this revision and tracked under “Future Extensions”.
+- Mipmap generation (automatic or offline); only level 0 is supported in this
+  revision. See “Future Extensions”.
+- Partial sub-rect updates; uploads are whole-image at creation time in this
+  revision. See “Future Extensions”.
 
 ## Terminology
 
@@ -97,7 +101,8 @@ Render pass: SetPipeline -> SetBindGroup -> Draw
 ### API Surface
 
 - Platform layer (`lambda-rs-platform`, module `lambda_platform::wgpu::texture`)
-  - Types: `Texture`, `TextureView`, `Sampler` (own raw `wgpu` handles).
+  - Types: `Texture`, `Sampler` (own raw `wgpu` handles). A default
+    full-range view is created and owned by `Texture` for binding.
   - Enums: `TextureFormat`, `TextureDimension` (`D2`, `D3`), `ViewDimension`
     (`D2`, `D3`), `FilterMode`, `AddressMode`.
   - Builders:
@@ -121,20 +126,23 @@ Render pass: SetPipeline -> SetBindGroup -> Draw
       - Mip filtering and level-of-detail: `with_lod(min, max)`,
         `with_mip_filter(mode)` (default `Nearest`).
       - `with_label(label: &str)`
-      - `build(&mut RenderContext)` -> `Result<Sampler, Error>`
+      - `build(&mut RenderContext)` -> `Sampler`
 
 - High-level layer (`lambda-rs`, module `lambda::render::texture`)
   - Mirrors platform builders and enums; returns high-level `Texture` and
     `Sampler` wrappers with no `wgpu` exposure.
   - Adds convenience methods consistent with the repository style (for example,
-    `SamplerBuilder::linear_clamp()`).
+    `SamplerBuilder::linear_clamp()`). Usage toggles MAY be exposed at the
+    high level or fixed to stable defaults.
 
 - Bind group integration (`lambda::render::bind`)
   - `BindGroupLayoutBuilder` additions:
-    - `with_sampled_texture(binding: u32)` — 2D, filterable float; shorthand.
-    - `with_sampled_texture_dim(binding: u32, dim: ViewDimension)` — explicit
-      dimension (`D2` or `D3`), float sample type, not multisampled.
-    - `with_sampler(binding: u32)` — filtering sampler type.
+    - `with_sampled_texture(binding: u32)` — 2D, filterable float; shorthand,
+      default visibility Fragment.
+    - `with_sampled_texture_dim(binding: u32, dim: ViewDimension, visibility: BindingVisibility)` —
+      explicit dimension (`D2` or `D3`), float sample type, not multisampled.
+    - `with_sampler(binding: u32)` — filtering sampler type; default visibility
+      Fragment.
   - `BindGroupBuilder` additions:
     - `with_texture(binding: u32, texture: &Texture)` — uses the default view
       that matches the texture’s dimension.
@@ -160,11 +168,14 @@ Render pass: SetPipeline -> SetBindGroup -> Draw
 
 - Binding
   - `with_sampled_texture` declares a 2D filterable float texture binding at
-    the specified index; shaders declare `texture_2d<f32>`.
+    the specified index with Fragment visibility; shaders declare
+    `texture_2d<f32>`.
   - `with_sampled_texture_dim` declares a texture binding with explicit view
-    dimension; shaders declare `texture_2d<f32>` or `texture_3d<f32>`.
-  - `with_sampler` declares a filtering sampler binding at the specified index;
-    shaders declare `sampler` and combine with the texture in sampling calls.
+    dimension and visibility; shaders declare `texture_2d<f32>` or
+    `texture_3d<f32>`.
+  - `with_sampler` declares a filtering sampler binding at the specified index
+    with Fragment visibility; shaders declare `sampler` and combine with the
+    texture in sampling calls.
 
 ### Validation and Errors
 
@@ -188,7 +199,8 @@ Render pass: SetPipeline -> SetBindGroup -> Draw
   - The platform layer performs padding to satisfy the 256-byte
     `bytes_per_row` requirement and sets `rows_per_image` appropriately;
     mismatched lengths or overflows MUST return an error before encoding.
-  - If `with_data` is used, usage MUST include `COPY_DST`.
+  - If `with_data` is used, usage MUST include `COPY_DST`. An implementation
+    MAY automatically add `COPY_DST` for build-time uploads to avoid errors.
 
 - Bindings
   - `with_texture` and `with_sampler` MUST reference resources compatible with
@@ -231,26 +243,39 @@ Render pass: SetPipeline -> SetBindGroup -> Draw
 ## Requirements Checklist
 
 - Functionality
-  - [ ] Feature flags defined (if applicable)
-  - [ ] 2D texture creation and upload
-  - [ ] 3D texture creation and upload
-  - [ ] Sampler creation (U, V, W addressing)
-  - [ ] Bind group layout and binding for texture + sampler (2D/3D)
+  - [x] Feature flags defined (if applicable) (N/A)
+  - [x] 2D texture creation and upload
+  - [x] 3D texture creation and upload
+  - [x] Sampler creation (U, V, W addressing)
+  - [x] Bind group layout and binding for texture + sampler (2D/3D)
 - API Surface
-  - [ ] Public builders and enums in `lambda-rs`
-  - [ ] Platform wrappers in `lambda-rs-platform`
-  - [ ] Backwards compatibility assessed
+  - [x] Public builders and enums in `lambda-rs`
+  - [x] Platform wrappers in `lambda-rs-platform`
+  - [x] Backwards compatibility assessed
 - Validation and Errors
   - [ ] Dimension and limit checks (2D/3D)
-  - [ ] Format compatibility checks
-  - [ ] Data length and row padding/rows-per-image validation
+  - [x] Format compatibility checks
+  - [x] Data length and row padding/rows-per-image validation
 - Performance
-  - [ ] Upload path reasoned and documented
+  - [x] Upload path reasoned and documented
   - [ ] Memory footprint characterized for common formats
 - Documentation and Examples
-  - [ ] User-facing docs updated
-  - [ ] Minimal example rendering a textured triangle
-  - [ ] Migration notes (if applicable)
+  - [x] User-facing docs updated
+  - [x] Minimal example rendering a textured quad (equivalent)
+  - [x] Migration notes (if applicable) (N/A)
+
+- Extensions (Planned)
+  - [ ] Mipmapping: generation, `mip_level_count`, mip view selection
+  - [ ] Texture arrays and cube maps: array/cube view dimensions and layout entries
+  - [ ] Storage textures: read-write bindings and storage-capable formats
+  - [ ] Render-target textures (color): `RENDER_ATTACHMENT` usage and MSAA resolve
+  - [ ] Additional color formats: `R8Unorm`, `Rg8Unorm`, `Rgba16Float`, others
+  - [ ] Compressed textures: BCn/ASTC/ETC via KTX2/BasisU
+  - [ ] Anisotropic filtering and border color: anisotropy and `ClampToBorder`
+  - [ ] Sub-rect updates and streaming: partial `write_texture`, buffer-to-texture
+  - [ ] Alternate view formats: `view_formats` and view creation over subsets
+  - [ ] Compare samplers (shadow sampling): comparison binding type and sampling
+  - [ ] LOD bias and per-sample control: expose LOD bias and overrides
 
 ## Verification and Testing
 
@@ -294,20 +319,20 @@ let texture2d = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
 let sampler = SamplerBuilder::new()
   .linear_clamp()
   .with_label("albedo-sampler")
-  .build(&mut render_context)?;
+  .build(&mut render_context);
 
 let layout2d = BindGroupLayoutBuilder::new()
-  .with_uniform(0, BindingVisibility::Vertex | BindingVisibility::Fragment)
+  .with_uniform(0, BindingVisibility::VertexAndFragment)
   .with_sampled_texture(1) // 2D shorthand
   .with_sampler(2)
-  .build(&mut render_context)?;
+  .build(&mut render_context);
 
 let group2d = BindGroupBuilder::new()
   .with_layout(&layout2d)
   .with_uniform(0, &uniform_buffer)
   .with_texture(1, &texture2d)
   .with_sampler(2, &sampler)
-  .build(&mut render_context)?;
+  .build(&mut render_context);
 
 RC::SetBindGroup { set: 0, group: group_id, dynamic_offsets: vec![] };
 ```
@@ -329,6 +354,7 @@ Rust (3D high level)
 use lambda::render::texture::{TextureBuilder, TextureFormat};
 use lambda::render::bind::{BindGroupLayoutBuilder, BindGroupBuilder};
 use lambda::render::texture::ViewDimension;
+use lambda::render::bind::BindingVisibility;
 
 let texture3d = TextureBuilder::new_3d(TextureFormat::Rgba8Unorm)
   .with_size_3d(128, 128, 64)
@@ -337,15 +363,15 @@ let texture3d = TextureBuilder::new_3d(TextureFormat::Rgba8Unorm)
   .build(&mut render_context)?;
 
 let layout3d = BindGroupLayoutBuilder::new()
-  .with_sampled_texture_dim(1, ViewDimension::D3)
+  .with_sampled_texture_dim(1, ViewDimension::D3, BindingVisibility::Fragment)
   .with_sampler(2)
-  .build(&mut render_context)?;
+  .build(&mut render_context);
 
 let group3d = BindGroupBuilder::new()
   .with_layout(&layout3d)
   .with_texture(1, &texture3d)
   .with_sampler(2, &sampler)
-  .build(&mut render_context)?;
+  .build(&mut render_context);
 ```
 
 WGSL snippet (3D)
@@ -363,6 +389,15 @@ fn fs_main(in_uv: vec2<f32>) -> @location(0) vec4<f32> {
 
 ## Changelog
 
+- 2025-11-10 (v0.3.1) — Merge “Future Extensions” into the Requirements
+  Checklist and mark implemented status; metadata updated.
+- 2025-11-09 (v0.3.0) — Clarify layout visibility parameters; make sampler
+  build infallible; correct `BindingVisibility` usage in examples;
+  add “Future Extensions” with planned texture features; metadata updated.
 - 2025-10-30 (v0.2.0) — Add 3D textures, explicit dimensions in layout and
   builders, W address mode, validation and examples updated.
 - 2025-10-30 (v0.1.0) — Initial draft.
+
+## Future Extensions
+
+Moved into the Requirements Checklist under “Extensions (Planned)”.
