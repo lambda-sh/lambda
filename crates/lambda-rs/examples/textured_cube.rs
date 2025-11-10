@@ -69,16 +69,20 @@ layout (location = 1) in vec3 vertex_normal;
 layout (location = 2) in vec3 vertex_color; // unused
 
 layout (location = 0) out vec3 v_model_pos;
-layout (location = 1) out vec3 v_normal;
+layout (location = 1) out vec3 v_model_normal;
+layout (location = 2) out vec3 v_world_normal;
 
 layout ( push_constant ) uniform Push {
   mat4 mvp;
+  mat4 model;
 } pc;
 
 void main() {
   gl_Position = pc.mvp * vec4(vertex_position, 1.0);
   v_model_pos = vertex_position;
-  v_normal = vertex_normal;
+  v_model_normal = vertex_normal;
+  // Rotate normals into world space using the model matrix (no scale/shear).
+  v_world_normal = mat3(pc.model) * vertex_normal;
 }
 
 "#;
@@ -87,7 +91,8 @@ const FRAGMENT_SHADER_SOURCE: &str = r#"
 #version 450
 
 layout (location = 0) in vec3 v_model_pos;
-layout (location = 1) in vec3 v_normal;
+layout (location = 1) in vec3 v_model_normal;
+layout (location = 2) in vec3 v_world_normal;
 
 layout (location = 0) out vec4 fragment_color;
 
@@ -111,11 +116,12 @@ vec2 project_uv(vec3 p, vec3 n) {
 
 void main() {
   // Sample color from 2D checkerboard using projected UVs in [0,1]
-  vec3 N = normalize(v_normal);
-  vec2 uv = clamp(project_uv(v_model_pos, N), 0.0, 1.0);
+  vec3 N_model = normalize(v_model_normal);
+  vec2 uv = clamp(project_uv(v_model_pos, N_model), 0.0, 1.0);
   vec3 base = texture(sampler2D(tex, samp), uv).rgb;
 
   // Simple lambert lighting to emphasize shape
+  vec3 N = normalize(v_world_normal);
   vec3 L = normalize(vec3(0.4, 0.7, 1.0));
   float diff = max(dot(N, L), 0.0);
   vec3 color = base * (0.25 + 0.75 * diff);
@@ -130,6 +136,7 @@ void main() {
 #[derive(Debug, Clone, Copy)]
 pub struct PushConstant {
   mvp: [[f32; 4]; 4],
+  model: [[f32; 4]; 4],
 }
 
 pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
@@ -446,6 +453,7 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
         offset: 0,
         bytes: Vec::from(push_constants_to_bytes(&PushConstant {
           mvp: mvp.transpose(),
+          model: model.transpose(),
         })),
       },
       RenderCommand::Draw {
