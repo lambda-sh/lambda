@@ -221,19 +221,19 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       0.0,
       [(-h, -h, -h), (-h, -h, h), (-h, h, h), (-h, h, -h)],
     );
-    // +Y (original correct winding)
+    // +Y (top) — CCW when viewed from +Y
     add_face(
       0.0,
       1.0,
       0.0,
-      [(-h, h, -h), (h, h, -h), (h, h, h), (-h, h, h)],
+      [(-h, h, h), (h, h, h), (h, h, -h), (-h, h, -h)],
     );
-    // -Y (original correct winding)
+    // -Y (bottom) — CCW when viewed from -Y
     add_face(
       0.0,
       -1.0,
       0.0,
-      [(-h, -h, h), (h, -h, h), (h, -h, -h), (-h, -h, -h)],
+      [(-h, -h, -h), (h, -h, -h), (h, -h, h), (-h, -h, h)],
     );
     // +Z
     add_face(
