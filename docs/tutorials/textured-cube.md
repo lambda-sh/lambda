@@ -3,13 +3,13 @@ title: "Textured Cube: 3D Push Constants + 2D Sampling"
 document_id: "textured-cube-tutorial-2025-11-10"
 status: "draft"
 created: "2025-11-10T00:00:00Z"
-last_updated: "2025-11-10T00:00:00Z"
-version: "0.1.0"
+last_updated: "2025-11-10T03:00:00Z"
+version: "0.1.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "727dbe9b7706e273c525a6ca92426a1aba61cdb6"
+repo_commit: "fe79756541e33270eca76638400bb64c6ec9f732"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "3d", "push-constants", "textures", "samplers", "rust", "wgpu"]
@@ -39,6 +39,7 @@ Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
   - [Step 10 — Handle Window Resize](#step-10)
 - [Validation](#validation)
 - [Notes](#notes)
+- [Conclusion](#conclusion)
 - [Putting It Together](#putting-it-together)
 - [Exercises](#exercises)
 - [Changelog](#changelog)
@@ -489,6 +490,15 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 - Winding and culling: keep face winding CCW to work with `CullingMode::Back`. Toggle to `CullingMode::None` when debugging geometry.
 - Indices: the cube uses non‑indexed vertices for clarity. An index buffer SHOULD be used for efficiency in production code.
 
+## Conclusion <a name="conclusion"></a>
+This tutorial delivered a rotating, textured cube with depth testing and
+back‑face culling. It compiled shaders that use a vertex push‑constant block
+for model‑view‑projection and model matrices, built a cube mesh and vertex
+layout, created an sRGB texture and sampler, and constructed a pipeline with
+depth and culling. Per‑frame transforms were computed and uploaded via push
+constants, and draw commands were recorded. The result demonstrates push
+constants for per‑draw transforms alongside 2D sampling in a 3D render path.
+
 ## Putting It Together <a name="putting-it-together"></a>
 - Full reference: `crates/lambda-rs/examples/textured_cube.rs`
 - The example includes logging in `on_attach` and uses the same builders and commands shown here.
@@ -510,4 +520,5 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
   - Bind two textures and blend per face based on projected UVs.
 
 ## Changelog <a name="changelog"></a>
+- 0.1.1 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
 - 0.1.0 (2025-11-10): Initial draft aligned with `crates/lambda-rs/examples/textured_cube.rs` including push constants, depth, culling, and projected UV sampling.

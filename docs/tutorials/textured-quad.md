@@ -3,13 +3,13 @@ title: "Textured Quad: Sample a 2D Texture"
 document_id: "textured-quad-tutorial-2025-11-01"
 status: "draft"
 created: "2025-11-01T00:00:00Z"
-last_updated: "2025-11-10T02:00:00Z"
-version: "0.3.2"
+last_updated: "2025-11-10T03:00:00Z"
+version: "0.3.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "fc5eb52c74eb0835225959f941db8e991112b87d"
+repo_commit: "fe79756541e33270eca76638400bb64c6ec9f732"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "textures", "samplers", "rust", "wgpu"]
@@ -38,6 +38,7 @@ Reference implementation: `crates/lambda-rs/examples/textured_quad.rs`.
   - [Step 9 — Handle Window Resize](#step-9)
 - [Validation](#validation)
 - [Notes](#notes)
+- [Conclusion](#conclusion)
 - [Putting It Together](#putting-it-together)
 - [Exercises](#exercises)
 - [Changelog](#changelog)
@@ -446,6 +447,14 @@ This event handler updates the stored window dimensions when a resize occurs. Th
 - Filtering and addressing: `linear_clamp` sets linear min/mag and clamp‑to‑edge. Pixel art MAY prefer `nearest_*`. Tiling textures SHOULD use `Repeat` address modes.
 - Pipeline layout: Include all used layouts via `.with_layouts(...)` when creating the pipeline; otherwise binding state is incomplete at draw time.
 
+## Conclusion <a name="conclusion"></a>
+This tutorial implemented a complete 2D sampling path. It generated a
+checkerboard on the CPU, uploaded it as an sRGB texture, created a
+linear‑clamp sampler, and defined matching binding layouts. Shaders forwarded
+UV and sampled the texture; a mesh and render pipeline were built; commands
+were recorded using a centered viewport. The result renders a textured quad
+with correct color space handling and filtering.
+
 ## Putting It Together <a name="putting-it-together"></a>
 - Full reference: `crates/lambda-rs/examples/textured_quad.rs`
 - Minimal differences: the example includes empty `on_detach` and `on_update` hooks and a log line in `on_attach`.
@@ -465,6 +474,7 @@ This event handler updates the stored window dimensions when a resize occurs. Th
   - Discuss artifacts without mipmaps and how multiple levels would improve minification.
 
 ## Changelog <a name="changelog"></a>
+- 0.3.3 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
 - 0.3.2 (2025-11-10): Add narrative explanations after each code block; clarify lifecycle and binding flow.
 - 0.3.1 (2025-11-10): Align with example; add shader constants; attach resources; fix variable names; add missing section.
 - 0.3.0 (2025-11-01): Initial draft aligned with `crates/lambda-rs/examples/textured_quad.rs`.
