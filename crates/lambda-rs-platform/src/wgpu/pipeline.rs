@@ -212,6 +212,7 @@ pub struct RenderPipelineBuilder<'a> {
   cull_mode: CullingMode,
   color_target_format: Option<wgpu::TextureFormat>,
   depth_stencil: Option<wgpu::DepthStencilState>,
+  sample_count: u32,
 }
 
 impl<'a> RenderPipelineBuilder<'a> {
@@ -224,6 +225,7 @@ impl<'a> RenderPipelineBuilder<'a> {
       cull_mode: CullingMode::Back,
       color_target_format: None,
       depth_stencil: None,
+      sample_count: 1,
     };
   }
 
@@ -272,6 +274,12 @@ impl<'a> RenderPipelineBuilder<'a> {
       stencil: wgpu::StencilState::default(),
       bias: wgpu::DepthBiasState::default(),
     });
+    return self;
+  }
+
+  /// Configure multisampling. Count MUST be >= 1 and supported by the device.
+  pub fn with_sample_count(mut self, count: u32) -> Self {
+    self.sample_count = count.max(1);
     return self;
   }
 
@@ -351,7 +359,10 @@ impl<'a> RenderPipelineBuilder<'a> {
           vertex: vertex_state,
           primitive: primitive_state,
           depth_stencil: self.depth_stencil,
-          multisample: wgpu::MultisampleState::default(),
+          multisample: wgpu::MultisampleState {
+            count: self.sample_count,
+            ..wgpu::MultisampleState::default()
+          },
           fragment,
           multiview: None,
           cache: None,

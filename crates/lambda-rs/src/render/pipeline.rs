@@ -51,6 +51,7 @@ use super::{
 pub struct RenderPipeline {
   pipeline: Rc<platform_pipeline::RenderPipeline>,
   buffers: Vec<Rc<Buffer>>,
+  sample_count: u32,
 }
 
 impl RenderPipeline {
@@ -65,6 +66,11 @@ impl RenderPipeline {
   /// Access the underlying platform render pipeline.
   pub(super) fn pipeline(&self) -> &platform_pipeline::RenderPipeline {
     return self.pipeline.as_ref();
+  }
+
+  /// Multisample count configured on this pipeline.
+  pub fn sample_count(&self) -> u32 {
+    return self.sample_count.max(1);
   }
 }
 
@@ -96,6 +102,8 @@ pub struct RenderPipelineBuilder {
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   label: Option<String>,
   use_depth: bool,
+  depth_format: Option<platform_texture::DepthFormat>,
+  sample_count: u32,
 }
 
 impl RenderPipelineBuilder {
@@ -108,6 +116,8 @@ impl RenderPipelineBuilder {
       bind_group_layouts: Vec::new(),
       label: None,
       use_depth: false,
+      depth_format: None,
+      sample_count: 1,
     }
   }
 
@@ -155,6 +165,22 @@ impl RenderPipelineBuilder {
   /// Enable depth testing/writes using the render context's depth format.
   pub fn with_depth(mut self) -> Self {
     self.use_depth = true;
+    return self;
+  }
+
+  /// Enable depth with an explicit depth format.
+  pub fn with_depth_format(
+    mut self,
+    format: platform_texture::DepthFormat,
+  ) -> Self {
+    self.use_depth = true;
+    self.depth_format = Some(format);
+    return self;
+  }
+
+  /// Configure multi-sampling for this pipeline.
+  pub fn with_multi_sample(mut self, samples: u32) -> Self {
+    self.sample_count = samples.max(1);
     return self;
   }
 
@@ -249,9 +275,16 @@ impl RenderPipelineBuilder {
     }
 
     if self.use_depth {
-      rp_builder = rp_builder
-        .with_depth_stencil(platform_texture::DepthFormat::Depth32Float);
+      let dfmt = self
+        .depth_format
+        .unwrap_or(platform_texture::DepthFormat::Depth32Float);
+      // Keep context depth format in sync for attachment creation.
+      render_context.depth_format = dfmt;
+      rp_builder = rp_builder.with_depth_stencil(dfmt);
     }
+
+    // Apply multi-sampling to the pipeline.
+    rp_builder = rp_builder.with_sample_count(self.sample_count);
 
     let pipeline = rp_builder.build(
       render_context.gpu(),
@@ -262,6 +295,7 @@ impl RenderPipelineBuilder {
     return RenderPipeline {
       pipeline: Rc::new(pipeline),
       buffers,
+      sample_count: self.sample_count,
     };
   }
 }

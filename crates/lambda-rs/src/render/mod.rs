@@ -174,6 +174,9 @@ impl RenderContextBuilder {
       size,
       depth_texture,
       depth_format,
+      depth_sample_count: 1,
+      msaa_color: None,
+      msaa_sample_count: 1,
       render_passes: vec![],
       render_pipelines: vec![],
       bind_group_layouts: vec![],
@@ -210,6 +213,9 @@ pub struct RenderContext {
   size: (u32, u32),
   depth_texture: Option<platform::texture::DepthTexture>,
   depth_format: platform::texture::DepthFormat,
+  depth_sample_count: u32,
+  msaa_color: Option<platform::texture::ColorAttachmentTexture>,
+  msaa_sample_count: u32,
   render_passes: Vec<RenderPassDesc>,
   render_pipelines: Vec<RenderPipeline>,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
@@ -304,9 +310,12 @@ impl RenderContext {
       platform::texture::DepthTextureBuilder::new()
         .with_size(self.size.0.max(1), self.size.1.max(1))
         .with_format(self.depth_format)
+        .with_sample_count(self.depth_sample_count)
         .with_label("lambda-depth")
         .build(self.gpu()),
     );
+    // Drop MSAA color target so it is rebuilt on demand with the new size.
+    self.msaa_color = None;
   }
 
   /// Borrow a previously attached render pass by id.
@@ -412,19 +421,51 @@ impl RenderContext {
           // Create variably sized color attachments and begin the pass.
           let mut color_attachments =
             platform::render_pass::RenderColorAttachments::new();
-          color_attachments.push_color(view);
+          let sample_count = pass.sample_count();
+          if sample_count > 1 {
+            let need_recreate = match &self.msaa_color {
+              Some(_) => self.msaa_sample_count != sample_count,
+              None => true,
+            };
+            if need_recreate {
+              self.msaa_color = Some(
+                platform::texture::ColorAttachmentTextureBuilder::new(
+                  self.config.format,
+                )
+                .with_size(self.size.0.max(1), self.size.1.max(1))
+                .with_sample_count(sample_count)
+                .with_label("lambda-msaa-color")
+                .build(self.gpu()),
+              );
+              self.msaa_sample_count = sample_count;
+            }
+            let msaa_view = self
+              .msaa_color
+              .as_ref()
+              .expect("MSAA color attachment should be created")
+              .view_ref();
+            color_attachments.push_msaa_color(msaa_view, view);
+          } else {
+            color_attachments.push_color(view);
+          }
 
           // Optional depth attachment configured by the pass description.
           let (depth_view, depth_ops) = match pass.depth_operations() {
             Some(dops) => {
-              if self.depth_texture.is_none() {
+              // Ensure depth texture exists and matches the pass's sample count.
+              let desired_samples = sample_count.max(1);
+              if self.depth_texture.is_none()
+                || self.depth_sample_count != desired_samples
+              {
                 self.depth_texture = Some(
                   platform::texture::DepthTextureBuilder::new()
                     .with_size(self.size.0.max(1), self.size.1.max(1))
                     .with_format(self.depth_format)
+                    .with_sample_count(desired_samples)
                     .with_label("lambda-depth")
                     .build(self.gpu()),
                 );
+                self.depth_sample_count = desired_samples;
               }
               let mut view_ref = self
                 .depth_texture

@@ -210,6 +210,28 @@ impl<'a> RenderColorAttachments<'a> {
     return self;
   }
 
+  /// Append a multi-sampled color attachment with a resolve target view.
+  ///
+  /// The `msaa_view` MUST have a sample count > 1 and the `resolve_view` MUST
+  /// be a single-sample view of the same format and size.
+  pub fn push_msaa_color(
+    &mut self,
+    msaa_view: surface::TextureViewRef<'a>,
+    resolve_view: surface::TextureViewRef<'a>,
+  ) -> &mut Self {
+    let attachment = wgpu::RenderPassColorAttachment {
+      view: msaa_view.raw,
+      resolve_target: Some(resolve_view.raw),
+      depth_slice: None,
+      ops: wgpu::Operations {
+        load: wgpu::LoadOp::Load,
+        store: wgpu::StoreOp::Store,
+      },
+    };
+    self.attachments.push(Some(attachment));
+    return self;
+  }
+
   /// Apply the same operations to all color attachments.
   pub(crate) fn set_operations_for_all(
     &mut self,

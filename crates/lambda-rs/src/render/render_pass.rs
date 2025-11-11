@@ -75,6 +75,7 @@ pub struct RenderPass {
   label: Option<String>,
   color_operations: ColorOperations,
   depth_operations: Option<DepthOperations>,
+  sample_count: u32,
 }
 
 impl RenderPass {
@@ -96,6 +97,10 @@ impl RenderPass {
   pub(crate) fn depth_operations(&self) -> Option<DepthOperations> {
     return self.depth_operations;
   }
+
+  pub(crate) fn sample_count(&self) -> u32 {
+    return self.sample_count.max(1);
+  }
 }
 
 /// Builder for a `RenderPass` description.
@@ -108,6 +113,7 @@ pub struct RenderPassBuilder {
   label: Option<String>,
   color_operations: ColorOperations,
   depth_operations: Option<DepthOperations>,
+  sample_count: u32,
 }
 
 impl RenderPassBuilder {
@@ -118,6 +124,7 @@ impl RenderPassBuilder {
       label: None,
       color_operations: ColorOperations::default(),
       depth_operations: None,
+      sample_count: 1,
     }
   }
 
@@ -176,6 +183,12 @@ impl RenderPassBuilder {
     return self;
   }
 
+  /// Configure multi-sample anti-aliasing for this pass.
+  pub fn with_multi_sample(mut self, samples: u32) -> Self {
+    self.sample_count = samples.max(1);
+    return self;
+  }
+
   /// Build the description used when beginning a render pass.
   pub fn build(self, _render_context: &RenderContext) -> RenderPass {
     RenderPass {
@@ -183,6 +196,7 @@ impl RenderPassBuilder {
       label: self.label,
       color_operations: self.color_operations,
       depth_operations: self.depth_operations,
+      sample_count: self.sample_count,
     }
   }
 }
