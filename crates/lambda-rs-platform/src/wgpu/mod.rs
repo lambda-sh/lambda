@@ -1,13 +1,11 @@
 //! Cross‑platform GPU abstraction built on top of `wgpu`.
 //!
 //! This module exposes a small, opinionated wrapper around core `wgpu` types
-//! to make engine code concise while keeping configuration explicit. The
-//! builders here (for the instance, surface, and device/queue) provide sane
-//! defaults and narrow the surface area used by Lambda, without hiding
-//! important handles when you need to drop down to raw `wgpu`.
+//! organized into focused submodules (instance, surface, gpu, pipeline, etc.).
+//! Higher layers import these modules rather than raw `wgpu` to keep Lambda’s
+//! API compact and stable.
 
-// keep this module focused on exports and submodules
-
+// Keep this module focused on exports and submodules only.
 pub mod bind;
 pub mod buffer;
 pub mod command;
@@ -16,4 +14,5 @@ pub mod instance;
 pub mod pipeline;
 pub mod render_pass;
 pub mod surface;
+pub mod texture;
 pub mod vertex;

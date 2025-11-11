@@ -3,13 +3,13 @@ title: "Uniform Buffers: Build a Spinning Triangle"
 document_id: "uniform-buffers-tutorial-2025-10-17"
 status: "draft"
 created: "2025-10-17T00:00:00Z"
-last_updated: "2025-10-30T00:10:00Z"
-version: "0.4.0"
+last_updated: "2025-11-10T03:00:00Z"
+version: "0.4.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "88e99500def9a1c1a123c960ba46b5ba7bdc7bab"
+repo_commit: "fe79756541e33270eca76638400bb64c6ec9f732"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "uniform-buffers", "rust", "wgpu"]
@@ -39,6 +39,7 @@ Reference implementation: `crates/lambda-rs/examples/uniform_buffer_triangle.rs`
   - [Step 10 — Handle Window Resize](#step-10)
 - [Validation](#validation)
 - [Notes](#notes)
+- [Conclusion](#conclusion)
 - [Exercises](#exercises)
 - [Changelog](#changelog)
 
@@ -368,6 +369,15 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 - Update strategy: `CPU_VISIBLE` buffers SHOULD be used for per‑frame updates; device‑local memory MAY be preferred for static data.
 - Pipeline layout: All bind group layouts used by the pipeline MUST be included via `.with_layouts(...)`.
 
+## Conclusion <a name="conclusion"></a>
+This tutorial produced a spinning triangle that reads a model‑view‑projection
+matrix from a uniform buffer. The implementation aligned the shader and Rust
+layouts, created shaders and a mesh, defined a bind group layout and uniform
+buffer, built a render pipeline, wrote per‑frame matrix updates from the CPU,
+and recorded draw commands with resize‑aware projection. The result establishes
+a minimal, reusable path for per‑frame data via uniform buffers that scales to
+multiple objects and passes.
+
 ## Exercises <a name="exercises"></a>
 
 - Exercise 1: Time‑based fragment color
@@ -401,6 +411,9 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
   UBOs and bind groups.
 
 ## Changelog <a name="changelog"></a>
+
+- 0.4.1 (2025‑11‑10): Add Conclusion section summarizing accomplishments; update
+metadata and commit.
 
 - 0.4.0 (2025‑10‑30): Added table of contents with links; converted sections to anchored headings; added ASCII data flow diagram; metadata updated.
 - 0.2.0 (2025‑10‑17): Added goals and book‑style step explanations; expanded

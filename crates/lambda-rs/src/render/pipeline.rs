@@ -30,7 +30,10 @@ use std::{
   rc::Rc,
 };
 
-use lambda_platform::wgpu::pipeline as platform_pipeline;
+use lambda_platform::wgpu::{
+  pipeline as platform_pipeline,
+  texture as platform_texture,
+};
 
 use super::{
   bind,
@@ -92,6 +95,7 @@ pub struct RenderPipelineBuilder {
   culling: CullingMode,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   label: Option<String>,
+  use_depth: bool,
 }
 
 impl RenderPipelineBuilder {
@@ -103,6 +107,7 @@ impl RenderPipelineBuilder {
       culling: CullingMode::Back,
       bind_group_layouts: Vec::new(),
       label: None,
+      use_depth: false,
     }
   }
 
@@ -144,6 +149,12 @@ impl RenderPipelineBuilder {
   /// Provide one or more bind group layouts used to create the pipeline layout.
   pub fn with_layouts(mut self, layouts: &[&bind::BindGroupLayout]) -> Self {
     self.bind_group_layouts = layouts.iter().map(|l| (*l).clone()).collect();
+    return self;
+  }
+
+  /// Enable depth testing/writes using the render context's depth format.
+  pub fn with_depth(mut self) -> Self {
+    self.use_depth = true;
     return self;
   }
 
@@ -235,6 +246,11 @@ impl RenderPipelineBuilder {
 
     if fragment_module.is_some() {
       rp_builder = rp_builder.with_surface_color_target(surface_format);
+    }
+
+    if self.use_depth {
+      rp_builder = rp_builder
+        .with_depth_stencil(platform_texture::DepthFormat::Depth32Float);
     }
 
     let pipeline = rp_builder.build(

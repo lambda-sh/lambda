@@ -54,6 +54,31 @@ impl Default for ColorOperations {
   }
 }
 
+/// Depth load operation for a depth attachment.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DepthLoadOp {
+  /// Load the existing contents of the depth attachment.
+  Load,
+  /// Clear the depth attachment to the provided value in [0,1].
+  Clear(f32),
+}
+
+/// Depth operations (load/store) for the depth attachment.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DepthOperations {
+  pub load: DepthLoadOp,
+  pub store: StoreOp,
+}
+
+impl Default for DepthOperations {
+  fn default() -> Self {
+    return Self {
+      load: DepthLoadOp::Clear(1.0),
+      store: StoreOp::Store,
+    };
+  }
+}
+
 /// Configuration for beginning a render pass.
 #[derive(Clone, Debug, Default)]
 pub struct RenderPassConfig {
@@ -255,6 +280,8 @@ impl RenderPassBuilder {
     return self;
   }
 
+  // Depth attachment is supplied at build time by the caller.
+
   /// Build (begin) the render pass on the provided encoder using the provided
   /// color attachments list. The attachments list MUST outlive the returned
   /// render pass value.
@@ -262,6 +289,8 @@ impl RenderPassBuilder {
     &'view self,
     encoder: &'view mut command::CommandEncoder,
     attachments: &'view mut RenderColorAttachments<'view>,
+    depth_view: Option<crate::wgpu::surface::TextureViewRef<'view>>,
+    depth_ops: Option<DepthOperations>,
   ) -> RenderPass<'view> {
     let operations = match self.config.color_operations.load {
       ColorLoadOp::Load => wgpu::Operations {
@@ -288,10 +317,35 @@ impl RenderPassBuilder {
     // Apply operations to all provided attachments.
     attachments.set_operations_for_all(operations);
 
+    // Optional depth attachment
+    let depth_stencil_attachment = depth_view.map(|v| {
+      let dop = depth_ops.unwrap_or_default();
+      wgpu::RenderPassDepthStencilAttachment {
+        view: v.raw,
+        depth_ops: Some(match dop.load {
+          DepthLoadOp::Load => wgpu::Operations {
+            load: wgpu::LoadOp::Load,
+            store: match dop.store {
+              StoreOp::Store => wgpu::StoreOp::Store,
+              StoreOp::Discard => wgpu::StoreOp::Discard,
+            },
+          },
+          DepthLoadOp::Clear(value) => wgpu::Operations {
+            load: wgpu::LoadOp::Clear(value),
+            store: match dop.store {
+              StoreOp::Store => wgpu::StoreOp::Store,
+              StoreOp::Discard => wgpu::StoreOp::Discard,
+            },
+          },
+        }),
+        stencil_ops: None,
+      }
+    });
+
     let desc: wgpu::RenderPassDescriptor<'view> = wgpu::RenderPassDescriptor {
       label: self.config.label.as_deref(),
       color_attachments: attachments.as_slice(),
-      depth_stencil_attachment: None,
+      depth_stencil_attachment,
       timestamp_writes: None,
       occlusion_query_set: None,
     };

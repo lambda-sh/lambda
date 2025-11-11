@@ -41,6 +41,21 @@ jobs:
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Install Linux deps for winit/wgpu
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config libx11-dev libxcb1-dev libxcb-render0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev \
+            libwayland-dev libudev-dev \
+            libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools
+
+      - name: Configure Vulkan for headless CI
+        run: |
+          echo "WGPU_BACKEND=vulkan" >> "$GITHUB_ENV"
+          echo "VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json" >> "$GITHUB_ENV"
+          vulkaninfo --summary || true
+
       - name: Format check
         run: cargo fmt --all -- --check
 

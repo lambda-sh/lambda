@@ -8,6 +8,7 @@ use crate::wgpu::{
   bind,
   gpu::Gpu,
   surface::SurfaceFormat,
+  texture::DepthFormat,
   vertex::ColorFormat,
 };
 
@@ -210,6 +211,7 @@ pub struct RenderPipelineBuilder<'a> {
   vertex_buffers: Vec<(u64, Vec<VertexAttributeDesc>)>,
   cull_mode: CullingMode,
   color_target_format: Option<wgpu::TextureFormat>,
+  depth_stencil: Option<wgpu::DepthStencilState>,
 }
 
 impl<'a> RenderPipelineBuilder<'a> {
@@ -221,6 +223,7 @@ impl<'a> RenderPipelineBuilder<'a> {
       vertex_buffers: Vec::new(),
       cull_mode: CullingMode::Back,
       color_target_format: None,
+      depth_stencil: None,
     };
   }
 
@@ -255,6 +258,20 @@ impl<'a> RenderPipelineBuilder<'a> {
   /// Set single color target for fragment stage from a surface format.
   pub fn with_surface_color_target(mut self, format: SurfaceFormat) -> Self {
     self.color_target_format = Some(format.to_wgpu());
+    return self;
+  }
+
+  /// Enable depth testing/writes using the provided depth format and default compare/write settings.
+  ///
+  /// Defaults: compare Less, depth writes enabled, no stencil.
+  pub fn with_depth_stencil(mut self, format: DepthFormat) -> Self {
+    self.depth_stencil = Some(wgpu::DepthStencilState {
+      format: format.to_wgpu(),
+      depth_write_enabled: true,
+      depth_compare: wgpu::CompareFunction::Less,
+      stencil: wgpu::StencilState::default(),
+      bias: wgpu::DepthBiasState::default(),
+    });
     return self;
   }
 
@@ -333,7 +350,7 @@ impl<'a> RenderPipelineBuilder<'a> {
           layout: layout_ref,
           vertex: vertex_state,
           primitive: primitive_state,
-          depth_stencil: None,
+          depth_stencil: self.depth_stencil,
           multisample: wgpu::MultisampleState::default(),
           fragment,
           multiview: None,
