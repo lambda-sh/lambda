@@ -4,7 +4,10 @@
 //! against the swapchain (currently a single color attachment and clear color).
 //! The pass is referenced by handle from `RenderCommand::BeginRenderPass`.
 
+use logging;
+
 use super::RenderContext;
+use crate::render::validation;
 
 /// Color load operation for the first color attachment.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -185,7 +188,18 @@ impl RenderPassBuilder {
 
   /// Configure multi-sample anti-aliasing for this pass.
   pub fn with_multi_sample(mut self, samples: u32) -> Self {
-    self.sample_count = samples.max(1);
+    match validation::validate_sample_count(samples) {
+      Ok(()) => {
+        self.sample_count = samples;
+      }
+      Err(msg) => {
+        logging::error!(
+          "{}; falling back to sample_count=1 for render pass",
+          msg
+        );
+        self.sample_count = 1;
+      }
+    }
     return self;
   }
 

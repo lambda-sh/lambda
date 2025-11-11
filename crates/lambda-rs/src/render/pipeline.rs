@@ -34,6 +34,7 @@ use lambda_platform::wgpu::{
   pipeline as platform_pipeline,
   texture as platform_texture,
 };
+use logging;
 
 use super::{
   bind,
@@ -43,6 +44,7 @@ use super::{
   vertex::VertexAttribute,
   RenderContext,
 };
+use crate::render::validation;
 
 /// A created graphics pipeline and the vertex buffers it expects.
 #[derive(Debug)]
@@ -180,7 +182,15 @@ impl RenderPipelineBuilder {
 
   /// Configure multi-sampling for this pipeline.
   pub fn with_multi_sample(mut self, samples: u32) -> Self {
-    self.sample_count = samples.max(1);
+    match validation::validate_sample_count(samples) {
+      Ok(()) => {
+        self.sample_count = samples;
+      }
+      Err(msg) => {
+        logging::error!("{}; falling back to sample_count=1 for pipeline", msg);
+        self.sample_count = 1;
+      }
+    }
     return self;
   }
 
@@ -284,7 +294,23 @@ impl RenderPipelineBuilder {
     }
 
     // Apply multi-sampling to the pipeline.
-    rp_builder = rp_builder.with_sample_count(self.sample_count);
+    // Ensure pass and pipeline samples match; adjust if needed with a warning.
+    let pass_samples = _render_pass.sample_count();
+    let mut pipeline_samples = self.sample_count;
+    if pipeline_samples != pass_samples {
+      logging::error!(
+        "Pipeline sample_count={} does not match pass sample_count={}; aligning to pass",
+        pipeline_samples,
+        pass_samples
+      );
+      pipeline_samples = pass_samples;
+    }
+    // Validate again (defensive) in case pass was built with an invalid value
+    // and clamped by its builder.
+    if validation::validate_sample_count(pipeline_samples).is_err() {
+      pipeline_samples = 1;
+    }
+    rp_builder = rp_builder.with_sample_count(pipeline_samples);
 
     let pipeline = rp_builder.build(
       render_context.gpu(),
@@ -295,7 +321,7 @@ impl RenderPipelineBuilder {
     return RenderPipeline {
       pipeline: Rc::new(pipeline),
       buffers,
-      sample_count: self.sample_count,
+      sample_count: pipeline_samples,
     };
   }
 }

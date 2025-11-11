@@ -3,13 +3,13 @@ title: "Depth/Stencil and Multi-Sample Rendering"
 document_id: "depth-stencil-msaa-2025-11-11"
 status: "draft"
 created: "2025-11-11T00:00:00Z"
-last_updated: "2025-11-11T00:00:00Z"
-version: "0.1.0"
+last_updated: "2025-11-11T00:10:00Z"
+version: "0.1.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "c37e14cfa5fe220557da5e62aa456e42f1d34383"
+repo_commit: "1ec667d422611875a86888dd7562117c14072bbb"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "depth", "stencil", "msaa"]
@@ -110,25 +110,30 @@ App Code
     - The pass MUST clear the depth aspect to `clear_value` at the start of the
       pass. Stencil clear behavior is unspecified in this version and MAY be
       added when extended stencil operations are introduced.
-  - Multi-sample semantics
-    - When `sample_count > 1`, the pass MUST render into a multi-sampled color
-      target and resolve to the single-sample swap chain target before present.
-    - The pipeline `sample_count` MUST equal the pass `sample_count`.
+- Multi-sample semantics
+  - When `sample_count > 1`, the pass MUST render into a multi-sampled color
+    target and resolve to the single-sample swap chain target before present.
+    - The pipeline `sample_count` MUST equal the pass `sample_count`. If a
+      mismatch is detected during pipeline build, the engine aligns the pipeline
+      to the pass sample count and logs an error.
   - Matching constraints
     - If a pipeline declares a depth format, it MUST equal the pass depth
       attachment format. Mismatches are errors at build time.
 
 ## Validation and Errors
 
-- Validation is performed in `lambda-rs` during `build(...)` and by
-  `lambda-rs-platform` against device limits.
-- Error type: `RenderConfigurationError`
-  - `UnsupportedMultiSampleCount { requested: u32, supported: Vec<u32> }`
-  - `UnsupportedDepthFormat { format: DepthFormat }`
-  - `DepthFormatMismatch { pass: DepthFormat, pipeline: DepthFormat }`
-  - `InvalidDepthClearValue { value: f32 }` (MUST be in [0.0, 1.0])
-  - `StencilUnsupported { format: DepthFormat }`
-  - `DeviceLimitExceeded { detail: String }`
+- Validation is performed in `lambda-rs` during builder configuration and
+  `build(...)`. Current behavior prefers logging and safe fallbacks over
+  returning errors to preserve API stability.
+- Multi-sample count validation
+  - Allowed counts: 1, 2, 4, 8. Other values are rejected with an error log and
+    clamped to `1` during `with_multi_sample(...)`.
+  - On pipeline build, if the pipeline sample count differs from the pass, the
+    engine aligns the pipeline to the pass and logs an error.
+- Depth clear validation
+  - Clear values outside `[0.0, 1.0]` SHOULD be rejected; current engine path
+    relies on caller-provided sane values and `wgpu` validation. A strict check
+    MAY be added in a follow-up.
 
 ## Constraints and Rules
 
@@ -198,4 +203,6 @@ path that demonstrates the implementation.
 
 ## Changelog
 
+- 2025-11-11 (v0.1.1) — Add MSAA validation in builders; align pipeline and
+  pass sample counts; document logging-based fallback semantics.
 - 2025-11-11 (v0.1.0) — Initial draft.
