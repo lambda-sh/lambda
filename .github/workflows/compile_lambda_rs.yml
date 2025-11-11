@@ -47,7 +47,16 @@ jobs:
           sudo apt-get install -y \
             pkg-config libx11-dev libxcb1-dev libxcb-render0-dev \
             libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev \
-            libwayland-dev libudev-dev libvulkan-dev
+            libwayland-dev libudev-dev \
+            libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools
+
+      - name: Configure Vulkan (Ubuntu)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          echo "WGPU_BACKEND=vulkan" >> "$GITHUB_ENV"
+          # Prefer Mesa's software Vulkan (lavapipe) to ensure headless availability
+          echo "VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json" >> "$GITHUB_ENV"
+          vulkaninfo --summary || true
 
       # Windows runners already include the required toolchain for DX12 builds.
 
