@@ -331,7 +331,7 @@ impl RenderPassBuilder {
             },
           },
           DepthLoadOp::Clear(value) => wgpu::Operations {
-            load: wgpu::LoadOp::Clear(value as f32),
+            load: wgpu::LoadOp::Clear(value),
             store: match dop.store {
               StoreOp::Store => wgpu::StoreOp::Store,
               StoreOp::Discard => wgpu::StoreOp::Discard,
