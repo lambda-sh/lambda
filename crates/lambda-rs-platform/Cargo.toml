@@ -11,7 +11,7 @@ name = "lambda_platform"
 path = "src/lib.rs"
 
 [dependencies]
-winit = "=0.29.10"
+winit = "=0.29.15"
 shaderc = { version = "=0.7", optional = true, default-features = false }
 naga = { version = "=26.0.0", optional = true, default-features = false, features = ["spv-out", "glsl-in", "wgsl-in"] }
 rand = "=0.8.5"
