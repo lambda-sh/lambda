@@ -179,7 +179,7 @@ Render pass: SetPipeline -> SetBindGroup -> Draw
 
 ### Validation and Errors
 
--- Limits and dimensions
+- Limits and dimensions
   - Width and height MUST be > 0 and ≤ the corresponding device limit for the
     chosen dimension.
   - 2D check: `≤ limits.max_texture_dimension_2d`.
