@@ -50,10 +50,10 @@ pub enum FilterMode {
 
 impl FilterMode {
   fn to_platform(self) -> platform::FilterMode {
-    match self {
+    return match self {
       FilterMode::Nearest => platform::FilterMode::Nearest,
       FilterMode::Linear => platform::FilterMode::Linear,
-    }
+    };
   }
 }
 
@@ -67,11 +67,11 @@ pub enum AddressMode {
 
 impl AddressMode {
   fn to_platform(self) -> platform::AddressMode {
-    match self {
+    return match self {
       AddressMode::ClampToEdge => platform::AddressMode::ClampToEdge,
       AddressMode::Repeat => platform::AddressMode::Repeat,
       AddressMode::MirrorRepeat => platform::AddressMode::MirrorRepeat,
-    }
+    };
   }
 }
 #[derive(Debug, Clone)]
@@ -179,13 +179,16 @@ impl TextureBuilder {
         platform::TextureBuilder::new_3d(self.format.to_platform())
           .with_size_3d(self.width, self.height, self.depth)
       };
+
     if let Some(ref label) = self.label {
       builder = builder.with_label(label);
     }
+
     if let Some(ref pixels) = self.data {
       builder = builder.with_data(pixels);
     }
-    match builder.build(render_context.gpu()) {
+
+    return match builder.build(render_context.gpu()) {
       Ok(texture) => Ok(Texture {
         inner: Rc::new(texture),
       }),
@@ -198,7 +201,7 @@ impl TextureBuilder {
       Err(platform::TextureBuildError::Overflow) => {
         Err("Overflow while computing texture layout")
       }
-    }
+    };
   }
 }
 
