@@ -243,17 +243,26 @@ impl RenderPassBuilder {
 
   /// Configure multi-sample anti-aliasing for this pass.
   pub fn with_multi_sample(mut self, samples: u32) -> Self {
-    match validation::validate_sample_count(samples) {
-      Ok(()) => {
-        self.sample_count = samples;
+    #[cfg(debug_assertions)]
+    {
+      match validation::validate_sample_count(samples) {
+        Ok(()) => {
+          self.sample_count = samples;
+        }
+        Err(msg) => {
+          logging::error!(
+            "{}; falling back to sample_count=1 for render pass",
+            msg
+          );
+          self.sample_count = 1;
+        }
       }
-      Err(msg) => {
-        logging::error!(
-          "{}; falling back to sample_count=1 for render pass",
-          msg
-        );
-        self.sample_count = 1;
-      }
+    }
+    #[cfg(not(debug_assertions))]
+    {
+      // In release builds, accept the provided sample count without engine
+      // validation; platform validation MAY still apply.
+      self.sample_count = samples;
     }
     return self;
   }

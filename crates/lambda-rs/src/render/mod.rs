@@ -471,6 +471,7 @@ impl RenderContext {
               && self.depth_format
                 != platform::texture::DepthFormat::Depth24PlusStencil8
             {
+              #[cfg(debug_assertions)]
               logging::error!(
                 "Render pass has stencil ops but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
                 self.depth_format
@@ -600,8 +601,10 @@ impl RenderContext {
     I: Iterator<Item = RenderCommand>,
   {
     Self::apply_viewport(pass, &initial_viewport);
-    // De-duplicate advisories within this pass
+    // De-duplicate advisories within this pass (debug builds only)
+    #[cfg(debug_assertions)]
     let mut warned_no_stencil_for_pipeline: HashSet<usize> = HashSet::new();
+    #[cfg(debug_assertions)]
     let mut warned_no_depth_for_pipeline: HashSet<usize> = HashSet::new();
 
     while let Some(command) = commands.next() {
@@ -617,61 +620,67 @@ impl RenderContext {
                 "Unknown pipeline {pipeline}"
               ));
             })?;
-          // Validate pass/pipeline compatibility before deferring to wgpu.
-          if !uses_color && pipeline_ref.has_color_targets() {
-            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-            return Err(RenderError::Configuration(format!(
-              "Render pipeline '{}' declares color targets but the current pass has no color attachments",
-              label
-            )));
-          }
-          if uses_color && !pipeline_ref.has_color_targets() {
-            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-            return Err(RenderError::Configuration(format!(
-              "Render pipeline '{}' has no color targets but the current pass declares color attachments",
-              label
-            )));
-          }
-          if !pass_has_depth && pipeline_ref.expects_depth_stencil() {
-            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-            return Err(RenderError::Configuration(format!(
-              "Render pipeline '{}' expects a depth/stencil attachment but the current pass has none",
-              label
-            )));
-          }
-          // Advisory checks to help users reason about stencil/depth behavior.
-          if pass_has_stencil
-            && !pipeline_ref.uses_stencil()
-            && warned_no_stencil_for_pipeline.insert(pipeline)
+          // Validate pass/pipeline compatibility before deferring to the platform (debug only).
+          #[cfg(debug_assertions)]
           {
-            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-            let key = format!("stencil:no_test:{}", label);
-            let msg = format!(
-              "Pass provides stencil ops but pipeline '{}' has no stencil test; stencil will not affect rendering",
-              label
-            );
-            util::warn_once(&key, &msg);
+            if !uses_color && pipeline_ref.has_color_targets() {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              return Err(RenderError::Configuration(format!(
+                "Render pipeline '{}' declares color targets but the current pass has no color attachments",
+                label
+              )));
+            }
+            if uses_color && !pipeline_ref.has_color_targets() {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              return Err(RenderError::Configuration(format!(
+                "Render pipeline '{}' has no color targets but the current pass declares color attachments",
+                label
+              )));
+            }
+            if !pass_has_depth && pipeline_ref.expects_depth_stencil() {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              return Err(RenderError::Configuration(format!(
+                "Render pipeline '{}' expects a depth/stencil attachment but the current pass has none",
+                label
+              )));
+            }
           }
-          if !pass_has_stencil && pipeline_ref.uses_stencil() {
-            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-            let key = format!("stencil:pass_no_operations:{}", label);
-            let msg = format!(
-              "Pipeline '{}' enables stencil but pass has no stencil ops configured; stencil reference/tests may be ineffective",
-              label
-            );
-            util::warn_once(&key, &msg);
-          }
-          if pass_has_depth
-            && !pipeline_ref.expects_depth_stencil()
-            && warned_no_depth_for_pipeline.insert(pipeline)
+          // Advisory checks to help reason about stencil/depth behavior (debug only).
+          #[cfg(debug_assertions)]
           {
-            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-            let key = format!("depth:no_test:{}", label);
-            let msg = format!(
-              "Pass has depth attachment but pipeline '{}' does not enable depth testing; depth values will not be tested/written",
-              label
-            );
-            util::warn_once(&key, &msg);
+            if pass_has_stencil
+              && !pipeline_ref.uses_stencil()
+              && warned_no_stencil_for_pipeline.insert(pipeline)
+            {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              let key = format!("stencil:no_test:{}", label);
+              let msg = format!(
+                "Pass provides stencil ops but pipeline '{}' has no stencil test; stencil will not affect rendering",
+                label
+              );
+              util::warn_once(&key, &msg);
+            }
+            if !pass_has_stencil && pipeline_ref.uses_stencil() {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              let key = format!("stencil:pass_no_operations:{}", label);
+              let msg = format!(
+                "Pipeline '{}' enables stencil but pass has no stencil ops configured; stencil reference/tests may be ineffective",
+                label
+              );
+              util::warn_once(&key, &msg);
+            }
+            if pass_has_depth
+              && !pipeline_ref.expects_depth_stencil()
+              && warned_no_depth_for_pipeline.insert(pipeline)
+            {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              let key = format!("depth:no_test:{}", label);
+              let msg = format!(
+                "Pass has depth attachment but pipeline '{}' does not enable depth testing; depth values will not be tested/written",
+                label
+              );
+              util::warn_once(&key, &msg);
+            }
           }
           pass.set_pipeline(pipeline_ref.pipeline());
         }

@@ -318,14 +318,26 @@ impl RenderPipelineBuilder {
 
   /// Configure multi-sampling for this pipeline.
   pub fn with_multi_sample(mut self, samples: u32) -> Self {
-    match validation::validate_sample_count(samples) {
-      Ok(()) => {
-        self.sample_count = samples;
+    #[cfg(debug_assertions)]
+    {
+      match validation::validate_sample_count(samples) {
+        Ok(()) => {
+          self.sample_count = samples;
+        }
+        Err(msg) => {
+          logging::error!(
+            "{}; falling back to sample_count=1 for pipeline",
+            msg
+          );
+          self.sample_count = 1;
+        }
       }
-      Err(msg) => {
-        logging::error!("{}; falling back to sample_count=1 for pipeline", msg);
-        self.sample_count = 1;
-      }
+    }
+    #[cfg(not(debug_assertions))]
+    {
+      // In release builds, accept the provided sample count without extra
+      // engine-level validation. Platform validation MAY still apply.
+      self.sample_count = samples;
     }
     return self;
   }
@@ -452,6 +464,7 @@ impl RenderPipelineBuilder {
       if self.stencil.is_some()
         && dfmt != platform_texture::DepthFormat::Depth24PlusStencil8
       {
+        #[cfg(debug_assertions)]
         logging::error!(
           "Stencil configured but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
           dfmt
@@ -473,21 +486,23 @@ impl RenderPipelineBuilder {
     }
 
     // Apply multi-sampling to the pipeline.
-    // Ensure pass and pipeline samples match; adjust if needed with a warning.
-    let pass_samples = _render_pass.sample_count();
+    // In debug builds, validate and align with the render pass; in release,
+    // defer to platform validation without engine-side checks.
     let mut pipeline_samples = self.sample_count;
-    if pipeline_samples != pass_samples {
-      logging::error!(
-        "Pipeline sample_count={} does not match pass sample_count={}; aligning to pass",
-        pipeline_samples,
-        pass_samples
-      );
-      pipeline_samples = pass_samples;
-    }
-    // Validate again (defensive) in case pass was built with an invalid value
-    // and clamped by its builder.
-    if validation::validate_sample_count(pipeline_samples).is_err() {
-      pipeline_samples = 1;
+    #[cfg(debug_assertions)]
+    {
+      let pass_samples = _render_pass.sample_count();
+      if pipeline_samples != pass_samples {
+        logging::error!(
+          "Pipeline sample_count={} does not match pass sample_count={}; aligning to pass",
+          pipeline_samples,
+          pass_samples
+        );
+        pipeline_samples = pass_samples;
+      }
+      if validation::validate_sample_count(pipeline_samples).is_err() {
+        pipeline_samples = 1;
+      }
     }
     rp_builder = rp_builder.with_sample_count(pipeline_samples);
 
