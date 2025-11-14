@@ -79,6 +79,31 @@ impl Default for DepthOperations {
   }
 }
 
+/// Stencil load operation for a stencil attachment.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum StencilLoadOp {
+  /// Load the existing contents of the stencil attachment.
+  Load,
+  /// Clear the stencil attachment to the provided value.
+  Clear(u32),
+}
+
+/// Stencil operations (load/store) for the stencil attachment.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StencilOperations {
+  pub load: StencilLoadOp,
+  pub store: StoreOp,
+}
+
+impl Default for StencilOperations {
+  fn default() -> Self {
+    return Self {
+      load: StencilLoadOp::Clear(0),
+      store: StoreOp::Store,
+    };
+  }
+}
+
 /// Configuration for beginning a render pass.
 #[derive(Clone, Debug, Default)]
 pub struct RenderPassConfig {
@@ -313,6 +338,7 @@ impl RenderPassBuilder {
     attachments: &'view mut RenderColorAttachments<'view>,
     depth_view: Option<crate::wgpu::surface::TextureViewRef<'view>>,
     depth_ops: Option<DepthOperations>,
+    stencil_ops: Option<StencilOperations>,
   ) -> RenderPass<'view> {
     let operations = match self.config.color_operations.load {
       ColorLoadOp::Load => wgpu::Operations {
@@ -339,28 +365,50 @@ impl RenderPassBuilder {
     // Apply operations to all provided attachments.
     attachments.set_operations_for_all(operations);
 
-    // Optional depth attachment
+    // Optional depth/stencil attachment. Include stencil ops only when provided
+    // to avoid referring to a stencil aspect on depth-only formats.
     let depth_stencil_attachment = depth_view.map(|v| {
+      // Map depth ops (defaulting when not provided)
       let dop = depth_ops.unwrap_or_default();
+      let mapped_depth_ops = Some(match dop.load {
+        DepthLoadOp::Load => wgpu::Operations {
+          load: wgpu::LoadOp::Load,
+          store: match dop.store {
+            StoreOp::Store => wgpu::StoreOp::Store,
+            StoreOp::Discard => wgpu::StoreOp::Discard,
+          },
+        },
+        DepthLoadOp::Clear(value) => wgpu::Operations {
+          load: wgpu::LoadOp::Clear(value),
+          store: match dop.store {
+            StoreOp::Store => wgpu::StoreOp::Store,
+            StoreOp::Discard => wgpu::StoreOp::Discard,
+          },
+        },
+      });
+
+      // Map stencil ops only if explicitly provided
+      let mapped_stencil_ops = stencil_ops.map(|sop| match sop.load {
+        StencilLoadOp::Load => wgpu::Operations {
+          load: wgpu::LoadOp::Load,
+          store: match sop.store {
+            StoreOp::Store => wgpu::StoreOp::Store,
+            StoreOp::Discard => wgpu::StoreOp::Discard,
+          },
+        },
+        StencilLoadOp::Clear(value) => wgpu::Operations {
+          load: wgpu::LoadOp::Clear(value),
+          store: match sop.store {
+            StoreOp::Store => wgpu::StoreOp::Store,
+            StoreOp::Discard => wgpu::StoreOp::Discard,
+          },
+        },
+      });
+
       wgpu::RenderPassDepthStencilAttachment {
         view: v.raw,
-        depth_ops: Some(match dop.load {
-          DepthLoadOp::Load => wgpu::Operations {
-            load: wgpu::LoadOp::Load,
-            store: match dop.store {
-              StoreOp::Store => wgpu::StoreOp::Store,
-              StoreOp::Discard => wgpu::StoreOp::Discard,
-            },
-          },
-          DepthLoadOp::Clear(value) => wgpu::Operations {
-            load: wgpu::LoadOp::Clear(value),
-            store: match dop.store {
-              StoreOp::Store => wgpu::StoreOp::Store,
-              StoreOp::Discard => wgpu::StoreOp::Discard,
-            },
-          },
-        }),
-        stencil_ops: None,
+        depth_ops: mapped_depth_ops,
+        stencil_ops: mapped_stencil_ops,
       }
     });
 
@@ -374,5 +422,12 @@ impl RenderPassBuilder {
 
     let pass = encoder.begin_render_pass_raw(&desc);
     return RenderPass { raw: pass };
+  }
+}
+
+impl<'a> RenderPass<'a> {
+  /// Set the stencil reference value used by the active pipeline's stencil test.
+  pub fn set_stencil_reference(&mut self, reference: u32) {
+    self.raw.set_stencil_reference(reference);
   }
 }

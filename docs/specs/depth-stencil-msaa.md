@@ -3,13 +3,13 @@ title: "Depth/Stencil and Multi-Sample Rendering"
 document_id: "depth-stencil-msaa-2025-11-11"
 status: "draft"
 created: "2025-11-11T00:00:00Z"
-last_updated: "2025-11-11T00:10:00Z"
-version: "0.1.1"
+last_updated: "2025-11-13T00:00:00Z"
+version: "0.1.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "1ec667d422611875a86888dd7562117c14072bbb"
+repo_commit: "21d0a5b511144db31f10ee07b2efb640ca990daf"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "depth", "stencil", "msaa"]
@@ -67,34 +67,34 @@ App Code
   - Types (engine-level)
     - `enum DepthFormat { Depth32Float, Depth24Plus, Depth24PlusStencil8 }`
     - `enum CompareFunction { Never, Less, LessEqual, Greater, GreaterEqual, Equal, NotEqual, Always }`
-    - `struct DepthStencil { format: DepthFormat, clear_value: f32, write: bool, compare: CompareFunction, stencil: Option<StencilState> }`
-    - `struct StencilState { read_mask: u32, write_mask: u32, reference: u32 }` (placeholder; operations MAY be extended in a follow-up)
     - `struct MultiSample { sample_count: u32 }` (MUST be >= 1 and supported)
+    - Stencil per-face state and operations exist at the platform layer and are exposed through `RenderPipelineBuilder::with_stencil(...)`.
   - Builders (selected functions)
-    - `RenderPassBuilder::with_clear_color(Color) -> Self`
-    - `RenderPassBuilder::with_depth_stencil(DepthStencil) -> Self`
-    - `RenderPassBuilder::with_multi_sample(MultiSample) -> Self`
+    - `RenderPassBuilder::with_clear_color([f64; 4]) -> Self`
+    - `RenderPassBuilder::with_depth() -> Self`
+    - `RenderPassBuilder::with_depth_clear(f64) -> Self`
+    - `RenderPassBuilder::with_stencil() -> Self`
+    - `RenderPassBuilder::with_stencil_clear(u32) -> Self`
+    - `RenderPassBuilder::with_multi_sample(u32) -> Self`
     - `RenderPipelineBuilder::with_depth_format(DepthFormat) -> Self`
-    - `RenderPipelineBuilder::with_multi_sample(MultiSample) -> Self`
+    - `RenderPipelineBuilder::with_depth_compare(CompareFunction) -> Self`
+    - `RenderPipelineBuilder::with_depth_write(bool) -> Self`
+    - `RenderPipelineBuilder::with_stencil(StencilState) -> Self`
+    - `RenderPipelineBuilder::with_multi_sample(u32) -> Self`
   - Example (engine types only)
     ```rust
     use lambda_rs::render::{Color, DepthFormat, CompareFunction, DepthStencil, MultiSample};
 
     let pass = RenderPassBuilder::new()
-      .with_clear_color(Color::BLACK)
-      .with_depth_stencil(DepthStencil {
-        format: DepthFormat::Depth32Float,
-        clear_value: 1.0,
-        write: true,
-        compare: CompareFunction::Less,
-        stencil: None,
-      })
-      .with_multi_sample(MultiSample { sample_count: 4 })
+      .with_clear_color([0.0, 0.0, 0.0, 1.0])
+      .with_depth_clear(1.0)
+      .with_multi_sample(4)
       .build(&render_context)?;
 
     let pipeline = RenderPipelineBuilder::new()
-      .with_multi_sample(MultiSample { sample_count: 4 })
+      .with_multi_sample(4)
       .with_depth_format(DepthFormat::Depth32Float)
+      .with_depth_compare(CompareFunction::Less)
       .build(&mut render_context, &pass, &vertex_shader, Some(&fragment_shader))?;
     ```
 - Behavior
@@ -105,11 +105,15 @@ App Code
     - `DepthStencil.compare` defaults to `CompareFunction::Less`.
     - `MultiSample.sample_count` defaults to `1` (no multi-sampling).
   - Attachment creation
-    - When `with_depth_stencil` is provided, the pass MUST create a depth (and
-      stencil, if the format includes stencil) attachment matching `format`.
-    - The pass MUST clear the depth aspect to `clear_value` at the start of the
-      pass. Stencil clear behavior is unspecified in this version and MAY be
-      added when extended stencil operations are introduced.
+    - When depth is requested (`with_depth`/`with_depth_clear`), the pass MUST
+      create a depth attachment. When stencil operations are requested on the
+      pass (`with_stencil`/`with_stencil_clear`), the pass MUST attach a
+      depth/stencil view and the depth format MUST include a stencil aspect.
+    - If stencil is requested but the current depth format lacks a stencil
+      aspect, the engine upgrades to `Depth24PlusStencil8` at pass build time
+      or during encoding and logs an error.
+    - The pass MUST clear the depth aspect to `1.0` by default (or the provided
+      value) and clear/load stencil according to the requested ops.
 - Multi-sample semantics
   - When `sample_count > 1`, the pass MUST render into a multi-sampled color
     target and resolve to the single-sample swap chain target before present.
@@ -118,7 +122,9 @@ App Code
       to the pass sample count and logs an error.
   - Matching constraints
     - If a pipeline declares a depth format, it MUST equal the pass depth
-      attachment format. Mismatches are errors at build time.
+      attachment format. Mismatches are errors at build time. When a pipeline
+      enables stencil, the engine upgrades its depth format to
+      `Depth24PlusStencil8` to guarantee compatibility.
 
 ## Validation and Errors
 
@@ -158,25 +164,31 @@ App Code
 ## Requirements Checklist
 
 - Functionality
-  - [ ] Feature flags defined (if applicable)
-  - [ ] Core behavior implemented
-  - [ ] Edge cases handled (unsupported sample counts, format mismatch, range checks)
+  - [x] Depth testing: enable/disable, clear, compare; depth write toggle
+        (engine: `RenderPipelineBuilder::with_depth`, `.with_depth_clear`,
+        `.with_depth_compare`, `.with_depth_write`)
+  - [x] Stencil: clear/load/store, per-face ops, read/write mask, reference
+        (platform stencil state; pass-level ops + `SetStencilReference`)
+  - [x] MSAA: sample count selection, resolve path, depth sample matching
+  - [x] Format selection: `Depth32Float`, `Depth24Plus`, `Depth24PlusStencil8`
+  - [x] Edge cases: invalid sample counts (clamp/log), pass/pipeline sample
+        mismatches (align/log); stencil implies stencil-capable format (upgrade)
 - API Surface
-  - [ ] Public types and builders implemented
-  - [ ] Commands/entry points exposed
-  - [ ] Backwards compatibility assessed
+  - [x] RenderPassBuilder: color ops, depth ops, stencil ops, MSAA
+  - [x] RenderPipelineBuilder: depth format/compare, stencil state, depth write,
+        MSAA
+  - [x] Commands: set stencil reference; existing draw/bind/viewport remain
 - Validation and Errors
-  - [ ] Input validation implemented
-  - [ ] Device/limit checks implemented
-  - [ ] Error reporting specified and implemented
+  - [ ] Sample counts limited to {1,2,4,8}; invalid → log + clamp to 1
+  - [ ] Pass/pipeline sample mismatch → align to pass + log
+  - [ ] Depth clear in [0.0, 1.0] (SHOULD validate); device support (SHOULD)
 - Performance
-  - [ ] Critical paths profiled or reasoned
-  - [ ] Memory usage characterized
-  - [ ] Recommendations documented
+  - [ ] 4x MSAA guidance; memory trade-offs for `Depth32Float` vs `Depth24Plus`
+  - [ ] Recommend disabling depth writes for overlays/transparency
 - Documentation and Examples
-  - [ ] User-facing docs updated
-  - [ ] Minimal example(s) added/updated
-  - [ ] Migration notes (if applicable)
+  - [ ] Minimal MSAA + depth example
+  - [ ] Reflective mirror (stencil) tutorial
+  - [ ] Migration notes (none; additive API)
 
 For each checked item, include a reference to a commit, pull request, or file
 path that demonstrates the implementation.

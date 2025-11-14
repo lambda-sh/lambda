@@ -89,6 +89,12 @@ struct BufferBinding {
 
 /// Public alias for platform culling mode used by pipeline builders.
 pub use platform_pipeline::CullingMode;
+pub use platform_pipeline::{
+  CompareFunction,
+  StencilFaceState as PlatformStencilFaceState,
+  StencilOperation as PlatformStencilOperation,
+  StencilState as PlatformStencilState,
+};
 
 /// Builder for creating a graphics `RenderPipeline`.
 ///
@@ -106,6 +112,9 @@ pub struct RenderPipelineBuilder {
   use_depth: bool,
   depth_format: Option<platform_texture::DepthFormat>,
   sample_count: u32,
+  depth_compare: Option<platform_pipeline::CompareFunction>,
+  stencil: Option<platform_pipeline::StencilState>,
+  depth_write_enabled: Option<bool>,
 }
 
 impl RenderPipelineBuilder {
@@ -120,6 +129,9 @@ impl RenderPipelineBuilder {
       use_depth: false,
       depth_format: None,
       sample_count: 1,
+      depth_compare: None,
+      stencil: None,
+      depth_write_enabled: None,
     }
   }
 
@@ -191,6 +203,30 @@ impl RenderPipelineBuilder {
         self.sample_count = 1;
       }
     }
+    return self;
+  }
+
+  /// Set a non-default depth compare function.
+  pub fn with_depth_compare(
+    mut self,
+    compare: platform_pipeline::CompareFunction,
+  ) -> Self {
+    self.depth_compare = Some(compare);
+    return self;
+  }
+
+  /// Configure stencil state for the pipeline.
+  pub fn with_stencil(
+    mut self,
+    stencil: platform_pipeline::StencilState,
+  ) -> Self {
+    self.stencil = Some(stencil);
+    return self;
+  }
+
+  /// Enable or disable depth writes for this pipeline.
+  pub fn with_depth_write(mut self, enabled: bool) -> Self {
+    self.depth_write_enabled = Some(enabled);
     return self;
   }
 
@@ -285,12 +321,31 @@ impl RenderPipelineBuilder {
     }
 
     if self.use_depth {
-      let dfmt = self
+      let mut dfmt = self
         .depth_format
         .unwrap_or(platform_texture::DepthFormat::Depth32Float);
+      // If stencil state is configured, ensure a stencil-capable depth format.
+      if self.stencil.is_some()
+        && dfmt != platform_texture::DepthFormat::Depth24PlusStencil8
+      {
+        logging::error!(
+          "Stencil configured but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
+          dfmt
+        );
+        dfmt = platform_texture::DepthFormat::Depth24PlusStencil8;
+      }
       // Keep context depth format in sync for attachment creation.
       render_context.depth_format = dfmt;
       rp_builder = rp_builder.with_depth_stencil(dfmt);
+      if let Some(compare) = self.depth_compare {
+        rp_builder = rp_builder.with_depth_compare(compare);
+      }
+      if let Some(stencil) = self.stencil {
+        rp_builder = rp_builder.with_stencil(stencil);
+      }
+      if let Some(enabled) = self.depth_write_enabled {
+        rp_builder = rp_builder.with_depth_write_enabled(enabled);
+      }
     }
 
     // Apply multi-sampling to the pipeline.

@@ -78,6 +78,7 @@ pub struct RenderPass {
   label: Option<String>,
   color_operations: ColorOperations,
   depth_operations: Option<DepthOperations>,
+  stencil_operations: Option<StencilOperations>,
   sample_count: u32,
 }
 
@@ -104,6 +105,10 @@ impl RenderPass {
   pub(crate) fn sample_count(&self) -> u32 {
     return self.sample_count.max(1);
   }
+
+  pub(crate) fn stencil_operations(&self) -> Option<StencilOperations> {
+    return self.stencil_operations;
+  }
 }
 
 /// Builder for a `RenderPass` description.
@@ -116,19 +121,21 @@ pub struct RenderPassBuilder {
   label: Option<String>,
   color_operations: ColorOperations,
   depth_operations: Option<DepthOperations>,
+  stencil_operations: Option<StencilOperations>,
   sample_count: u32,
 }
 
 impl RenderPassBuilder {
   /// Creates a new render pass builder.
   pub fn new() -> Self {
-    Self {
+    return Self {
       clear_color: [0.0, 0.0, 0.0, 1.0],
       label: None,
       color_operations: ColorOperations::default(),
       depth_operations: None,
+      stencil_operations: None,
       sample_count: 1,
-    }
+    };
   }
 
   /// Specify the clear color used for the first color attachment.
@@ -138,13 +145,13 @@ impl RenderPassBuilder {
       load: ColorLoadOp::Clear(color),
       store: StoreOp::Store,
     };
-    self
+    return self;
   }
 
   /// Attach a label to the render pass for debugging/profiling.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
-    self
+    return self;
   }
 
   /// Specify the color load operation for the first color attachment.
@@ -186,6 +193,21 @@ impl RenderPassBuilder {
     return self;
   }
 
+  /// Enable a stencil attachment with default clear to 0 and store.
+  pub fn with_stencil(mut self) -> Self {
+    self.stencil_operations = Some(StencilOperations::default());
+    return self;
+  }
+
+  /// Enable a stencil attachment with an explicit clear value.
+  pub fn with_stencil_clear(mut self, clear: u32) -> Self {
+    self.stencil_operations = Some(StencilOperations {
+      load: StencilLoadOp::Clear(clear),
+      store: StoreOp::Store,
+    });
+    return self;
+  }
+
   /// Configure multi-sample anti-aliasing for this pass.
   pub fn with_multi_sample(mut self, samples: u32) -> Self {
     match validation::validate_sample_count(samples) {
@@ -210,7 +232,33 @@ impl RenderPassBuilder {
       label: self.label,
       color_operations: self.color_operations,
       depth_operations: self.depth_operations,
+      stencil_operations: self.stencil_operations,
       sample_count: self.sample_count,
     }
+  }
+}
+
+/// Stencil load operation for the stencil attachment.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum StencilLoadOp {
+  /// Load existing stencil value.
+  Load,
+  /// Clear stencil to the provided value.
+  Clear(u32),
+}
+
+/// Stencil operations for the first stencil attachment.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StencilOperations {
+  pub load: StencilLoadOp,
+  pub store: StoreOp,
+}
+
+impl Default for StencilOperations {
+  fn default() -> Self {
+    return Self {
+      load: StencilLoadOp::Clear(0),
+      store: StoreOp::Store,
+    };
   }
 }

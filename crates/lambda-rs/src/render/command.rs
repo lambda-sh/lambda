@@ -39,6 +39,9 @@ pub enum RenderCommand {
   /// End the current render pass.
   EndRenderPass,
 
+  /// Set the stencil reference value for the active pass.
+  SetStencilReference { reference: u32 },
+
   /// Upload push constants for the active pipeline/stage at `offset`.
   ///
   /// The byte vector is interpreted as tightly packed `u32` words; the
