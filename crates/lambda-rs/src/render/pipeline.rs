@@ -54,6 +54,9 @@ pub struct RenderPipeline {
   pipeline: Rc<platform_pipeline::RenderPipeline>,
   buffers: Vec<Rc<Buffer>>,
   sample_count: u32,
+  color_target_count: u32,
+  expects_depth_stencil: bool,
+  uses_stencil: bool,
 }
 
 impl RenderPipeline {
@@ -73,6 +76,21 @@ impl RenderPipeline {
   /// Multisample count configured on this pipeline.
   pub fn sample_count(&self) -> u32 {
     return self.sample_count.max(1);
+  }
+
+  /// Whether the pipeline declares one or more color targets.
+  pub(super) fn has_color_targets(&self) -> bool {
+    return self.color_target_count > 0;
+  }
+
+  /// Whether the pipeline expects a depth-stencil attachment.
+  pub(super) fn expects_depth_stencil(&self) -> bool {
+    return self.expects_depth_stencil;
+  }
+
+  /// Whether the pipeline configured a stencil test/state.
+  pub(super) fn uses_stencil(&self) -> bool {
+    return self.uses_stencil;
   }
 }
 
@@ -440,6 +458,10 @@ impl RenderPipelineBuilder {
       pipeline: Rc::new(pipeline),
       buffers,
       sample_count: pipeline_samples,
+      color_target_count: if fragment_module.is_some() { 1 } else { 0 },
+      // Depth/stencil is enabled when `with_depth*` was called on the builder.
+      expects_depth_stencil: self.use_depth,
+      uses_stencil: self.stencil.is_some(),
     };
   }
 }

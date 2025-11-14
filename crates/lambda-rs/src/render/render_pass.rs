@@ -1,7 +1,8 @@
 //! Render pass descriptions used to clear and begin drawing.
 //!
 //! A `RenderPass` captures immutable parameters used when beginning a pass
-//! against the swapchain (currently a single color attachment and clear color).
+//! against the swapchain. A pass MAY omit color attachments entirely to
+//! perform depth/stencil-only operations (e.g., stencil mask pre-pass).
 //! The pass is referenced by handle from `RenderCommand::BeginRenderPass`.
 
 use logging;
@@ -80,6 +81,7 @@ pub struct RenderPass {
   depth_operations: Option<DepthOperations>,
   stencil_operations: Option<StencilOperations>,
   sample_count: u32,
+  use_color: bool,
 }
 
 impl RenderPass {
@@ -109,6 +111,11 @@ impl RenderPass {
   pub(crate) fn stencil_operations(&self) -> Option<StencilOperations> {
     return self.stencil_operations;
   }
+
+  /// Whether this pass declares any color attachments.
+  pub(crate) fn uses_color(&self) -> bool {
+    return self.use_color;
+  }
 }
 
 /// Builder for a `RenderPass` description.
@@ -123,6 +130,7 @@ pub struct RenderPassBuilder {
   depth_operations: Option<DepthOperations>,
   stencil_operations: Option<StencilOperations>,
   sample_count: u32,
+  use_color: bool,
 }
 
 impl RenderPassBuilder {
@@ -135,6 +143,7 @@ impl RenderPassBuilder {
       depth_operations: None,
       stencil_operations: None,
       sample_count: 1,
+      use_color: true,
     };
   }
 
@@ -178,6 +187,12 @@ impl RenderPassBuilder {
     return self;
   }
 
+  /// Disable color attachments for this pass. Depth/stencil MAY still be used.
+  pub fn without_color(mut self) -> Self {
+    self.use_color = false;
+    return self;
+  }
+
   /// Enable a depth attachment with default clear to 1.0 and store.
   pub fn with_depth(mut self) -> Self {
     self.depth_operations = Some(DepthOperations::default());
@@ -193,6 +208,15 @@ impl RenderPassBuilder {
     return self;
   }
 
+  /// Use a depth attachment and load existing contents (do not clear).
+  pub fn with_depth_load(mut self) -> Self {
+    self.depth_operations = Some(DepthOperations {
+      load: DepthLoadOp::Load,
+      store: StoreOp::Store,
+    });
+    return self;
+  }
+
   /// Enable a stencil attachment with default clear to 0 and store.
   pub fn with_stencil(mut self) -> Self {
     self.stencil_operations = Some(StencilOperations::default());
@@ -203,6 +227,15 @@ impl RenderPassBuilder {
   pub fn with_stencil_clear(mut self, clear: u32) -> Self {
     self.stencil_operations = Some(StencilOperations {
       load: StencilLoadOp::Clear(clear),
+      store: StoreOp::Store,
+    });
+    return self;
+  }
+
+  /// Use a stencil attachment and load existing contents (do not clear).
+  pub fn with_stencil_load(mut self) -> Self {
+    self.stencil_operations = Some(StencilOperations {
+      load: StencilLoadOp::Load,
       store: StoreOp::Store,
     });
     return self;
@@ -234,6 +267,7 @@ impl RenderPassBuilder {
       depth_operations: self.depth_operations,
       stencil_operations: self.stencil_operations,
       sample_count: self.sample_count,
+      use_color: self.use_color,
     }
   }
 }

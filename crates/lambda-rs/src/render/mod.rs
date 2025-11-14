@@ -44,6 +44,7 @@ pub mod viewport;
 pub mod window;
 
 use std::{
+  collections::HashSet,
   iter,
   rc::Rc,
 };
@@ -56,6 +57,7 @@ use self::{
   pipeline::RenderPipeline,
   render_pass::RenderPass as RenderPassDesc,
 };
+use crate::util;
 
 /// Builder for configuring a `RenderContext` tied to one window.
 ///
@@ -182,6 +184,7 @@ impl RenderContextBuilder {
       bind_group_layouts: vec![],
       bind_groups: vec![],
       buffers: vec![],
+      seen_error_messages: HashSet::new(),
     });
   }
 }
@@ -221,6 +224,7 @@ pub struct RenderContext {
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   bind_groups: Vec<bind::BindGroup>,
   buffers: Vec<Rc<buffer::Buffer>>,
+  seen_error_messages: HashSet<String>,
 }
 
 /// Opaque handle used to refer to resources attached to a `RenderContext`.
@@ -290,7 +294,10 @@ impl RenderContext {
     }
 
     if let Err(err) = self.render_internal(commands) {
-      logging::error!("Render error: {:?}", err);
+      let key = format!("{:?}", err);
+      if self.seen_error_messages.insert(key) {
+        logging::error!("Render error: {:?}", err);
+      }
     }
   }
 
@@ -422,31 +429,33 @@ impl RenderContext {
           let mut color_attachments =
             platform::render_pass::RenderColorAttachments::new();
           let sample_count = pass.sample_count();
-          if sample_count > 1 {
-            let need_recreate = match &self.msaa_color {
-              Some(_) => self.msaa_sample_count != sample_count,
-              None => true,
-            };
-            if need_recreate {
-              self.msaa_color = Some(
-                platform::texture::ColorAttachmentTextureBuilder::new(
-                  self.config.format,
-                )
-                .with_size(self.size.0.max(1), self.size.1.max(1))
-                .with_sample_count(sample_count)
-                .with_label("lambda-msaa-color")
-                .build(self.gpu()),
-              );
-              self.msaa_sample_count = sample_count;
+          if pass.uses_color() {
+            if sample_count > 1 {
+              let need_recreate = match &self.msaa_color {
+                Some(_) => self.msaa_sample_count != sample_count,
+                None => true,
+              };
+              if need_recreate {
+                self.msaa_color = Some(
+                  platform::texture::ColorAttachmentTextureBuilder::new(
+                    self.config.format,
+                  )
+                  .with_size(self.size.0.max(1), self.size.1.max(1))
+                  .with_sample_count(sample_count)
+                  .with_label("lambda-msaa-color")
+                  .build(self.gpu()),
+                );
+                self.msaa_sample_count = sample_count;
+              }
+              let msaa_view = self
+                .msaa_color
+                .as_ref()
+                .expect("MSAA color attachment should be created")
+                .view_ref();
+              color_attachments.push_msaa_color(msaa_view, view);
+            } else {
+              color_attachments.push_color(view);
             }
-            let msaa_view = self
-              .msaa_color
-              .as_ref()
-              .expect("MSAA color attachment should be created")
-              .view_ref();
-            color_attachments.push_msaa_color(msaa_view, view);
-          } else {
-            color_attachments.push_color(view);
           }
 
           // Depth/stencil attachment when either depth or stencil requested.
@@ -554,7 +563,14 @@ impl RenderContext {
             stencil_ops,
           );
 
-          self.encode_pass(&mut pass_encoder, viewport, &mut command_iter)?;
+          self.encode_pass(
+            &mut pass_encoder,
+            pass.uses_color(),
+            pass.depth_operations().is_some(),
+            pass.stencil_operations().is_some(),
+            viewport,
+            &mut command_iter,
+          )?;
         }
         other => {
           logging::warn!(
@@ -574,6 +590,9 @@ impl RenderContext {
   fn encode_pass<I>(
     &self,
     pass: &mut platform::render_pass::RenderPass<'_>,
+    uses_color: bool,
+    pass_has_depth: bool,
+    pass_has_stencil: bool,
     initial_viewport: viewport::Viewport,
     commands: &mut I,
   ) -> Result<(), RenderError>
@@ -581,6 +600,9 @@ impl RenderContext {
     I: Iterator<Item = RenderCommand>,
   {
     Self::apply_viewport(pass, &initial_viewport);
+    // De-duplicate advisories within this pass
+    let mut warned_no_stencil_for_pipeline: HashSet<usize> = HashSet::new();
+    let mut warned_no_depth_for_pipeline: HashSet<usize> = HashSet::new();
 
     while let Some(command) = commands.next() {
       match command {
@@ -595,6 +617,62 @@ impl RenderContext {
                 "Unknown pipeline {pipeline}"
               ));
             })?;
+          // Validate pass/pipeline compatibility before deferring to wgpu.
+          if !uses_color && pipeline_ref.has_color_targets() {
+            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+            return Err(RenderError::Configuration(format!(
+              "Render pipeline '{}' declares color targets but the current pass has no color attachments",
+              label
+            )));
+          }
+          if uses_color && !pipeline_ref.has_color_targets() {
+            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+            return Err(RenderError::Configuration(format!(
+              "Render pipeline '{}' has no color targets but the current pass declares color attachments",
+              label
+            )));
+          }
+          if !pass_has_depth && pipeline_ref.expects_depth_stencil() {
+            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+            return Err(RenderError::Configuration(format!(
+              "Render pipeline '{}' expects a depth/stencil attachment but the current pass has none",
+              label
+            )));
+          }
+          // Advisory checks to help users reason about stencil/depth behavior.
+          if pass_has_stencil
+            && !pipeline_ref.uses_stencil()
+            && warned_no_stencil_for_pipeline.insert(pipeline)
+          {
+            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+            let key = format!("stencil:no_test:{}", label);
+            let msg = format!(
+              "Pass provides stencil ops but pipeline '{}' has no stencil test; stencil will not affect rendering",
+              label
+            );
+            util::warn_once(&key, &msg);
+          }
+          if !pass_has_stencil && pipeline_ref.uses_stencil() {
+            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+            let key = format!("stencil:pass_no_operations:{}", label);
+            let msg = format!(
+              "Pipeline '{}' enables stencil but pass has no stencil ops configured; stencil reference/tests may be ineffective",
+              label
+            );
+            util::warn_once(&key, &msg);
+          }
+          if pass_has_depth
+            && !pipeline_ref.expects_depth_stencil()
+            && warned_no_depth_for_pipeline.insert(pipeline)
+          {
+            let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+            let key = format!("depth:no_test:{}", label);
+            let msg = format!(
+              "Pass has depth attachment but pipeline '{}' does not enable depth testing; depth values will not be tested/written",
+              label
+            );
+            util::warn_once(&key, &msg);
+          }
           pass.set_pipeline(pipeline_ref.pipeline());
         }
         RenderCommand::SetViewports { viewports, .. } => {

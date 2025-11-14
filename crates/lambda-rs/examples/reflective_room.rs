@@ -2,8 +2,8 @@
 
 //! Example: Reflective floor using the stencil buffer with MSAA.
 //!
-//! - Phase 1: Write a stencil mask where the floor geometry exists. Disable
-//!   depth writes and omit the fragment stage so no color is produced.
+//! - Phase 1: Depth/stencil-only pass to write a stencil mask where the floor
+//!   geometry exists. Depth writes are disabled for the mask.
 //! - Phase 2: Render a mirrored (reflected) cube only where stencil == 1.
 //!   Disable culling to avoid backface issues due to the mirrored transform.
 //! - Phase 3 (optional visual): Draw the floor surface with alpha so the
@@ -112,6 +112,8 @@ void main() {
 }
 "#;
 
+// (No extra fragment shaders needed; the floor mask uses a vertex-only pipeline.)
+
 // ------------------------------ PUSH CONSTANTS -------------------------------
 
 #[repr(C)]
@@ -138,7 +140,8 @@ pub struct ReflectiveRoomExample {
   shader_fs_floor: Shader,
   cube_mesh: Option<Mesh>,
   floor_mesh: Option<Mesh>,
-  pass_id: Option<ResourceId>,
+  pass_id_mask: Option<ResourceId>,
+  pass_id_color: Option<ResourceId>,
   pipe_floor_mask: Option<ResourceId>,
   pipe_reflected: Option<ResourceId>,
   pipe_floor_visual: Option<ResourceId>,
@@ -155,11 +158,20 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
   ) -> Result<ComponentResult, String> {
     logging::info!("Attaching ReflectiveRoomExample");
 
-    // Render pass: depth clear, stencil clear, MSAA 4x.
-    let render_pass = RenderPassBuilder::new()
-      .with_label("reflective-room-pass")
+    // Pass 1 (mask): depth clear, stencil clear, MSAA 4x, without color.
+    let render_pass_mask = RenderPassBuilder::new()
+      .with_label("reflective-room-pass-mask")
       .with_depth_clear(1.0)
       .with_stencil_clear(0)
+      .with_multi_sample(4)
+      .without_color()
+      .build(render_context);
+
+    // Pass 2 (color): color + depth clear, stencil LOAD (use mask), MSAA 4x.
+    let render_pass_color = RenderPassBuilder::new()
+      .with_label("reflective-room-pass-color")
+      .with_depth_clear(1.0)
+      .with_stencil_load()
       .with_multi_sample(4)
       .build(render_context);
 
@@ -183,6 +195,8 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       entry_point: "main".to_string(),
       name: "reflective-room-fs-floor".to_string(),
     });
+    // Note: the mask pipeline is vertex-only and will be used in a pass
+    // without color attachments.
 
     // Geometry: cube (unit) and floor quad at y = 0.
     let cube_mesh = build_unit_cube_mesh();
@@ -190,7 +204,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
 
     let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
 
-    // Stencil mask pipeline (vertex-only). Writes stencil=1 where the floor exists.
+    // Stencil mask pipeline. Writes stencil=1 where the floor exists.
     let pipe_floor_mask = RenderPipelineBuilder::new()
       .with_label("floor-mask")
       .with_culling(CullingMode::Back)
@@ -220,7 +234,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
         write_mask: 0xFF,
       })
       .with_multi_sample(4)
-      .build(render_context, &render_pass, &shader_vs, None);
+      .build(render_context, &render_pass_mask, &shader_vs, None);
 
     // Reflected cube pipeline: stencil test Equal, depth test enabled, no culling.
     let pipe_reflected = RenderPipelineBuilder::new()
@@ -254,7 +268,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       .with_multi_sample(4)
       .build(
         render_context,
-        &render_pass,
+        &render_pass_color,
         &shader_vs,
         Some(&shader_fs_lit),
       );
@@ -275,7 +289,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       .with_multi_sample(4)
       .build(
         render_context,
-        &render_pass,
+        &render_pass_color,
         &shader_vs,
         Some(&shader_fs_floor),
       );
@@ -296,12 +310,15 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       .with_multi_sample(4)
       .build(
         render_context,
-        &render_pass,
+        &render_pass_color,
         &shader_vs,
         Some(&shader_fs_lit),
       );
 
-    self.pass_id = Some(render_context.attach_render_pass(render_pass));
+    self.pass_id_mask =
+      Some(render_context.attach_render_pass(render_pass_mask));
+    self.pass_id_color =
+      Some(render_context.attach_render_pass(render_pass_color));
     self.pipe_floor_mask =
       Some(render_context.attach_pipeline(pipe_floor_mask));
     self.pipe_reflected = Some(render_context.attach_pipeline(pipe_reflected));
@@ -413,7 +430,8 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
 
     let viewport = ViewportBuilder::new().build(self.width, self.height);
 
-    let pass_id = self.pass_id.expect("render pass not set");
+    let pass_id_mask = self.pass_id_mask.expect("mask pass not set");
+    let pass_id_color = self.pass_id_color.expect("color pass not set");
     let pipe_floor_mask = self.pipe_floor_mask.expect("floor mask pipeline");
     let pipe_reflected = self.pipe_reflected.expect("reflected pipeline");
     let pipe_floor_visual =
@@ -421,8 +439,9 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
     let pipe_normal = self.pipe_normal.expect("normal pipeline");
 
     return vec![
+      // Pass 1: depth/stencil-only to write the floor mask.
       RenderCommand::BeginRenderPass {
-        render_pass: pass_id,
+        render_pass: pass_id_mask,
         viewport: viewport.clone(),
       },
       // Phase 1: write stencil where the floor geometry exists (stencil = 1).
@@ -454,6 +473,12 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       RenderCommand::Draw {
         vertices: 0..self.floor_mesh.as_ref().unwrap().vertices().len() as u32,
       },
+      RenderCommand::EndRenderPass,
+      // Pass 2: color + depth, stencil loaded from mask.
+      RenderCommand::BeginRenderPass {
+        render_pass: pass_id_color,
+        viewport: viewport.clone(),
+      },
       // Phase 2: draw the reflected cube where stencil == 1.
       RenderCommand::SetPipeline {
         pipeline: pipe_reflected,
@@ -475,7 +500,6 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       RenderCommand::Draw {
         vertices: 0..self.cube_mesh.as_ref().unwrap().vertices().len() as u32,
       },
-      // Phase 3: draw the floor surface tint (optional visual).
       RenderCommand::SetPipeline {
         pipeline: pipe_floor_visual,
       },
@@ -548,7 +572,8 @@ impl Default for ReflectiveRoomExample {
       shader_fs_floor,
       cube_mesh: None,
       floor_mesh: None,
-      pass_id: None,
+      pass_id_mask: None,
+      pass_id_color: None,
       pipe_floor_mask: None,
       pipe_reflected: None,
       pipe_floor_visual: None,

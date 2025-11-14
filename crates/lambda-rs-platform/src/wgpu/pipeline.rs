@@ -291,6 +291,10 @@ impl RenderPipeline {
   pub(crate) fn into_raw(self) -> wgpu::RenderPipeline {
     return self.raw;
   }
+  /// Pipeline label if provided.
+  pub fn label(&self) -> Option<&str> {
+    return self.label.as_deref();
+  }
 }
 
 /// Builder for creating a graphics render pipeline.

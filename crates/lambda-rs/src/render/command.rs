@@ -31,7 +31,9 @@ pub enum RenderCommand {
   },
   /// Bind a previously attached graphics pipeline by id.
   SetPipeline { pipeline: super::ResourceId },
-  /// Begin a render pass that targets the swapchain color attachment.
+  /// Begin a render pass. When the pass is configured with color attachments,
+  /// it targets the swapchain view (with optional MSAA resolve). Passes may
+  /// also omit color to perform depth/stencil-only work.
   BeginRenderPass {
     render_pass: super::ResourceId,
     viewport: Viewport,
