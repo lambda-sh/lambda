@@ -105,9 +105,55 @@ struct BufferBinding {
   attributes: Vec<VertexAttribute>,
 }
 
-pub use platform_pipeline::CompareFunction;
-/// Public alias for platform culling mode used by pipeline builders.
-pub use platform_pipeline::CullingMode;
+#[derive(Clone, Copy, Debug)]
+/// Engine-level compare function for depth/stencil tests.
+pub enum CompareFunction {
+  Never,
+  Less,
+  LessEqual,
+  Greater,
+  GreaterEqual,
+  Equal,
+  NotEqual,
+  Always,
+}
+
+impl CompareFunction {
+  fn to_platform(self) -> platform_pipeline::CompareFunction {
+    return match self {
+      CompareFunction::Never => platform_pipeline::CompareFunction::Never,
+      CompareFunction::Less => platform_pipeline::CompareFunction::Less,
+      CompareFunction::LessEqual => {
+        platform_pipeline::CompareFunction::LessEqual
+      }
+      CompareFunction::Greater => platform_pipeline::CompareFunction::Greater,
+      CompareFunction::GreaterEqual => {
+        platform_pipeline::CompareFunction::GreaterEqual
+      }
+      CompareFunction::Equal => platform_pipeline::CompareFunction::Equal,
+      CompareFunction::NotEqual => platform_pipeline::CompareFunction::NotEqual,
+      CompareFunction::Always => platform_pipeline::CompareFunction::Always,
+    };
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+/// Engine-level face culling mode for graphics pipelines.
+pub enum CullingMode {
+  None,
+  Front,
+  Back,
+}
+
+impl CullingMode {
+  fn to_platform(self) -> platform_pipeline::CullingMode {
+    return match self {
+      CullingMode::None => platform_pipeline::CullingMode::None,
+      CullingMode::Front => platform_pipeline::CullingMode::Front,
+      CullingMode::Back => platform_pipeline::CullingMode::Back,
+    };
+  }
+}
 
 /// Engine-level stencil operation.
 #[derive(Clone, Copy, Debug)]
@@ -124,7 +170,7 @@ pub enum StencilOperation {
 
 impl StencilOperation {
   fn to_platform(self) -> platform_pipeline::StencilOperation {
-    match self {
+    return match self {
       StencilOperation::Keep => platform_pipeline::StencilOperation::Keep,
       StencilOperation::Zero => platform_pipeline::StencilOperation::Zero,
       StencilOperation::Replace => platform_pipeline::StencilOperation::Replace,
@@ -141,7 +187,7 @@ impl StencilOperation {
       StencilOperation::DecrementWrap => {
         platform_pipeline::StencilOperation::DecrementWrap
       }
-    }
+    };
   }
 }
 
@@ -157,7 +203,7 @@ pub struct StencilFaceState {
 impl StencilFaceState {
   fn to_platform(self) -> platform_pipeline::StencilFaceState {
     platform_pipeline::StencilFaceState {
-      compare: self.compare,
+      compare: self.compare.to_platform(),
       fail_op: self.fail_op.to_platform(),
       depth_fail_op: self.depth_fail_op.to_platform(),
       pass_op: self.pass_op.to_platform(),
@@ -190,7 +236,7 @@ pub struct RenderPipelineBuilder {
   use_depth: bool,
   depth_format: Option<platform_texture::DepthFormat>,
   sample_count: u32,
-  depth_compare: Option<platform_pipeline::CompareFunction>,
+  depth_compare: Option<CompareFunction>,
   stencil: Option<platform_pipeline::StencilState>,
   depth_write_enabled: Option<bool>,
 }
@@ -285,10 +331,7 @@ impl RenderPipelineBuilder {
   }
 
   /// Set a non-default depth compare function.
-  pub fn with_depth_compare(
-    mut self,
-    compare: platform_pipeline::CompareFunction,
-  ) -> Self {
+  pub fn with_depth_compare(mut self, compare: CompareFunction) -> Self {
     self.depth_compare = Some(compare);
     return self;
   }
@@ -379,7 +422,7 @@ impl RenderPipelineBuilder {
     let mut rp_builder = platform_pipeline::RenderPipelineBuilder::new()
       .with_label(self.label.as_deref().unwrap_or("lambda-render-pipeline"))
       .with_layout(&pipeline_layout)
-      .with_cull_mode(self.culling);
+      .with_cull_mode(self.culling.to_platform());
 
     for binding in &self.bindings {
       let attributes: Vec<platform_pipeline::VertexAttributeDesc> = binding
@@ -419,7 +462,7 @@ impl RenderPipelineBuilder {
       render_context.depth_format = dfmt;
       rp_builder = rp_builder.with_depth_stencil(dfmt);
       if let Some(compare) = self.depth_compare {
-        rp_builder = rp_builder.with_depth_compare(compare);
+        rp_builder = rp_builder.with_depth_compare(compare.to_platform());
       }
       if let Some(stencil) = self.stencil {
         rp_builder = rp_builder.with_stencil(stencil);
