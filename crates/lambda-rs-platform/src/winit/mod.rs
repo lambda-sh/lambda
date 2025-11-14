@@ -69,7 +69,6 @@ pub struct Loop<E: 'static + std::fmt::Debug> {
 pub struct WindowProperties {
   pub name: String,
   pub dimensions: (u32, u32),
-  pub monitor_handle: MonitorHandle,
 }
 
 /// Metadata for Lambda window sizing that supports Copy and Move operations.
@@ -85,7 +84,7 @@ pub struct WindowSize {
 pub struct WindowHandle {
   pub window_handle: Window,
   pub size: WindowSize,
-  pub monitor_handle: MonitorHandle,
+  pub monitor_handle: Option<MonitorHandle>,
 }
 
 // Should we take the loop as a field right here? Probably a ref or something? IDK
@@ -143,22 +142,21 @@ impl WindowHandleBuilder {
     window_properties: WindowProperties,
     lambda_loop: &Loop<E>,
   ) -> Self {
-    let WindowProperties {
-      name,
-      dimensions,
-      monitor_handle,
-    } = window_properties;
+    let WindowProperties { name, dimensions } = window_properties;
 
-    // TODO(ahlawat) = Find out if there's a better way to do this. Looks kinda ugly.
-    self = self.with_window_size(dimensions, monitor_handle.scale_factor());
+    // Initialize using a neutral scale factor; recompute after creating the window.
+    self = self.with_window_size(dimensions, 1.0);
 
-    let window_handle = WindowBuilder::new()
+    let window_handle: Window = WindowBuilder::new()
       .with_title(name)
       .with_inner_size(self.size.logical)
       .build(&lambda_loop.event_loop)
       .expect("Failed creation of window handle");
 
-    self.monitor_handle = Some(monitor_handle);
+    // Recompute size using the actual window scale factor and cache current monitor if available.
+    let scale_factor = window_handle.scale_factor();
+    self = self.with_window_size(dimensions, scale_factor);
+    self.monitor_handle = window_handle.current_monitor();
     self.window_handle = Some(window_handle);
     return self;
   }
@@ -166,9 +164,7 @@ impl WindowHandleBuilder {
   /// Build the WindowHandle
   pub fn build(self) -> WindowHandle {
     return WindowHandle {
-      monitor_handle: self
-        .monitor_handle
-        .expect("Unable to find a MonitorHandle."),
+      monitor_handle: self.monitor_handle,
       size: self.size,
       window_handle: self.window_handle.expect("Unable to find WindowHandle."),
     };
