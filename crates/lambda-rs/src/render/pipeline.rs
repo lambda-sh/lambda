@@ -87,14 +87,74 @@ struct BufferBinding {
   attributes: Vec<VertexAttribute>,
 }
 
+pub use platform_pipeline::CompareFunction;
 /// Public alias for platform culling mode used by pipeline builders.
 pub use platform_pipeline::CullingMode;
-pub use platform_pipeline::{
-  CompareFunction,
-  StencilFaceState as PlatformStencilFaceState,
-  StencilOperation as PlatformStencilOperation,
-  StencilState as PlatformStencilState,
-};
+
+/// Engine-level stencil operation.
+#[derive(Clone, Copy, Debug)]
+pub enum StencilOperation {
+  Keep,
+  Zero,
+  Replace,
+  Invert,
+  IncrementClamp,
+  DecrementClamp,
+  IncrementWrap,
+  DecrementWrap,
+}
+
+impl StencilOperation {
+  fn to_platform(self) -> platform_pipeline::StencilOperation {
+    match self {
+      StencilOperation::Keep => platform_pipeline::StencilOperation::Keep,
+      StencilOperation::Zero => platform_pipeline::StencilOperation::Zero,
+      StencilOperation::Replace => platform_pipeline::StencilOperation::Replace,
+      StencilOperation::Invert => platform_pipeline::StencilOperation::Invert,
+      StencilOperation::IncrementClamp => {
+        platform_pipeline::StencilOperation::IncrementClamp
+      }
+      StencilOperation::DecrementClamp => {
+        platform_pipeline::StencilOperation::DecrementClamp
+      }
+      StencilOperation::IncrementWrap => {
+        platform_pipeline::StencilOperation::IncrementWrap
+      }
+      StencilOperation::DecrementWrap => {
+        platform_pipeline::StencilOperation::DecrementWrap
+      }
+    }
+  }
+}
+
+/// Engine-level per-face stencil state.
+#[derive(Clone, Copy, Debug)]
+pub struct StencilFaceState {
+  pub compare: CompareFunction,
+  pub fail_op: StencilOperation,
+  pub depth_fail_op: StencilOperation,
+  pub pass_op: StencilOperation,
+}
+
+impl StencilFaceState {
+  fn to_platform(self) -> platform_pipeline::StencilFaceState {
+    platform_pipeline::StencilFaceState {
+      compare: self.compare,
+      fail_op: self.fail_op.to_platform(),
+      depth_fail_op: self.depth_fail_op.to_platform(),
+      pass_op: self.pass_op.to_platform(),
+    }
+  }
+}
+
+/// Engine-level full stencil state.
+#[derive(Clone, Copy, Debug)]
+pub struct StencilState {
+  pub front: StencilFaceState,
+  pub back: StencilFaceState,
+  pub read_mask: u32,
+  pub write_mask: u32,
+}
 
 /// Builder for creating a graphics `RenderPipeline`.
 ///
@@ -215,12 +275,15 @@ impl RenderPipelineBuilder {
     return self;
   }
 
-  /// Configure stencil state for the pipeline.
-  pub fn with_stencil(
-    mut self,
-    stencil: platform_pipeline::StencilState,
-  ) -> Self {
-    self.stencil = Some(stencil);
+  /// Configure stencil state for the pipeline using engine types.
+  pub fn with_stencil(mut self, stencil: StencilState) -> Self {
+    let mapped = platform_pipeline::StencilState {
+      front: stencil.front.to_platform(),
+      back: stencil.back.to_platform(),
+      read_mask: stencil.read_mask,
+      write_mask: stencil.write_mask,
+    };
+    self.stencil = Some(mapped);
     return self;
   }
 
