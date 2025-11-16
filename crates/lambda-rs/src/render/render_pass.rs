@@ -269,7 +269,7 @@ impl RenderPassBuilder {
 
   /// Build the description used when beginning a render pass.
   pub fn build(self, _render_context: &RenderContext) -> RenderPass {
-    RenderPass {
+    return RenderPass {
       clear_color: self.clear_color,
       label: self.label,
       color_operations: self.color_operations,
@@ -277,7 +277,7 @@ impl RenderPassBuilder {
       stencil_operations: self.stencil_operations,
       sample_count: self.sample_count,
       use_color: self.use_color,
-    }
+    };
   }
 }
 

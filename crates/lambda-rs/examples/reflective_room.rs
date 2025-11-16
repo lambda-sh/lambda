@@ -149,6 +149,11 @@ pub struct ReflectiveRoomExample {
   width: u32,
   height: u32,
   elapsed: f32,
+  // Toggleable demo settings
+  msaa_samples: u32,
+  stencil_enabled: bool,
+  depth_test_enabled: bool,
+  needs_rebuild: bool,
 }
 
 impl Component<ComponentResult, String> for ReflectiveRoomExample {
@@ -353,6 +358,36 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
         }
         _ => {}
       },
+      lambda::events::Events::Keyboard { event, .. } => match event {
+        lambda::events::Key::Pressed {
+          scan_code: _,
+          virtual_key,
+        } => match virtual_key {
+          Some(lambda::events::VirtualKey::KeyM) => {
+            self.msaa_samples = if self.msaa_samples > 1 { 1 } else { 4 };
+            self.needs_rebuild = true;
+            logging::info!("Toggled MSAA → {}x (key: M)", self.msaa_samples);
+          }
+          Some(lambda::events::VirtualKey::KeyS) => {
+            self.stencil_enabled = !self.stencil_enabled;
+            self.needs_rebuild = true;
+            logging::info!(
+              "Toggled Stencil → {} (key: S)",
+              self.stencil_enabled
+            );
+          }
+          Some(lambda::events::VirtualKey::KeyD) => {
+            self.depth_test_enabled = !self.depth_test_enabled;
+            self.needs_rebuild = true;
+            logging::info!(
+              "Toggled Depth Test → {} (key: D)",
+              self.depth_test_enabled
+            );
+          }
+          _ => {}
+        },
+        _ => {}
+      },
       _ => {}
     }
     return Ok(ComponentResult::Success);
@@ -368,8 +403,14 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
 
   fn on_render(
     &mut self,
-    _render_context: &mut lambda::render::RenderContext,
+    render_context: &mut lambda::render::RenderContext,
   ) -> Vec<RenderCommand> {
+    if self.needs_rebuild {
+      // Attempt to rebuild resources according to current toggles
+      if let Err(err) = self.rebuild_resources(render_context) {
+        logging::error!("Failed to rebuild resources: {}", err);
+      }
+    }
     // Camera
     let camera = SimpleCamera {
       position: [0.0, 1.2, 3.5],
@@ -430,117 +471,129 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
 
     let viewport = ViewportBuilder::new().build(self.width, self.height);
 
-    let pass_id_mask = self.pass_id_mask.expect("mask pass not set");
+    let mut cmds: Vec<RenderCommand> = Vec::new();
+
+    if self.stencil_enabled {
+      // Optional Pass 1: write floor stencil mask
+      if let (Some(pass_id_mask), Some(pipe_floor_mask)) =
+        (self.pass_id_mask, self.pipe_floor_mask)
+      {
+        cmds.push(RenderCommand::BeginRenderPass {
+          render_pass: pass_id_mask,
+          viewport: viewport.clone(),
+        });
+        cmds.push(RenderCommand::SetPipeline {
+          pipeline: pipe_floor_mask,
+        });
+        cmds.push(RenderCommand::SetViewports {
+          start_at: 0,
+          viewports: vec![viewport.clone()],
+        });
+        cmds.push(RenderCommand::SetScissors {
+          start_at: 0,
+          viewports: vec![viewport.clone()],
+        });
+        cmds.push(RenderCommand::SetStencilReference { reference: 1 });
+        cmds.push(RenderCommand::BindVertexBuffer {
+          pipeline: pipe_floor_mask,
+          buffer: 0,
+        });
+        cmds.push(RenderCommand::PushConstants {
+          pipeline: pipe_floor_mask,
+          stage: PipelineStage::VERTEX,
+          offset: 0,
+          bytes: Vec::from(push_constants_to_words(&PushConstant {
+            mvp: mvp_floor.transpose(),
+            model: model_floor.transpose(),
+          })),
+        });
+        cmds.push(RenderCommand::Draw {
+          vertices: 0..self.floor_mesh.as_ref().unwrap().vertices().len()
+            as u32,
+        });
+        cmds.push(RenderCommand::EndRenderPass);
+      }
+    }
+
+    // Color pass (with optional depth/stencil configured on the pass itself)
     let pass_id_color = self.pass_id_color.expect("color pass not set");
-    let pipe_floor_mask = self.pipe_floor_mask.expect("floor mask pipeline");
-    let pipe_reflected = self.pipe_reflected.expect("reflected pipeline");
+    cmds.push(RenderCommand::BeginRenderPass {
+      render_pass: pass_id_color,
+      viewport: viewport.clone(),
+    });
+
+    if self.stencil_enabled {
+      if let Some(pipe_reflected) = self.pipe_reflected {
+        cmds.push(RenderCommand::SetPipeline {
+          pipeline: pipe_reflected,
+        });
+        cmds.push(RenderCommand::SetStencilReference { reference: 1 });
+        cmds.push(RenderCommand::BindVertexBuffer {
+          pipeline: pipe_reflected,
+          buffer: 0,
+        });
+        cmds.push(RenderCommand::PushConstants {
+          pipeline: pipe_reflected,
+          stage: PipelineStage::VERTEX,
+          offset: 0,
+          bytes: Vec::from(push_constants_to_words(&PushConstant {
+            mvp: mvp_reflect.transpose(),
+            model: model_reflect.transpose(),
+          })),
+        });
+        cmds.push(RenderCommand::Draw {
+          vertices: 0..self.cube_mesh.as_ref().unwrap().vertices().len() as u32,
+        });
+      }
+    }
+
+    // Floor surface (tinted)
     let pipe_floor_visual =
       self.pipe_floor_visual.expect("floor visual pipeline");
-    let pipe_normal = self.pipe_normal.expect("normal pipeline");
+    cmds.push(RenderCommand::SetPipeline {
+      pipeline: pipe_floor_visual,
+    });
+    cmds.push(RenderCommand::BindVertexBuffer {
+      pipeline: pipe_floor_visual,
+      buffer: 0,
+    });
+    cmds.push(RenderCommand::PushConstants {
+      pipeline: pipe_floor_visual,
+      stage: PipelineStage::VERTEX,
+      offset: 0,
+      bytes: Vec::from(push_constants_to_words(&PushConstant {
+        mvp: mvp_floor.transpose(),
+        model: model_floor.transpose(),
+      })),
+    });
+    cmds.push(RenderCommand::Draw {
+      vertices: 0..self.floor_mesh.as_ref().unwrap().vertices().len() as u32,
+    });
 
-    return vec![
-      // Pass 1: depth/stencil-only to write the floor mask.
-      RenderCommand::BeginRenderPass {
-        render_pass: pass_id_mask,
-        viewport: viewport.clone(),
-      },
-      // Phase 1: write stencil where the floor geometry exists (stencil = 1).
-      RenderCommand::SetPipeline {
-        pipeline: pipe_floor_mask,
-      },
-      RenderCommand::SetViewports {
-        start_at: 0,
-        viewports: vec![viewport.clone()],
-      },
-      RenderCommand::SetScissors {
-        start_at: 0,
-        viewports: vec![viewport.clone()],
-      },
-      RenderCommand::SetStencilReference { reference: 1 },
-      RenderCommand::BindVertexBuffer {
-        pipeline: pipe_floor_mask,
-        buffer: 0,
-      },
-      RenderCommand::PushConstants {
-        pipeline: pipe_floor_mask,
-        stage: PipelineStage::VERTEX,
-        offset: 0,
-        bytes: Vec::from(push_constants_to_words(&PushConstant {
-          mvp: mvp_floor.transpose(),
-          model: model_floor.transpose(),
-        })),
-      },
-      RenderCommand::Draw {
-        vertices: 0..self.floor_mesh.as_ref().unwrap().vertices().len() as u32,
-      },
-      RenderCommand::EndRenderPass,
-      // Pass 2: color + depth, stencil loaded from mask.
-      RenderCommand::BeginRenderPass {
-        render_pass: pass_id_color,
-        viewport: viewport.clone(),
-      },
-      // Phase 2: draw the reflected cube where stencil == 1.
-      RenderCommand::SetPipeline {
-        pipeline: pipe_reflected,
-      },
-      RenderCommand::SetStencilReference { reference: 1 },
-      RenderCommand::BindVertexBuffer {
-        pipeline: pipe_reflected,
-        buffer: 0,
-      },
-      RenderCommand::PushConstants {
-        pipeline: pipe_reflected,
-        stage: PipelineStage::VERTEX,
-        offset: 0,
-        bytes: Vec::from(push_constants_to_words(&PushConstant {
-          mvp: mvp_reflect.transpose(),
-          model: model_reflect.transpose(),
-        })),
-      },
-      RenderCommand::Draw {
-        vertices: 0..self.cube_mesh.as_ref().unwrap().vertices().len() as u32,
-      },
-      RenderCommand::SetPipeline {
-        pipeline: pipe_floor_visual,
-      },
-      RenderCommand::BindVertexBuffer {
-        pipeline: pipe_floor_visual,
-        buffer: 0,
-      },
-      RenderCommand::PushConstants {
-        pipeline: pipe_floor_visual,
-        stage: PipelineStage::VERTEX,
-        offset: 0,
-        bytes: Vec::from(push_constants_to_words(&PushConstant {
-          mvp: mvp_floor.transpose(),
-          model: model_floor.transpose(),
-        })),
-      },
-      RenderCommand::Draw {
-        vertices: 0..self.floor_mesh.as_ref().unwrap().vertices().len() as u32,
-      },
-      // Phase 4: draw the normal cube above the floor.
-      RenderCommand::SetPipeline {
-        pipeline: pipe_normal,
-      },
-      RenderCommand::BindVertexBuffer {
-        pipeline: pipe_normal,
-        buffer: 0,
-      },
-      RenderCommand::PushConstants {
-        pipeline: pipe_normal,
-        stage: PipelineStage::VERTEX,
-        offset: 0,
-        bytes: Vec::from(push_constants_to_words(&PushConstant {
-          mvp: mvp.transpose(),
-          model: model.transpose(),
-        })),
-      },
-      RenderCommand::Draw {
-        vertices: 0..self.cube_mesh.as_ref().unwrap().vertices().len() as u32,
-      },
-      RenderCommand::EndRenderPass,
-    ];
+    // Normal cube
+    let pipe_normal = self.pipe_normal.expect("normal pipeline");
+    cmds.push(RenderCommand::SetPipeline {
+      pipeline: pipe_normal,
+    });
+    cmds.push(RenderCommand::BindVertexBuffer {
+      pipeline: pipe_normal,
+      buffer: 0,
+    });
+    cmds.push(RenderCommand::PushConstants {
+      pipeline: pipe_normal,
+      stage: PipelineStage::VERTEX,
+      offset: 0,
+      bytes: Vec::from(push_constants_to_words(&PushConstant {
+        mvp: mvp.transpose(),
+        model: model.transpose(),
+      })),
+    });
+    cmds.push(RenderCommand::Draw {
+      vertices: 0..self.cube_mesh.as_ref().unwrap().vertices().len() as u32,
+    });
+    cmds.push(RenderCommand::EndRenderPass);
+
+    return cmds;
   }
 }
 
@@ -581,7 +634,225 @@ impl Default for ReflectiveRoomExample {
       width: 800,
       height: 600,
       elapsed: 0.0,
+      msaa_samples: 4,
+      stencil_enabled: true,
+      depth_test_enabled: true,
+      needs_rebuild: false,
     };
+  }
+}
+
+impl ReflectiveRoomExample {
+  fn rebuild_resources(
+    &mut self,
+    render_context: &mut lambda::render::RenderContext,
+  ) -> Result<(), String> {
+    self.needs_rebuild = false;
+
+    // Ensure meshes exist (reuse existing buffers on context attach).
+    if self.cube_mesh.is_none() {
+      self.cube_mesh = Some(build_unit_cube_mesh());
+    }
+    if self.floor_mesh.is_none() {
+      self.floor_mesh = Some(build_floor_quad_mesh(5.0));
+    }
+    let cube_mesh = self.cube_mesh.as_ref().unwrap();
+    let floor_mesh = self.floor_mesh.as_ref().unwrap();
+    let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
+
+    // Build pass descriptions locally first
+    let rp_mask_desc = if self.stencil_enabled {
+      Some(
+        RenderPassBuilder::new()
+          .with_label("reflective-room-pass-mask")
+          .with_depth_clear(1.0)
+          .with_stencil_clear(0)
+          .with_multi_sample(self.msaa_samples)
+          .without_color()
+          .build(render_context),
+      )
+    } else {
+      None
+    };
+
+    let mut rp_color_builder = RenderPassBuilder::new()
+      .with_label("reflective-room-pass-color")
+      .with_multi_sample(self.msaa_samples);
+    if self.depth_test_enabled {
+      rp_color_builder = rp_color_builder.with_depth_clear(1.0);
+    } else if self.stencil_enabled {
+      // Ensure a depth-stencil attachment exists even if we are not depth-testing,
+      // because pipelines with stencil state expect a depth/stencil attachment.
+      rp_color_builder = rp_color_builder.with_depth_load();
+    }
+    if self.stencil_enabled {
+      rp_color_builder = rp_color_builder.with_stencil_load();
+    }
+    let rp_color_desc = rp_color_builder.build(render_context);
+
+    // Floor mask pipeline (stencil write)
+    self.pipe_floor_mask = if self.stencil_enabled {
+      let p = RenderPipelineBuilder::new()
+        .with_label("floor-mask")
+        .with_culling(CullingMode::Back)
+        .with_depth_format(DepthFormat::Depth24PlusStencil8)
+        .with_depth_write(false)
+        .with_depth_compare(CompareFunction::Always)
+        .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+        .with_buffer(
+          BufferBuilder::build_from_mesh(floor_mesh, render_context)
+            .map_err(|e| format!("Failed to create floor buffer: {}", e))?,
+          floor_mesh.attributes().to_vec(),
+        )
+        .with_stencil(StencilState {
+          front: StencilFaceState {
+            compare: CompareFunction::Always,
+            fail_op: StencilOperation::Keep,
+            depth_fail_op: StencilOperation::Keep,
+            pass_op: StencilOperation::Replace,
+          },
+          back: StencilFaceState {
+            compare: CompareFunction::Always,
+            fail_op: StencilOperation::Keep,
+            depth_fail_op: StencilOperation::Keep,
+            pass_op: StencilOperation::Replace,
+          },
+          read_mask: 0xFF,
+          write_mask: 0xFF,
+        })
+        .with_multi_sample(self.msaa_samples)
+        .build(
+          render_context,
+          rp_mask_desc
+            .as_ref()
+            .expect("mask pass missing for stencil"),
+          &self.shader_vs,
+          None,
+        );
+      Some(render_context.attach_pipeline(p))
+    } else {
+      None
+    };
+
+    // Reflected cube pipeline
+    self.pipe_reflected = if self.stencil_enabled {
+      let mut builder = RenderPipelineBuilder::new()
+        .with_label("reflected-cube")
+        .with_culling(CullingMode::None)
+        .with_depth_format(DepthFormat::Depth24PlusStencil8)
+        .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+        .with_buffer(
+          BufferBuilder::build_from_mesh(cube_mesh, render_context)
+            .map_err(|e| format!("Failed to create cube buffer: {}", e))?,
+          cube_mesh.attributes().to_vec(),
+        )
+        .with_stencil(StencilState {
+          front: StencilFaceState {
+            compare: CompareFunction::Equal,
+            fail_op: StencilOperation::Keep,
+            depth_fail_op: StencilOperation::Keep,
+            pass_op: StencilOperation::Keep,
+          },
+          back: StencilFaceState {
+            compare: CompareFunction::Equal,
+            fail_op: StencilOperation::Keep,
+            depth_fail_op: StencilOperation::Keep,
+            pass_op: StencilOperation::Keep,
+          },
+          read_mask: 0xFF,
+          write_mask: 0x00,
+        })
+        .with_multi_sample(self.msaa_samples);
+      if self.depth_test_enabled {
+        builder = builder
+          .with_depth_write(true)
+          .with_depth_compare(CompareFunction::LessEqual);
+      } else {
+        builder = builder
+          .with_depth_write(false)
+          .with_depth_compare(CompareFunction::Always);
+      }
+      let p = builder.build(
+        render_context,
+        &rp_color_desc,
+        &self.shader_vs,
+        Some(&self.shader_fs_lit),
+      );
+      Some(render_context.attach_pipeline(p))
+    } else {
+      None
+    };
+
+    // Floor visual pipeline
+    let mut floor_builder = RenderPipelineBuilder::new()
+      .with_label("floor-visual")
+      .with_culling(CullingMode::Back)
+      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+      .with_buffer(
+        BufferBuilder::build_from_mesh(floor_mesh, render_context)
+          .map_err(|e| format!("Failed to create floor buffer: {}", e))?,
+        floor_mesh.attributes().to_vec(),
+      )
+      .with_multi_sample(self.msaa_samples);
+    if self.depth_test_enabled || self.stencil_enabled {
+      floor_builder = floor_builder
+        .with_depth_format(DepthFormat::Depth24PlusStencil8)
+        .with_depth_write(false)
+        .with_depth_compare(if self.depth_test_enabled {
+          CompareFunction::LessEqual
+        } else {
+          CompareFunction::Always
+        });
+    }
+    let floor_pipe = floor_builder.build(
+      render_context,
+      &rp_color_desc,
+      &self.shader_vs,
+      Some(&self.shader_fs_floor),
+    );
+    self.pipe_floor_visual = Some(render_context.attach_pipeline(floor_pipe));
+
+    // Normal cube pipeline
+    let mut normal_builder = RenderPipelineBuilder::new()
+      .with_label("cube-normal")
+      .with_culling(CullingMode::Back)
+      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+      .with_buffer(
+        BufferBuilder::build_from_mesh(cube_mesh, render_context)
+          .map_err(|e| format!("Failed to create cube buffer: {}", e))?,
+        cube_mesh.attributes().to_vec(),
+      )
+      .with_multi_sample(self.msaa_samples);
+    if self.depth_test_enabled || self.stencil_enabled {
+      normal_builder = normal_builder
+        .with_depth_format(DepthFormat::Depth24PlusStencil8)
+        .with_depth_write(self.depth_test_enabled)
+        .with_depth_compare(if self.depth_test_enabled {
+          CompareFunction::Less
+        } else {
+          CompareFunction::Always
+        });
+    }
+    let normal_pipe = normal_builder.build(
+      render_context,
+      &rp_color_desc,
+      &self.shader_vs,
+      Some(&self.shader_fs_lit),
+    );
+    self.pipe_normal = Some(render_context.attach_pipeline(normal_pipe));
+
+    // Finally attach the passes and record their handles
+    self.pass_id_mask =
+      rp_mask_desc.map(|rp| render_context.attach_render_pass(rp));
+    self.pass_id_color = Some(render_context.attach_render_pass(rp_color_desc));
+
+    logging::info!(
+      "Rebuilt — MSAA: {}x, Stencil: {}, Depth Test: {}",
+      self.msaa_samples,
+      self.stencil_enabled,
+      self.depth_test_enabled
+    );
+    return Ok(());
   }
 }
 
