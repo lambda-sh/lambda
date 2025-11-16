@@ -17,7 +17,12 @@ use lambda::{
   logging,
   math::matrix::Matrix,
   render::{
-    buffer::BufferBuilder,
+    buffer::{
+      BufferBuilder,
+      BufferType,
+      Properties,
+      Usage,
+    },
     command::RenderCommand,
     mesh::{
       Mesh,
@@ -163,180 +168,16 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
   ) -> Result<ComponentResult, String> {
     logging::info!("Attaching ReflectiveRoomExample");
 
-    // Pass 1 (mask): depth clear, stencil clear, MSAA 4x, without color.
-    let render_pass_mask = RenderPassBuilder::new()
-      .with_label("reflective-room-pass-mask")
-      .with_depth_clear(1.0)
-      .with_stencil_clear(0)
-      .with_multi_sample(4)
-      .without_color()
-      .build(render_context);
-
-    // Pass 2 (color): color + depth clear, stencil LOAD (use mask), MSAA 4x.
-    let render_pass_color = RenderPassBuilder::new()
-      .with_label("reflective-room-pass-color")
-      .with_depth_clear(1.0)
-      .with_stencil_load()
-      .with_multi_sample(4)
-      .build(render_context);
-
-    // Shaders
-    let mut shader_builder = ShaderBuilder::new();
-    let shader_vs = shader_builder.build(VirtualShader::Source {
-      source: VERTEX_SHADER_SOURCE.to_string(),
-      kind: ShaderKind::Vertex,
-      entry_point: "main".to_string(),
-      name: "reflective-room-vs".to_string(),
-    });
-    let shader_fs_lit = shader_builder.build(VirtualShader::Source {
-      source: FRAGMENT_LIT_COLOR_SOURCE.to_string(),
-      kind: ShaderKind::Fragment,
-      entry_point: "main".to_string(),
-      name: "reflective-room-fs-lit".to_string(),
-    });
-    let shader_fs_floor = shader_builder.build(VirtualShader::Source {
-      source: FRAGMENT_FLOOR_TINT_SOURCE.to_string(),
-      kind: ShaderKind::Fragment,
-      entry_point: "main".to_string(),
-      name: "reflective-room-fs-floor".to_string(),
-    });
-    // Note: the mask pipeline is vertex-only and will be used in a pass
-    // without color attachments.
-
-    // Geometry: cube (unit) and floor quad at y = 0.
-    let cube_mesh = build_unit_cube_mesh();
-    let floor_mesh = build_floor_quad_mesh(5.0);
-
-    let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
-
-    // Stencil mask pipeline. Writes stencil=1 where the floor exists.
-    let pipe_floor_mask = RenderPipelineBuilder::new()
-      .with_label("floor-mask")
-      .with_culling(CullingMode::Back)
-      .with_depth_format(DepthFormat::Depth24PlusStencil8)
-      .with_depth_write(false)
-      .with_depth_compare(CompareFunction::Always)
-      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
-      .with_buffer(
-        BufferBuilder::build_from_mesh(&floor_mesh, render_context)
-          .expect("Failed to create floor vertex buffer"),
-        floor_mesh.attributes().to_vec(),
-      )
-      .with_stencil(StencilState {
-        front: StencilFaceState {
-          compare: CompareFunction::Always,
-          fail_op: StencilOperation::Keep,
-          depth_fail_op: StencilOperation::Keep,
-          pass_op: StencilOperation::Replace,
-        },
-        back: StencilFaceState {
-          compare: CompareFunction::Always,
-          fail_op: StencilOperation::Keep,
-          depth_fail_op: StencilOperation::Keep,
-          pass_op: StencilOperation::Replace,
-        },
-        read_mask: 0xFF,
-        write_mask: 0xFF,
-      })
-      .with_multi_sample(4)
-      .build(render_context, &render_pass_mask, &shader_vs, None);
-
-    // Reflected cube pipeline: stencil test Equal, depth test enabled, no culling.
-    let pipe_reflected = RenderPipelineBuilder::new()
-      .with_label("reflected-cube")
-      .with_culling(CullingMode::None)
-      .with_depth_format(DepthFormat::Depth24PlusStencil8)
-      .with_depth_write(true)
-      .with_depth_compare(CompareFunction::LessEqual)
-      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
-      .with_buffer(
-        BufferBuilder::build_from_mesh(&cube_mesh, render_context)
-          .expect("Failed to create cube vertex buffer"),
-        cube_mesh.attributes().to_vec(),
-      )
-      .with_stencil(StencilState {
-        front: StencilFaceState {
-          compare: CompareFunction::Equal,
-          fail_op: StencilOperation::Keep,
-          depth_fail_op: StencilOperation::Keep,
-          pass_op: StencilOperation::Keep,
-        },
-        back: StencilFaceState {
-          compare: CompareFunction::Equal,
-          fail_op: StencilOperation::Keep,
-          depth_fail_op: StencilOperation::Keep,
-          pass_op: StencilOperation::Keep,
-        },
-        read_mask: 0xFF,
-        write_mask: 0x00,
-      })
-      .with_multi_sample(4)
-      .build(
-        render_context,
-        &render_pass_color,
-        &shader_vs,
-        Some(&shader_fs_lit),
-      );
-
-    // Floor visual pipeline: draw a tinted surface above the reflection.
-    let pipe_floor_visual = RenderPipelineBuilder::new()
-      .with_label("floor-visual")
-      .with_culling(CullingMode::Back)
-      .with_depth_format(DepthFormat::Depth24PlusStencil8)
-      .with_depth_write(false)
-      .with_depth_compare(CompareFunction::LessEqual)
-      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
-      .with_buffer(
-        BufferBuilder::build_from_mesh(&floor_mesh, render_context)
-          .expect("Failed to create floor vertex buffer"),
-        floor_mesh.attributes().to_vec(),
-      )
-      .with_multi_sample(4)
-      .build(
-        render_context,
-        &render_pass_color,
-        &shader_vs,
-        Some(&shader_fs_floor),
-      );
-
-    // Normal (unreflected) cube pipeline: standard depth test.
-    let pipe_normal = RenderPipelineBuilder::new()
-      .with_label("cube-normal")
-      .with_culling(CullingMode::Back)
-      .with_depth_format(DepthFormat::Depth24PlusStencil8)
-      .with_depth_write(true)
-      .with_depth_compare(CompareFunction::Less)
-      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
-      .with_buffer(
-        BufferBuilder::build_from_mesh(&cube_mesh, render_context)
-          .expect("Failed to create cube vertex buffer"),
-        cube_mesh.attributes().to_vec(),
-      )
-      .with_multi_sample(4)
-      .build(
-        render_context,
-        &render_pass_color,
-        &shader_vs,
-        Some(&shader_fs_lit),
-      );
-
-    self.pass_id_mask =
-      Some(render_context.attach_render_pass(render_pass_mask));
-    self.pass_id_color =
-      Some(render_context.attach_render_pass(render_pass_color));
-    self.pipe_floor_mask =
-      Some(render_context.attach_pipeline(pipe_floor_mask));
-    self.pipe_reflected = Some(render_context.attach_pipeline(pipe_reflected));
-    self.pipe_floor_visual =
-      Some(render_context.attach_pipeline(pipe_floor_visual));
-    self.pipe_normal = Some(render_context.attach_pipeline(pipe_normal));
-    self.cube_mesh = Some(cube_mesh);
-    self.floor_mesh = Some(floor_mesh);
-    self.shader_vs = shader_vs;
-    self.shader_fs_lit = shader_fs_lit;
-    self.shader_fs_floor = shader_fs_floor;
-
-    return Ok(ComponentResult::Success);
+    // Build resources according to current toggles via the shared path.
+    match self.rebuild_resources(render_context) {
+      Ok(()) => {
+        return Ok(ComponentResult::Success);
+      }
+      Err(err) => {
+        logging::error!("Initial resource build failed: {}", err);
+        return Err(err);
+      }
+    }
   }
 
   fn on_detach(
@@ -442,27 +283,27 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
     );
     let mvp = projection.multiply(&view).multiply(&model);
 
-    // Reflected model: mirror across the floor (y=0) by scaling Y by -1.
-    let mut model_reflect: [[f32; 4]; 4] =
-      lambda::math::matrix::identity_matrix(4, 4);
-    // Mirror across the floor plane by scaling Y by -1.
-    let s_mirror: [[f32; 4]; 4] = [
-      [1.0, 0.0, 0.0, 0.0],
-      [0.0, -1.0, 0.0, 0.0],
-      [0.0, 0.0, 1.0, 0.0],
-      [0.0, 0.0, 0.0, 1.0],
-    ];
-    model_reflect = model_reflect.multiply(&s_mirror);
-    // Apply the same rotation and translation as the normal cube but mirrored.
-    model_reflect = lambda::math::matrix::rotate_matrix(
-      model_reflect,
-      [0.0, 1.0, 0.0],
-      angle_y_turns,
-    );
-    let t_down: [[f32; 4]; 4] =
-      lambda::math::matrix::translation_matrix([0.0, -0.5, 0.0]);
-    model_reflect = model_reflect.multiply(&t_down);
-    let mvp_reflect = projection.multiply(&view).multiply(&model_reflect);
+    // Compute reflected transform only if stencil/reflection is enabled.
+    let (model_reflect, mvp_reflect) = if self.stencil_enabled {
+      let mut mr: [[f32; 4]; 4] = lambda::math::matrix::identity_matrix(4, 4);
+      let s_mirror: [[f32; 4]; 4] = [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, -1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+      ];
+      mr = mr.multiply(&s_mirror);
+      mr =
+        lambda::math::matrix::rotate_matrix(mr, [0.0, 1.0, 0.0], angle_y_turns);
+      let t_down: [[f32; 4]; 4] =
+        lambda::math::matrix::translation_matrix([0.0, -0.5, 0.0]);
+      mr = mr.multiply(&t_down);
+      let mvp_r = projection.multiply(&view).multiply(&mr);
+      (mr, mvp_r)
+    } else {
+      // Unused in subsequent commands when stencil is disabled.
+      (lambda::math::matrix::identity_matrix(4, 4), mvp)
+    };
 
     // Floor model: at y = 0 plane
     let mut model_floor: [[f32; 4]; 4] =
@@ -472,6 +313,18 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
     let viewport = ViewportBuilder::new().build(self.width, self.height);
 
     let mut cmds: Vec<RenderCommand> = Vec::new();
+
+    // Cache vertex counts locally to avoid repeated lookups.
+    let cube_vertex_count: u32 = self
+      .cube_mesh
+      .as_ref()
+      .map(|m| m.vertices().len() as u32)
+      .unwrap_or(0);
+    let floor_vertex_count: u32 = self
+      .floor_mesh
+      .as_ref()
+      .map(|m| m.vertices().len() as u32)
+      .unwrap_or(0);
 
     if self.stencil_enabled {
       // Optional Pass 1: write floor stencil mask
@@ -508,8 +361,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
           })),
         });
         cmds.push(RenderCommand::Draw {
-          vertices: 0..self.floor_mesh.as_ref().unwrap().vertices().len()
-            as u32,
+          vertices: 0..floor_vertex_count,
         });
         cmds.push(RenderCommand::EndRenderPass);
       }
@@ -542,7 +394,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
           })),
         });
         cmds.push(RenderCommand::Draw {
-          vertices: 0..self.cube_mesh.as_ref().unwrap().vertices().len() as u32,
+          vertices: 0..cube_vertex_count,
         });
       }
     }
@@ -567,7 +419,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       })),
     });
     cmds.push(RenderCommand::Draw {
-      vertices: 0..self.floor_mesh.as_ref().unwrap().vertices().len() as u32,
+      vertices: 0..floor_vertex_count,
     });
 
     // Normal cube
@@ -589,7 +441,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       })),
     });
     cmds.push(RenderCommand::Draw {
-      vertices: 0..self.cube_mesh.as_ref().unwrap().vertices().len() as u32,
+      vertices: 0..cube_vertex_count,
     });
     cmds.push(RenderCommand::EndRenderPass);
 
@@ -700,7 +552,14 @@ impl ReflectiveRoomExample {
         .with_depth_compare(CompareFunction::Always)
         .with_push_constant(PipelineStage::VERTEX, push_constants_size)
         .with_buffer(
-          BufferBuilder::build_from_mesh(floor_mesh, render_context)
+          BufferBuilder::new()
+            .with_length(
+              floor_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
+            )
+            .with_usage(Usage::VERTEX)
+            .with_properties(Properties::DEVICE_LOCAL)
+            .with_buffer_type(BufferType::Vertex)
+            .build(render_context, floor_mesh.vertices().to_vec())
             .map_err(|e| format!("Failed to create floor buffer: {}", e))?,
           floor_mesh.attributes().to_vec(),
         )
@@ -742,7 +601,14 @@ impl ReflectiveRoomExample {
         .with_depth_format(DepthFormat::Depth24PlusStencil8)
         .with_push_constant(PipelineStage::VERTEX, push_constants_size)
         .with_buffer(
-          BufferBuilder::build_from_mesh(cube_mesh, render_context)
+          BufferBuilder::new()
+            .with_length(
+              cube_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
+            )
+            .with_usage(Usage::VERTEX)
+            .with_properties(Properties::DEVICE_LOCAL)
+            .with_buffer_type(BufferType::Vertex)
+            .build(render_context, cube_mesh.vertices().to_vec())
             .map_err(|e| format!("Failed to create cube buffer: {}", e))?,
           cube_mesh.attributes().to_vec(),
         )
@@ -789,7 +655,14 @@ impl ReflectiveRoomExample {
       .with_culling(CullingMode::Back)
       .with_push_constant(PipelineStage::VERTEX, push_constants_size)
       .with_buffer(
-        BufferBuilder::build_from_mesh(floor_mesh, render_context)
+        BufferBuilder::new()
+          .with_length(
+            floor_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
+          )
+          .with_usage(Usage::VERTEX)
+          .with_properties(Properties::DEVICE_LOCAL)
+          .with_buffer_type(BufferType::Vertex)
+          .build(render_context, floor_mesh.vertices().to_vec())
           .map_err(|e| format!("Failed to create floor buffer: {}", e))?,
         floor_mesh.attributes().to_vec(),
       )
@@ -818,7 +691,14 @@ impl ReflectiveRoomExample {
       .with_culling(CullingMode::Back)
       .with_push_constant(PipelineStage::VERTEX, push_constants_size)
       .with_buffer(
-        BufferBuilder::build_from_mesh(cube_mesh, render_context)
+        BufferBuilder::new()
+          .with_length(
+            cube_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
+          )
+          .with_usage(Usage::VERTEX)
+          .with_properties(Properties::DEVICE_LOCAL)
+          .with_buffer_type(BufferType::Vertex)
+          .build(render_context, cube_mesh.vertices().to_vec())
           .map_err(|e| format!("Failed to create cube buffer: {}", e))?,
         cube_mesh.attributes().to_vec(),
       )
@@ -857,7 +737,8 @@ impl ReflectiveRoomExample {
 }
 
 fn build_unit_cube_mesh() -> Mesh {
-  let mut verts: Vec<Vertex> = Vec::new();
+  // 6 faces * 2 triangles * 3 vertices = 36
+  let mut verts: Vec<Vertex> = Vec::with_capacity(36);
   let mut add_face =
     |nx: f32, ny: f32, nz: f32, corners: [(f32, f32, f32); 4]| {
       let n = [nx, ny, nz];
