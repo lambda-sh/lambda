@@ -3,13 +3,13 @@ title: "Depth/Stencil and Multi-Sample Rendering"
 document_id: "depth-stencil-msaa-2025-11-11"
 status: "draft"
 created: "2025-11-11T00:00:00Z"
-last_updated: "2025-11-17T00:19:24Z"
-version: "0.2.0"
+last_updated: "2025-11-17T23:59:59Z"
+version: "0.3.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "ceaf345777d871912b2f92ae629a34b8e6f8654a"
+repo_commit: "709054fcc1fa678ac5f0611877b759bad93decd0"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "depth", "stencil", "msaa"]
@@ -146,6 +146,21 @@ App Code
     relies on caller-provided sane values and `wgpu` validation. A strict check
     MAY be added in a follow-up.
 
+### Validation Feature Flags
+
+- Debug builds: all validations are enabled unconditionally (`debug_assertions`).
+- Release builds: only cheap safety checks remain always-on; logging and
+  per-draw checks are controlled by Cargo features on `lambda-rs`.
+- Feature flags
+  - `render-validation-msaa`: validate/log MSAA counts; pass/pipeline mismatch logs.
+  - `render-validation-depth`: clamp/log depth clear; depth usage advisories.
+  - `render-validation-stencil`: stencil usage/format upgrade advisories.
+
+Always-on safeguards (release and debug)
+- Clamp depth clear to `[0.0, 1.0]`.
+- Align pipeline `sample_count` to the pass `sample_count`.
+- Clamp invalid MSAA sample counts to `1`.
+
 ## Constraints and Rules
 
 - Multi-sample `sample_count` MUST be one of the device-supported counts. It is
@@ -184,9 +199,9 @@ App Code
         MSAA
   - [x] Commands: set stencil reference; existing draw/bind/viewport remain
 - Validation and Errors
-  - [ ] Sample counts limited to {1,2,4,8}; invalid → log + clamp to 1
-  - [ ] Pass/pipeline sample mismatch → align to pass + log
-  - [ ] Depth clear in [0.0, 1.0] (SHOULD validate); device support (SHOULD)
+  - [x] Sample counts limited to {1,2,4,8}; invalid → clamp to 1 (log via features)
+  - [x] Pass/pipeline sample mismatch → align to pass (log via features)
+  - [x] Depth clear clamped to [0.0, 1.0] (log via features); device support (SHOULD)
 - Performance
   - [ ] 4x MSAA guidance; memory trade-offs for `Depth32Float` vs `Depth24Plus`
   - [ ] Recommend disabling depth writes for overlays/transparency
@@ -219,7 +234,8 @@ path that demonstrates the implementation.
   defaults (no depth, no multi-sampling) unless explicitly configured.
 
 ## Changelog
-
+- 2025-11-17 (v0.3.1) — Remove umbrella validation flags from this spec; list
+  only feature flags related to MSAA, depth, and stencil; metadata updated.
 - 2025-11-11 (v0.1.1) — Add MSAA validation in builders; align pipeline and
   pass sample counts; document logging-based fallback semantics.
 - 2025-11-11 (v0.1.0) — Initial draft.
