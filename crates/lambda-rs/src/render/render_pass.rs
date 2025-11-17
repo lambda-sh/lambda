@@ -201,8 +201,21 @@ impl RenderPassBuilder {
 
   /// Enable a depth attachment with an explicit clear value.
   pub fn with_depth_clear(mut self, clear: f64) -> Self {
+    // Clamp to the valid range [0.0, 1.0] unconditionally.
+    let clamped = clear.clamp(0.0, 1.0);
+    // Optionally log when clamping is applied.
+    #[cfg(any(debug_assertions, feature = "render-validation-depth",))]
+    {
+      if (clamped - clear).abs() > f64::EPSILON {
+        logging::warn!(
+          "Depth clear value {} out of range [0,1]; clamped to {}",
+          clear,
+          clamped
+        );
+      }
+    }
     self.depth_operations = Some(DepthOperations {
-      load: DepthLoadOp::Clear(clear),
+      load: DepthLoadOp::Clear(clamped),
       store: StoreOp::Store,
     });
     return self;
@@ -243,26 +256,21 @@ impl RenderPassBuilder {
 
   /// Configure multi-sample anti-aliasing for this pass.
   pub fn with_multi_sample(mut self, samples: u32) -> Self {
-    #[cfg(debug_assertions)]
-    {
-      match validation::validate_sample_count(samples) {
-        Ok(()) => {
-          self.sample_count = samples;
-        }
-        Err(msg) => {
+    // Always apply a cheap validity check; log under feature/debug gates.
+    let allowed = matches!(samples, 1 | 2 | 4 | 8);
+    if allowed {
+      self.sample_count = samples;
+    } else {
+      #[cfg(any(debug_assertions, feature = "render-validation-msaa",))]
+      {
+        if let Err(msg) = validation::validate_sample_count(samples) {
           logging::error!(
             "{}; falling back to sample_count=1 for render pass",
             msg
           );
-          self.sample_count = 1;
         }
       }
-    }
-    #[cfg(not(debug_assertions))]
-    {
-      // In release builds, accept the provided sample count without engine
-      // validation; platform validation MAY still apply.
-      self.sample_count = samples;
+      self.sample_count = 1;
     }
     return self;
   }

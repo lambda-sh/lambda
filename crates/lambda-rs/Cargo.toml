@@ -37,6 +37,43 @@ with-shaderc-build-from-source=[
   "lambda-rs-platform/shader-backend-shaderc-build-from-source",
 ]
 
+# ------------------------------ RENDER VALIDATION -----------------------------
+# Granular, opt-in validation flags for release builds. Debug builds enable
+# all validations unconditionally via `debug_assertions`.
+
+# Umbrella features
+# - render-validation: enable common, configuration-time checks and logs
+# - render-validation-strict: includes render-validation + per-draw checks
+# - render-validation-all: enables all validations including device probing
+render-validation = [
+  "render-validation-msaa",
+  "render-validation-depth",
+  "render-validation-stencil",
+]
+render-validation-strict = [
+  "render-validation",
+  "render-validation-pass-compat",
+  "render-validation-encoder",
+]
+render-validation-all = [
+  "render-validation-strict",
+  "render-validation-device",
+]
+
+# Granular feature flags
+# - msaa: sample count validity and mismatch logging
+# - depth: depth clear clamping log and depth advisories
+# - stencil: stencil/format upgrade advisories
+# - pass-compat: color/depth presence compatibility checks at SetPipeline
+# - device: device/format probing advisories (may consult platform)
+# - encoder: per-draw/encoder-time checks (most expensive)
+render-validation-msaa = []
+render-validation-depth = []
+render-validation-stencil = []
+render-validation-pass-compat = []
+render-validation-device = []
+render-validation-encoder = []
+
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------
 

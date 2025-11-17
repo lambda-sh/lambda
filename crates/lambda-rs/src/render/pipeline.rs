@@ -316,26 +316,20 @@ impl RenderPipelineBuilder {
 
   /// Configure multi-sampling for this pipeline.
   pub fn with_multi_sample(mut self, samples: u32) -> Self {
-    #[cfg(debug_assertions)]
-    {
-      match validation::validate_sample_count(samples) {
-        Ok(()) => {
-          self.sample_count = samples;
-        }
-        Err(msg) => {
+    // Always apply a cheap validity check; log under feature/debug gates.
+    if matches!(samples, 1 | 2 | 4 | 8) {
+      self.sample_count = samples;
+    } else {
+      #[cfg(any(debug_assertions, feature = "render-validation-msaa",))]
+      {
+        if let Err(msg) = validation::validate_sample_count(samples) {
           logging::error!(
             "{}; falling back to sample_count=1 for pipeline",
             msg
           );
-          self.sample_count = 1;
         }
       }
-    }
-    #[cfg(not(debug_assertions))]
-    {
-      // In release builds, accept the provided sample count without extra
-      // engine-level validation. Platform validation MAY still apply.
-      self.sample_count = samples;
+      self.sample_count = 1;
     }
     return self;
   }
@@ -463,7 +457,7 @@ impl RenderPipelineBuilder {
       if self.stencil.is_some()
         && dfmt != texture::DepthFormat::Depth24PlusStencil8
       {
-        #[cfg(debug_assertions)]
+        #[cfg(any(debug_assertions, feature = "render-validation-stencil",))]
         logging::error!(
           "Stencil configured but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
           dfmt
@@ -486,23 +480,24 @@ impl RenderPipelineBuilder {
     }
 
     // Apply multi-sampling to the pipeline.
-    // In debug builds, validate and align with the render pass; in release,
-    // defer to platform validation without engine-side checks.
+    // Always align to the pass sample count; gate logs.
     let mut pipeline_samples = self.sample_count;
-    #[cfg(debug_assertions)]
-    {
-      let pass_samples = _render_pass.sample_count();
-      if pipeline_samples != pass_samples {
-        logging::error!(
-          "Pipeline sample_count={} does not match pass sample_count={}; aligning to pass",
-          pipeline_samples,
-          pass_samples
-        );
-        pipeline_samples = pass_samples;
+    let pass_samples = _render_pass.sample_count();
+    if pipeline_samples != pass_samples {
+      #[cfg(any(debug_assertions, feature = "render-validation-msaa",))]
+      logging::error!(
+        "Pipeline sample_count={} does not match pass sample_count={}; aligning to pass",
+        pipeline_samples,
+        pass_samples
+      );
+      pipeline_samples = pass_samples;
+    }
+    if !matches!(pipeline_samples, 1 | 2 | 4 | 8) {
+      #[cfg(any(debug_assertions, feature = "render-validation-msaa",))]
+      {
+        let _ = validation::validate_sample_count(pipeline_samples);
       }
-      if validation::validate_sample_count(pipeline_samples).is_err() {
-        pipeline_samples = 1;
-      }
+      pipeline_samples = 1;
     }
     rp_builder = rp_builder.with_sample_count(pipeline_samples);
 

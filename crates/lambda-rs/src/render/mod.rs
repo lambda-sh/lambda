@@ -471,7 +471,10 @@ impl RenderContext {
               && self.depth_format
                 != platform::texture::DepthFormat::Depth24PlusStencil8
             {
-              #[cfg(debug_assertions)]
+              #[cfg(any(
+                debug_assertions,
+                feature = "render-validation-stencil",
+              ))]
               logging::error!(
                 "Render pass has stencil ops but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
                 self.depth_format
@@ -601,10 +604,18 @@ impl RenderContext {
     I: Iterator<Item = RenderCommand>,
   {
     Self::apply_viewport(pass, &initial_viewport);
-    // De-duplicate advisories within this pass (debug builds only)
-    #[cfg(debug_assertions)]
+    // De-duplicate advisories within this pass
+    #[cfg(any(
+      debug_assertions,
+      feature = "render-validation-depth",
+      feature = "render-validation-stencil",
+    ))]
     let mut warned_no_stencil_for_pipeline: HashSet<usize> = HashSet::new();
-    #[cfg(debug_assertions)]
+    #[cfg(any(
+      debug_assertions,
+      feature = "render-validation-depth",
+      feature = "render-validation-stencil",
+    ))]
     let mut warned_no_depth_for_pipeline: HashSet<usize> = HashSet::new();
 
     while let Some(command) = commands.next() {
@@ -620,8 +631,12 @@ impl RenderContext {
                 "Unknown pipeline {pipeline}"
               ));
             })?;
-          // Validate pass/pipeline compatibility before deferring to the platform (debug only).
-          #[cfg(debug_assertions)]
+          // Validate pass/pipeline compatibility before deferring to the platform.
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-validation-pass-compat",
+            feature = "render-validation-encoder",
+          ))]
           {
             if !uses_color && pipeline_ref.has_color_targets() {
               let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
@@ -645,8 +660,12 @@ impl RenderContext {
               )));
             }
           }
-          // Advisory checks to help reason about stencil/depth behavior (debug only).
-          #[cfg(debug_assertions)]
+          // Advisory checks to help reason about stencil/depth behavior.
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-validation-depth",
+            feature = "render-validation-stencil",
+          ))]
           {
             if pass_has_stencil
               && !pipeline_ref.uses_stencil()
