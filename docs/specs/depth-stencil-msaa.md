@@ -3,13 +3,13 @@ title: "Depth/Stencil and Multi-Sample Rendering"
 document_id: "depth-stencil-msaa-2025-11-11"
 status: "draft"
 created: "2025-11-11T00:00:00Z"
-last_updated: "2025-11-13T00:00:00Z"
-version: "0.1.4"
+last_updated: "2025-11-17T00:19:24Z"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "21d0a5b511144db31f10ee07b2efb640ca990daf"
+repo_commit: "ceaf345777d871912b2f92ae629a34b8e6f8654a"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "depth", "stencil", "msaa"]
@@ -20,14 +20,15 @@ tags: ["spec", "rendering", "depth", "stencil", "msaa"]
 Summary
 - Add configurable depth testing/writes and multi-sample anti-aliasing (MSAA)
   to the high-level rendering API via builders, without exposing `wgpu` types.
-- Provide strict validation at build time and predictable defaults to enable
-  3D scenes and higher-quality rasterization in example and production code.
+- Provide validation and predictable defaults to enable 3D scenes and
+  higher-quality rasterization in example and production code.
 
 ## Scope
 
 - Goals
   - Expose depth/stencil and multi-sample configuration on `RenderPassBuilder`
-    and `RenderPipelineBuilder` using `lambda-rs` types only.
+    and `RenderPipelineBuilder` using engine/platform types; `wgpu` types are
+    not exposed.
   - Validate device capabilities and configuration consistency at build time.
   - Define defaults for depth clear, compare operation, and sample count.
   - Map high-level configuration to `lambda-rs-platform` and `wgpu` internally.
@@ -49,14 +50,14 @@ Summary
 ## Architecture Overview
 
 - High-level builders in `lambda-rs` collect depth/stencil and multi-sample
-  configuration using engine-defined types.
+  configuration using engine/platform types.
 - `lambda-rs-platform` translates those types into backend-specific
   representations for `wgpu` creation of textures, passes, and pipelines.
 
 ```
 App Code
   └── lambda-rs (RenderPassBuilder / RenderPipelineBuilder)
-        └── DepthStencil + MultiSample config (engine types)
+        └── DepthStencil + MultiSample config (engine/platform types)
               └── lambda-rs-platform (mapping/validation)
                     └── wgpu device/pipeline/pass
 ```
@@ -83,26 +84,30 @@ App Code
     - `RenderPipelineBuilder::with_multi_sample(u32) -> Self`
   - Example (engine types only)
     ```rust
-    use lambda_rs::render::{Color, DepthFormat, CompareFunction, DepthStencil, MultiSample};
+    use lambda::render::render_pass::RenderPassBuilder;
+    use lambda::render::pipeline::{RenderPipelineBuilder, CompareFunction};
+    use lambda::render::texture::DepthFormat;
 
     let pass = RenderPassBuilder::new()
       .with_clear_color([0.0, 0.0, 0.0, 1.0])
       .with_depth_clear(1.0)
       .with_multi_sample(4)
-      .build(&render_context)?;
+      .build(&render_context);
 
     let pipeline = RenderPipelineBuilder::new()
       .with_multi_sample(4)
       .with_depth_format(DepthFormat::Depth32Float)
       .with_depth_compare(CompareFunction::Less)
-      .build(&mut render_context, &pass, &vertex_shader, Some(&fragment_shader))?;
+      .build(&mut render_context, &pass, &vertex_shader, Some(&fragment_shader));
     ```
 - Behavior
   - Defaults
-    - If `with_depth_stencil` is not called, the pass MUST NOT create a depth
-      attachment and depth testing is disabled.
-    - `DepthStencil.clear_value` defaults to `1.0` (furthest depth).
-    - `DepthStencil.compare` defaults to `CompareFunction::Less`.
+    - If depth is not requested on the pass (`with_depth*`), the pass MUST NOT
+      create a depth attachment and depth testing is disabled.
+    - Depth clear defaults to `1.0` when depth is enabled on the pass and no
+      explicit clear is provided.
+    - Pipeline depth compare defaults to `CompareFunction::Less` when depth is
+      enabled for a pipeline and no explicit compare is provided.
     - `MultiSample.sample_count` defaults to `1` (no multi-sampling).
   - Attachment creation
     - When depth is requested (`with_depth`/`with_depth_clear`), the pass MUST
