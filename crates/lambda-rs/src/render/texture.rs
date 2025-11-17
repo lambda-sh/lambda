@@ -9,6 +9,28 @@ use lambda_platform::wgpu::texture as platform;
 
 use super::RenderContext;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Engine-level depth texture formats.
+///
+/// Maps to platform depth formats without exposing `wgpu` in the public API.
+pub enum DepthFormat {
+  Depth32Float,
+  Depth24Plus,
+  Depth24PlusStencil8,
+}
+
+impl DepthFormat {
+  pub(crate) fn to_platform(self) -> platform::DepthFormat {
+    return match self {
+      DepthFormat::Depth32Float => platform::DepthFormat::Depth32Float,
+      DepthFormat::Depth24Plus => platform::DepthFormat::Depth24Plus,
+      DepthFormat::Depth24PlusStencil8 => {
+        platform::DepthFormat::Depth24PlusStencil8
+      }
+    };
+  }
+}
+
 #[derive(Debug, Clone, Copy)]
 /// Supported color texture formats for sampling.
 pub enum TextureFormat {

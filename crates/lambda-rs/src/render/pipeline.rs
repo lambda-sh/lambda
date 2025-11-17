@@ -41,6 +41,7 @@ use super::{
   buffer::Buffer,
   render_pass::RenderPass,
   shader::Shader,
+  texture,
   vertex::VertexAttribute,
   RenderContext,
 };
@@ -234,7 +235,7 @@ pub struct RenderPipelineBuilder {
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   label: Option<String>,
   use_depth: bool,
-  depth_format: Option<platform_texture::DepthFormat>,
+  depth_format: Option<texture::DepthFormat>,
   sample_count: u32,
   depth_compare: Option<CompareFunction>,
   stencil: Option<platform_pipeline::StencilState>,
@@ -307,10 +308,7 @@ impl RenderPipelineBuilder {
   }
 
   /// Enable depth with an explicit depth format.
-  pub fn with_depth_format(
-    mut self,
-    format: platform_texture::DepthFormat,
-  ) -> Self {
+  pub fn with_depth_format(mut self, format: texture::DepthFormat) -> Self {
     self.use_depth = true;
     self.depth_format = Some(format);
     return self;
@@ -457,23 +455,25 @@ impl RenderPipelineBuilder {
     }
 
     if self.use_depth {
+      // Engine-level depth format with default
       let mut dfmt = self
         .depth_format
-        .unwrap_or(platform_texture::DepthFormat::Depth32Float);
+        .unwrap_or(texture::DepthFormat::Depth32Float);
       // If stencil state is configured, ensure a stencil-capable depth format.
       if self.stencil.is_some()
-        && dfmt != platform_texture::DepthFormat::Depth24PlusStencil8
+        && dfmt != texture::DepthFormat::Depth24PlusStencil8
       {
         #[cfg(debug_assertions)]
         logging::error!(
           "Stencil configured but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
           dfmt
         );
-        dfmt = platform_texture::DepthFormat::Depth24PlusStencil8;
+        dfmt = texture::DepthFormat::Depth24PlusStencil8;
       }
-      // Keep context depth format in sync for attachment creation.
-      render_context.depth_format = dfmt;
-      rp_builder = rp_builder.with_depth_stencil(dfmt);
+      // Map to platform and keep context depth format in sync for attachment creation.
+      let dfmt_platform = dfmt.to_platform();
+      render_context.depth_format = dfmt_platform;
+      rp_builder = rp_builder.with_depth_stencil(dfmt_platform);
       if let Some(compare) = self.depth_compare {
         rp_builder = rp_builder.with_depth_compare(compare.to_platform());
       }

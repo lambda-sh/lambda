@@ -49,6 +49,7 @@ use lambda::{
       ShaderKind,
       VirtualShader,
     },
+    texture::DepthFormat,
     vertex::{
       ColorFormat,
       Vertex,
@@ -66,7 +67,6 @@ use lambda::{
     ApplicationRuntimeBuilder,
   },
 };
-use lambda_platform::wgpu::texture::DepthFormat;
 
 // ------------------------------ SHADER SOURCE --------------------------------
 
