@@ -113,7 +113,8 @@ layout (location = 0) out vec4 fragment_color;
 
 void main() {
   // Slightly tint with alpha so the reflection appears through the floor.
-  fragment_color = vec4(0.1, 0.1, 0.12, 0.5);
+  // Brightened for visibility against a black clear.
+  fragment_color = vec4(0.2, 0.2, 0.23, 0.6);
 }
 "#;
 
@@ -844,14 +845,15 @@ fn build_floor_quad_mesh(extent: f32) -> Mesh {
   let p3 = v(-h, h);
 
   let mut mesh_builder = MeshBuilder::new();
+  // Tri winding flipped to face +Y (avoid back-face cull)
   // Tri 1
   mesh_builder.with_vertex(p0);
-  mesh_builder.with_vertex(p1);
   mesh_builder.with_vertex(p2);
+  mesh_builder.with_vertex(p1);
   // Tri 2
   mesh_builder.with_vertex(p0);
-  mesh_builder.with_vertex(p2);
   mesh_builder.with_vertex(p3);
+  mesh_builder.with_vertex(p2);
 
   let mesh = mesh_builder
     .with_attributes(vec![
