@@ -159,7 +159,6 @@ pub struct ReflectiveRoomExample {
   pass_id_color: Option<ResourceId>,
   pipe_floor_mask: Option<ResourceId>,
   pipe_reflected: Option<ResourceId>,
-  pipe_reflected_unmasked: Option<ResourceId>,
   pipe_floor_visual: Option<ResourceId>,
   pipe_normal: Option<ResourceId>,
   width: u32,
@@ -177,8 +176,6 @@ pub struct ReflectiveRoomExample {
   camera_pitch_turns: f32,
   // When true, do not draw the floor surface; leaves a clean mirror.
   mirror_mode: bool,
-  // Debug: draw reflection even without stencil to verify visibility path.
-  force_unmasked_reflection: bool,
 }
 
 impl Component<ComponentResult, String> for ReflectiveRoomExample {
@@ -252,13 +249,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
               self.mirror_mode
             );
           }
-          Some(lambda::events::VirtualKey::KeyR) => {
-            self.force_unmasked_reflection = !self.force_unmasked_reflection;
-            logging::info!(
-              "Toggled Force Unmasked Reflection → {} (key: R)",
-              self.force_unmasked_reflection
-            );
-          }
+          // 'R' previously forced an unmasked reflection; now disabled.
           Some(lambda::events::VirtualKey::KeyI) => {
             // Pitch camera up (reduce downward angle)
             self.camera_pitch_turns =
@@ -461,28 +452,6 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
           vertices: 0..cube_vertex_count,
         });
       }
-    } else if self.force_unmasked_reflection {
-      if let Some(pipe_reflected_unmasked) = self.pipe_reflected_unmasked {
-        cmds.push(RenderCommand::SetPipeline {
-          pipeline: pipe_reflected_unmasked,
-        });
-        cmds.push(RenderCommand::BindVertexBuffer {
-          pipeline: pipe_reflected_unmasked,
-          buffer: 0,
-        });
-        cmds.push(RenderCommand::PushConstants {
-          pipeline: pipe_reflected_unmasked,
-          stage: PipelineStage::VERTEX,
-          offset: 0,
-          bytes: Vec::from(push_constants_to_words(&PushConstant {
-            mvp: mvp_reflect.transpose(),
-            model: model_reflect.transpose(),
-          })),
-        });
-        cmds.push(RenderCommand::Draw {
-          vertices: 0..cube_vertex_count,
-        });
-      }
     }
 
     // Floor surface (tinted)
@@ -569,7 +538,6 @@ impl Default for ReflectiveRoomExample {
       pass_id_color: None,
       pipe_floor_mask: None,
       pipe_reflected: None,
-      pipe_reflected_unmasked: None,
       pipe_floor_visual: None,
       pipe_normal: None,
       width: 800,
@@ -584,7 +552,6 @@ impl Default for ReflectiveRoomExample {
       camera_height: 3.0,
       camera_pitch_turns: 0.10, // ~36 degrees downward
       mirror_mode: false,
-      force_unmasked_reflection: false,
     };
   }
 }
@@ -741,35 +708,7 @@ impl ReflectiveRoomExample {
       None
     };
 
-    // Reflected cube pipeline without stencil (debug/fallback)
-    let mut builder_unmasked = RenderPipelineBuilder::new()
-      .with_label("reflected-cube-unmasked")
-      .with_culling(CullingMode::Front)
-      .with_depth_format(DepthFormat::Depth24PlusStencil8)
-      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
-      .with_buffer(
-        BufferBuilder::new()
-          .with_length(
-            cube_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
-          )
-          .with_usage(Usage::VERTEX)
-          .with_properties(Properties::DEVICE_LOCAL)
-          .with_buffer_type(BufferType::Vertex)
-          .build(render_context, cube_mesh.vertices().to_vec())
-          .map_err(|e| format!("Failed to create cube buffer: {}", e))?,
-        cube_mesh.attributes().to_vec(),
-      )
-      .with_multi_sample(self.msaa_samples)
-      .with_depth_write(false)
-      .with_depth_compare(CompareFunction::Always);
-    let p_unmasked = builder_unmasked.build(
-      render_context,
-      &rp_color_desc,
-      &self.shader_vs,
-      Some(&self.shader_fs_lit),
-    );
-    self.pipe_reflected_unmasked =
-      Some(render_context.attach_pipeline(p_unmasked));
+    // No unmasked reflection pipeline in production example.
 
     // Floor visual pipeline
     let mut floor_builder = RenderPipelineBuilder::new()
