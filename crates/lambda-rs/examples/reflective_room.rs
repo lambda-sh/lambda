@@ -39,6 +39,7 @@ use lambda::{
     },
     render_pass::RenderPassBuilder,
     scene_math::{
+      compute_model_matrix,
       compute_perspective_projection,
       compute_view_matrix,
       SimpleCamera,
@@ -85,8 +86,10 @@ layout ( push_constant ) uniform Push {
 
 void main() {
   gl_Position = pc.mvp * vec4(vertex_position, 1.0);
-  // Rotate normals into world space using the model matrix (no scale/shear needed for this demo).
-  v_world_normal = mat3(pc.model) * vertex_normal;
+  // Transform normals into world space using the model matrix.
+  // Note: This demo uses only rigid transforms and a Y-mirror; `mat3(model)`
+  // remains adequate and avoids unsupported `inverse` on some backends (MSL).
+  v_world_normal = normalize(mat3(pc.model) * vertex_normal);
 }
 "#;
 
@@ -109,12 +112,18 @@ void main() {
 const FRAGMENT_FLOOR_TINT_SOURCE: &str = r#"
 #version 450
 
+layout (location = 0) in vec3 v_world_normal;
 layout (location = 0) out vec4 fragment_color;
 
 void main() {
-  // Slightly tint with alpha so the reflection appears through the floor.
-  // Brightened for visibility against a black clear.
-  fragment_color = vec4(0.2, 0.2, 0.23, 0.6);
+  // Lit floor with partial transparency so the reflection shows through.
+  vec3 N = normalize(v_world_normal);
+  vec3 L = normalize(vec3(0.4, 0.7, 1.0));
+  float diff = max(dot(N, L), 0.0);
+  // Subtle base tint to suggest a surface, keep alpha low so reflection reads.
+  vec3 base = vec3(0.10, 0.10, 0.11);
+  vec3 color = base * (0.35 + 0.65 * diff);
+  fragment_color = vec4(color, 0.15);
 }
 "#;
 
@@ -150,6 +159,7 @@ pub struct ReflectiveRoomExample {
   pass_id_color: Option<ResourceId>,
   pipe_floor_mask: Option<ResourceId>,
   pipe_reflected: Option<ResourceId>,
+  pipe_reflected_unmasked: Option<ResourceId>,
   pipe_floor_visual: Option<ResourceId>,
   pipe_normal: Option<ResourceId>,
   width: u32,
@@ -160,6 +170,15 @@ pub struct ReflectiveRoomExample {
   stencil_enabled: bool,
   depth_test_enabled: bool,
   needs_rebuild: bool,
+  // Visual tuning
+  floor_tilt_turns: f32,
+  camera_distance: f32,
+  camera_height: f32,
+  camera_pitch_turns: f32,
+  // When true, do not draw the floor surface; leaves a clean mirror.
+  mirror_mode: bool,
+  // Debug: draw reflection even without stencil to verify visibility path.
+  force_unmasked_reflection: bool,
 }
 
 impl Component<ComponentResult, String> for ReflectiveRoomExample {
@@ -226,6 +245,38 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
               self.depth_test_enabled
             );
           }
+          Some(lambda::events::VirtualKey::KeyF) => {
+            self.mirror_mode = !self.mirror_mode;
+            logging::info!(
+              "Toggled Mirror Mode (hide floor overlay) → {} (key: F)",
+              self.mirror_mode
+            );
+          }
+          Some(lambda::events::VirtualKey::KeyR) => {
+            self.force_unmasked_reflection = !self.force_unmasked_reflection;
+            logging::info!(
+              "Toggled Force Unmasked Reflection → {} (key: R)",
+              self.force_unmasked_reflection
+            );
+          }
+          Some(lambda::events::VirtualKey::KeyI) => {
+            // Pitch camera up (reduce downward angle)
+            self.camera_pitch_turns =
+              (self.camera_pitch_turns - 0.01).clamp(0.0, 0.25);
+            logging::info!(
+              "Camera pitch (turns) → {:.3}",
+              self.camera_pitch_turns
+            );
+          }
+          Some(lambda::events::VirtualKey::KeyK) => {
+            // Pitch camera down (increase downward angle)
+            self.camera_pitch_turns =
+              (self.camera_pitch_turns + 0.01).clamp(0.0, 0.25);
+            logging::info!(
+              "Camera pitch (turns) → {:.3}",
+              self.camera_pitch_turns
+            );
+          }
           _ => {}
         },
         _ => {}
@@ -255,7 +306,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
     }
     // Camera
     let camera = SimpleCamera {
-      position: [0.0, 1.2, 3.5],
+      position: [0.0, self.camera_height, self.camera_distance],
       field_of_view_in_turns: 0.24,
       near_clipping_plane: 0.1,
       far_clipping_plane: 100.0,
@@ -263,18 +314,22 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
 
     // Cube animation
     let angle_y_turns = 0.12 * self.elapsed;
-    let mut model: [[f32; 4]; 4] = lambda::math::matrix::identity_matrix(4, 4);
-    model = lambda::math::matrix::rotate_matrix(
-      model,
+    // Build model with canonical order using the scene helpers:
+    // world = T(0, +0.5, 0) * R_y(angle) * S(1)
+    let model: [[f32; 4]; 4] = compute_model_matrix(
+      [0.0, 0.5, 0.0],
       [0.0, 1.0, 0.0],
       angle_y_turns,
+      1.0,
     );
-    // Translate cube upward by 0.5 on Y
-    let t_up: [[f32; 4]; 4] =
-      lambda::math::matrix::translation_matrix([0.0, 0.5, 0.0]);
-    model = model.multiply(&t_up);
 
-    let view = compute_view_matrix(camera.position);
+    // View: pitch downward, then translate by camera position (R * T)
+    let rot_x: [[f32; 4]; 4] = lambda::math::matrix::rotate_matrix(
+      lambda::math::matrix::identity_matrix(4, 4),
+      [1.0, 0.0, 0.0],
+      -self.camera_pitch_turns,
+    );
+    let view = rot_x.multiply(&compute_view_matrix(camera.position));
     let projection = compute_perspective_projection(
       camera.field_of_view_in_turns,
       self.width.max(1),
@@ -286,19 +341,22 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
 
     // Compute reflected transform only if stencil/reflection is enabled.
     let (model_reflect, mvp_reflect) = if self.stencil_enabled {
-      let mut mr: [[f32; 4]; 4] = lambda::math::matrix::identity_matrix(4, 4);
+      // Reflection across the (possibly tilted) floor plane that passes
+      // through the origin. Build the plane normal by rotating +Y by the
+      // configured floor tilt around X.
+      let angle = self.floor_tilt_turns * std::f32::consts::PI * 2.0;
+      let nx = 0.0f32;
+      let ny = angle.cos();
+      let nz = -angle.sin();
+      // Reflection matrix R = I - 2*n*n^T for a plane through the origin.
+      let (nx2, ny2, nz2) = (nx * nx, ny * ny, nz * nz);
       let s_mirror: [[f32; 4]; 4] = [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, -1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
+        [1.0 - 2.0 * nx2, -2.0 * nx * ny, -2.0 * nx * nz, 0.0],
+        [-2.0 * ny * nx, 1.0 - 2.0 * ny2, -2.0 * ny * nz, 0.0],
+        [-2.0 * nz * nx, -2.0 * nz * ny, 1.0 - 2.0 * nz2, 0.0],
         [0.0, 0.0, 0.0, 1.0],
       ];
-      mr = mr.multiply(&s_mirror);
-      mr =
-        lambda::math::matrix::rotate_matrix(mr, [0.0, 1.0, 0.0], angle_y_turns);
-      let t_down: [[f32; 4]; 4] =
-        lambda::math::matrix::translation_matrix([0.0, -0.5, 0.0]);
-      mr = mr.multiply(&t_down);
+      let mr = s_mirror.multiply(&model);
       let mvp_r = projection.multiply(&view).multiply(&mr);
       (mr, mvp_r)
     } else {
@@ -306,9 +364,14 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       (lambda::math::matrix::identity_matrix(4, 4), mvp)
     };
 
-    // Floor model: at y = 0 plane
+    // Floor model: plane through origin, tilted slightly around X for clarity
     let mut model_floor: [[f32; 4]; 4] =
       lambda::math::matrix::identity_matrix(4, 4);
+    model_floor = lambda::math::matrix::rotate_matrix(
+      model_floor,
+      [1.0, 0.0, 0.0],
+      self.floor_tilt_turns,
+    );
     let mvp_floor = projection.multiply(&view).multiply(&model_floor);
 
     let viewport = ViewportBuilder::new().build(self.width, self.height);
@@ -398,30 +461,54 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
           vertices: 0..cube_vertex_count,
         });
       }
+    } else if self.force_unmasked_reflection {
+      if let Some(pipe_reflected_unmasked) = self.pipe_reflected_unmasked {
+        cmds.push(RenderCommand::SetPipeline {
+          pipeline: pipe_reflected_unmasked,
+        });
+        cmds.push(RenderCommand::BindVertexBuffer {
+          pipeline: pipe_reflected_unmasked,
+          buffer: 0,
+        });
+        cmds.push(RenderCommand::PushConstants {
+          pipeline: pipe_reflected_unmasked,
+          stage: PipelineStage::VERTEX,
+          offset: 0,
+          bytes: Vec::from(push_constants_to_words(&PushConstant {
+            mvp: mvp_reflect.transpose(),
+            model: model_reflect.transpose(),
+          })),
+        });
+        cmds.push(RenderCommand::Draw {
+          vertices: 0..cube_vertex_count,
+        });
+      }
     }
 
     // Floor surface (tinted)
-    let pipe_floor_visual =
-      self.pipe_floor_visual.expect("floor visual pipeline");
-    cmds.push(RenderCommand::SetPipeline {
-      pipeline: pipe_floor_visual,
-    });
-    cmds.push(RenderCommand::BindVertexBuffer {
-      pipeline: pipe_floor_visual,
-      buffer: 0,
-    });
-    cmds.push(RenderCommand::PushConstants {
-      pipeline: pipe_floor_visual,
-      stage: PipelineStage::VERTEX,
-      offset: 0,
-      bytes: Vec::from(push_constants_to_words(&PushConstant {
-        mvp: mvp_floor.transpose(),
-        model: model_floor.transpose(),
-      })),
-    });
-    cmds.push(RenderCommand::Draw {
-      vertices: 0..floor_vertex_count,
-    });
+    if !self.mirror_mode {
+      let pipe_floor_visual =
+        self.pipe_floor_visual.expect("floor visual pipeline");
+      cmds.push(RenderCommand::SetPipeline {
+        pipeline: pipe_floor_visual,
+      });
+      cmds.push(RenderCommand::BindVertexBuffer {
+        pipeline: pipe_floor_visual,
+        buffer: 0,
+      });
+      cmds.push(RenderCommand::PushConstants {
+        pipeline: pipe_floor_visual,
+        stage: PipelineStage::VERTEX,
+        offset: 0,
+        bytes: Vec::from(push_constants_to_words(&PushConstant {
+          mvp: mvp_floor.transpose(),
+          model: model_floor.transpose(),
+        })),
+      });
+      cmds.push(RenderCommand::Draw {
+        vertices: 0..floor_vertex_count,
+      });
+    }
 
     // Normal cube
     let pipe_normal = self.pipe_normal.expect("normal pipeline");
@@ -482,6 +569,7 @@ impl Default for ReflectiveRoomExample {
       pass_id_color: None,
       pipe_floor_mask: None,
       pipe_reflected: None,
+      pipe_reflected_unmasked: None,
       pipe_floor_visual: None,
       pipe_normal: None,
       width: 800,
@@ -491,6 +579,12 @@ impl Default for ReflectiveRoomExample {
       stencil_enabled: true,
       depth_test_enabled: true,
       needs_rebuild: false,
+      floor_tilt_turns: 0.0, // Keep plane flat; angle comes from camera
+      camera_distance: 4.0,
+      camera_height: 3.0,
+      camera_pitch_turns: 0.10, // ~36 degrees downward
+      mirror_mode: false,
+      force_unmasked_reflection: false,
     };
   }
 }
@@ -547,7 +641,8 @@ impl ReflectiveRoomExample {
     self.pipe_floor_mask = if self.stencil_enabled {
       let p = RenderPipelineBuilder::new()
         .with_label("floor-mask")
-        .with_culling(CullingMode::Back)
+        // Disable culling to guarantee stencil writes regardless of winding.
+        .with_culling(CullingMode::None)
         .with_depth_format(DepthFormat::Depth24PlusStencil8)
         .with_depth_write(false)
         .with_depth_compare(CompareFunction::Always)
@@ -598,7 +693,8 @@ impl ReflectiveRoomExample {
     self.pipe_reflected = if self.stencil_enabled {
       let mut builder = RenderPipelineBuilder::new()
         .with_label("reflected-cube")
-        .with_culling(CullingMode::None)
+        // Mirrored transform reverses winding; cull front to keep visible faces.
+        .with_culling(CullingMode::Front)
         .with_depth_format(DepthFormat::Depth24PlusStencil8)
         .with_push_constant(PipelineStage::VERTEX, push_constants_size)
         .with_buffer(
@@ -629,16 +725,11 @@ impl ReflectiveRoomExample {
           read_mask: 0xFF,
           write_mask: 0x00,
         })
-        .with_multi_sample(self.msaa_samples);
-      if self.depth_test_enabled {
-        builder = builder
-          .with_depth_write(true)
-          .with_depth_compare(CompareFunction::LessEqual);
-      } else {
-        builder = builder
-          .with_depth_write(false)
-          .with_depth_compare(CompareFunction::Always);
-      }
+        .with_multi_sample(self.msaa_samples)
+        // Render reflection regardless of depth to ensure visibility;
+        // the floor overlay and stencil confine and visually place it.
+        .with_depth_write(false)
+        .with_depth_compare(CompareFunction::Always);
       let p = builder.build(
         render_context,
         &rp_color_desc,
@@ -649,6 +740,36 @@ impl ReflectiveRoomExample {
     } else {
       None
     };
+
+    // Reflected cube pipeline without stencil (debug/fallback)
+    let mut builder_unmasked = RenderPipelineBuilder::new()
+      .with_label("reflected-cube-unmasked")
+      .with_culling(CullingMode::Front)
+      .with_depth_format(DepthFormat::Depth24PlusStencil8)
+      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+      .with_buffer(
+        BufferBuilder::new()
+          .with_length(
+            cube_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
+          )
+          .with_usage(Usage::VERTEX)
+          .with_properties(Properties::DEVICE_LOCAL)
+          .with_buffer_type(BufferType::Vertex)
+          .build(render_context, cube_mesh.vertices().to_vec())
+          .map_err(|e| format!("Failed to create cube buffer: {}", e))?,
+        cube_mesh.attributes().to_vec(),
+      )
+      .with_multi_sample(self.msaa_samples)
+      .with_depth_write(false)
+      .with_depth_compare(CompareFunction::Always);
+    let p_unmasked = builder_unmasked.build(
+      render_context,
+      &rp_color_desc,
+      &self.shader_vs,
+      Some(&self.shader_fs_lit),
+    );
+    self.pipe_reflected_unmasked =
+      Some(render_context.attach_pipeline(p_unmasked));
 
     // Floor visual pipeline
     let mut floor_builder = RenderPipelineBuilder::new()
