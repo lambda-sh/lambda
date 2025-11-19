@@ -17,7 +17,7 @@ naga = { version = "=26.0.0", optional = true, default-features = false, feature
 rand = "=0.8.5"
 obj-rs = "=0.7.0"
 wgpu = { version = "=26.0.1", optional = true, features = ["wgsl", "spirv"] }
-pollster = { version = "=0.3.0", optional = true }
+pollster = { version = "=0.4.0", optional = true }
 lambda-rs-logging = { path = "../lambda-rs-logging", version = "2023.1.30" }
 
 [dev-dependencies]
