@@ -3,13 +3,13 @@ title: "Reflective Floor: Stencil‑Masked Planar Reflections"
 document_id: "reflective-room-tutorial-2025-11-17"
 status: "draft"
 created: "2025-11-17T00:00:00Z"
-last_updated: "2025-11-19T00:00:01Z"
-version: "0.2.1"
+last_updated: "2025-11-21T00:00:00Z"
+version: "0.2.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "bf0e90ae9ce653e1da2e1e594b22038094bada07"
+repo_commit: "1f91ff4ec776ec5435fce8a53441010d9e0c86e6"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "stencil", "depth", "msaa", "mirror", "3d", "push-constants", "wgpu", "rust"]
@@ -422,5 +422,6 @@ The reflective floor combines a simple stencil mask with an optional depth test 
 
 ## Changelog <a name="changelog"></a>
 
+- 2025-11-21, 0.2.2: Align tutorial with removal of the unmasked reflection debug toggle in the example and update metadata to the current engine workspace commit.
 - 0.2.0 (2025‑11‑19): Updated for camera pitch, front‑face culling on reflection, lit translucent floor, unmasked reflection debug toggle, floor overlay toggle, and Metal portability note.
 - 0.1.0 (2025‑11‑17): Initial draft aligned with `crates/lambda-rs/examples/reflective_room.rs`, including stencil mask pass, reflected pipeline, and MSAA/depth toggles.
