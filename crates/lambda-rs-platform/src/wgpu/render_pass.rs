@@ -365,12 +365,12 @@ impl RenderPassBuilder {
     // Apply operations to all provided attachments.
     attachments.set_operations_for_all(operations);
 
-    // Optional depth/stencil attachment. Include stencil ops only when provided
-    // to avoid referring to a stencil aspect on depth-only formats.
+    // Optional depth/stencil attachment. Include depth or stencil ops only
+    // when provided to avoid touching aspects that were not requested.
     let depth_stencil_attachment = depth_view.map(|v| {
-      // Map depth ops (defaulting when not provided)
-      let dop = depth_ops.unwrap_or_default();
-      let mapped_depth_ops = Some(match dop.load {
+      // Map depth ops only when explicitly provided; when `None`, preserve the
+      // depth aspect, which is important for stencil-only passes.
+      let mapped_depth_ops = depth_ops.map(|dop| match dop.load {
         DepthLoadOp::Load => wgpu::Operations {
           load: wgpu::LoadOp::Load,
           store: match dop.store {
@@ -387,7 +387,7 @@ impl RenderPassBuilder {
         },
       });
 
-      // Map stencil ops only if explicitly provided
+      // Map stencil ops only if explicitly provided.
       let mapped_stencil_ops = stencil_ops.map(|sop| match sop.load {
         StencilLoadOp::Load => wgpu::Operations {
           load: wgpu::LoadOp::Load,

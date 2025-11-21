@@ -482,8 +482,10 @@ impl RenderContext {
           }
 
           // Depth/stencil attachment when either depth or stencil requested.
-          let want_depth_attachment = pass.depth_operations().is_some()
-            || pass.stencil_operations().is_some();
+          let want_depth_attachment = Self::has_depth_attachment(
+            pass.depth_operations(),
+            pass.stencil_operations(),
+          );
 
           let (depth_view, depth_ops) = if want_depth_attachment {
             // Ensure depth texture exists, with proper sample count and format.
@@ -533,29 +535,10 @@ impl RenderContext {
               .expect("depth texture should be present")
               .view_ref();
 
-            // Map depth ops; default when not explicitly provided.
-            let mapped = match pass.depth_operations() {
-              Some(dops) => platform::render_pass::DepthOperations {
-                load: match dops.load {
-                  render_pass::DepthLoadOp::Load => {
-                    platform::render_pass::DepthLoadOp::Load
-                  }
-                  render_pass::DepthLoadOp::Clear(v) => {
-                    platform::render_pass::DepthLoadOp::Clear(v as f32)
-                  }
-                },
-                store: match dops.store {
-                  render_pass::StoreOp::Store => {
-                    platform::render_pass::StoreOp::Store
-                  }
-                  render_pass::StoreOp::Discard => {
-                    platform::render_pass::StoreOp::Discard
-                  }
-                },
-              },
-              None => platform::render_pass::DepthOperations::default(),
-            };
-            (Some(view_ref), Some(mapped))
+            // Map depth operations when explicitly provided; leave depth
+            // untouched for stencil-only passes.
+            let depth_ops = Self::map_depth_ops(pass.depth_operations());
+            (Some(view_ref), depth_ops)
           } else {
             (None, None)
           };
@@ -593,7 +576,7 @@ impl RenderContext {
           self.encode_pass(
             &mut pass_encoder,
             pass.uses_color(),
-            pass.depth_operations().is_some(),
+            want_depth_attachment,
             pass.stencil_operations().is_some(),
             viewport,
             &mut command_iter,
@@ -618,7 +601,7 @@ impl RenderContext {
     &self,
     pass: &mut platform::render_pass::RenderPass<'_>,
     uses_color: bool,
-    pass_has_depth: bool,
+    pass_has_depth_attachment: bool,
     pass_has_stencil: bool,
     initial_viewport: viewport::Viewport,
     commands: &mut I,
@@ -675,7 +658,9 @@ impl RenderContext {
                 label
               )));
             }
-            if !pass_has_depth && pipeline_ref.expects_depth_stencil() {
+            if !pass_has_depth_attachment
+              && pipeline_ref.expects_depth_stencil()
+            {
               let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
               return Err(RenderError::Configuration(format!(
                 "Render pipeline '{}' expects a depth/stencil attachment but the current pass has none",
@@ -711,7 +696,7 @@ impl RenderContext {
               );
               util::warn_once(&key, &msg);
             }
-            if pass_has_depth
+            if pass_has_depth_attachment
               && !pipeline_ref.expects_depth_stencil()
               && warned_no_depth_for_pipeline.insert(pipeline)
             {
@@ -865,6 +850,38 @@ impl RenderContext {
     self.config = config;
     return Ok(());
   }
+
+  /// Determine whether a pass requires a depth attachment based on depth or
+  /// stencil operations.
+  fn has_depth_attachment(
+    depth_ops: Option<render_pass::DepthOperations>,
+    stencil_ops: Option<render_pass::StencilOperations>,
+  ) -> bool {
+    return depth_ops.is_some() || stencil_ops.is_some();
+  }
+
+  /// Map high-level depth operations to platform depth operations, returning
+  /// `None` when no depth operations were requested.
+  fn map_depth_ops(
+    depth_ops: Option<render_pass::DepthOperations>,
+  ) -> Option<platform::render_pass::DepthOperations> {
+    return depth_ops.map(|dops| platform::render_pass::DepthOperations {
+      load: match dops.load {
+        render_pass::DepthLoadOp::Load => {
+          platform::render_pass::DepthLoadOp::Load
+        }
+        render_pass::DepthLoadOp::Clear(value) => {
+          platform::render_pass::DepthLoadOp::Clear(value as f32)
+        }
+      },
+      store: match dops.store {
+        render_pass::StoreOp::Store => platform::render_pass::StoreOp::Store,
+        render_pass::StoreOp::Discard => {
+          platform::render_pass::StoreOp::Discard
+        }
+      },
+    });
+  }
 }
 
 /// Errors reported while preparing or presenting a frame.
@@ -909,3 +926,46 @@ impl core::fmt::Display for RenderContextError {
 }
 
 impl std::error::Error for RenderContextError {}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::render::render_pass;
+
+  #[test]
+  fn has_depth_attachment_false_when_no_depth_or_stencil() {
+    let has_attachment = RenderContext::has_depth_attachment(None, None);
+    assert!(!has_attachment);
+  }
+
+  #[test]
+  fn has_depth_attachment_true_for_depth_only() {
+    let depth_ops = Some(render_pass::DepthOperations::default());
+    let has_attachment = RenderContext::has_depth_attachment(depth_ops, None);
+    assert!(has_attachment);
+  }
+
+  #[test]
+  fn has_depth_attachment_true_for_stencil_only() {
+    let stencil_ops = Some(render_pass::StencilOperations::default());
+    let has_attachment = RenderContext::has_depth_attachment(None, stencil_ops);
+    assert!(has_attachment);
+  }
+
+  #[test]
+  fn map_depth_ops_none_when_no_depth_operations() {
+    let mapped = RenderContext::map_depth_ops(None);
+    assert!(mapped.is_none());
+  }
+
+  #[test]
+  fn map_depth_ops_maps_clear_and_store() {
+    let depth_ops = render_pass::DepthOperations {
+      load: render_pass::DepthLoadOp::Clear(0.5),
+      store: render_pass::StoreOp::Store,
+    };
+    let mapped = RenderContext::map_depth_ops(Some(depth_ops)).expect("mapped");
+    assert_eq!(mapped.load, platform::render_pass::DepthLoadOp::Clear(0.5));
+    assert_eq!(mapped.store, platform::render_pass::StoreOp::Store);
+  }
+}
