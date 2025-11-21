@@ -464,10 +464,37 @@ impl RenderPipelineBuilder {
         );
         dfmt = texture::DepthFormat::Depth24PlusStencil8;
       }
-      // Map to platform and keep context depth format in sync for attachment creation.
-      let dfmt_platform = dfmt.to_platform();
-      render_context.depth_format = dfmt_platform;
-      rp_builder = rp_builder.with_depth_stencil(dfmt_platform);
+
+      let requested_depth_format = dfmt.to_platform();
+
+      // Derive the pass attachment depth format from pass configuration.
+      let pass_has_stencil = _render_pass.stencil_operations().is_some();
+      let pass_depth_format = if pass_has_stencil {
+        platform_texture::DepthFormat::Depth24PlusStencil8
+      } else {
+        render_context.depth_format()
+      };
+
+      // Align the pipeline depth format with the pass attachment format to
+      // avoid hidden global state on the render context. When formats differ,
+      // prefer the pass attachment format and log for easier debugging.
+      let final_depth_format = if requested_depth_format != pass_depth_format {
+        #[cfg(any(
+          debug_assertions,
+          feature = "render-validation-depth",
+          feature = "render-validation-stencil",
+        ))]
+        logging::error!(
+            "Render pipeline depth format {:?} does not match pass depth attachment format {:?}; aligning pipeline to pass format",
+            requested_depth_format,
+            pass_depth_format
+          );
+        pass_depth_format
+      } else {
+        pass_depth_format
+      };
+
+      rp_builder = rp_builder.with_depth_stencil(final_depth_format);
       if let Some(compare) = self.depth_compare {
         rp_builder = rp_builder.with_depth_compare(compare.to_platform());
       }
