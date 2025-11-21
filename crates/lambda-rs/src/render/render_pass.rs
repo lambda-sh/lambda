@@ -207,7 +207,7 @@ impl RenderPassBuilder {
     // Optionally log when clamping is applied.
     #[cfg(any(debug_assertions, feature = "render-validation-depth",))]
     {
-      if (clamped - clear).abs() > f64::EPSILON {
+      if clamped != clear {
         logging::warn!(
           "Depth clear value {} out of range [0,1]; clamped to {}",
           clear,
