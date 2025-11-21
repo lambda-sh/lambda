@@ -137,6 +137,109 @@ impl DepthTexture {
   }
 }
 
+#[derive(Debug)]
+/// Wrapper for a multi-sampled color render target with an attachment view.
+pub struct ColorAttachmentTexture {
+  pub(crate) raw: wgpu::Texture,
+  pub(crate) view: wgpu::TextureView,
+  pub(crate) label: Option<String>,
+}
+
+impl ColorAttachmentTexture {
+  /// Borrow the underlying `wgpu::Texture`.
+  pub fn raw(&self) -> &wgpu::Texture {
+    return &self.raw;
+  }
+
+  /// Borrow the full-range `wgpu::TextureView` suitable as a color attachment.
+  pub fn view(&self) -> &wgpu::TextureView {
+    return &self.view;
+  }
+
+  /// Convenience: return a `TextureViewRef` for use in render pass attachments.
+  pub fn view_ref(&self) -> crate::wgpu::surface::TextureViewRef<'_> {
+    return crate::wgpu::surface::TextureViewRef { raw: &self.view };
+  }
+}
+
+/// Builder for a color render attachment texture (commonly used for MSAA).
+pub struct ColorAttachmentTextureBuilder {
+  label: Option<String>,
+  width: u32,
+  height: u32,
+  format: crate::wgpu::surface::SurfaceFormat,
+  sample_count: u32,
+}
+
+impl ColorAttachmentTextureBuilder {
+  /// Create a builder with zero size and sample count 1.
+  pub fn new(format: crate::wgpu::surface::SurfaceFormat) -> Self {
+    return Self {
+      label: None,
+      width: 0,
+      height: 0,
+      format,
+      sample_count: 1,
+    };
+  }
+
+  /// Set the 2D attachment size in pixels.
+  pub fn with_size(mut self, width: u32, height: u32) -> Self {
+    self.width = width;
+    self.height = height;
+    return self;
+  }
+
+  /// Configure multisampling. Count MUST be >= 1.
+  pub fn with_sample_count(mut self, count: u32) -> Self {
+    self.sample_count = count.max(1);
+    return self;
+  }
+
+  /// Attach a debug label for the created texture.
+  pub fn with_label(mut self, label: &str) -> Self {
+    self.label = Some(label.to_string());
+    return self;
+  }
+
+  /// Create the color attachment texture on the device.
+  pub fn build(self, gpu: &Gpu) -> ColorAttachmentTexture {
+    let size = wgpu::Extent3d {
+      width: self.width.max(1),
+      height: self.height.max(1),
+      depth_or_array_layers: 1,
+    };
+    let format = self.format.to_wgpu();
+    let raw = gpu.device().create_texture(&wgpu::TextureDescriptor {
+      label: self.label.as_deref(),
+      size,
+      mip_level_count: 1,
+      sample_count: self.sample_count,
+      dimension: wgpu::TextureDimension::D2,
+      format,
+      usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+      view_formats: &[],
+    });
+    let view = raw.create_view(&wgpu::TextureViewDescriptor {
+      label: None,
+      format: Some(format),
+      dimension: Some(wgpu::TextureViewDimension::D2),
+      aspect: wgpu::TextureAspect::All,
+      base_mip_level: 0,
+      mip_level_count: None,
+      base_array_layer: 0,
+      array_layer_count: None,
+      usage: Some(wgpu::TextureUsages::RENDER_ATTACHMENT),
+    });
+
+    return ColorAttachmentTexture {
+      raw,
+      view,
+      label: self.label,
+    };
+  }
+}
+
 /// Builder for a depth texture attachment sized to the current framebuffer.
 pub struct DepthTextureBuilder {
   label: Option<String>,

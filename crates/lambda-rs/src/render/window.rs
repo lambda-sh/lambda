@@ -73,18 +73,9 @@ impl Window {
     dimensions: (u32, u32),
     event_loop: &mut Loop<Events>,
   ) -> Self {
-    // Attempt to get the primary monitor first and then falls back to the first
-    // available monitor if that isn't found.
-    let monitor_handle = event_loop.get_primary_monitor().unwrap_or(
-      event_loop
-        .get_any_available_monitors()
-        .expect("No monitors available"),
-    );
-
     let window_properties = WindowProperties {
       name: name.to_string(),
       dimensions,
-      monitor_handle,
     };
 
     let window_handle = WindowHandleBuilder::new()

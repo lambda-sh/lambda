@@ -34,15 +34,18 @@ use lambda_platform::wgpu::{
   pipeline as platform_pipeline,
   texture as platform_texture,
 };
+use logging;
 
 use super::{
   bind,
   buffer::Buffer,
   render_pass::RenderPass,
   shader::Shader,
+  texture,
   vertex::VertexAttribute,
   RenderContext,
 };
+use crate::render::validation;
 
 /// A created graphics pipeline and the vertex buffers it expects.
 #[derive(Debug)]
@@ -51,6 +54,10 @@ use super::{
 pub struct RenderPipeline {
   pipeline: Rc<platform_pipeline::RenderPipeline>,
   buffers: Vec<Rc<Buffer>>,
+  sample_count: u32,
+  color_target_count: u32,
+  expects_depth_stencil: bool,
+  uses_stencil: bool,
 }
 
 impl RenderPipeline {
@@ -66,6 +73,26 @@ impl RenderPipeline {
   pub(super) fn pipeline(&self) -> &platform_pipeline::RenderPipeline {
     return self.pipeline.as_ref();
   }
+
+  /// Multisample count configured on this pipeline.
+  pub fn sample_count(&self) -> u32 {
+    return self.sample_count.max(1);
+  }
+
+  /// Whether the pipeline declares one or more color targets.
+  pub(super) fn has_color_targets(&self) -> bool {
+    return self.color_target_count > 0;
+  }
+
+  /// Whether the pipeline expects a depth-stencil attachment.
+  pub(super) fn expects_depth_stencil(&self) -> bool {
+    return self.expects_depth_stencil;
+  }
+
+  /// Whether the pipeline configured a stencil test/state.
+  pub(super) fn uses_stencil(&self) -> bool {
+    return self.uses_stencil;
+  }
 }
 
 /// Public alias for platform shader stage flags used by push constants.
@@ -79,8 +106,120 @@ struct BufferBinding {
   attributes: Vec<VertexAttribute>,
 }
 
-/// Public alias for platform culling mode used by pipeline builders.
-pub use platform_pipeline::CullingMode;
+#[derive(Clone, Copy, Debug)]
+/// Engine-level compare function for depth/stencil tests.
+pub enum CompareFunction {
+  Never,
+  Less,
+  LessEqual,
+  Greater,
+  GreaterEqual,
+  Equal,
+  NotEqual,
+  Always,
+}
+
+impl CompareFunction {
+  fn to_platform(self) -> platform_pipeline::CompareFunction {
+    return match self {
+      CompareFunction::Never => platform_pipeline::CompareFunction::Never,
+      CompareFunction::Less => platform_pipeline::CompareFunction::Less,
+      CompareFunction::LessEqual => {
+        platform_pipeline::CompareFunction::LessEqual
+      }
+      CompareFunction::Greater => platform_pipeline::CompareFunction::Greater,
+      CompareFunction::GreaterEqual => {
+        platform_pipeline::CompareFunction::GreaterEqual
+      }
+      CompareFunction::Equal => platform_pipeline::CompareFunction::Equal,
+      CompareFunction::NotEqual => platform_pipeline::CompareFunction::NotEqual,
+      CompareFunction::Always => platform_pipeline::CompareFunction::Always,
+    };
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+/// Engine-level face culling mode for graphics pipelines.
+pub enum CullingMode {
+  None,
+  Front,
+  Back,
+}
+
+impl CullingMode {
+  fn to_platform(self) -> platform_pipeline::CullingMode {
+    return match self {
+      CullingMode::None => platform_pipeline::CullingMode::None,
+      CullingMode::Front => platform_pipeline::CullingMode::Front,
+      CullingMode::Back => platform_pipeline::CullingMode::Back,
+    };
+  }
+}
+
+/// Engine-level stencil operation.
+#[derive(Clone, Copy, Debug)]
+pub enum StencilOperation {
+  Keep,
+  Zero,
+  Replace,
+  Invert,
+  IncrementClamp,
+  DecrementClamp,
+  IncrementWrap,
+  DecrementWrap,
+}
+
+impl StencilOperation {
+  fn to_platform(self) -> platform_pipeline::StencilOperation {
+    return match self {
+      StencilOperation::Keep => platform_pipeline::StencilOperation::Keep,
+      StencilOperation::Zero => platform_pipeline::StencilOperation::Zero,
+      StencilOperation::Replace => platform_pipeline::StencilOperation::Replace,
+      StencilOperation::Invert => platform_pipeline::StencilOperation::Invert,
+      StencilOperation::IncrementClamp => {
+        platform_pipeline::StencilOperation::IncrementClamp
+      }
+      StencilOperation::DecrementClamp => {
+        platform_pipeline::StencilOperation::DecrementClamp
+      }
+      StencilOperation::IncrementWrap => {
+        platform_pipeline::StencilOperation::IncrementWrap
+      }
+      StencilOperation::DecrementWrap => {
+        platform_pipeline::StencilOperation::DecrementWrap
+      }
+    };
+  }
+}
+
+/// Engine-level per-face stencil state.
+#[derive(Clone, Copy, Debug)]
+pub struct StencilFaceState {
+  pub compare: CompareFunction,
+  pub fail_op: StencilOperation,
+  pub depth_fail_op: StencilOperation,
+  pub pass_op: StencilOperation,
+}
+
+impl StencilFaceState {
+  fn to_platform(self) -> platform_pipeline::StencilFaceState {
+    platform_pipeline::StencilFaceState {
+      compare: self.compare.to_platform(),
+      fail_op: self.fail_op.to_platform(),
+      depth_fail_op: self.depth_fail_op.to_platform(),
+      pass_op: self.pass_op.to_platform(),
+    }
+  }
+}
+
+/// Engine-level full stencil state.
+#[derive(Clone, Copy, Debug)]
+pub struct StencilState {
+  pub front: StencilFaceState,
+  pub back: StencilFaceState,
+  pub read_mask: u32,
+  pub write_mask: u32,
+}
 
 /// Builder for creating a graphics `RenderPipeline`.
 ///
@@ -96,6 +235,11 @@ pub struct RenderPipelineBuilder {
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   label: Option<String>,
   use_depth: bool,
+  depth_format: Option<texture::DepthFormat>,
+  sample_count: u32,
+  depth_compare: Option<CompareFunction>,
+  stencil: Option<platform_pipeline::StencilState>,
+  depth_write_enabled: Option<bool>,
 }
 
 impl RenderPipelineBuilder {
@@ -108,6 +252,11 @@ impl RenderPipelineBuilder {
       bind_group_layouts: Vec::new(),
       label: None,
       use_depth: false,
+      depth_format: None,
+      sample_count: 1,
+      depth_compare: None,
+      stencil: None,
+      depth_write_enabled: None,
     }
   }
 
@@ -155,6 +304,57 @@ impl RenderPipelineBuilder {
   /// Enable depth testing/writes using the render context's depth format.
   pub fn with_depth(mut self) -> Self {
     self.use_depth = true;
+    return self;
+  }
+
+  /// Enable depth with an explicit depth format.
+  pub fn with_depth_format(mut self, format: texture::DepthFormat) -> Self {
+    self.use_depth = true;
+    self.depth_format = Some(format);
+    return self;
+  }
+
+  /// Configure multi-sampling for this pipeline.
+  pub fn with_multi_sample(mut self, samples: u32) -> Self {
+    // Always apply a cheap validity check; log under feature/debug gates.
+    if matches!(samples, 1 | 2 | 4 | 8) {
+      self.sample_count = samples;
+    } else {
+      #[cfg(any(debug_assertions, feature = "render-validation-msaa",))]
+      {
+        if let Err(msg) = validation::validate_sample_count(samples) {
+          logging::error!(
+            "{}; falling back to sample_count=1 for pipeline",
+            msg
+          );
+        }
+      }
+      self.sample_count = 1;
+    }
+    return self;
+  }
+
+  /// Set a non-default depth compare function.
+  pub fn with_depth_compare(mut self, compare: CompareFunction) -> Self {
+    self.depth_compare = Some(compare);
+    return self;
+  }
+
+  /// Configure stencil state for the pipeline using engine types.
+  pub fn with_stencil(mut self, stencil: StencilState) -> Self {
+    let mapped = platform_pipeline::StencilState {
+      front: stencil.front.to_platform(),
+      back: stencil.back.to_platform(),
+      read_mask: stencil.read_mask,
+      write_mask: stencil.write_mask,
+    };
+    self.stencil = Some(mapped);
+    return self;
+  }
+
+  /// Enable or disable depth writes for this pipeline.
+  pub fn with_depth_write(mut self, enabled: bool) -> Self {
+    self.depth_write_enabled = Some(enabled);
     return self;
   }
 
@@ -226,7 +426,7 @@ impl RenderPipelineBuilder {
     let mut rp_builder = platform_pipeline::RenderPipelineBuilder::new()
       .with_label(self.label.as_deref().unwrap_or("lambda-render-pipeline"))
       .with_layout(&pipeline_layout)
-      .with_cull_mode(self.culling);
+      .with_cull_mode(self.culling.to_platform());
 
     for binding in &self.bindings {
       let attributes: Vec<platform_pipeline::VertexAttributeDesc> = binding
@@ -249,9 +449,84 @@ impl RenderPipelineBuilder {
     }
 
     if self.use_depth {
-      rp_builder = rp_builder
-        .with_depth_stencil(platform_texture::DepthFormat::Depth32Float);
+      // Engine-level depth format with default
+      let mut dfmt = self
+        .depth_format
+        .unwrap_or(texture::DepthFormat::Depth32Float);
+      // If stencil state is configured, ensure a stencil-capable depth format.
+      if self.stencil.is_some()
+        && dfmt != texture::DepthFormat::Depth24PlusStencil8
+      {
+        #[cfg(any(debug_assertions, feature = "render-validation-stencil",))]
+        logging::error!(
+          "Stencil configured but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
+          dfmt
+        );
+        dfmt = texture::DepthFormat::Depth24PlusStencil8;
+      }
+
+      let requested_depth_format = dfmt.to_platform();
+
+      // Derive the pass attachment depth format from pass configuration.
+      let pass_has_stencil = _render_pass.stencil_operations().is_some();
+      let pass_depth_format = if pass_has_stencil {
+        platform_texture::DepthFormat::Depth24PlusStencil8
+      } else {
+        render_context.depth_format()
+      };
+
+      // Align the pipeline depth format with the pass attachment format to
+      // avoid hidden global state on the render context. When formats differ,
+      // prefer the pass attachment format and log for easier debugging.
+      let final_depth_format = if requested_depth_format != pass_depth_format {
+        #[cfg(any(
+          debug_assertions,
+          feature = "render-validation-depth",
+          feature = "render-validation-stencil",
+        ))]
+        logging::error!(
+            "Render pipeline depth format {:?} does not match pass depth attachment format {:?}; aligning pipeline to pass format",
+            requested_depth_format,
+            pass_depth_format
+          );
+        pass_depth_format
+      } else {
+        pass_depth_format
+      };
+
+      rp_builder = rp_builder.with_depth_stencil(final_depth_format);
+      if let Some(compare) = self.depth_compare {
+        rp_builder = rp_builder.with_depth_compare(compare.to_platform());
+      }
+      if let Some(stencil) = self.stencil {
+        rp_builder = rp_builder.with_stencil(stencil);
+      }
+      if let Some(enabled) = self.depth_write_enabled {
+        rp_builder = rp_builder.with_depth_write_enabled(enabled);
+      }
     }
+
+    // Apply multi-sampling to the pipeline.
+    // Always align to the pass sample count; gate logs.
+    let mut pipeline_samples = self.sample_count;
+    let pass_samples = _render_pass.sample_count();
+    if pipeline_samples != pass_samples {
+      #[cfg(any(debug_assertions, feature = "render-validation-msaa",))]
+      logging::error!(
+        "Pipeline sample_count={} does not match pass sample_count={}; aligning to pass",
+        pipeline_samples,
+        pass_samples
+      );
+      pipeline_samples = pass_samples;
+    }
+    if !matches!(pipeline_samples, 1 | 2 | 4 | 8) {
+      #[cfg(any(debug_assertions, feature = "render-validation-msaa",))]
+      {
+        let _ = validation::validate_sample_count(pipeline_samples);
+      }
+      pipeline_samples = 1;
+    }
+    rp_builder = rp_builder.with_sample_count(pipeline_samples);
 
     let pipeline = rp_builder.build(
       render_context.gpu(),
@@ -262,6 +537,11 @@ impl RenderPipelineBuilder {
     return RenderPipeline {
       pipeline: Rc::new(pipeline),
       buffers,
+      sample_count: pipeline_samples,
+      color_target_count: if fragment_module.is_some() { 1 } else { 0 },
+      // Depth/stencil is enabled when `with_depth*` was called on the builder.
+      expects_depth_stencil: self.use_depth,
+      uses_stencil: self.stencil.is_some(),
     };
   }
 }

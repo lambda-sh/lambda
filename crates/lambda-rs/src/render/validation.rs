@@ -38,6 +38,22 @@ pub fn validate_dynamic_offsets(
   return Ok(());
 }
 
+/// Validate that a multi-sample count is supported by the engine.
+///
+/// Allowed counts are 1, 2, 4, and 8. Higher or non-power-of-two values are
+/// rejected at this layer to provide consistent behavior across platforms.
+pub fn validate_sample_count(samples: u32) -> Result<(), String> {
+  match samples {
+    1 | 2 | 4 | 8 => return Ok(()),
+    other => {
+      return Err(format!(
+        "Unsupported multi-sample count {} (allowed: 1, 2, 4, 8)",
+        other
+      ));
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

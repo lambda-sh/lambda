@@ -81,6 +81,95 @@ pub struct VertexAttributeDesc {
   pub format: ColorFormat,
 }
 
+/// Compare function used for depth and stencil tests.
+#[derive(Clone, Copy, Debug)]
+pub enum CompareFunction {
+  Never,
+  Less,
+  LessEqual,
+  Greater,
+  GreaterEqual,
+  Equal,
+  NotEqual,
+  Always,
+}
+
+impl CompareFunction {
+  fn to_wgpu(self) -> wgpu::CompareFunction {
+    match self {
+      CompareFunction::Never => wgpu::CompareFunction::Never,
+      CompareFunction::Less => wgpu::CompareFunction::Less,
+      CompareFunction::LessEqual => wgpu::CompareFunction::LessEqual,
+      CompareFunction::Greater => wgpu::CompareFunction::Greater,
+      CompareFunction::GreaterEqual => wgpu::CompareFunction::GreaterEqual,
+      CompareFunction::Equal => wgpu::CompareFunction::Equal,
+      CompareFunction::NotEqual => wgpu::CompareFunction::NotEqual,
+      CompareFunction::Always => wgpu::CompareFunction::Always,
+    }
+  }
+}
+
+/// Stencil operation applied when the stencil test or depth test passes/fails.
+#[derive(Clone, Copy, Debug)]
+pub enum StencilOperation {
+  Keep,
+  Zero,
+  Replace,
+  Invert,
+  IncrementClamp,
+  DecrementClamp,
+  IncrementWrap,
+  DecrementWrap,
+}
+
+impl StencilOperation {
+  fn to_wgpu(self) -> wgpu::StencilOperation {
+    match self {
+      StencilOperation::Keep => wgpu::StencilOperation::Keep,
+      StencilOperation::Zero => wgpu::StencilOperation::Zero,
+      StencilOperation::Replace => wgpu::StencilOperation::Replace,
+      StencilOperation::Invert => wgpu::StencilOperation::Invert,
+      StencilOperation::IncrementClamp => {
+        wgpu::StencilOperation::IncrementClamp
+      }
+      StencilOperation::DecrementClamp => {
+        wgpu::StencilOperation::DecrementClamp
+      }
+      StencilOperation::IncrementWrap => wgpu::StencilOperation::IncrementWrap,
+      StencilOperation::DecrementWrap => wgpu::StencilOperation::DecrementWrap,
+    }
+  }
+}
+
+/// Per-face stencil state.
+#[derive(Clone, Copy, Debug)]
+pub struct StencilFaceState {
+  pub compare: CompareFunction,
+  pub fail_op: StencilOperation,
+  pub depth_fail_op: StencilOperation,
+  pub pass_op: StencilOperation,
+}
+
+impl StencilFaceState {
+  fn to_wgpu(self) -> wgpu::StencilFaceState {
+    wgpu::StencilFaceState {
+      compare: self.compare.to_wgpu(),
+      fail_op: self.fail_op.to_wgpu(),
+      depth_fail_op: self.depth_fail_op.to_wgpu(),
+      pass_op: self.pass_op.to_wgpu(),
+    }
+  }
+}
+
+/// Full stencil state (front/back + masks).
+#[derive(Clone, Copy, Debug)]
+pub struct StencilState {
+  pub front: StencilFaceState,
+  pub back: StencilFaceState,
+  pub read_mask: u32,
+  pub write_mask: u32,
+}
+
 /// Wrapper around `wgpu::ShaderModule` that preserves a label.
 #[derive(Debug)]
 pub struct ShaderModule {
@@ -202,6 +291,10 @@ impl RenderPipeline {
   pub(crate) fn into_raw(self) -> wgpu::RenderPipeline {
     return self.raw;
   }
+  /// Pipeline label if provided.
+  pub fn label(&self) -> Option<&str> {
+    return self.label.as_deref();
+  }
 }
 
 /// Builder for creating a graphics render pipeline.
@@ -212,6 +305,7 @@ pub struct RenderPipelineBuilder<'a> {
   cull_mode: CullingMode,
   color_target_format: Option<wgpu::TextureFormat>,
   depth_stencil: Option<wgpu::DepthStencilState>,
+  sample_count: u32,
 }
 
 impl<'a> RenderPipelineBuilder<'a> {
@@ -224,6 +318,7 @@ impl<'a> RenderPipelineBuilder<'a> {
       cull_mode: CullingMode::Back,
       color_target_format: None,
       depth_stencil: None,
+      sample_count: 1,
     };
   }
 
@@ -272,6 +367,56 @@ impl<'a> RenderPipelineBuilder<'a> {
       stencil: wgpu::StencilState::default(),
       bias: wgpu::DepthBiasState::default(),
     });
+    return self;
+  }
+
+  /// Set the depth compare function. Requires depth to be enabled.
+  pub fn with_depth_compare(mut self, compare: CompareFunction) -> Self {
+    let ds = self.depth_stencil.get_or_insert(wgpu::DepthStencilState {
+      format: wgpu::TextureFormat::Depth32Float,
+      depth_write_enabled: true,
+      depth_compare: wgpu::CompareFunction::Less,
+      stencil: wgpu::StencilState::default(),
+      bias: wgpu::DepthBiasState::default(),
+    });
+    ds.depth_compare = compare.to_wgpu();
+    return self;
+  }
+
+  /// Enable or disable depth writes. Requires depth-stencil enabled.
+  pub fn with_depth_write_enabled(mut self, enabled: bool) -> Self {
+    let ds = self.depth_stencil.get_or_insert(wgpu::DepthStencilState {
+      format: wgpu::TextureFormat::Depth32Float,
+      depth_write_enabled: true,
+      depth_compare: wgpu::CompareFunction::Less,
+      stencil: wgpu::StencilState::default(),
+      bias: wgpu::DepthBiasState::default(),
+    });
+    ds.depth_write_enabled = enabled;
+    return self;
+  }
+
+  /// Configure stencil state (front/back ops and masks). Requires depth-stencil enabled.
+  pub fn with_stencil(mut self, stencil: StencilState) -> Self {
+    let ds = self.depth_stencil.get_or_insert(wgpu::DepthStencilState {
+      format: wgpu::TextureFormat::Depth24PlusStencil8,
+      depth_write_enabled: true,
+      depth_compare: wgpu::CompareFunction::Less,
+      stencil: wgpu::StencilState::default(),
+      bias: wgpu::DepthBiasState::default(),
+    });
+    ds.stencil = wgpu::StencilState {
+      front: stencil.front.to_wgpu(),
+      back: stencil.back.to_wgpu(),
+      read_mask: stencil.read_mask,
+      write_mask: stencil.write_mask,
+    };
+    return self;
+  }
+
+  /// Configure multisampling. Count MUST be >= 1 and supported by the device.
+  pub fn with_sample_count(mut self, count: u32) -> Self {
+    self.sample_count = count.max(1);
     return self;
   }
 
@@ -351,7 +496,10 @@ impl<'a> RenderPipelineBuilder<'a> {
           vertex: vertex_state,
           primitive: primitive_state,
           depth_stencil: self.depth_stencil,
-          multisample: wgpu::MultisampleState::default(),
+          multisample: wgpu::MultisampleState {
+            count: self.sample_count,
+            ..wgpu::MultisampleState::default()
+          },
           fragment,
           multiview: None,
           cache: None,

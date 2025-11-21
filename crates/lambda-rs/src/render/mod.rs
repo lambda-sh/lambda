@@ -44,6 +44,7 @@ pub mod viewport;
 pub mod window;
 
 use std::{
+  collections::HashSet,
   iter,
   rc::Rc,
 };
@@ -56,6 +57,7 @@ use self::{
   pipeline::RenderPipeline,
   render_pass::RenderPass as RenderPassDesc,
 };
+use crate::util;
 
 /// Builder for configuring a `RenderContext` tied to one window.
 ///
@@ -174,11 +176,15 @@ impl RenderContextBuilder {
       size,
       depth_texture,
       depth_format,
+      depth_sample_count: 1,
+      msaa_color: None,
+      msaa_sample_count: 1,
       render_passes: vec![],
       render_pipelines: vec![],
       bind_group_layouts: vec![],
       bind_groups: vec![],
       buffers: vec![],
+      seen_error_messages: HashSet::new(),
     });
   }
 }
@@ -210,11 +216,15 @@ pub struct RenderContext {
   size: (u32, u32),
   depth_texture: Option<platform::texture::DepthTexture>,
   depth_format: platform::texture::DepthFormat,
+  depth_sample_count: u32,
+  msaa_color: Option<platform::texture::ColorAttachmentTexture>,
+  msaa_sample_count: u32,
   render_passes: Vec<RenderPassDesc>,
   render_pipelines: Vec<RenderPipeline>,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   bind_groups: Vec<bind::BindGroup>,
   buffers: Vec<Rc<buffer::Buffer>>,
+  seen_error_messages: HashSet<String>,
 }
 
 /// Opaque handle used to refer to resources attached to a `RenderContext`.
@@ -284,7 +294,10 @@ impl RenderContext {
     }
 
     if let Err(err) = self.render_internal(commands) {
-      logging::error!("Render error: {:?}", err);
+      let key = format!("{:?}", err);
+      if self.seen_error_messages.insert(key) {
+        logging::error!("Render error: {:?}", err);
+      }
     }
   }
 
@@ -304,9 +317,12 @@ impl RenderContext {
       platform::texture::DepthTextureBuilder::new()
         .with_size(self.size.0.max(1), self.size.1.max(1))
         .with_format(self.depth_format)
+        .with_sample_count(self.depth_sample_count)
         .with_label("lambda-depth")
         .build(self.gpu()),
     );
+    // Drop MSAA color target so it is rebuilt on demand with the new size.
+    self.msaa_color = None;
   }
 
   /// Borrow a previously attached render pass by id.
@@ -329,6 +345,29 @@ impl RenderContext {
 
   pub(crate) fn surface_format(&self) -> platform::surface::SurfaceFormat {
     return self.config.format;
+  }
+
+  pub(crate) fn depth_format(&self) -> platform::texture::DepthFormat {
+    return self.depth_format;
+  }
+
+  pub(crate) fn supports_surface_sample_count(
+    &self,
+    sample_count: u32,
+  ) -> bool {
+    return self
+      .gpu
+      .supports_sample_count_for_surface(self.config.format, sample_count);
+  }
+
+  pub(crate) fn supports_depth_sample_count(
+    &self,
+    format: platform::texture::DepthFormat,
+    sample_count: u32,
+  ) -> bool {
+    return self
+      .gpu
+      .supports_sample_count_for_depth(format, sample_count);
   }
 
   /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
@@ -412,56 +451,136 @@ impl RenderContext {
           // Create variably sized color attachments and begin the pass.
           let mut color_attachments =
             platform::render_pass::RenderColorAttachments::new();
-          color_attachments.push_color(view);
-
-          // Optional depth attachment configured by the pass description.
-          let (depth_view, depth_ops) = match pass.depth_operations() {
-            Some(dops) => {
-              if self.depth_texture.is_none() {
-                self.depth_texture = Some(
-                  platform::texture::DepthTextureBuilder::new()
-                    .with_size(self.size.0.max(1), self.size.1.max(1))
-                    .with_format(self.depth_format)
-                    .with_label("lambda-depth")
-                    .build(self.gpu()),
-                );
-              }
-              let mut view_ref = self
-                .depth_texture
-                .as_ref()
-                .expect("depth texture should be present")
-                .view_ref();
-              let mapped = platform::render_pass::DepthOperations {
-                load: match dops.load {
-                  render_pass::DepthLoadOp::Load => {
-                    platform::render_pass::DepthLoadOp::Load
-                  }
-                  render_pass::DepthLoadOp::Clear(v) => {
-                    platform::render_pass::DepthLoadOp::Clear(v as f32)
-                  }
-                },
-                store: match dops.store {
-                  render_pass::StoreOp::Store => {
-                    platform::render_pass::StoreOp::Store
-                  }
-                  render_pass::StoreOp::Discard => {
-                    platform::render_pass::StoreOp::Discard
-                  }
-                },
+          let sample_count = pass.sample_count();
+          if pass.uses_color() {
+            if sample_count > 1 {
+              let need_recreate = match &self.msaa_color {
+                Some(_) => self.msaa_sample_count != sample_count,
+                None => true,
               };
-              (Some(view_ref), Some(mapped))
+              if need_recreate {
+                self.msaa_color = Some(
+                  platform::texture::ColorAttachmentTextureBuilder::new(
+                    self.config.format,
+                  )
+                  .with_size(self.size.0.max(1), self.size.1.max(1))
+                  .with_sample_count(sample_count)
+                  .with_label("lambda-msaa-color")
+                  .build(self.gpu()),
+                );
+                self.msaa_sample_count = sample_count;
+              }
+              let msaa_view = self
+                .msaa_color
+                .as_ref()
+                .expect("MSAA color attachment should be created")
+                .view_ref();
+              color_attachments.push_msaa_color(msaa_view, view);
+            } else {
+              color_attachments.push_color(view);
             }
-            None => (None, None),
+          }
+
+          // Depth/stencil attachment when either depth or stencil requested.
+          let want_depth_attachment = Self::has_depth_attachment(
+            pass.depth_operations(),
+            pass.stencil_operations(),
+          );
+
+          let (depth_view, depth_ops) = if want_depth_attachment {
+            // Ensure depth texture exists, with proper sample count and format.
+            let desired_samples = sample_count.max(1);
+
+            // If stencil is requested on the pass, ensure we use a stencil-capable format.
+            if pass.stencil_operations().is_some()
+              && self.depth_format
+                != platform::texture::DepthFormat::Depth24PlusStencil8
+            {
+              #[cfg(any(
+                debug_assertions,
+                feature = "render-validation-stencil",
+              ))]
+              logging::error!(
+                "Render pass has stencil ops but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
+                self.depth_format
+              );
+              self.depth_format =
+                platform::texture::DepthFormat::Depth24PlusStencil8;
+            }
+
+            let format_mismatch = self
+              .depth_texture
+              .as_ref()
+              .map(|dt| dt.format() != self.depth_format)
+              .unwrap_or(true);
+
+            if self.depth_texture.is_none()
+              || self.depth_sample_count != desired_samples
+              || format_mismatch
+            {
+              self.depth_texture = Some(
+                platform::texture::DepthTextureBuilder::new()
+                  .with_size(self.size.0.max(1), self.size.1.max(1))
+                  .with_format(self.depth_format)
+                  .with_sample_count(desired_samples)
+                  .with_label("lambda-depth")
+                  .build(self.gpu()),
+              );
+              self.depth_sample_count = desired_samples;
+            }
+
+            let view_ref = self
+              .depth_texture
+              .as_ref()
+              .expect("depth texture should be present")
+              .view_ref();
+
+            // Map depth operations when explicitly provided; leave depth
+            // untouched for stencil-only passes.
+            let depth_ops = Self::map_depth_ops(pass.depth_operations());
+            (Some(view_ref), depth_ops)
+          } else {
+            (None, None)
           };
+
+          // Optional stencil operations
+          let stencil_ops = pass.stencil_operations().map(|sop| {
+            platform::render_pass::StencilOperations {
+              load: match sop.load {
+                render_pass::StencilLoadOp::Load => {
+                  platform::render_pass::StencilLoadOp::Load
+                }
+                render_pass::StencilLoadOp::Clear(v) => {
+                  platform::render_pass::StencilLoadOp::Clear(v)
+                }
+              },
+              store: match sop.store {
+                render_pass::StoreOp::Store => {
+                  platform::render_pass::StoreOp::Store
+                }
+                render_pass::StoreOp::Discard => {
+                  platform::render_pass::StoreOp::Discard
+                }
+              },
+            }
+          });
 
           let mut pass_encoder = rp_builder.build(
             &mut encoder,
             &mut color_attachments,
             depth_view,
             depth_ops,
+            stencil_ops,
           );
 
-          self.encode_pass(&mut pass_encoder, viewport, &mut command_iter)?;
+          self.encode_pass(
+            &mut pass_encoder,
+            pass.uses_color(),
+            want_depth_attachment,
+            pass.stencil_operations().is_some(),
+            viewport,
+            &mut command_iter,
+          )?;
         }
         other => {
           logging::warn!(
@@ -481,6 +600,9 @@ impl RenderContext {
   fn encode_pass<I>(
     &self,
     pass: &mut platform::render_pass::RenderPass<'_>,
+    uses_color: bool,
+    pass_has_depth_attachment: bool,
+    pass_has_stencil: bool,
     initial_viewport: viewport::Viewport,
     commands: &mut I,
   ) -> Result<(), RenderError>
@@ -488,10 +610,26 @@ impl RenderContext {
     I: Iterator<Item = RenderCommand>,
   {
     Self::apply_viewport(pass, &initial_viewport);
+    // De-duplicate advisories within this pass
+    #[cfg(any(
+      debug_assertions,
+      feature = "render-validation-depth",
+      feature = "render-validation-stencil",
+    ))]
+    let mut warned_no_stencil_for_pipeline: HashSet<usize> = HashSet::new();
+    #[cfg(any(
+      debug_assertions,
+      feature = "render-validation-depth",
+      feature = "render-validation-stencil",
+    ))]
+    let mut warned_no_depth_for_pipeline: HashSet<usize> = HashSet::new();
 
     while let Some(command) = commands.next() {
       match command {
         RenderCommand::EndRenderPass => return Ok(()),
+        RenderCommand::SetStencilReference { reference } => {
+          pass.set_stencil_reference(reference);
+        }
         RenderCommand::SetPipeline { pipeline } => {
           let pipeline_ref =
             self.render_pipelines.get(pipeline).ok_or_else(|| {
@@ -499,6 +637,78 @@ impl RenderContext {
                 "Unknown pipeline {pipeline}"
               ));
             })?;
+          // Validate pass/pipeline compatibility before deferring to the platform.
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-validation-pass-compat",
+            feature = "render-validation-encoder",
+          ))]
+          {
+            if !uses_color && pipeline_ref.has_color_targets() {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              return Err(RenderError::Configuration(format!(
+                "Render pipeline '{}' declares color targets but the current pass has no color attachments",
+                label
+              )));
+            }
+            if uses_color && !pipeline_ref.has_color_targets() {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              return Err(RenderError::Configuration(format!(
+                "Render pipeline '{}' has no color targets but the current pass declares color attachments",
+                label
+              )));
+            }
+            if !pass_has_depth_attachment
+              && pipeline_ref.expects_depth_stencil()
+            {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              return Err(RenderError::Configuration(format!(
+                "Render pipeline '{}' expects a depth/stencil attachment but the current pass has none",
+                label
+              )));
+            }
+          }
+          // Advisory checks to help reason about stencil/depth behavior.
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-validation-depth",
+            feature = "render-validation-stencil",
+          ))]
+          {
+            if pass_has_stencil
+              && !pipeline_ref.uses_stencil()
+              && warned_no_stencil_for_pipeline.insert(pipeline)
+            {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              let key = format!("stencil:no_test:{}", label);
+              let msg = format!(
+                "Pass provides stencil ops but pipeline '{}' has no stencil test; stencil will not affect rendering",
+                label
+              );
+              util::warn_once(&key, &msg);
+            }
+            if !pass_has_stencil && pipeline_ref.uses_stencil() {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              let key = format!("stencil:pass_no_operations:{}", label);
+              let msg = format!(
+                "Pipeline '{}' enables stencil but pass has no stencil ops configured; stencil reference/tests may be ineffective",
+                label
+              );
+              util::warn_once(&key, &msg);
+            }
+            if pass_has_depth_attachment
+              && !pipeline_ref.expects_depth_stencil()
+              && warned_no_depth_for_pipeline.insert(pipeline)
+            {
+              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
+              let key = format!("depth:no_test:{}", label);
+              let msg = format!(
+                "Pass has depth attachment but pipeline '{}' does not enable depth testing; depth values will not be tested/written",
+                label
+              );
+              util::warn_once(&key, &msg);
+            }
+          }
           pass.set_pipeline(pipeline_ref.pipeline());
         }
         RenderCommand::SetViewports { viewports, .. } => {
@@ -640,6 +850,38 @@ impl RenderContext {
     self.config = config;
     return Ok(());
   }
+
+  /// Determine whether a pass requires a depth attachment based on depth or
+  /// stencil operations.
+  fn has_depth_attachment(
+    depth_ops: Option<render_pass::DepthOperations>,
+    stencil_ops: Option<render_pass::StencilOperations>,
+  ) -> bool {
+    return depth_ops.is_some() || stencil_ops.is_some();
+  }
+
+  /// Map high-level depth operations to platform depth operations, returning
+  /// `None` when no depth operations were requested.
+  fn map_depth_ops(
+    depth_ops: Option<render_pass::DepthOperations>,
+  ) -> Option<platform::render_pass::DepthOperations> {
+    return depth_ops.map(|dops| platform::render_pass::DepthOperations {
+      load: match dops.load {
+        render_pass::DepthLoadOp::Load => {
+          platform::render_pass::DepthLoadOp::Load
+        }
+        render_pass::DepthLoadOp::Clear(value) => {
+          platform::render_pass::DepthLoadOp::Clear(value as f32)
+        }
+      },
+      store: match dops.store {
+        render_pass::StoreOp::Store => platform::render_pass::StoreOp::Store,
+        render_pass::StoreOp::Discard => {
+          platform::render_pass::StoreOp::Discard
+        }
+      },
+    });
+  }
 }
 
 /// Errors reported while preparing or presenting a frame.
@@ -684,3 +926,46 @@ impl core::fmt::Display for RenderContextError {
 }
 
 impl std::error::Error for RenderContextError {}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::render::render_pass;
+
+  #[test]
+  fn has_depth_attachment_false_when_no_depth_or_stencil() {
+    let has_attachment = RenderContext::has_depth_attachment(None, None);
+    assert!(!has_attachment);
+  }
+
+  #[test]
+  fn has_depth_attachment_true_for_depth_only() {
+    let depth_ops = Some(render_pass::DepthOperations::default());
+    let has_attachment = RenderContext::has_depth_attachment(depth_ops, None);
+    assert!(has_attachment);
+  }
+
+  #[test]
+  fn has_depth_attachment_true_for_stencil_only() {
+    let stencil_ops = Some(render_pass::StencilOperations::default());
+    let has_attachment = RenderContext::has_depth_attachment(None, stencil_ops);
+    assert!(has_attachment);
+  }
+
+  #[test]
+  fn map_depth_ops_none_when_no_depth_operations() {
+    let mapped = RenderContext::map_depth_ops(None);
+    assert!(mapped.is_none());
+  }
+
+  #[test]
+  fn map_depth_ops_maps_clear_and_store() {
+    let depth_ops = render_pass::DepthOperations {
+      load: render_pass::DepthLoadOp::Clear(0.5),
+      store: render_pass::StoreOp::Store,
+    };
+    let mapped = RenderContext::map_depth_ops(Some(depth_ops)).expect("mapped");
+    assert_eq!(mapped.load, platform::render_pass::DepthLoadOp::Clear(0.5));
+    assert_eq!(mapped.store, platform::render_pass::StoreOp::Store);
+  }
+}
