@@ -3,13 +3,13 @@ title: "Depth/Stencil and Multi-Sample Rendering"
 document_id: "depth-stencil-msaa-2025-11-11"
 status: "draft"
 created: "2025-11-11T00:00:00Z"
-last_updated: "2025-11-21T21:27:43Z"
-version: "0.4.0"
+last_updated: "2025-11-21T22:00:00Z"
+version: "0.4.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "deb8aff8fe4caed5f6d1941962cefcf2a14b7890"
+repo_commit: "415167f4238c21debb385eef1192e2da7476c586"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "depth", "stencil", "msaa"]
@@ -104,23 +104,27 @@ App Code
     ```
 - Behavior
   - Defaults
-    - If depth is not requested on the pass (`with_depth*`), the pass MUST NOT
+    - If neither depth nor stencil is requested on the pass, the pass MUST NOT
       create a depth attachment and depth testing is disabled.
-    - Depth clear defaults to `1.0` when depth is enabled on the pass and no
-      explicit clear is provided.
+    - When depth operations are enabled on the pass, the depth aspect defaults
+      to a clear value of `1.0` when no explicit clear is provided.
     - Pipeline depth compare defaults to `CompareFunction::Less` when depth is
       enabled for a pipeline and no explicit compare is provided.
     - `MultiSample.sample_count` defaults to `1` (no multi-sampling).
   - Attachment creation
     - When depth is requested (`with_depth`/`with_depth_clear`), the pass MUST
-      create a depth attachment. When stencil operations are requested on the
-      pass (`with_stencil`/`with_stencil_clear`), the pass MUST attach a
+      create a depth attachment.
+    - When stencil operations are requested on the pass
+      (`with_stencil`/`with_stencil_clear`), the pass MUST attach a
       depth/stencil view and the depth format MUST include a stencil aspect.
     - If stencil is requested but the current depth format lacks a stencil
       aspect, the engine upgrades to `Depth24PlusStencil8` at pass build time
       or during encoding and logs an error.
-    - The pass MUST clear the depth aspect to `1.0` by default (or the provided
-      value) and clear/load stencil according to the requested ops.
+    - When depth operations are present, the depth aspect MUST be cleared or
+      loaded according to the configured depth ops (defaulting to a clear of
+      `1.0` when no explicit clear is provided). When only stencil operations
+      are present, the stencil aspect MUST be cleared or loaded according to
+      the configured stencil ops and the depth aspect MUST remain untouched.
 - Multi-sample semantics
   - When `sample_count > 1`, the pass MUST render into a multi-sampled color
     target and resolve to the single-sample swap chain target before present.
@@ -175,7 +179,9 @@ Always-on safeguards (release and debug)
   platform layer MUST query support before allocation.
 - Depth clear values MUST be clamped to [0.0, 1.0] during validation.
 - When the pass has no depth attachment, pipelines MUST behave as if depth
-  testing and depth writes are disabled.
+  testing and depth writes are disabled. Stencil-only passes still bind a
+  depth/stencil attachment; in this case the stencil aspect is active and the
+  depth aspect MUST remain unchanged when no depth operations are configured.
 
 ## Performance Considerations
 
@@ -237,6 +243,9 @@ Always-on safeguards (release and debug)
   defaults (no depth, no multi-sampling) unless explicitly configured.
 
 ## Changelog
+- 2025-11-21 (v0.4.1) — Clarify depth attachment and clear behavior for
+  stencil-only passes; align specification with engine behavior that preserves
+  depth when only stencil operations are configured.
 - 2025-11-21 (v0.4.0) — Add device/format sample-count validation with fallback to 1; update metadata and checklist; record implementation references for depth/stencil/MSAA.
 - 2025-11-17 (v0.3.1) — Remove umbrella validation flags from this spec; list
   only feature flags related to MSAA, depth, and stencil; metadata updated.
