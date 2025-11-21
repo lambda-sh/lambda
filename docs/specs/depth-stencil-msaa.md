@@ -3,13 +3,13 @@ title: "Depth/Stencil and Multi-Sample Rendering"
 document_id: "depth-stencil-msaa-2025-11-11"
 status: "draft"
 created: "2025-11-11T00:00:00Z"
-last_updated: "2025-11-17T23:59:59Z"
-version: "0.3.1"
+last_updated: "2025-11-21T21:27:43Z"
+version: "0.4.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "709054fcc1fa678ac5f0611877b759bad93decd0"
+repo_commit: "deb8aff8fe4caed5f6d1941962cefcf2a14b7890"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "depth", "stencil", "msaa"]
@@ -22,6 +22,8 @@ Summary
   to the high-level rendering API via builders, without exposing `wgpu` types.
 - Provide validation and predictable defaults to enable 3D scenes and
   higher-quality rasterization in example and production code.
+- Reject unsupported sample counts based on device format capabilities while
+  defaulting to safe fallbacks.
 
 ## Scope
 
@@ -141,6 +143,9 @@ App Code
     clamped to `1` during `with_multi_sample(...)`.
   - On pipeline build, if the pipeline sample count differs from the pass, the
     engine aligns the pipeline to the pass and logs an error.
+  - Device capability validation rejects unsupported sample counts for the
+    surface format and active depth/stencil format, logging and falling back to
+    `1` when necessary.
 - Depth clear validation
   - Clear values outside `[0.0, 1.0]` SHOULD be rejected; current engine path
     relies on caller-provided sane values and `wgpu` validation. A strict check
@@ -155,6 +160,7 @@ App Code
   - `render-validation-msaa`: validate/log MSAA counts; pass/pipeline mismatch logs.
   - `render-validation-depth`: clamp/log depth clear; depth usage advisories.
   - `render-validation-stencil`: stencil usage/format upgrade advisories.
+  - `render-validation-device`: device/format capability advisories (MSAA sample support).
 
 Always-on safeguards (release and debug)
 - Clamp depth clear to `[0.0, 1.0]`.
@@ -201,17 +207,14 @@ Always-on safeguards (release and debug)
 - Validation and Errors
   - [x] Sample counts limited to {1,2,4,8}; invalid → clamp to 1 (log via features)
   - [x] Pass/pipeline sample mismatch → align to pass (log via features)
-  - [x] Depth clear clamped to [0.0, 1.0] (log via features); device support (SHOULD)
+  - [x] Depth clear clamped to [0.0, 1.0] (log via features)
+  - [x] Device/format MSAA support check with fallback to 1
 - Performance
-  - [ ] 4x MSAA guidance; memory trade-offs for `Depth32Float` vs `Depth24Plus`
-  - [ ] Recommend disabling depth writes for overlays/transparency
+  - [x] 4x MSAA guidance; memory trade-offs for `Depth32Float` vs `Depth24Plus`
+  - [x] Recommend disabling depth writes for overlays/transparency
 - Documentation and Examples
   - [ ] Minimal MSAA + depth example
-  - [ ] Reflective mirror (stencil) tutorial
-  - [ ] Migration notes (none; additive API)
-
-For each checked item, include a reference to a commit, pull request, or file
-path that demonstrates the implementation.
+  - [x] Reflective mirror (stencil) tutorial
 
 ## Verification and Testing
 
@@ -234,6 +237,7 @@ path that demonstrates the implementation.
   defaults (no depth, no multi-sampling) unless explicitly configured.
 
 ## Changelog
+- 2025-11-21 (v0.4.0) — Add device/format sample-count validation with fallback to 1; update metadata and checklist; record implementation references for depth/stencil/MSAA.
 - 2025-11-17 (v0.3.1) — Remove umbrella validation flags from this spec; list
   only feature flags related to MSAA, depth, and stencil; metadata updated.
 - 2025-11-11 (v0.1.1) — Add MSAA validation in builders; align pipeline and

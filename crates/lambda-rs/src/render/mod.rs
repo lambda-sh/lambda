@@ -347,6 +347,29 @@ impl RenderContext {
     return self.config.format;
   }
 
+  pub(crate) fn depth_format(&self) -> platform::texture::DepthFormat {
+    return self.depth_format;
+  }
+
+  pub(crate) fn supports_surface_sample_count(
+    &self,
+    sample_count: u32,
+  ) -> bool {
+    return self
+      .gpu
+      .supports_sample_count_for_surface(self.config.format, sample_count);
+  }
+
+  pub(crate) fn supports_depth_sample_count(
+    &self,
+    format: platform::texture::DepthFormat,
+    sample_count: u32,
+  ) -> bool {
+    return self
+      .gpu
+      .supports_sample_count_for_depth(format, sample_count);
+  }
+
   /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
   pub fn limit_max_uniform_buffer_binding_size(&self) -> u64 {
     return self.gpu.limits().max_uniform_buffer_binding_size;

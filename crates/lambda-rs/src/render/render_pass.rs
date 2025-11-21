@@ -5,6 +5,7 @@
 //! perform depth/stencil-only operations (e.g., stencil mask pre-pass).
 //! The pass is referenced by handle from `RenderCommand::BeginRenderPass`.
 
+use lambda_platform::wgpu as platform;
 use logging;
 
 use super::RenderContext;
@@ -276,16 +277,75 @@ impl RenderPassBuilder {
   }
 
   /// Build the description used when beginning a render pass.
-  pub fn build(self, _render_context: &RenderContext) -> RenderPass {
+  pub fn build(self, render_context: &RenderContext) -> RenderPass {
+    let sample_count = self.resolve_sample_count(
+      self.sample_count,
+      render_context.surface_format(),
+      render_context.depth_format(),
+      |count| render_context.supports_surface_sample_count(count),
+      |format, count| render_context.supports_depth_sample_count(format, count),
+    );
+
     return RenderPass {
       clear_color: self.clear_color,
       label: self.label,
       color_operations: self.color_operations,
       depth_operations: self.depth_operations,
       stencil_operations: self.stencil_operations,
-      sample_count: self.sample_count,
+      sample_count,
       use_color: self.use_color,
     };
+  }
+
+  /// Validate the requested sample count against surface and depth/stencil
+  /// capabilities, falling back to `1` when unsupported.
+  fn resolve_sample_count<FSurface, FDepth>(
+    &self,
+    sample_count: u32,
+    surface_format: platform::surface::SurfaceFormat,
+    depth_format: platform::texture::DepthFormat,
+    supports_surface: FSurface,
+    supports_depth: FDepth,
+  ) -> u32
+  where
+    FSurface: Fn(u32) -> bool,
+    FDepth: Fn(platform::texture::DepthFormat, u32) -> bool,
+  {
+    let mut resolved_sample_count = sample_count.max(1);
+
+    if self.use_color
+      && resolved_sample_count > 1
+      && !supports_surface(resolved_sample_count)
+    {
+      #[cfg(any(debug_assertions, feature = "render-validation-device",))]
+      logging::error!(
+        "Sample count {} unsupported for surface format {:?}; falling back to 1",
+        resolved_sample_count,
+        surface_format
+      );
+      resolved_sample_count = 1;
+    }
+
+    let wants_depth_or_stencil =
+      self.depth_operations.is_some() || self.stencil_operations.is_some();
+    if wants_depth_or_stencil && resolved_sample_count > 1 {
+      let validated_depth_format = if self.stencil_operations.is_some() {
+        platform::texture::DepthFormat::Depth24PlusStencil8
+      } else {
+        depth_format
+      };
+      if !supports_depth(validated_depth_format, resolved_sample_count) {
+        #[cfg(any(debug_assertions, feature = "render-validation-device",))]
+        logging::error!(
+          "Sample count {} unsupported for depth format {:?}; falling back to 1",
+          resolved_sample_count,
+          validated_depth_format
+        );
+        resolved_sample_count = 1;
+      }
+    }
+
+    return resolved_sample_count;
   }
 }
 
@@ -311,5 +371,123 @@ impl Default for StencilOperations {
       load: StencilLoadOp::Clear(0),
       store: StoreOp::Store,
     };
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::cell::RefCell;
+
+  use super::*;
+
+  fn surface_format() -> platform::surface::SurfaceFormat {
+    return platform::surface::SurfaceFormat::BGRA8_UNORM_SRGB;
+  }
+
+  /// Falls back when the surface format rejects the requested sample count.
+  #[test]
+  fn unsupported_surface_sample_count_falls_back_to_one() {
+    let builder = RenderPassBuilder::new().with_multi_sample(4);
+
+    let resolved = builder.resolve_sample_count(
+      4,
+      surface_format(),
+      platform::texture::DepthFormat::Depth32Float,
+      |_samples| {
+        return false;
+      },
+      |_format, _samples| {
+        return true;
+      },
+    );
+
+    assert_eq!(resolved, 1);
+  }
+
+  /// Falls back when the depth format rejects the requested sample count.
+  #[test]
+  fn unsupported_depth_sample_count_falls_back_to_one() {
+    let builder = RenderPassBuilder::new().with_depth().with_multi_sample(8);
+
+    let resolved = builder.resolve_sample_count(
+      8,
+      surface_format(),
+      platform::texture::DepthFormat::Depth32Float,
+      |_samples| {
+        return true;
+      },
+      |_format, _samples| {
+        return false;
+      },
+    );
+
+    assert_eq!(resolved, 1);
+  }
+
+  /// Uses a stencil-capable depth format when stencil operations are present.
+  #[test]
+  fn stencil_support_uses_stencil_capable_depth_format() {
+    let builder = RenderPassBuilder::new().with_stencil().with_multi_sample(2);
+    let requested_formats: RefCell<Vec<platform::texture::DepthFormat>> =
+      RefCell::new(Vec::new());
+
+    let resolved = builder.resolve_sample_count(
+      2,
+      surface_format(),
+      platform::texture::DepthFormat::Depth32Float,
+      |_samples| {
+        return true;
+      },
+      |format, _samples| {
+        requested_formats.borrow_mut().push(format);
+        return true;
+      },
+    );
+
+    assert_eq!(resolved, 2);
+    assert_eq!(
+      requested_formats.borrow().first().copied(),
+      Some(platform::texture::DepthFormat::Depth24PlusStencil8)
+    );
+  }
+
+  /// Preserves supported sample counts when color and depth permit them.
+  #[test]
+  fn supported_sample_count_is_preserved() {
+    let builder = RenderPassBuilder::new().with_depth().with_multi_sample(4);
+
+    let resolved = builder.resolve_sample_count(
+      4,
+      surface_format(),
+      platform::texture::DepthFormat::Depth32Float,
+      |_samples| {
+        return true;
+      },
+      |_format, _samples| {
+        return true;
+      },
+    );
+
+    assert_eq!(resolved, 4);
+  }
+
+  /// Clamps a zero sample count to one before validation.
+  #[test]
+  fn zero_sample_count_is_clamped_to_one() {
+    let builder = RenderPassBuilder::new().without_color();
+
+    let resolved = builder.resolve_sample_count(
+      0,
+      surface_format(),
+      platform::texture::DepthFormat::Depth32Float,
+      |_samples| {
+        return true;
+      },
+      |_format, _samples| {
+        return true;
+      },
+    );
+
+    assert_eq!(resolved, 1);
   }
 }

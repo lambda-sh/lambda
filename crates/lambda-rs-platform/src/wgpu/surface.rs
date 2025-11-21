@@ -93,6 +93,10 @@ impl std::ops::BitOr for TextureUsages {
 pub struct SurfaceFormat(wgpu::TextureFormat);
 
 impl SurfaceFormat {
+  /// Common sRGB swapchain format used for windowed rendering.
+  pub const BGRA8_UNORM_SRGB: SurfaceFormat =
+    SurfaceFormat(wgpu::TextureFormat::Bgra8UnormSrgb);
+
   pub(crate) fn to_wgpu(self) -> wgpu::TextureFormat {
     return self.0;
   }
