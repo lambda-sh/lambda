@@ -352,6 +352,7 @@ impl Component<ComponentResult, String> for UniformBufferExample {
       },
       RenderCommand::Draw {
         vertices: 0..self.mesh.as_ref().unwrap().vertices().len() as u32,
+        instances: 0..1,
       },
       RenderCommand::EndRenderPass,
     ];

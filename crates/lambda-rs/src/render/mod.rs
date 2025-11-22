@@ -610,6 +610,10 @@ impl RenderContext {
     I: Iterator<Item = RenderCommand>,
   {
     Self::apply_viewport(pass, &initial_viewport);
+    #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+    let mut current_pipeline: Option<usize> = None;
+    #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+    let mut bound_index_buffer: Option<usize> = None;
     // De-duplicate advisories within this pass
     #[cfg(any(
       debug_assertions,
@@ -667,6 +671,10 @@ impl RenderContext {
                 label
               )));
             }
+          }
+          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+          {
+            current_pipeline = Some(pipeline);
           }
           // Advisory checks to help reason about stencil/depth behavior.
           #[cfg(any(
@@ -769,15 +777,18 @@ impl RenderContext {
               buffer
             ));
           })?;
-          // Soft validation: encourage correct logical type.
-          if buffer_ref.buffer_type() != buffer::BufferType::Index {
-            logging::warn!(
-              "Binding buffer id {} as index but logical type is {:?}",
-              buffer,
-              buffer_ref.buffer_type()
-            );
+          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+          {
+            if buffer_ref.buffer_type() != buffer::BufferType::Index {
+              return Err(RenderError::Configuration(format!(
+                "Binding buffer id {} as index but logical type is {:?}; expected BufferType::Index",
+                buffer,
+                buffer_ref.buffer_type()
+              )));
+            }
+            bound_index_buffer = Some(buffer);
           }
-          pass.set_index_buffer(buffer_ref.raw(), format);
+          pass.set_index_buffer(buffer_ref.raw(), format.to_platform());
         }
         RenderCommand::PushConstants {
           pipeline,
@@ -798,14 +809,42 @@ impl RenderContext {
           };
           pass.set_push_constants(stage, offset, slice);
         }
-        RenderCommand::Draw { vertices } => {
-          pass.draw(vertices);
+        RenderCommand::Draw {
+          vertices,
+          instances,
+        } => {
+          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+          {
+            if current_pipeline.is_none() {
+              return Err(RenderError::Configuration(
+                "Draw command encountered before any pipeline was set in this render pass"
+                  .to_string(),
+              ));
+            }
+          }
+          pass.draw(vertices, instances);
         }
         RenderCommand::DrawIndexed {
           indices,
           base_vertex,
+          instances,
         } => {
-          pass.draw_indexed(indices, base_vertex);
+          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+          {
+            if current_pipeline.is_none() {
+              return Err(RenderError::Configuration(
+                "DrawIndexed command encountered before any pipeline was set in this render pass"
+                  .to_string(),
+              ));
+            }
+            if bound_index_buffer.is_none() {
+              return Err(RenderError::Configuration(
+                "DrawIndexed command encountered without a bound index buffer in this render pass"
+                  .to_string(),
+              ));
+            }
+          }
+          pass.draw_indexed(indices, base_vertex, instances);
         }
         RenderCommand::BeginRenderPass { .. } => {
           return Err(RenderError::Configuration(

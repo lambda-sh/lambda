@@ -38,7 +38,10 @@ use logging;
 
 use super::{
   bind,
-  buffer::Buffer,
+  buffer::{
+    Buffer,
+    BufferType,
+  },
   render_pass::RenderPass,
   shader::Shader,
   texture,
@@ -266,6 +269,15 @@ impl RenderPipelineBuilder {
     buffer: Buffer,
     attributes: Vec<VertexAttribute>,
   ) -> Self {
+    #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+    {
+      if buffer.buffer_type() != BufferType::Vertex {
+        logging::error!(
+          "RenderPipelineBuilder::with_buffer called with a non-vertex buffer type {:?}; expected BufferType::Vertex",
+          buffer.buffer_type()
+        );
+      }
+    }
     self.bindings.push(BufferBinding {
       buffer: Rc::new(buffer),
       attributes,

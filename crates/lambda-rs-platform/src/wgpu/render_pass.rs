@@ -187,8 +187,12 @@ impl<'a> RenderPass<'a> {
   }
 
   /// Issue a non-indexed draw over a vertex range.
-  pub fn draw(&mut self, vertices: std::ops::Range<u32>) {
-    self.raw.draw(vertices, 0..1);
+  pub fn draw(
+    &mut self,
+    vertices: std::ops::Range<u32>,
+    instances: std::ops::Range<u32>,
+  ) {
+    self.raw.draw(vertices, instances);
   }
 
   /// Issue an indexed draw with a base vertex applied.
@@ -196,8 +200,9 @@ impl<'a> RenderPass<'a> {
     &mut self,
     indices: std::ops::Range<u32>,
     base_vertex: i32,
+    instances: std::ops::Range<u32>,
   ) {
-    self.raw.draw_indexed(indices, base_vertex, 0..1);
+    self.raw.draw_indexed(indices, base_vertex, instances);
   }
 }
 

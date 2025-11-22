@@ -161,7 +161,10 @@ impl Component<ComponentResult, String> for DemoComponent {
         start_at: 0,
         viewports: vec![viewport.clone()],
       },
-      RenderCommand::Draw { vertices: 0..3 },
+      RenderCommand::Draw {
+        vertices: 0..3,
+        instances: 0..1,
+      },
       RenderCommand::EndRenderPass,
     ];
   }

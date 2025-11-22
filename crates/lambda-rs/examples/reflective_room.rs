@@ -417,6 +417,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
         });
         cmds.push(RenderCommand::Draw {
           vertices: 0..floor_vertex_count,
+          instances: 0..1,
         });
         cmds.push(RenderCommand::EndRenderPass);
       }
@@ -450,6 +451,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
         });
         cmds.push(RenderCommand::Draw {
           vertices: 0..cube_vertex_count,
+          instances: 0..1,
         });
       }
     }
@@ -476,6 +478,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       });
       cmds.push(RenderCommand::Draw {
         vertices: 0..floor_vertex_count,
+        instances: 0..1,
       });
     }
 
@@ -499,6 +502,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
     });
     cmds.push(RenderCommand::Draw {
       vertices: 0..cube_vertex_count,
+      instances: 0..1,
     });
     cmds.push(RenderCommand::EndRenderPass);
 
