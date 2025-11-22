@@ -336,7 +336,7 @@ let commands = vec![
   RenderCommand::SetScissors { start_at: 0, viewports: vec![viewport.clone()] },
   RenderCommand::BindVertexBuffer { pipeline: pipeline_id, buffer: 0 },
   RenderCommand::SetBindGroup { set: 0, group: bind_group_id, dynamic_offsets: vec![] },
-  RenderCommand::Draw { vertices: 0..mesh.vertices().len() as u32 },
+  RenderCommand::Draw { vertices: 0..mesh.vertices().len() as u32, instances: 0..1 },
   RenderCommand::EndRenderPass,
 ];
 ```
