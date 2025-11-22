@@ -3,13 +3,13 @@ title: "Indexed Draws and Multiple Vertex Buffers"
 document_id: "indexed-draws-multiple-vertex-buffers-2025-11-22"
 status: "draft"
 created: "2025-11-22T00:00:00Z"
-last_updated: "2025-11-22T00:00:00Z"
-version: "0.1.0"
+last_updated: "2025-11-22T12:00:00Z"
+version: "0.1.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "1317c1c0843a441dfe7fca1754a4ca2c4614ec31"
+repo_commit: "acd14774e764beade13341f3581df768ff64b872"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "vertex-input", "indexed-draws"]
@@ -51,7 +51,7 @@ tags: ["spec", "rendering", "vertex-input", "indexed-draws"]
 ### Non-Goals
 
 - Multi-draw indirect and indirect command buffers.
-- Instanced draws or per-instance rate input layouts beyond what is required by the current examples.
+- Per-instance rate vertex buffer layouts and advanced instancing patterns beyond simple instance ranges.
 - New mesh or asset file formats; mesh containers may evolve separately.
 
 ## Terminology
@@ -118,8 +118,8 @@ App Code
     - Render commands:
       - `BindVertexBuffer { pipeline: ResourceId, buffer: u32 }` binds a vertex buffer slot declared on the pipeline.
       - `BindIndexBuffer { buffer: ResourceId, format: IndexFormat }` binds an index buffer with a specific format.
-      - `Draw { vertices: Range<u32> }` issues a non-indexed draw.
-      - `DrawIndexed { indices: Range<u32>, base_vertex: i32 }` issues an indexed draw with a signed base vertex.
+      - `Draw { vertices: Range<u32>, instances: Range<u32> }` issues a non-indexed draw with an explicit instance range.
+      - `DrawIndexed { indices: Range<u32>, base_vertex: i32, instances: Range<u32> }` issues an indexed draw with a signed base vertex and explicit instance range.
 
 Example (high-level usage)
 
@@ -159,7 +159,7 @@ let commands = vec![
   RenderCommand::BindVertexBuffer { pipeline: pipeline_id, buffer: 0 },
   RenderCommand::BindVertexBuffer { pipeline: pipeline_id, buffer: 1 },
   RenderCommand::BindIndexBuffer { buffer: index_buffer_id, format: IndexFormat::Uint16 },
-  RenderCommand::DrawIndexed { indices: 0..index_count, base_vertex: 0 },
+  RenderCommand::DrawIndexed { indices: 0..index_count, base_vertex: 0, instances: 0..1 },
   RenderCommand::EndRenderPass,
 ];
 ```
@@ -176,8 +176,8 @@ let commands = vec![
   - Supported index formats are `Uint16` and `Uint32`. The engine MUST reject or log an error for any attempt to use unsupported formats.
   - At most one index buffer is considered active at a time for a render pass; subsequent `BindIndexBuffer` commands replace the previous binding.
 - Draw commands
-  - `Draw` uses the currently bound vertex buffers and does not require an index buffer.
-  - `DrawIndexed` uses the currently bound index buffer and vertex buffers. If no index buffer is bound when `DrawIndexed` is encoded, the engine MUST treat this as a configuration error.
+  - `Draw` uses the currently bound vertex buffers and does not require an index buffer. The `instances` range controls how many instances are emitted; a default of `0..1` preserves prior single-instance behavior.
+  - `DrawIndexed` uses the currently bound index buffer and vertex buffers. If no index buffer is bound when `DrawIndexed` is encoded, the engine MUST treat this as a configuration error. The `instances` range controls how many instances are emitted.
   - `Draw` and `DrawIndexed` operate only inside an active render pass and after a pipeline has been set.
   - `base_vertex` shifts the vertex index computed from each index; this is forwarded to the platform layer and MUST be preserved exactly.
 - Feature flags
@@ -233,16 +233,16 @@ let commands = vec![
 ## Requirements Checklist
 
 - Functionality
-  - [ ] Indexed draws (`DrawIndexed`) integrated with the render command stream.
-  - [ ] Index buffers (`BufferType::Index`, `Usage::INDEX`) created and bound through `BindIndexBuffer`.
-  - [ ] Multiple vertex buffers declared on `RenderPipelineBuilder` and bound via `BindVertexBuffer`.
+  - [x] Indexed draws (`DrawIndexed`) integrated with the render command stream.
+  - [x] Index buffers (`BufferType::Index`, `Usage::INDEX`) created and bound through `BindIndexBuffer`.
+  - [x] Multiple vertex buffers declared on `RenderPipelineBuilder` and bound via `BindVertexBuffer`.
   - [ ] Edge cases handled for missing bindings and invalid ranges.
 - API Surface
-  - [ ] Engine-level `IndexFormat` type exposed without leaking backend enums.
-  - [ ] Buffer builders support vertex and index usage/configuration.
-  - [ ] Render commands align with pipeline vertex buffer declarations.
+  - [x] Engine-level `IndexFormat` type exposed without leaking backend enums.
+  - [x] Buffer builders support vertex and index usage/configuration.
+  - [x] Render commands align with pipeline vertex buffer declarations.
 - Validation and Errors
-  - [ ] Encoder ordering checks for pipeline, vertex buffers, and index buffers.
+  - [x] Encoder ordering checks for pipeline, vertex buffers, and index buffers.
   - [ ] Index range and buffer-type validation under `render-validation-encoder`.
   - [ ] Device limit checks for vertex buffer slots and attributes.
 - Performance
@@ -278,3 +278,4 @@ let commands = vec![
 ## Changelog
 
 - 2025-11-22 (v0.1.0) — Initial draft specifying indexed draws and multiple vertex buffers, including API surface, behavior, validation hooks, performance guidance, and verification plan.
+- 2025-11-22 (v0.1.1) — Added engine-level `IndexFormat`, instance ranges to `Draw`/`DrawIndexed`, encoder-side validation for pipeline and index buffer bindings, and updated requirements checklist.
