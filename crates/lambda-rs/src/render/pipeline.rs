@@ -421,6 +421,43 @@ impl RenderPipelineBuilder {
       max_bind_groups
     );
 
+    // Vertex buffer slot and attribute count limit checks.
+    let max_vertex_buffers = render_context.limit_max_vertex_buffers() as usize;
+    if self.bindings.len() > max_vertex_buffers {
+      logging::error!(
+        "Pipeline declares {} vertex buffers, exceeds device max {}",
+        self.bindings.len(),
+        max_vertex_buffers
+      );
+    }
+    debug_assert!(
+      self.bindings.len() <= max_vertex_buffers,
+      "Pipeline declares {} vertex buffers, exceeds device max {}",
+      self.bindings.len(),
+      max_vertex_buffers
+    );
+
+    let total_vertex_attributes: usize = self
+      .bindings
+      .iter()
+      .map(|binding| binding.attributes.len())
+      .sum();
+    let max_vertex_attributes =
+      render_context.limit_max_vertex_attributes() as usize;
+    if total_vertex_attributes > max_vertex_attributes {
+      logging::error!(
+        "Pipeline declares {} vertex attributes across all vertex buffers, exceeds device max {}",
+        total_vertex_attributes,
+        max_vertex_attributes
+      );
+    }
+    debug_assert!(
+      total_vertex_attributes <= max_vertex_attributes,
+      "Pipeline declares {} vertex attributes across all vertex buffers, exceeds device max {}",
+      total_vertex_attributes,
+      max_vertex_attributes
+    );
+
     // Pipeline layout via platform
     let bgl_platform: Vec<&lambda_platform::wgpu::bind::BindGroupLayout> = self
       .bind_group_layouts

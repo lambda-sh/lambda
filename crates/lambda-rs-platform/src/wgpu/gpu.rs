@@ -66,6 +66,8 @@ impl std::ops::BitOr for Features {
 pub struct GpuLimits {
   pub max_uniform_buffer_binding_size: u64,
   pub max_bind_groups: u32,
+  pub max_vertex_buffers: u32,
+  pub max_vertex_attributes: u32,
   pub min_uniform_buffer_offset_alignment: u32,
 }
 
@@ -250,6 +252,8 @@ impl Gpu {
         .max_uniform_buffer_binding_size
         .into(),
       max_bind_groups: self.limits.max_bind_groups,
+      max_vertex_buffers: self.limits.max_vertex_buffers,
+      max_vertex_attributes: self.limits.max_vertex_attributes,
       min_uniform_buffer_offset_alignment: self
         .limits
         .min_uniform_buffer_offset_alignment,
