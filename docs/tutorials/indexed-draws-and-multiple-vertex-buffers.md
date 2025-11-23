@@ -27,14 +27,11 @@ Reference implementation: `crates/lambda-rs/examples/indexed_multi_vertex_buffer
 - [Requirements and Constraints](#requirements-and-constraints)
 - [Data Flow](#data-flow)
 - [Implementation Steps](#implementation-steps)
-  - [Step 1 — Runtime and Component Skeleton](#step-1)
-  - [Step 2 — Vertex and Fragment Shaders](#step-2)
-  - [Step 3 — Vertex Data, Index Data, and Layouts](#step-3)
-  - [Step 4 — Create Vertex and Index Buffers](#step-4)
-  - [Step 5 — Build the Render Pipeline with Multiple Buffers](#step-5)
-  - [Step 6 — Record Commands with BindVertexBuffer and BindIndexBuffer](#step-6)
-  - [Step 7 — Add Simple Camera or Transform](#step-7)
-  - [Step 8 — Handle Resize and Resource Lifetime](#step-8)
+  - [Step 1 — Shaders and Vertex Types](#step-1)
+  - [Step 2 — Component State and Shader Construction](#step-2)
+  - [Step 3 — Render Pass, Vertex Data, Buffers, and Pipeline](#step-3)
+  - [Step 4 — Resize Handling and Updates](#step-4)
+  - [Step 5 — Render Commands and Runtime Entry Point](#step-5)
 - [Validation](#validation)
 - [Notes](#notes)
 - [Conclusion](#conclusion)
@@ -88,76 +85,8 @@ Render Pass → wgpu::RenderPass::{set_vertex_buffer, set_index_buffer, draw_ind
 
 ## Implementation Steps <a name="implementation-steps"></a>
 
-### Step 1 — Runtime and Component Skeleton <a name="step-1"></a>
-Step 1 introduces the runtime and component that own the render context, pipeline, and buffers. The component implements the application lifecycle callbacks and records render commands, while the runtime creates the window and drives the main loop.
-
-The example uses a `Component` implementation and an `ApplicationRuntimeBuilder` entry point:
-
-```rust
-use lambda::{
-  component::Component,
-  render::{
-    command::RenderCommand,
-    RenderContext,
-    ResourceId,
-  },
-  runtime::start_runtime,
-  runtimes::{
-    application::ComponentResult,
-    ApplicationRuntimeBuilder,
-  },
-};
-
-pub struct IndexedMultiBufferExample {
-  render_pass_id: Option<ResourceId>,
-  render_pipeline_id: Option<ResourceId>,
-  index_buffer_id: Option<ResourceId>,
-  index_count: u32,
-  width: u32,
-  height: u32,
-}
-
-impl Component<ComponentResult, String> for IndexedMultiBufferExample {
-  fn on_attach(
-    &mut self,
-    render_context: &mut RenderContext,
-  ) -> Result<ComponentResult, String> {
-    // Pipeline and buffer setup lives here.
-    return Ok(ComponentResult::Success);
-  }
-
-  fn on_render(
-    &mut self,
-    _render_context: &mut RenderContext,
-  ) -> Vec<RenderCommand> {
-    // Commands are recorded here in later steps.
-    return Vec::new();
-  }
-}
-
-fn main() {
-  let runtime =
-    ApplicationRuntimeBuilder::new("Indexed Multi-Vertex-Buffer Example")
-      .with_window_configured_as(move |window_builder| {
-        return window_builder.with_dimensions(800, 600).with_name(
-          "Indexed Multi-Vertex-Buffer Example",
-        );
-      })
-      .with_component(move |runtime, example: IndexedMultiBufferExample| {
-        return (runtime, example);
-      })
-      .build();
-
-  start_runtime(runtime);
-}
-```
-
-The runtime builds a windowed application and instantiates the component. The component stores identifiers for the render pass, pipeline, and buffers and uses the lifecycle callbacks to initialize resources and record commands.
-
-### Step 2 — Vertex and Fragment Shaders <a name="step-2"></a>
-Step 2 defines a shader interface that matches the vertex buffers used in the example. The vertex shader reads positions from one vertex buffer slot and colors from another slot. The fragment shader receives the interpolated color and writes it to the frame buffer.
-
-The example uses GLSL (OpenGL Shading Language) with explicit locations:
+### Step 1 — Shaders and Vertex Types <a name="step-1"></a>
+Step 1 defines the shader interface and vertex structures used by the example. The shaders consume positions and colors at locations `0` and `1`, and the vertex types store those attributes as three-component floating-point arrays.
 
 ```glsl
 #version 450
@@ -171,9 +100,9 @@ void main() {
   gl_Position = vec4(vertex_position, 1.0);
   frag_color = vertex_color;
 }
+```
 
-// Fragment shader:
-
+```glsl
 #version 450
 
 layout (location = 0) in vec3 frag_color;
@@ -183,13 +112,6 @@ void main() {
   fragment_color = vec4(frag_color, 1.0);
 }
 ```
-
-Attributes at locations `0` and `1` align with vertex buffer layouts declared on the pipeline. The engine associates each vertex attribute location with elements in `VertexAttribute` lists configured in the pipeline builder.
-
-### Step 3 — Vertex Data, Index Data, and Layouts <a name="step-3"></a>
-Step 3 structures vertex and index data for a quad composed of two triangles. Positions live in one buffer and colors in a second buffer. A 16-bit index buffer references the vertices to avoid duplicating position and color data.
-
-The example defines simple vertex types and arrays:
 
 ```rust
 #[repr(C)]
@@ -203,45 +125,74 @@ struct PositionVertex {
 struct ColorVertex {
   color: [f32; 3],
 }
-
-let positions: Vec<PositionVertex> = vec![
-  PositionVertex {
-    position: [-0.5, -0.5, 0.0],
-  },
-  PositionVertex {
-    position: [0.5, -0.5, 0.0],
-  },
-  PositionVertex {
-    position: [0.5, 0.5, 0.0],
-  },
-  PositionVertex {
-    position: [-0.5, 0.5, 0.0],
-  },
-];
-
-let colors: Vec<ColorVertex> = vec![
-  ColorVertex {
-    color: [1.0, 0.0, 0.0],
-  },
-  ColorVertex {
-    color: [0.0, 1.0, 0.0],
-  },
-  ColorVertex {
-    color: [0.0, 0.0, 1.0],
-  },
-  ColorVertex {
-    color: [1.0, 1.0, 1.0],
-  },
-];
-
-let indices: Vec<u16> = vec![0, 1, 2, 2, 3, 0];
-let index_count = indices.len() as u32;
 ```
 
-Each index in the `indices` vector references a position and color at the same vertex slot. This layout allows indexed rendering to reuse vertices across triangles while keeping position and color data in separate buffers.
+The shader `location` qualifiers match the vertex buffer layouts declared on the pipeline, and the `PositionVertex` and `ColorVertex` types mirror the `vec3` inputs as `[f32; 3]` arrays in Rust.
 
-### Step 4 — Create Vertex and Index Buffers <a name="step-4"></a>
-Step 4 uploads the CPU-side arrays into GPU buffers. Each vertex stream uses a buffer with `Usage::VERTEX` and `BufferType::Vertex`, while the indices use `Usage::INDEX` and `BufferType::Index`. All buffers are created with device-local properties suitable for static geometry.
+### Step 2 — Component State and Shader Construction <a name="step-2"></a>
+Step 2 introduces the `IndexedMultiBufferExample` component and its `Default` implementation, which builds shader objects from the GLSL source and initializes render-resource fields and window dimensions.
+
+```rust
+use lambda::render::{
+  shader::{
+    Shader,
+    ShaderBuilder,
+    ShaderKind,
+    VirtualShader,
+  },
+  RenderContext,
+  ResourceId,
+};
+
+pub struct IndexedMultiBufferExample {
+  vertex_shader: Shader,
+  fragment_shader: Shader,
+  render_pass_id: Option<ResourceId>,
+  render_pipeline_id: Option<ResourceId>,
+  index_buffer_id: Option<ResourceId>,
+  index_count: u32,
+  width: u32,
+  height: u32,
+}
+
+impl Default for IndexedMultiBufferExample {
+  fn default() -> Self {
+    let vertex_virtual_shader = VirtualShader::Source {
+      source: VERTEX_SHADER_SOURCE.to_string(),
+      kind: ShaderKind::Vertex,
+      entry_point: "main".to_string(),
+      name: "indexed_multi_vertex_buffers".to_string(),
+    };
+
+    let fragment_virtual_shader = VirtualShader::Source {
+      source: FRAGMENT_SHADER_SOURCE.to_string(),
+      kind: ShaderKind::Fragment,
+      entry_point: "main".to_string(),
+      name: "indexed_multi_vertex_buffers".to_string(),
+    };
+
+    let mut builder = ShaderBuilder::new();
+    let vertex_shader = builder.build(vertex_virtual_shader);
+    let fragment_shader = builder.build(fragment_virtual_shader);
+
+    return Self {
+      vertex_shader,
+      fragment_shader,
+      render_pass_id: None,
+      render_pipeline_id: None,
+      index_buffer_id: None,
+      index_count: 0,
+      width: 800,
+      height: 600,
+    };
+  }
+}
+```
+
+This `Default` implementation ensures that the component has valid shaders and initial dimensions before it attaches to the render context.
+
+### Step 3 — Render Pass, Vertex Data, Buffers, and Pipeline <a name="step-3"></a>
+Step 3 implements `on_attach` to create the render pass, vertex and index data, GPU buffers, and the render pipeline, then attaches them to the `RenderContext`.
 
 ```rust
 use lambda::render::buffer::{
@@ -251,45 +202,12 @@ use lambda::render::buffer::{
   Usage,
 };
 
-let position_buffer = BufferBuilder::new()
-  .with_usage(Usage::VERTEX)
-  .with_properties(Properties::DEVICE_LOCAL)
-  .with_buffer_type(BufferType::Vertex)
-  .with_label("indexed-positions")
-  .build(render_context, positions)
-  .map_err(|error| error.to_string())?;
-
-let color_buffer = BufferBuilder::new()
-  .with_usage(Usage::VERTEX)
-  .with_properties(Properties::DEVICE_LOCAL)
-  .with_buffer_type(BufferType::Vertex)
-  .with_label("indexed-colors")
-  .build(render_context, colors)
-  .map_err(|error| error.to_string())?;
-
-let index_buffer = BufferBuilder::new()
-  .with_usage(Usage::INDEX)
-  .with_properties(Properties::DEVICE_LOCAL)
-  .with_buffer_type(BufferType::Index)
-  .with_label("indexed-indices")
-  .build(render_context, indices)
-  .map_err(|error| error.to_string())?;
-```
-
-Usage flags and buffer types ensure that buffers can be bound to the correct pipeline stages. Validation features rely on this metadata to verify bindings for vertex and index buffers during command recording.
-
-### Step 5 — Build the Render Pipeline with Multiple Buffers <a name="step-5"></a>
-Step 5 constructs a render pipeline that declares two vertex buffers: one for positions and one for colors. Each buffer is registered on the pipeline with a `VertexAttribute` list that matches the shader’s attribute locations and formats.
-
-The example uses `RenderPipelineBuilder` with two `with_buffer` calls:
-
-```rust
 use lambda::render::{
   pipeline::{
     CullingMode,
     RenderPipelineBuilder,
   },
-  shader::Shader,
+  render_pass::RenderPassBuilder,
   vertex::{
     ColorFormat,
     VertexAttribute,
@@ -297,15 +215,70 @@ use lambda::render::{
   },
 };
 
-fn build_pipeline(
+fn on_attach(
+  &mut self,
   render_context: &mut RenderContext,
-  render_pass: &RenderPass,
-  vertex_shader: &Shader,
-  fragment_shader: &Shader,
-  position_buffer: ResourceId,
-  color_buffer: ResourceId,
-) -> RenderPipeline {
-  return RenderPipelineBuilder::new()
+) -> Result<ComponentResult, String> {
+    let render_pass = RenderPassBuilder::new().build(render_context);
+
+    let positions: Vec<PositionVertex> = vec![
+      PositionVertex {
+        position: [-0.5, -0.5, 0.0],
+      },
+      PositionVertex {
+        position: [0.5, -0.5, 0.0],
+      },
+      PositionVertex {
+        position: [0.5, 0.5, 0.0],
+      },
+      PositionVertex {
+        position: [-0.5, 0.5, 0.0],
+      },
+    ];
+
+    let colors: Vec<ColorVertex> = vec![
+      ColorVertex {
+        color: [1.0, 0.0, 0.0],
+      },
+      ColorVertex {
+        color: [0.0, 1.0, 0.0],
+      },
+      ColorVertex {
+        color: [0.0, 0.0, 1.0],
+      },
+      ColorVertex {
+        color: [1.0, 1.0, 1.0],
+      },
+    ];
+
+    let indices: Vec<u16> = vec![0, 1, 2, 2, 3, 0];
+    let index_count = indices.len() as u32;
+
+    let position_buffer = BufferBuilder::new()
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::DEVICE_LOCAL)
+      .with_buffer_type(BufferType::Vertex)
+      .with_label("indexed-positions")
+      .build(render_context, positions)
+      .map_err(|error| error.to_string())?;
+
+    let color_buffer = BufferBuilder::new()
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::DEVICE_LOCAL)
+      .with_buffer_type(BufferType::Vertex)
+      .with_label("indexed-colors")
+      .build(render_context, colors)
+      .map_err(|error| error.to_string())?;
+
+    let index_buffer = BufferBuilder::new()
+      .with_usage(Usage::INDEX)
+      .with_properties(Properties::DEVICE_LOCAL)
+      .with_buffer_type(BufferType::Index)
+      .with_label("indexed-indices")
+      .build(render_context, indices)
+      .map_err(|error| error.to_string())?;
+
+    let pipeline = RenderPipelineBuilder::new()
     .with_culling(CullingMode::Back)
     .with_buffer(
       position_buffer,
@@ -331,17 +304,65 @@ fn build_pipeline(
     )
     .build(
       render_context,
-      render_pass,
-      vertex_shader,
-      Some(fragment_shader),
+      &render_pass,
+      &self.vertex_shader,
+      Some(&self.fragment_shader),
     );
+
+    self.render_pass_id = Some(render_context.attach_render_pass(render_pass));
+    self.render_pipeline_id = Some(render_context.attach_pipeline(pipeline));
+    self.index_buffer_id = Some(render_context.attach_buffer(index_buffer));
+    self.index_count = index_count;
+
+    logging::info!("Indexed multi-vertex-buffer example attached");
+    return Ok(ComponentResult::Success);
 }
 ```
 
-The pipeline uses the order of `with_buffer` calls to assign vertex buffer slots. The first buffer occupies slot `0` and provides attributes at location `0`, while the second buffer occupies slot `1` and provides attributes at location `1`.
+The pipeline uses the order of `with_buffer` calls to assign vertex buffer slots. The first buffer occupies slot `0` and provides attributes at location `0`, while the second buffer occupies slot `1` and provides attributes at location `1`. The component stores attached resource identifiers and the index count for use during rendering.
 
-### Step 6 — Record Commands with BindVertexBuffer and BindIndexBuffer <a name="step-6"></a>
-Step 6 records the render commands that draw the quad. The command sequence begins a render pass, sets the pipeline, configures the viewport and scissors, binds both vertex buffers, binds the index buffer, and then issues a `DrawIndexed` command.
+### Step 4 — Resize Handling and Updates <a name="step-4"></a>
+Step 4 wires window resize events into the component and implements detach and update hooks. The resize handler keeps `width` and `height` in sync with the window so that the viewport matches the surface size.
+
+```rust
+fn on_detach(
+  &mut self,
+  _render_context: &mut RenderContext,
+) -> Result<ComponentResult, String> {
+  logging::info!("Indexed multi-vertex-buffer example detached");
+  return Ok(ComponentResult::Success);
+}
+
+fn on_event(
+  &mut self,
+  event: lambda::events::Events,
+) -> Result<ComponentResult, String> {
+  match event {
+    lambda::events::Events::Window { event, .. } => match event {
+      WindowEvent::Resize { width, height } => {
+        self.width = width;
+        self.height = height;
+        logging::info!("Window resized to {}x{}", width, height);
+      }
+      _ => {}
+    },
+    _ => {}
+  }
+  return Ok(ComponentResult::Success);
+}
+
+fn on_update(
+  &mut self,
+  _last_frame: &std::time::Duration,
+) -> Result<ComponentResult, String> {
+  return Ok(ComponentResult::Success);
+}
+```
+
+The resize path is the only dynamic input in this example. The update hook is a no-op that keeps the component interface aligned with other examples.
+
+### Step 5 — Render Commands and Runtime Entry Point <a name="step-5"></a>
+Step 5 records the render commands that bind the pipeline, vertex buffers, and index buffer, and then wires the component into the runtime as a windowed application.
 
 ```rust
 use lambda::render::{
@@ -352,16 +373,22 @@ use lambda::render::{
   viewport,
 };
 
-fn record_commands(
-  render_pass_id: ResourceId,
-  pipeline_id: ResourceId,
-  index_buffer_id: ResourceId,
-  index_count: u32,
-  width: u32,
-  height: u32,
+fn on_render(
+  &mut self,
+  _render_context: &mut RenderContext,
 ) -> Vec<RenderCommand> {
   let viewport =
-    viewport::ViewportBuilder::new().build(width.max(1), height.max(1));
+    viewport::ViewportBuilder::new().build(self.width, self.height);
+
+  let render_pass_id = self
+    .render_pass_id
+    .expect("Render pass must be attached before rendering");
+  let pipeline_id = self
+    .render_pipeline_id
+    .expect("Pipeline must be attached before rendering");
+  let index_buffer_id = self
+    .index_buffer_id
+    .expect("Index buffer must be attached before rendering");
 
   return vec![
     RenderCommand::BeginRenderPass {
@@ -392,26 +419,41 @@ fn record_commands(
       format: IndexFormat::Uint16,
     },
     RenderCommand::DrawIndexed {
-      indices: 0..index_count,
+      indices: 0..self.index_count,
       base_vertex: 0,
       instances: 0..1,
     },
     RenderCommand::EndRenderPass,
   ];
 }
+
+use lambda::{
+  component::Component,
+  runtime::start_runtime,
+  runtimes::application::ApplicationRuntimeBuilder,
+};
+
+fn main() {
+  let runtime =
+    ApplicationRuntimeBuilder::new("Indexed Multi-Vertex-Buffer Example")
+      .with_window_configured_as(move |window_builder| {
+        return window_builder
+          .with_dimensions(800, 600)
+          .with_name("Indexed Multi-Vertex-Buffer Example");
+      })
+      .with_renderer_configured_as(|renderer_builder| {
+        return renderer_builder.with_render_timeout(1_000_000_000);
+      })
+      .with_component(move |runtime, example: IndexedMultiBufferExample| {
+        return (runtime, example);
+      })
+      .build();
+
+  start_runtime(runtime);
+}
 ```
 
-The commands bind both vertex buffers and the index buffer before issuing `DrawIndexed`. Validation features can detect missing or mismatched bindings if the index buffer format or vertex buffer slots do not match the pipeline configuration.
-
-### Step 7 — Add Simple Camera or Transform <a name="step-7"></a>
-Step 7 is optional and can introduce transforms or a camera scheme on top of the indexed draw path. A uniform buffer or push constants can hold a model-view-projection matrix that affects vertex positions while leaving the vertex and index buffer layout unchanged.
-
-The reference example keeps the quad static in clip space and does not add transforms. Applications that need motion can extend the pattern by adding uniforms without changing the indexing scheme or buffer bindings.
-
-### Step 8 — Handle Resize and Resource Lifetime <a name="step-8"></a>
-Step 8 handles window resizes and the lifetime of render resources. The example tracks the current width and height in the component and updates these values in the window event handler so that viewports and scissors can be recomputed.
-
-Resources such as the render pass, pipeline, and buffers remain valid across resizes in this simple example. More advanced scenarios that depend on window size can rebuild passes or pipelines in response to resize events while keeping vertex and index buffers intact.
+The commands bind both vertex buffers and the index buffer before issuing `DrawIndexed`. The runtime builder configures the window and renderer and installs the component so that the engine drives `on_attach`, `on_event`, `on_update`, and `on_render` each frame.
 
 ## Validation <a name="validation"></a>
 
