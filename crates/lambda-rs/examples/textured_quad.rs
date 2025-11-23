@@ -305,7 +305,10 @@ impl Component<ComponentResult, String> for TexturedQuadExample {
       pipeline: self.render_pipeline.expect("pipeline not set"),
       buffer: 0,
     });
-    commands.push(RenderCommand::Draw { vertices: 0..6 });
+    commands.push(RenderCommand::Draw {
+      vertices: 0..6,
+      instances: 0..1,
+    });
     commands.push(RenderCommand::EndRenderPass);
     return commands;
   }

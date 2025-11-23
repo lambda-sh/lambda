@@ -410,7 +410,7 @@ let commands = vec![
     pipeline: self.render_pipeline.expect("pipeline not set"),
     buffer: 0,
   },
-  RenderCommand::Draw { vertices: 0..6 },
+  RenderCommand::Draw { vertices: 0..6, instances: 0..1 },
   RenderCommand::EndRenderPass,
 ];
 ```

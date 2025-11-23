@@ -12,6 +12,24 @@ use super::{
   viewport::Viewport,
 };
 
+/// Engine-level index format for indexed drawing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IndexFormat {
+  Uint16,
+  Uint32,
+}
+
+impl IndexFormat {
+  pub(crate) fn to_platform(
+    self,
+  ) -> lambda_platform::wgpu::buffer::IndexFormat {
+    match self {
+      IndexFormat::Uint16 => lambda_platform::wgpu::buffer::IndexFormat::Uint16,
+      IndexFormat::Uint32 => lambda_platform::wgpu::buffer::IndexFormat::Uint32,
+    }
+  }
+}
+
 /// Commands recorded and executed by the `RenderContext` to produce a frame.
 ///
 /// Order and validity are enforced by the encoder where possible. Invalid
@@ -64,14 +82,18 @@ pub enum RenderCommand {
     /// Resource identifier returned by `RenderContext::attach_buffer`.
     buffer: super::ResourceId,
     /// Index format for this buffer.
-    format: lambda_platform::wgpu::buffer::IndexFormat,
+    format: IndexFormat,
   },
   /// Issue a non‑indexed draw for the provided vertex range.
-  Draw { vertices: Range<u32> },
+  Draw {
+    vertices: Range<u32>,
+    instances: Range<u32>,
+  },
   /// Issue an indexed draw for the provided index range.
   DrawIndexed {
     indices: Range<u32>,
     base_vertex: i32,
+    instances: Range<u32>,
   },
 
   /// Bind a previously created bind group to a set index with optional
@@ -86,4 +108,24 @@ pub enum RenderCommand {
     /// Dynamic offsets in bytes to apply to bindings marked as dynamic.
     dynamic_offsets: Vec<u32>,
   },
+}
+
+#[cfg(test)]
+mod tests {
+  use super::IndexFormat;
+
+  #[test]
+  fn index_format_maps_to_platform() {
+    let u16_platform = IndexFormat::Uint16.to_platform();
+    let u32_platform = IndexFormat::Uint32.to_platform();
+
+    assert_eq!(
+      u16_platform,
+      lambda_platform::wgpu::buffer::IndexFormat::Uint16
+    );
+    assert_eq!(
+      u32_platform,
+      lambda_platform::wgpu::buffer::IndexFormat::Uint32
+    );
+  }
 }

@@ -457,7 +457,7 @@ let commands = vec![
       model: model.transpose(),
     })),
   },
-  RenderCommand::Draw { vertices: 0..mesh_len },
+  RenderCommand::Draw { vertices: 0..mesh_len, instances: 0..1 },
   RenderCommand::EndRenderPass,
 ];
 ```

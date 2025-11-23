@@ -144,7 +144,10 @@ impl Component<ComponentResult, String> for TrianglesComponent {
         offset: 0,
         bytes: Vec::from(push_constants_to_bytes(triangle)),
       });
-      commands.push(RenderCommand::Draw { vertices: 0..3 });
+      commands.push(RenderCommand::Draw {
+        vertices: 0..3,
+        instances: 0..1,
+      });
     }
 
     commands.push(RenderCommand::EndRenderPass);

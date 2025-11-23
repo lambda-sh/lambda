@@ -38,7 +38,10 @@ use logging;
 
 use super::{
   bind,
-  buffer::Buffer,
+  buffer::{
+    Buffer,
+    BufferType,
+  },
   render_pass::RenderPass,
   shader::Shader,
   texture,
@@ -266,6 +269,15 @@ impl RenderPipelineBuilder {
     buffer: Buffer,
     attributes: Vec<VertexAttribute>,
   ) -> Self {
+    #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+    {
+      if buffer.buffer_type() != BufferType::Vertex {
+        logging::error!(
+          "RenderPipelineBuilder::with_buffer called with a non-vertex buffer type {:?}; expected BufferType::Vertex",
+          buffer.buffer_type()
+        );
+      }
+    }
     self.bindings.push(BufferBinding {
       buffer: Rc::new(buffer),
       attributes,
@@ -407,6 +419,43 @@ impl RenderPipelineBuilder {
       "Pipeline declares {} bind group layouts, exceeds device max {}",
       self.bind_group_layouts.len(),
       max_bind_groups
+    );
+
+    // Vertex buffer slot and attribute count limit checks.
+    let max_vertex_buffers = render_context.limit_max_vertex_buffers() as usize;
+    if self.bindings.len() > max_vertex_buffers {
+      logging::error!(
+        "Pipeline declares {} vertex buffers, exceeds device max {}",
+        self.bindings.len(),
+        max_vertex_buffers
+      );
+    }
+    debug_assert!(
+      self.bindings.len() <= max_vertex_buffers,
+      "Pipeline declares {} vertex buffers, exceeds device max {}",
+      self.bindings.len(),
+      max_vertex_buffers
+    );
+
+    let total_vertex_attributes: usize = self
+      .bindings
+      .iter()
+      .map(|binding| binding.attributes.len())
+      .sum();
+    let max_vertex_attributes =
+      render_context.limit_max_vertex_attributes() as usize;
+    if total_vertex_attributes > max_vertex_attributes {
+      logging::error!(
+        "Pipeline declares {} vertex attributes across all vertex buffers, exceeds device max {}",
+        total_vertex_attributes,
+        max_vertex_attributes
+      );
+    }
+    debug_assert!(
+      total_vertex_attributes <= max_vertex_attributes,
+      "Pipeline declares {} vertex attributes across all vertex buffers, exceeds device max {}",
+      total_vertex_attributes,
+      max_vertex_attributes
     );
 
     // Pipeline layout via platform

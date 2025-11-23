@@ -458,6 +458,7 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       },
       RenderCommand::Draw {
         vertices: 0..mesh_len,
+        instances: 0..1,
       },
       RenderCommand::EndRenderPass,
     ];

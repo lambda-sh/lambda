@@ -342,7 +342,7 @@ cmds.push(RenderCommand::SetPipeline { pipeline: pipe_floor_mask });
 cmds.push(RenderCommand::SetStencilReference { reference: 1 });
 cmds.push(RenderCommand::BindVertexBuffer { pipeline: pipe_floor_mask, buffer: 0 });
 cmds.push(RenderCommand::PushConstants { pipeline: pipe_floor_mask, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(push_constants_to_words(&PushConstant { mvp: mvp_floor.transpose(), model: model_floor.transpose() })) });
-cmds.push(RenderCommand::Draw { vertices: 0..floor_vertex_count });
+cmds.push(RenderCommand::Draw { vertices: 0..floor_vertex_count, instances: 0..1 });
 cmds.push(RenderCommand::EndRenderPass);
 
 // Pass 2: reflected cube (stencil test == 1)
@@ -351,19 +351,19 @@ cmds.push(RenderCommand::SetPipeline { pipeline: pipe_reflected });
 cmds.push(RenderCommand::SetStencilReference { reference: 1 });
 cmds.push(RenderCommand::BindVertexBuffer { pipeline: pipe_reflected, buffer: 0 });
 cmds.push(RenderCommand::PushConstants { pipeline: pipe_reflected, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(push_constants_to_words(&PushConstant { mvp: mvp_reflect.transpose(), model: model_reflect.transpose() })) });
-cmds.push(RenderCommand::Draw { vertices: 0..cube_vertex_count });
+cmds.push(RenderCommand::Draw { vertices: 0..cube_vertex_count, instances: 0..1 });
 
 // Pass 3: floor visual (tinted)
 cmds.push(RenderCommand::SetPipeline { pipeline: pipe_floor_visual });
 cmds.push(RenderCommand::BindVertexBuffer { pipeline: pipe_floor_visual, buffer: 0 });
 cmds.push(RenderCommand::PushConstants { pipeline: pipe_floor_visual, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(push_constants_to_words(&PushConstant { mvp: mvp_floor.transpose(), model: model_floor.transpose() })) });
-cmds.push(RenderCommand::Draw { vertices: 0..floor_vertex_count });
+cmds.push(RenderCommand::Draw { vertices: 0..floor_vertex_count, instances: 0..1 });
 
 // Pass 4: normal cube
 cmds.push(RenderCommand::SetPipeline { pipeline: pipe_normal });
 cmds.push(RenderCommand::BindVertexBuffer { pipeline: pipe_normal, buffer: 0 });
 cmds.push(RenderCommand::PushConstants { pipeline: pipe_normal, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(push_constants_to_words(&PushConstant { mvp: mvp.transpose(), model: model.transpose() })) });
-cmds.push(RenderCommand::Draw { vertices: 0..cube_vertex_count });
+cmds.push(RenderCommand::Draw { vertices: 0..cube_vertex_count, instances: 0..1 });
 cmds.push(RenderCommand::EndRenderPass);
 ```
 

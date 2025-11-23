@@ -380,6 +380,16 @@ impl RenderContext {
     return self.gpu.limits().max_bind_groups;
   }
 
+  /// Device limit: maximum number of vertex buffers that can be bound.
+  pub fn limit_max_vertex_buffers(&self) -> u32 {
+    return self.gpu.limits().max_vertex_buffers;
+  }
+
+  /// Device limit: maximum number of vertex attributes that can be declared.
+  pub fn limit_max_vertex_attributes(&self) -> u32 {
+    return self.gpu.limits().max_vertex_attributes;
+  }
+
   /// Device limit: required alignment in bytes for dynamic uniform buffer offsets.
   pub fn limit_min_uniform_buffer_offset_alignment(&self) -> u32 {
     return self.gpu.limits().min_uniform_buffer_offset_alignment;
@@ -597,19 +607,26 @@ impl RenderContext {
   }
 
   /// Encode a single render pass and consume commands until `EndRenderPass`.
-  fn encode_pass<I>(
+  fn encode_pass<Commands>(
     &self,
     pass: &mut platform::render_pass::RenderPass<'_>,
     uses_color: bool,
     pass_has_depth_attachment: bool,
     pass_has_stencil: bool,
     initial_viewport: viewport::Viewport,
-    commands: &mut I,
+    commands: &mut Commands,
   ) -> Result<(), RenderError>
   where
-    I: Iterator<Item = RenderCommand>,
+    Commands: Iterator<Item = RenderCommand>,
   {
     Self::apply_viewport(pass, &initial_viewport);
+
+    #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+    let mut current_pipeline: Option<usize> = None;
+
+    #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+    let mut bound_index_buffer: Option<(usize, u32)> = None;
+
     // De-duplicate advisories within this pass
     #[cfg(any(
       debug_assertions,
@@ -617,6 +634,7 @@ impl RenderContext {
       feature = "render-validation-stencil",
     ))]
     let mut warned_no_stencil_for_pipeline: HashSet<usize> = HashSet::new();
+
     #[cfg(any(
       debug_assertions,
       feature = "render-validation-depth",
@@ -637,6 +655,7 @@ impl RenderContext {
                 "Unknown pipeline {pipeline}"
               ));
             })?;
+
           // Validate pass/pipeline compatibility before deferring to the platform.
           #[cfg(any(
             debug_assertions,
@@ -668,6 +687,14 @@ impl RenderContext {
               )));
             }
           }
+
+          // Keep track of the current pipeline to ensure that draw calls
+          // happen only after a pipeline is set.
+          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+          {
+            current_pipeline = Some(pipeline);
+          }
+
           // Advisory checks to help reason about stencil/depth behavior.
           #[cfg(any(
             debug_assertions,
@@ -687,6 +714,8 @@ impl RenderContext {
               );
               util::warn_once(&key, &msg);
             }
+
+            // Warn if pipeline uses stencil but pass has no stencil ops.
             if !pass_has_stencil && pipeline_ref.uses_stencil() {
               let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
               let key = format!("stencil:pass_no_operations:{}", label);
@@ -696,6 +725,8 @@ impl RenderContext {
               );
               util::warn_once(&key, &msg);
             }
+
+            // Warn if pass has depth attachment but pipeline does not test/write depth.
             if pass_has_depth_attachment
               && !pipeline_ref.expects_depth_stencil()
               && warned_no_depth_for_pipeline.insert(pipeline)
@@ -709,6 +740,7 @@ impl RenderContext {
               util::warn_once(&key, &msg);
             }
           }
+
           pass.set_pipeline(pipeline_ref.pipeline());
         }
         RenderCommand::SetViewports { viewports, .. } => {
@@ -769,15 +801,44 @@ impl RenderContext {
               buffer
             ));
           })?;
-          // Soft validation: encourage correct logical type.
-          if buffer_ref.buffer_type() != buffer::BufferType::Index {
-            logging::warn!(
-              "Binding buffer id {} as index but logical type is {:?}",
-              buffer,
-              buffer_ref.buffer_type()
-            );
+          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+          {
+            if buffer_ref.buffer_type() != buffer::BufferType::Index {
+              return Err(RenderError::Configuration(format!(
+                "Binding buffer id {} as index but logical type is {:?}; expected BufferType::Index",
+                buffer,
+                buffer_ref.buffer_type()
+              )));
+            }
+            let element_size = match format {
+              command::IndexFormat::Uint16 => 2u64,
+              command::IndexFormat::Uint32 => 4u64,
+            };
+            let stride = buffer_ref.stride();
+            if stride != element_size {
+              return Err(RenderError::Configuration(format!(
+                "Index buffer id {} has element stride {} bytes but BindIndexBuffer specified format {:?} ({} bytes)",
+                buffer,
+                stride,
+                format,
+                element_size
+              )));
+            }
+            let buffer_size = buffer_ref.raw().size();
+            if buffer_size % element_size != 0 {
+              return Err(RenderError::Configuration(format!(
+                "Index buffer id {} has size {} bytes which is not a multiple of element size {} for format {:?}",
+                buffer,
+                buffer_size,
+                element_size,
+                format
+              )));
+            }
+            let max_indices =
+              (buffer_size / element_size).min(u32::MAX as u64) as u32;
+            bound_index_buffer = Some((buffer, max_indices));
           }
-          pass.set_index_buffer(buffer_ref.raw(), format);
+          pass.set_index_buffer(buffer_ref.raw(), format.to_platform());
         }
         RenderCommand::PushConstants {
           pipeline,
@@ -798,14 +859,62 @@ impl RenderContext {
           };
           pass.set_push_constants(stage, offset, slice);
         }
-        RenderCommand::Draw { vertices } => {
-          pass.draw(vertices);
+        RenderCommand::Draw {
+          vertices,
+          instances,
+        } => {
+          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+          {
+            if current_pipeline.is_none() {
+              return Err(RenderError::Configuration(
+                "Draw command encountered before any pipeline was set in this render pass"
+                  .to_string(),
+              ));
+            }
+          }
+          pass.draw(vertices, instances);
         }
         RenderCommand::DrawIndexed {
           indices,
           base_vertex,
+          instances,
         } => {
-          pass.draw_indexed(indices, base_vertex);
+          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+          {
+            if current_pipeline.is_none() {
+              return Err(RenderError::Configuration(
+                "DrawIndexed command encountered before any pipeline was set in this render pass"
+                  .to_string(),
+              ));
+            }
+            let (buffer_id, max_indices) = match bound_index_buffer {
+              Some(state) => state,
+              None => {
+                return Err(RenderError::Configuration(
+                  "DrawIndexed command encountered without a bound index buffer in this render pass"
+                    .to_string(),
+                ));
+              }
+            };
+            if indices.start > indices.end {
+              return Err(RenderError::Configuration(format!(
+                "DrawIndexed index range start {} is greater than end {} for index buffer id {}",
+                indices.start,
+                indices.end,
+                buffer_id
+              )));
+            }
+            if indices.end > max_indices {
+              return Err(RenderError::Configuration(format!(
+                "DrawIndexed index range {}..{} exceeds bound index buffer id {} capacity {}",
+                indices.start,
+                indices.end,
+                buffer_id,
+                max_indices
+              )));
+            }
+          }
+          pass.draw_indexed(indices, base_vertex, instances);
         }
         RenderCommand::BeginRenderPass { .. } => {
           return Err(RenderError::Configuration(
