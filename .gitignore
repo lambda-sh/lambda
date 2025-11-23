@@ -147,3 +147,6 @@ bin
 # End of https://www.gitignore.io/api/linux,cpp,c,cmake,macos,opengl
 
 imgui.ini
+
+# Planning
+docs/plans/
