@@ -918,11 +918,13 @@ impl RenderContext {
             {
               return Err(RenderError::Configuration(msg));
             }
+          }
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-instancing-validation",
+          ))]
+          {
             if instances.start == instances.end {
-              #[cfg(any(
-                debug_assertions,
-                feature = "render-instancing-validation",
-              ))]
               logging::debug!(
                 "Skipping Draw with empty instance range {}..{}",
                 instances.start,
@@ -1002,11 +1004,13 @@ impl RenderContext {
             {
               return Err(RenderError::Configuration(msg));
             }
+          }
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-instancing-validation",
+          ))]
+          {
             if instances.start == instances.end {
-              #[cfg(any(
-                debug_assertions,
-                feature = "render-instancing-validation",
-              ))]
               logging::debug!(
                 "Skipping DrawIndexed with empty instance range {}..{}",
                 instances.start,
