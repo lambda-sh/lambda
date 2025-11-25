@@ -894,24 +894,23 @@ impl RenderContext {
                   .to_string(),
               ));
             }
+          }
 
-            #[cfg(any(
-              debug_assertions,
-              feature = "render-instancing-validation",
-            ))]
-            {
-              let pipeline_index = current_pipeline.expect(
-                "current_pipeline must be set when validation is active",
-              );
-              let pipeline_ref = &self.render_pipelines[pipeline_index];
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-instancing-validation",
+          ))]
+          {
+            let pipeline_index = current_pipeline
+              .expect("current_pipeline must be set when validation is active");
+            let pipeline_ref = &self.render_pipelines[pipeline_index];
 
-              validation::validate_instance_bindings(
-                pipeline_ref.pipeline().label().unwrap_or("unnamed"),
-                pipeline_ref.per_instance_slots(),
-                &bound_vertex_slots,
-              )
-              .map_err(RenderError::Configuration)?;
-            }
+            validation::validate_instance_bindings(
+              pipeline_ref.pipeline().label().unwrap_or("unnamed"),
+              pipeline_ref.per_instance_slots(),
+              &bound_vertex_slots,
+            )
+            .map_err(RenderError::Configuration)?;
 
             if let Err(msg) =
               validation::validate_instance_range("Draw", &instances)
@@ -981,23 +980,29 @@ impl RenderContext {
             feature = "render-instancing-validation",
           ))]
           {
-            #[cfg(any(
-              debug_assertions,
-              feature = "render-instancing-validation",
-            ))]
-            {
-              let pipeline_index = current_pipeline.expect(
-                "current_pipeline must be set when validation is active",
-              );
-              let pipeline_ref = &self.render_pipelines[pipeline_index];
-
-              validation::validate_instance_bindings(
-                pipeline_ref.pipeline().label().unwrap_or("unnamed"),
-                pipeline_ref.per_instance_slots(),
-                &bound_vertex_slots,
-              )
-              .map_err(RenderError::Configuration)?;
+            if current_pipeline.is_none() {
+              return Err(RenderError::Configuration(
+                "DrawIndexed command encountered before any pipeline was set in this render pass"
+                  .to_string(),
+              ));
             }
+          }
+
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-instancing-validation",
+          ))]
+          {
+            let pipeline_index = current_pipeline
+              .expect("current_pipeline must be set when validation is active");
+            let pipeline_ref = &self.render_pipelines[pipeline_index];
+
+            validation::validate_instance_bindings(
+              pipeline_ref.pipeline().label().unwrap_or("unnamed"),
+              pipeline_ref.per_instance_slots(),
+              &bound_vertex_slots,
+            )
+            .map_err(RenderError::Configuration)?;
 
             if let Err(msg) =
               validation::validate_instance_range("DrawIndexed", &instances)
