@@ -3,13 +3,13 @@ title: "Instanced Rendering"
 document_id: "instanced-rendering-2025-11-23"
 status: "draft"
 created: "2025-11-23T00:00:00Z"
-last_updated: "2025-11-25T01:00:00Z"
-version: "0.1.3"
+last_updated: "2025-11-25T02:20:00Z"
+version: "0.1.5"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "7f8375d73a0dbca5eb143dda38e8e1600f62683c"
+repo_commit: "c8f727f3774029135ed1f7a7224288faf7b9e442"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "instancing", "vertex-input"]
@@ -168,7 +168,7 @@ App Code
   - The `lambda-rs` crate MUST treat `instances = 0..1` as the default
         single-instance behavior used by existing rendering paths.
   - Feature flags (`lambda-rs`)
-    - `render-instancing-validation`
+    - `render-validation-instancing`
       - Owning crate: `lambda-rs`.
       - Default: disabled in release builds; MAY be enabled in debug builds or
         by opt-in.
@@ -211,8 +211,8 @@ App Code
     and instance) before issuing `Draw` or `DrawIndexed` commands that rely on
     those slots.
 - Validation behavior
-  - When `render-instancing-validation` and `render-validation-encoder` are
-    enabled, the `lambda-rs` crate SHOULD:
+  - When `render-validation-instancing` is enabled (or when `debug_assertions`
+    are active), the `lambda-rs` crate SHOULD:
     - Verify that all buffer slots used by per-instance attributes are bound
       before a draw that uses those attributes.
     - Emit a clear error when a draw is issued with an `instances` range whose
@@ -220,6 +220,10 @@ App Code
       information is available.
     - Check that `instances.start <= instances.end` and treat negative-length
       ranges as configuration errors.
+  - Umbrella features such as `render-validation-all` MAY include
+    `render-validation-instancing` for convenience, but code and tests MUST
+    gate instancing behavior on the granular `render-validation-instancing`
+    feature (plus `debug_assertions`), not on umbrella feature names.
 
 ### Validation and Errors
 
@@ -233,7 +237,7 @@ App Code
   - `BindVertexBuffer` MUST reference a buffer created with `BufferType::Vertex`
     and a slot index that is less than the number of vertex buffer layouts
     declared on the pipeline.
-  - When `render-instancing-validation` is enabled, the `lambda-rs` crate SHOULD:
+  - When `render-validation-instancing` is enabled, the `lambda-rs` crate SHOULD:
     - Verify that the set of bound buffers covers all pipeline slots that
       declare per-instance attributes before a draw is issued.
     - Log an error if a draw is issued with a per-instance attribute whose slot
@@ -369,6 +373,8 @@ relevant code and tests, for example in the pull request description.
 
 ## Changelog
 
+- 2025-11-25 (v0.1.5) — Rename the granular instancing validation feature to `render-validation-instancing`, clarify naming in feature documentation, and update metadata.
+- 2025-11-25 (v0.1.4) — Clarify that instancing validation is gated by the granular `render-instancing-validation` feature (and `debug_assertions`) and may be included in umbrella features such as `render-validation-all`; update metadata.
 - 2025-11-25 (v0.1.3) — Mark existing draw paths as compatible with `instances = 0..1`, record the addition of an instanced rendering example, and update metadata.
 - 2025-11-25 (v0.1.2) — Update terminology to reference crates by name, remove per-file implementation locations from the Requirements Checklist, and mark instancing validation features as implemented in `lambda-rs`.
 - 2025-11-24 (v0.1.1) — Mark initial instancing layout and step mode support as implemented in the Requirements Checklist; metadata updated.

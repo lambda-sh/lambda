@@ -621,17 +621,13 @@ impl RenderContext {
   {
     Self::apply_viewport(pass, &initial_viewport);
 
-    #[cfg(any(
-      debug_assertions,
-      feature = "render-validation-encoder",
-      feature = "render-instancing-validation",
-    ))]
+    #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
     let mut current_pipeline: Option<usize> = None;
 
     #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
     let mut bound_index_buffer: Option<(usize, u32)> = None;
 
-    #[cfg(any(debug_assertions, feature = "render-instancing-validation",))]
+    #[cfg(any(debug_assertions, feature = "render-validation-instancing",))]
     let mut bound_vertex_slots: HashSet<u32> = HashSet::new();
 
     // De-duplicate advisories within this pass
@@ -882,11 +878,7 @@ impl RenderContext {
           vertices,
           instances,
         } => {
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-validation-encoder",
-            feature = "render-instancing-validation",
-          ))]
+          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
           {
             if current_pipeline.is_none() {
               return Err(RenderError::Configuration(
@@ -898,7 +890,7 @@ impl RenderContext {
 
           #[cfg(any(
             debug_assertions,
-            feature = "render-instancing-validation",
+            feature = "render-validation-instancing",
           ))]
           {
             let pipeline_index = current_pipeline
@@ -920,7 +912,7 @@ impl RenderContext {
           }
           #[cfg(any(
             debug_assertions,
-            feature = "render-instancing-validation",
+            feature = "render-validation-instancing",
           ))]
           {
             if instances.start == instances.end {
@@ -976,21 +968,7 @@ impl RenderContext {
           }
           #[cfg(any(
             debug_assertions,
-            feature = "render-validation-encoder",
-            feature = "render-instancing-validation",
-          ))]
-          {
-            if current_pipeline.is_none() {
-              return Err(RenderError::Configuration(
-                "DrawIndexed command encountered before any pipeline was set in this render pass"
-                  .to_string(),
-              ));
-            }
-          }
-
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-instancing-validation",
+            feature = "render-validation-instancing",
           ))]
           {
             let pipeline_index = current_pipeline
@@ -1012,7 +990,7 @@ impl RenderContext {
           }
           #[cfg(any(
             debug_assertions,
-            feature = "render-instancing-validation",
+            feature = "render-validation-instancing",
           ))]
           {
             if instances.start == instances.end {

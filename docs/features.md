@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2025-11-25T00:00:00Z"
-version: "0.1.1"
+last_updated: "2025-11-25T02:20:00Z"
+version: "0.1.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "b1f0509d245065823dff2721f97e16c0215acc4f"
+repo_commit: "c8f727f3774029135ed1f7a7224288faf7b9e442"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo"]
@@ -44,9 +44,9 @@ This document enumerates the primary Cargo features exposed by the workspace rel
 ## Render Validation
 
 Umbrella features (crate: `lambda-rs`)
-- `render-validation`: enables common builder/pipeline validation logs (MSAA counts, depth clear advisories, stencil format upgrades).
-- `render-validation-strict`: includes `render-validation` and enables per-draw SetPipeline-time compatibility checks.
-- `render-validation-all`: superset of `render-validation-strict` and enables device-probing advisories.
+- `render-validation`: enables common builder/pipeline validation logs (MSAA counts, depth clear advisories, stencil format upgrades) by composing granular validation features.
+- `render-validation-strict`: includes `render-validation` and enables per-draw SetPipeline-time compatibility checks by composing additional granular encoder features.
+- `render-validation-all`: superset of `render-validation-strict` and enables device-probing advisories and instancing validation. This umbrella includes all granular render-validation flags, including `render-validation-instancing`.
 
 Granular features (crate: `lambda-rs`)
 - `render-validation-msaa`: validates/logs MSAA sample counts; logs pass/pipeline sample mismatches. Behavior:
@@ -57,7 +57,7 @@ Granular features (crate: `lambda-rs`)
 - `render-validation-pass-compat`: SetPipeline-time errors when color targets or depth/stencil expectations do not match the active pass.
 - `render-validation-device`: device/format probing advisories (if available via the platform layer).
 - `render-validation-encoder`: additional per-draw/encoder-time checks; highest runtime cost.
-- `render-instancing-validation`: instance-range and per-instance buffer binding validation for `RenderCommand::Draw` and `RenderCommand::DrawIndexed`. Behavior:
+- `render-validation-instancing`: instance-range and per-instance buffer binding validation for `RenderCommand::Draw` and `RenderCommand::DrawIndexed`. Behavior:
   - Validates that `instances.start <= instances.end` and treats `start == end` as a no-op (draw is skipped).
   - Ensures that all vertex buffer slots marked as per-instance on the active pipeline have been bound in the current render pass.
   - Adds per-draw checks proportional to the number of instanced draws and per-instance slots; SHOULD be enabled only when diagnosing instancing issues.
@@ -76,9 +76,13 @@ Usage examples
   - `cargo build -p lambda-rs --features render-validation`
 - Enable strict compatibility checks in release:
   - `cargo run -p lambda-rs --features render-validation-strict`
+- Enable all validations, including device advisories and instancing validation, in release:
+  - `cargo test -p lambda-rs --features render-validation-all`
 - Enable only MSAA validation in release:
   - `cargo test -p lambda-rs --features render-validation-msaa`
 
 ## Changelog
+- 0.1.3 (2025-11-25): Rename the instancing validation feature to `render-validation-instancing`, clarify umbrella composition, and update metadata.
+- 0.1.2 (2025-11-25): Clarify umbrella versus granular validation features, record that `render-validation-all` includes `render-instancing-validation`, and update metadata.
 - 0.1.1 (2025-11-25): Document `render-instancing-validation` behavior and update metadata.
 - 0.1.0 (2025-11-17): Initial document introducing validation features and behavior by build type.

@@ -58,6 +58,7 @@ render-validation-strict = [
 render-validation-all = [
   "render-validation-strict",
   "render-validation-device",
+  "render-validation-instancing",
 ]
 
 # Granular feature flags
@@ -73,7 +74,7 @@ render-validation-stencil = []
 render-validation-pass-compat = []
 render-validation-device = []
 render-validation-encoder = []
-render-instancing-validation = []
+render-validation-instancing = []
 
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------

@@ -3,13 +3,13 @@ title: "Instanced Rendering: Grid of Colored Quads"
 document_id: "instanced-quads-tutorial-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-11-25T00:00:00Z"
-version: "0.1.0"
+last_updated: "2025-11-25T02:20:00Z"
+version: "0.1.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "2ff0a581af014a754e982881193c36f47e685602"
+repo_commit: "c8f727f3774029135ed1f7a7224288faf7b9e442"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "instancing", "vertex-buffers", "rust", "wgpu"]
@@ -479,7 +479,7 @@ The commands bind both vertex buffers and the index buffer before issuing `DrawI
 
 - Vertex attribute locations in the shaders MUST match the `VertexAttribute` configuration for both the per-vertex and per-instance buffers.
 - The instance buffer MUST be bound on the same slot that `with_instance_buffer` uses; binding a different slot will lead to incorrect or undefined attribute data during rendering.
-- Instance ranges for `DrawIndexed` MUST remain within the logical count of instances created for the instance buffer; validation features such as `render-instancing-validation` SHOULD be enabled when developing new instanced render paths.
+- Instance ranges for `DrawIndexed` MUST remain within the logical count of instances created for the instance buffer; validation features such as `render-validation-instancing` SHOULD be enabled when developing new instanced render paths.
 - Per-instance data MAY be updated each frame to animate offsets or colors; static data is sufficient for verifying buffer layouts and instance ranges.
 
 ## Conclusion <a name="conclusion"></a>
@@ -493,8 +493,9 @@ This tutorial demonstrates how the `lambda-rs` crate uses per-vertex and per-ins
 - Introduce a uniform buffer that applies a global transform to all instances and combine it with per-instance offsets.
 - Extend the shaders to include per-instance scale or rotation and add fields to `InstanceData` to drive those transforms.
 - Add a second instanced draw call that uses the same geometry but a different instance buffer to render a second grid with an alternate color pattern.
-- Experiment with validation features, such as `render-instancing-validation`, by intentionally omitting the instance buffer binding and observing how configuration errors are reported.
+- Experiment with validation features, such as `render-validation-instancing`, by intentionally omitting the instance buffer binding and observing how configuration errors are reported.
 
 ## Changelog <a name="changelog"></a>
 
+- 2025-11-25 (v0.1.1) — Align feature naming with `render-validation-instancing` and update metadata.
 - 2025-11-25 (v0.1.0) — Initial instanced quads tutorial describing per-vertex and per-instance buffers and the `instanced_quads` example.
