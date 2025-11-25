@@ -108,7 +108,7 @@ App Code
       - `fn build<T: Copy>(self, render_context: &mut RenderContext, data: Vec<T>) -> Result<Buffer, Error>`.
       - `fn build_from_mesh(self, render_context: &mut RenderContext, mesh: Mesh) -> Result<Buffer, Error>` for convenience.
   - Vertex input definition (`lambda::render::vertex` and `lambda::render::pipeline`)
-    - `struct VertexAttribute { location: u32, offset: u32, element: VertexElement }`.
+    - `struct VertexAttribute { location: u32, offset: u32, element: VertexElement }`. The effective byte offset of a vertex attribute is computed as `offset + element.offset`, where `offset` is a base offset within the buffer element and `element.offset` is the offset of the field within the logical vertex or instance struct.
     - `RenderPipelineBuilder::with_buffer(buffer: Buffer, attributes: Vec<VertexAttribute>) -> Self`:
       - Each call declares a vertex buffer slot with a stride and attribute list.
       - Slots are assigned in call order starting at zero.

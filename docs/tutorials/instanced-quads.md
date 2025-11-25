@@ -343,7 +343,7 @@ fn on_attach(
 }
 ```
 
-The first buffer created by `with_buffer` is treated as a per-vertex buffer in slot `0`, while `with_instance_buffer` registers the instance buffer in slot `1` with per-instance step mode. The `vertex_attributes` and `instance_attributes` vectors connect shader locations `0`, `1`, and `2` to their corresponding buffer slots and formats, and the component records index and instance counts for later draws.
+The first buffer created by `with_buffer` is treated as a per-vertex buffer in slot `0`, while `with_instance_buffer` registers the instance buffer in slot `1` with per-instance step mode. The `vertex_attributes` and `instance_attributes` vectors connect shader locations `0`, `1`, and `2` to their corresponding buffer slots and formats, and the component records index and instance counts for later draws. The effective byte offset of each attribute is computed as `attribute.offset + attribute.element.offset`. In this example `attribute.offset` is kept at `0` for all attributes, and the struct layout is expressed entirely through `VertexElement::offset` (for example, the `color` field in `InstanceData` starts 12 bytes after the `offset` field). More complex layouts MAY use a non-zero `attribute.offset` to reuse the same attribute description at different base positions within a vertex or instance element.
 
 ### Step 4 — Resize Handling and Updates <a name="step-4"></a>
 Step 4 wires window resize events into the component and implements detach and update hooks. The resize handler keeps `width` and `height` in sync with the window so that the viewport matches the surface size.
