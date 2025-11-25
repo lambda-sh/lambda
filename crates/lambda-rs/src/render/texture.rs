@@ -128,6 +128,7 @@ pub struct TextureBuilder {
   height: u32,
   depth: u32,
   data: Option<Vec<u8>>, // tightly packed rows
+  is_render_target: bool,
 }
 
 impl TextureBuilder {
@@ -140,6 +141,7 @@ impl TextureBuilder {
       height: 0,
       depth: 1,
       data: None,
+      is_render_target: false,
     };
   }
 
@@ -157,6 +159,7 @@ impl TextureBuilder {
       // Depth > 1 ensures the 3D path is chosen once size is provided.
       depth: 2,
       data: None,
+      is_render_target: false,
     };
   }
 
@@ -193,9 +196,8 @@ impl TextureBuilder {
   /// Render target textures are created with usage flags suitable for both
   /// sampling and attachment, and allow copying from the texture for
   /// readback.
-  pub fn for_render_target(self) -> Self {
-    // At the engine layer this is a marker method. Usage flags are wired
-    // in `build` when constructing the platform builder.
+  pub fn for_render_target(mut self) -> Self {
+    self.is_render_target = true;
     return self;
   }
 
@@ -212,6 +214,12 @@ impl TextureBuilder {
         platform::TextureBuilder::new_3d(self.format.to_platform())
           .with_size_3d(self.width, self.height, self.depth)
       };
+
+    if self.is_render_target {
+      builder = builder
+        .with_render_attachment_usage(true)
+        .with_copy_source_usage(true);
+    }
 
     if let Some(ref label) = self.label {
       builder = builder.with_label(label);
@@ -317,5 +325,18 @@ impl SamplerBuilder {
     return Sampler {
       inner: Rc::new(sampler),
     };
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn texture_builder_marks_render_target_usage() {
+    let builder =
+      TextureBuilder::new_2d(TextureFormat::Rgba8Unorm).for_render_target();
+
+    assert!(builder.is_render_target);
   }
 }

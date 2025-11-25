@@ -3,13 +3,13 @@ title: "Offscreen Render Targets and Multipass Rendering"
 document_id: "offscreen-render-targets-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-11-25T00:00:00Z"
-version: "0.1.0"
+last_updated: "2025-11-25T01:00:00Z"
+version: "0.1.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "1cca6ebdf7cb0b786b3c46561b60fa2e44eecea4"
+repo_commit: "e924836491759efa083e9e27e462b2bce22ac317"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "offscreen", "multipass"]
@@ -443,6 +443,8 @@ Per-frame commands:
   - [ ] High-level public types and builders added in `lambda-rs`.
   - [x] Platform texture usage for render targets implemented in
         `lambda-rs-platform`.
+  - [x] Engine texture builder helpers for render targets implemented in
+        `lambda-rs`.
   - [ ] Pipeline color target changes implemented in `lambda-rs-platform`.
   - [ ] Backwards compatibility assessed for existing surface-backed paths.
 - Validation and Errors
@@ -500,6 +502,9 @@ Per-frame commands:
 
 ## Changelog
 
+- 2025-11-25 (v0.1.1) — Updated requirements checklist to reflect implemented
+  engine texture builder helpers and aligned metadata with current workspace
+  revision.
 - 2025-11-25 (v0.1.0) — Initial draft specifying offscreen render targets,
   multipass semantics, high-level and platform API additions, validation
   behavior, and testing expectations.
