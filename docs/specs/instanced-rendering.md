@@ -3,13 +3,13 @@ title: "Instanced Rendering"
 document_id: "instanced-rendering-2025-11-23"
 status: "draft"
 created: "2025-11-23T00:00:00Z"
-last_updated: "2025-11-23T00:00:00Z"
-version: "0.1.0"
+last_updated: "2025-11-25T00:00:00Z"
+version: "0.1.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "afabc0597de11b66124e937b4346923e25da3159"
+repo_commit: "84c73fbac8ce660827189fda1de96e50b5c8a9d5"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "instancing", "vertex-input"]
@@ -51,12 +51,12 @@ tags: ["spec", "rendering", "instancing", "vertex-input"]
 ### Goals
 
 - Define instance-rate vertex buffer semantics in the high-level vertex input
-  model using engine-level types.
+  model using types defined in `lambda-rs`.
 - Allow per-instance data (for example, transforms and colors) to be supplied
   through buffers and consumed by vertex shaders using existing binding
   patterns.
 - Clarify the semantics of the `instances: Range<u32>` field on draw commands
-  and propagate instance ranges through the platform layer to `wgpu`.
+  and propagate instance ranges through `lambda-rs-platform` to `wgpu`.
 - Add feature-gated validation for instance ranges, buffer usage, and
   configuration ordering that integrates with existing rendering validation
   features.
@@ -90,21 +90,21 @@ tags: ["spec", "rendering", "instancing", "vertex-input"]
 
 ## Architecture Overview
 
-- High-level layer (`lambda-rs`)
+- Crate `lambda-rs`
   - `RenderPipelineBuilder` declares vertex buffer layouts, including a step
     mode that describes whether a buffer is per-vertex or per-instance.
   - The render command stream uses existing `Draw` and `DrawIndexed`
     commands with an `instances: Range<u32>` field to control instance count
     and first instance.
-  - Public types represent step modes and instance-aware vertex buffer layouts;
+- Public types represent step modes and instance-aware vertex buffer layouts;
     backend-specific details remain internal to `lambda-rs-platform`.
-- Platform layer (`lambda-rs-platform`)
-  - Wraps `wgpu` vertex buffer layouts with an engine-level `VertexStepMode`
+- Crate `lambda-rs-platform`
+  - Wraps `wgpu` vertex buffer layouts with a crate-local `VertexStepMode`
     and forwards instance ranges to `wgpu::RenderPass::draw` and
     `wgpu::RenderPass::draw_indexed`.
   - Exposes draw helpers that accept both vertex or index ranges and instance
-    ranges, ensuring that engine-level commands can express instance counts and
-    first instance indices.
+    ranges, ensuring that commands in `lambda-rs` can express instance counts
+    and first instance indices.
 - Data flow
 
 ```
@@ -165,8 +165,8 @@ App Code
       - `Draw` and `DrawIndexed` remain the single entry points for emitting
         primitives; instanced rendering is expressed entirely through the
         `instances` range.
-      - The engine MUST treat `instances = 0..1` as the default single-instance
-        behavior used by existing rendering paths.
+  - The `lambda-rs` crate MUST treat `instances = 0..1` as the default
+        single-instance behavior used by existing rendering paths.
   - Feature flags (`lambda-rs`)
     - `render-instancing-validation`
       - Owning crate: `lambda-rs`.
@@ -192,8 +192,9 @@ App Code
     number of instances emitted and the first instance index:
     - `first_instance = instances.start`.
     - `instance_count = instances.end - instances.start`.
-  - When `instance_count == 0`, the engine SHOULD treat the draw as a no-op and
-    MAY log a debug-level diagnostic when instancing validation is enabled.
+  - When `instance_count == 0`, the `lambda-rs` crate SHOULD treat the draw as
+    a no-op and MAY log a debug-level diagnostic when instancing validation is
+    enabled.
   - When no buffers are configured with `PerInstance` step mode, instanced
     draws remain valid and expose the instance index only through the shader
     built-in.
@@ -211,12 +212,12 @@ App Code
     those slots.
 - Validation behavior
   - When `render-instancing-validation` and `render-validation-encoder` are
-    enabled, the engine SHOULD:
+    enabled, the `lambda-rs` crate SHOULD:
     - Verify that all buffer slots used by per-instance attributes are bound
       before a draw that uses those attributes.
     - Emit a clear error when a draw is issued with an `instances` range whose
-      upper bound exceeds engine-configured expectations for the instance
-      buffer size, when this information is available.
+      upper bound exceeds expectations for the instance buffer size, when this
+      information is available.
     - Check that `instances.start <= instances.end` and treat negative-length
       ranges as configuration errors.
 
@@ -232,7 +233,7 @@ App Code
   - `BindVertexBuffer` MUST reference a buffer created with `BufferType::Vertex`
     and a slot index that is less than the number of vertex buffer layouts
     declared on the pipeline.
-  - When `render-instancing-validation` is enabled, the engine SHOULD:
+  - When `render-instancing-validation` is enabled, the `lambda-rs` crate SHOULD:
     - Verify that the set of bound buffers covers all pipeline slots that
       declare per-instance attributes before a draw is issued.
     - Log an error if a draw is issued with a per-instance attribute whose slot
@@ -249,8 +250,9 @@ App Code
 ## Constraints and Rules
 
 - Device support
-  - Instanced rendering is a core capability of the `wgpu` backend; the engine
-    MAY assume basic support for instancing on all supported devices.
+  - Instanced rendering is a core capability of the `wgpu` backend; the
+    implementation in `lambda-rs` MAY assume basic support for instancing on
+    all supported devices.
   - If a backend without instancing support is ever introduced, instanced
     draws MUST fail fast at pipeline creation or command encoding with a clear
     diagnostic.
@@ -263,8 +265,9 @@ App Code
   - Instance buffer sizes SHOULD be chosen to accommodate the maximum expected
     instance count for the associated draw paths.
 - Limits
-  - The engine SHOULD respect and document any `wgpu` limits on maximum vertex
-    buffer stride, attribute count, and instance count.
+  - The implementation in `lambda-rs` SHOULD respect and document any `wgpu`
+    limits on maximum vertex buffer stride, attribute count, and instance
+    count.
   - Instanced draws that exceed device limits MUST be rejected and logged
     rather than silently truncated.
 
@@ -290,15 +293,15 @@ App Code
 ## Requirements Checklist
 
 - Functionality
-  - [ ] Instance-aware vertex buffer layouts defined in `lambda-rs` and
+  - [x] Instance-aware vertex buffer layouts supported in `lambda-rs` and
         `lambda-rs-platform`.
-  - [ ] Draw helpers in `lambda-rs-platform` accept and forward instance
+  - [x] Draw helpers in `lambda-rs-platform` accept and forward instance
         ranges.
   - [ ] Existing draw paths continue to function with `instances = 0..1`.
 - API Surface
-  - [ ] `VertexStepMode` exposed at engine and platform layers.
-  - [ ] `RenderPipelineBuilder` supports explicit per-instance buffers via
-        `with_buffer_step_mode` and `with_instance_buffer`.
+  - [x] `VertexStepMode` exposed in `lambda-rs` and `lambda-rs-platform`.
+  - [x] `RenderPipelineBuilder` in `lambda-rs` supports explicit per-instance
+        buffers via `with_buffer_step_mode` and `with_instance_buffer`.
   - [ ] Instancing validation feature flag defined in `lambda-rs`.
 - Validation and Errors
   - [ ] Command ordering checks cover instanced draws.
@@ -316,14 +319,14 @@ App Code
   - [ ] Any necessary migration notes captured in `docs/rendering.md` or
         related documentation.
 
-For each checked item, include a reference to a commit, pull request, or file
-path that demonstrates the implementation.
+For each checked item, the implementing change set SHOULD reference the
+relevant code and tests, for example in the pull request description.
 
 ## Verification and Testing
 
 - Unit Tests
-  - Verify that vertex buffer layouts correctly map `VertexStepMode` from the
-    engine layer to the platform layer and into `wgpu`.
+  - Verify that vertex buffer layouts correctly map `VertexStepMode` from
+    `lambda-rs` into `lambda-rs-platform` and then into `wgpu`.
   - Ensure that draw helpers forward instance ranges correctly and reject
     invalid ranges when validation is enabled.
   - Commands:
@@ -346,15 +349,16 @@ path that demonstrates the implementation.
 
 ## Compatibility and Migration
 
-- Public engine APIs
+- Public `lambda-rs` APIs
   - Adding `VertexStepMode` and step mode-aware buffer builders is designed to
     be backwards compatible; existing code that does not configure per-instance
     buffers continues to function unchanged.
   - The default step mode for existing `with_buffer` calls MUST remain
     per-vertex to avoid altering current behavior.
-- Internal platform APIs
+- Internal `lambda-rs-platform` APIs
   - The updated draw helper signatures in `lambda-rs-platform` constitute an
-    internal change; engine call sites MUST be updated in the same change set.
+    internal change; call sites in `lambda-rs` MUST be updated in the same
+    change set.
   - No user-facing migration is required unless external code depends directly
     on `lambda-rs-platform` internals, which is discouraged.
 - Feature interactions
@@ -365,4 +369,6 @@ path that demonstrates the implementation.
 
 ## Changelog
 
+- 2025-11-25 (v0.1.2) — Update terminology to reference crates by name and remove per-file implementation locations from the Requirements Checklist.
+- 2025-11-24 (v0.1.1) — Mark initial instancing layout and step mode support as implemented in the Requirements Checklist; metadata updated.
 - 2025-11-23 (v0.1.0) — Initial draft of instanced rendering specification.
