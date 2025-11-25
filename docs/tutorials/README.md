@@ -21,7 +21,7 @@ This index lists tutorials that teach specific `lambda-rs` tasks through complet
 - Textured Quad: Sample a 2D Texture — [textured-quad.md](textured-quad.md)
 - Textured Cube: 3D Push Constants + 2D Sampling — [textured-cube.md](textured-cube.md)
 - Reflective Room: Stencil Masked Reflections with MSAA — [reflective-room.md](reflective-room.md)
--, Instanced Rendering: Grid of Colored Quads — [instanced-quads.md](instanced-quads.md)
+- Instanced Rendering: Grid of Colored Quads — [instanced-quads.md](instanced-quads.md)
 
 Browse all tutorials in this directory.
 
