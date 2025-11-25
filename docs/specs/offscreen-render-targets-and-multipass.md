@@ -441,8 +441,9 @@ Per-frame commands:
         depth when required).
 - API Surface
   - [ ] High-level public types and builders added in `lambda-rs`.
-  - [ ] Platform texture usage and pipeline color target changes implemented in
+  - [x] Platform texture usage for render targets implemented in
         `lambda-rs-platform`.
+  - [ ] Pipeline color target changes implemented in `lambda-rs-platform`.
   - [ ] Backwards compatibility assessed for existing surface-backed paths.
 - Validation and Errors
   - [ ] `render-validation-render-targets` feature implemented and composed

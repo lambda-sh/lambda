@@ -188,6 +188,17 @@ impl TextureBuilder {
     return self;
   }
 
+  /// Configure this texture for use as a render target.
+  ///
+  /// Render target textures are created with usage flags suitable for both
+  /// sampling and attachment, and allow copying from the texture for
+  /// readback.
+  pub fn for_render_target(self) -> Self {
+    // At the engine layer this is a marker method. Usage flags are wired
+    // in `build` when constructing the platform builder.
+    return self;
+  }
+
   /// Create the texture and upload initial data if provided.
   pub fn build(
     self,

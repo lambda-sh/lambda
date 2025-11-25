@@ -555,6 +555,9 @@ pub struct TextureBuilder {
   usage_texture_binding: bool,
   /// Include `COPY_DST` usage when uploading initial data.
   usage_copy_dst: bool,
+  /// Include `RENDER_ATTACHMENT` usage when the texture is used as a color
+  /// render target.
+  usage_render_attachment: bool,
   /// Optional tightly‑packed pixel payload for level 0 (rows are `width*bpp`).
   data: Option<Vec<u8>>,
 }
@@ -571,6 +574,7 @@ impl TextureBuilder {
       depth: 1,
       usage_texture_binding: true,
       usage_copy_dst: true,
+      usage_render_attachment: false,
       data: None,
     };
   }
@@ -586,6 +590,7 @@ impl TextureBuilder {
       depth: 0,
       usage_texture_binding: true,
       usage_copy_dst: true,
+      usage_render_attachment: false,
       data: None,
     };
   }
@@ -616,6 +621,13 @@ impl TextureBuilder {
   pub fn with_usage(mut self, texture_binding: bool, copy_dst: bool) -> Self {
     self.usage_texture_binding = texture_binding;
     self.usage_copy_dst = copy_dst;
+    return self;
+  }
+
+  /// Control render attachment usage. Defaults to `false` so existing sampled
+  /// textures remain sampled‑only.
+  pub fn with_render_attachment_usage(mut self, enabled: bool) -> Self {
+    self.usage_render_attachment = enabled;
     return self;
   }
 
@@ -682,6 +694,9 @@ impl TextureBuilder {
     }
     if self.usage_copy_dst {
       usage |= wgpu::TextureUsages::COPY_DST;
+    }
+    if self.usage_render_attachment {
+      usage |= wgpu::TextureUsages::RENDER_ATTACHMENT;
     }
 
     let descriptor = wgpu::TextureDescriptor {
@@ -909,5 +924,15 @@ mod tests {
     assert_eq!(d.mag_filter, wgpu::FilterMode::Linear);
     assert_eq!(d.min_filter, wgpu::FilterMode::Linear);
     assert_eq!(d.mipmap_filter, wgpu::FilterMode::Linear);
+  }
+
+  #[test]
+  fn texture_builder_enables_render_attachment_usage() {
+    let format = TextureFormat::Rgba8Unorm;
+    let builder = TextureBuilder::new_2d(format)
+      .with_size(4, 4)
+      .with_render_attachment_usage(true);
+
+    assert!(builder.usage_render_attachment);
   }
 }

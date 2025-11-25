@@ -231,6 +231,14 @@ pub struct RenderContext {
 pub type ResourceId = usize;
 
 impl RenderContext {
+  /// Current surface size in pixels.
+  ///
+  /// This reflects the most recent configured surface dimensions and is used
+  /// as a default for render‑target creation and viewport setup.
+  pub fn surface_size(&self) -> (u32, u32) {
+    return self.size;
+  }
+
   /// Attach a render pipeline and return a handle for use in commands.
   pub fn attach_pipeline(&mut self, pipeline: RenderPipeline) -> ResourceId {
     let id = self.render_pipelines.len();
