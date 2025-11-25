@@ -9,7 +9,7 @@ engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "84c73fbac8ce660827189fda1de96e50b5c8a9d5"
+repo_commit: "b1f0509d245065823dff2721f97e16c0215acc4f"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "instancing", "vertex-input"]
@@ -302,11 +302,11 @@ App Code
   - [x] `VertexStepMode` exposed in `lambda-rs` and `lambda-rs-platform`.
   - [x] `RenderPipelineBuilder` in `lambda-rs` supports explicit per-instance
         buffers via `with_buffer_step_mode` and `with_instance_buffer`.
-  - [ ] Instancing validation feature flag defined in `lambda-rs`.
+  - [x] Instancing validation feature flag defined in `lambda-rs`.
 - Validation and Errors
   - [ ] Command ordering checks cover instanced draws.
-  - [ ] Instance range validation implemented and feature-gated.
-  - [ ] Buffer binding diagnostics cover per-instance attributes.
+  - [x] Instance range validation implemented and feature-gated.
+  - [x] Buffer binding diagnostics cover per-instance attributes.
 - Performance
   - [ ] Critical instanced draw paths reasoned about or profiled.
   - [ ] Memory usage for instance buffers characterized for example scenes.
@@ -369,6 +369,6 @@ relevant code and tests, for example in the pull request description.
 
 ## Changelog
 
-- 2025-11-25 (v0.1.2) — Update terminology to reference crates by name and remove per-file implementation locations from the Requirements Checklist.
+- 2025-11-25 (v0.1.2) — Update terminology to reference crates by name, remove per-file implementation locations from the Requirements Checklist, and mark instancing validation features as implemented in `lambda-rs`.
 - 2025-11-24 (v0.1.1) — Mark initial instancing layout and step mode support as implemented in the Requirements Checklist; metadata updated.
 - 2025-11-23 (v0.1.0) — Initial draft of instanced rendering specification.

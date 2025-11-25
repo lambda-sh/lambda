@@ -65,6 +65,7 @@ pub struct RenderPipeline {
   color_target_count: u32,
   expects_depth_stencil: bool,
   uses_stencil: bool,
+  per_instance_slots: Vec<bool>,
 }
 
 impl RenderPipeline {
@@ -99,6 +100,11 @@ impl RenderPipeline {
   /// Whether the pipeline configured a stencil test/state.
   pub(super) fn uses_stencil(&self) -> bool {
     return self.uses_stencil;
+  }
+
+  /// Per-vertex-buffer flags indicating which slots advance per instance.
+  pub(super) fn per_instance_slots(&self) -> &Vec<bool> {
+    return &self.per_instance_slots;
   }
 }
 
@@ -519,6 +525,7 @@ impl RenderPipelineBuilder {
 
     // Vertex buffers and attributes
     let mut buffers = Vec::with_capacity(self.bindings.len());
+    let mut per_instance_slots = Vec::with_capacity(self.bindings.len());
     let mut rp_builder = platform_pipeline::RenderPipelineBuilder::new()
       .with_label(self.label.as_deref().unwrap_or("lambda-render-pipeline"))
       .with_layout(&pipeline_layout)
@@ -541,6 +548,10 @@ impl RenderPipelineBuilder {
         attributes,
       );
       buffers.push(binding.buffer.clone());
+      per_instance_slots.push(matches!(
+        binding.layout.step_mode,
+        VertexStepMode::PerInstance
+      ));
     }
 
     if fragment_module.is_some() {
@@ -641,6 +652,7 @@ impl RenderPipelineBuilder {
       // Depth/stencil is enabled when `with_depth*` was called on the builder.
       expects_depth_stencil: self.use_depth,
       uses_stencil: self.stencil.is_some(),
+      per_instance_slots,
     };
   }
 }

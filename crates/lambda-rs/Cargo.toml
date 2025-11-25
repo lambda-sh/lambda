@@ -73,6 +73,7 @@ render-validation-stencil = []
 render-validation-pass-compat = []
 render-validation-device = []
 render-validation-encoder = []
+render-instancing-validation = []
 
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------
