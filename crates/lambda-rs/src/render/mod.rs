@@ -627,6 +627,9 @@ impl RenderContext {
     #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
     let mut bound_index_buffer: Option<(usize, u32)> = None;
 
+    #[cfg(any(debug_assertions, feature = "render-validation-instancing",))]
+    let mut bound_vertex_slots: HashSet<u32> = HashSet::new();
+
     // De-duplicate advisories within this pass
     #[cfg(any(
       debug_assertions,
@@ -689,8 +692,12 @@ impl RenderContext {
           }
 
           // Keep track of the current pipeline to ensure that draw calls
-          // happen only after a pipeline is set.
-          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
+          // happen only after a pipeline is set when validation is enabled.
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-validation-encoder",
+            feature = "render-instancing-validation",
+          ))]
           {
             current_pipeline = Some(pipeline);
           }
@@ -792,6 +799,14 @@ impl RenderContext {
               ));
             })?;
 
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-instancing-validation",
+          ))]
+          {
+            bound_vertex_slots.insert(buffer);
+          }
+
           pass.set_vertex_buffer(buffer as u32, buffer_ref.raw());
         }
         RenderCommand::BindIndexBuffer { buffer, format } => {
@@ -872,6 +887,43 @@ impl RenderContext {
               ));
             }
           }
+
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-validation-instancing",
+          ))]
+          {
+            let pipeline_index = current_pipeline
+              .expect("current_pipeline must be set when validation is active");
+            let pipeline_ref = &self.render_pipelines[pipeline_index];
+
+            validation::validate_instance_bindings(
+              pipeline_ref.pipeline().label().unwrap_or("unnamed"),
+              pipeline_ref.per_instance_slots(),
+              &bound_vertex_slots,
+            )
+            .map_err(RenderError::Configuration)?;
+
+            if let Err(msg) =
+              validation::validate_instance_range("Draw", &instances)
+            {
+              return Err(RenderError::Configuration(msg));
+            }
+          }
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-validation-instancing",
+          ))]
+          {
+            if instances.start == instances.end {
+              logging::debug!(
+                "Skipping Draw with empty instance range {}..{}",
+                instances.start,
+                instances.end
+              );
+              continue;
+            }
+          }
           pass.draw(vertices, instances);
         }
         RenderCommand::DrawIndexed {
@@ -912,6 +964,42 @@ impl RenderContext {
                 buffer_id,
                 max_indices
               )));
+            }
+          }
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-validation-instancing",
+          ))]
+          {
+            let pipeline_index = current_pipeline
+              .expect("current_pipeline must be set when validation is active");
+            let pipeline_ref = &self.render_pipelines[pipeline_index];
+
+            validation::validate_instance_bindings(
+              pipeline_ref.pipeline().label().unwrap_or("unnamed"),
+              pipeline_ref.per_instance_slots(),
+              &bound_vertex_slots,
+            )
+            .map_err(RenderError::Configuration)?;
+
+            if let Err(msg) =
+              validation::validate_instance_range("DrawIndexed", &instances)
+            {
+              return Err(RenderError::Configuration(msg));
+            }
+          }
+          #[cfg(any(
+            debug_assertions,
+            feature = "render-validation-instancing",
+          ))]
+          {
+            if instances.start == instances.end {
+              logging::debug!(
+                "Skipping DrawIndexed with empty instance range {}..{}",
+                instances.start,
+                instances.end
+              );
+              continue;
             }
           }
           pass.draw_indexed(indices, base_vertex, instances);

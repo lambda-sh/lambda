@@ -4,6 +4,7 @@ use std::ops::Range;
 
 use wgpu;
 
+pub use crate::wgpu::vertex::VertexStepMode;
 use crate::wgpu::{
   bind,
   gpu::Gpu,
@@ -79,6 +80,14 @@ pub struct VertexAttributeDesc {
   pub shader_location: u32,
   pub offset: u64,
   pub format: ColorFormat,
+}
+
+/// Description of a single vertex buffer layout used by a pipeline.
+#[derive(Clone, Debug)]
+struct VertexBufferLayoutDesc {
+  array_stride: u64,
+  step_mode: VertexStepMode,
+  attributes: Vec<VertexAttributeDesc>,
 }
 
 /// Compare function used for depth and stencil tests.
@@ -301,7 +310,7 @@ impl RenderPipeline {
 pub struct RenderPipelineBuilder<'a> {
   label: Option<String>,
   layout: Option<&'a wgpu::PipelineLayout>,
-  vertex_buffers: Vec<(u64, Vec<VertexAttributeDesc>)>,
+  vertex_buffers: Vec<VertexBufferLayoutDesc>,
   cull_mode: CullingMode,
   color_target_format: Option<wgpu::TextureFormat>,
   depth_stencil: Option<wgpu::DepthStencilState>,
@@ -340,7 +349,26 @@ impl<'a> RenderPipelineBuilder<'a> {
     array_stride: u64,
     attributes: Vec<VertexAttributeDesc>,
   ) -> Self {
-    self.vertex_buffers.push((array_stride, attributes));
+    self = self.with_vertex_buffer_step_mode(
+      array_stride,
+      VertexStepMode::Vertex,
+      attributes,
+    );
+    return self;
+  }
+
+  /// Add a vertex buffer layout with attributes and an explicit step mode.
+  pub fn with_vertex_buffer_step_mode(
+    mut self,
+    array_stride: u64,
+    step_mode: VertexStepMode,
+    attributes: Vec<VertexAttributeDesc>,
+  ) -> Self {
+    self.vertex_buffers.push(VertexBufferLayoutDesc {
+      array_stride,
+      step_mode,
+      attributes,
+    });
     return self;
   }
 
@@ -431,11 +459,12 @@ impl<'a> RenderPipelineBuilder<'a> {
     // storage stable for layout lifetimes.
     let mut attr_storage: Vec<Box<[wgpu::VertexAttribute]>> = Vec::new();
     let mut strides: Vec<u64> = Vec::new();
-    for (stride, attrs) in &self.vertex_buffers {
+    let mut step_modes: Vec<VertexStepMode> = Vec::new();
+    for buffer_desc in &self.vertex_buffers {
       let mut raw_attrs: Vec<wgpu::VertexAttribute> =
-        Vec::with_capacity(attrs.len());
+        Vec::with_capacity(buffer_desc.attributes.len());
 
-      for attribute in attrs.iter() {
+      for attribute in buffer_desc.attributes.iter() {
         raw_attrs.push(wgpu::VertexAttribute {
           shader_location: attribute.shader_location,
           offset: attribute.offset,
@@ -444,7 +473,8 @@ impl<'a> RenderPipelineBuilder<'a> {
       }
       let boxed: Box<[wgpu::VertexAttribute]> = raw_attrs.into_boxed_slice();
       attr_storage.push(boxed);
-      strides.push(*stride);
+      strides.push(buffer_desc.array_stride);
+      step_modes.push(buffer_desc.step_mode);
     }
     // Now build layouts referencing the stable storage in `attr_storage`.
     let mut vbl: Vec<wgpu::VertexBufferLayout<'_>> = Vec::new();
@@ -452,7 +482,7 @@ impl<'a> RenderPipelineBuilder<'a> {
       let slice = boxed.as_ref();
       vbl.push(wgpu::VertexBufferLayout {
         array_stride: strides[i],
-        step_mode: wgpu::VertexStepMode::Vertex,
+        step_mode: step_modes[i].to_wgpu(),
         attributes: slice,
       });
     }
@@ -509,5 +539,39 @@ impl<'a> RenderPipelineBuilder<'a> {
       raw,
       label: self.label,
     };
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn vertex_step_mode_maps_to_wgpu() {
+    let vertex_mode = VertexStepMode::Vertex.to_wgpu();
+    let instance_mode = VertexStepMode::Instance.to_wgpu();
+
+    assert_eq!(vertex_mode, wgpu::VertexStepMode::Vertex);
+    assert_eq!(instance_mode, wgpu::VertexStepMode::Instance);
+  }
+
+  #[test]
+  fn with_vertex_buffer_defaults_to_per_vertex_step_mode() {
+    let builder = RenderPipelineBuilder::new().with_vertex_buffer(
+      16,
+      vec![VertexAttributeDesc {
+        shader_location: 0,
+        offset: 0,
+        format: ColorFormat::Rgb32Sfloat,
+      }],
+    );
+
+    let vertex_buffers = &builder.vertex_buffers;
+
+    assert_eq!(vertex_buffers.len(), 1);
+    assert!(matches!(
+      vertex_buffers[0].step_mode,
+      VertexStepMode::Vertex
+    ));
   }
 }

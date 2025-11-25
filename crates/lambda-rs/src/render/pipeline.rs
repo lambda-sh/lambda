@@ -45,7 +45,11 @@ use super::{
   render_pass::RenderPass,
   shader::Shader,
   texture,
-  vertex::VertexAttribute,
+  vertex::{
+    VertexAttribute,
+    VertexBufferLayout,
+    VertexStepMode,
+  },
   RenderContext,
 };
 use crate::render::validation;
@@ -61,6 +65,7 @@ pub struct RenderPipeline {
   color_target_count: u32,
   expects_depth_stencil: bool,
   uses_stencil: bool,
+  per_instance_slots: Vec<bool>,
 }
 
 impl RenderPipeline {
@@ -96,6 +101,11 @@ impl RenderPipeline {
   pub(super) fn uses_stencil(&self) -> bool {
     return self.uses_stencil;
   }
+
+  /// Per-vertex-buffer flags indicating which slots advance per instance.
+  pub(super) fn per_instance_slots(&self) -> &Vec<bool> {
+    return &self.per_instance_slots;
+  }
 }
 
 /// Public alias for platform shader stage flags used by push constants.
@@ -106,6 +116,7 @@ pub type PushConstantUpload = (PipelineStage, Range<u32>);
 
 struct BufferBinding {
   buffer: Rc<Buffer>,
+  layout: VertexBufferLayout,
   attributes: Vec<VertexAttribute>,
 }
 
@@ -157,6 +168,15 @@ impl CullingMode {
       CullingMode::Back => platform_pipeline::CullingMode::Back,
     };
   }
+}
+
+fn to_platform_step_mode(
+  step_mode: VertexStepMode,
+) -> platform_pipeline::VertexStepMode {
+  return match step_mode {
+    VertexStepMode::PerVertex => platform_pipeline::VertexStepMode::Vertex,
+    VertexStepMode::PerInstance => platform_pipeline::VertexStepMode::Instance,
+  };
 }
 
 /// Engine-level stencil operation.
@@ -265,9 +285,23 @@ impl RenderPipelineBuilder {
 
   /// Declare a vertex buffer and the vertex attributes consumed by the shader.
   pub fn with_buffer(
+    self,
+    buffer: Buffer,
+    attributes: Vec<VertexAttribute>,
+  ) -> Self {
+    return self.with_buffer_step_mode(
+      buffer,
+      attributes,
+      VertexStepMode::PerVertex,
+    );
+  }
+
+  /// Declare a vertex buffer with an explicit step mode.
+  pub fn with_buffer_step_mode(
     mut self,
     buffer: Buffer,
     attributes: Vec<VertexAttribute>,
+    step_mode: VertexStepMode,
   ) -> Self {
     #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
     {
@@ -278,11 +312,30 @@ impl RenderPipelineBuilder {
         );
       }
     }
+
+    let layout = VertexBufferLayout {
+      stride: buffer.stride(),
+      step_mode,
+    };
     self.bindings.push(BufferBinding {
       buffer: Rc::new(buffer),
+      layout,
       attributes,
     });
     return self;
+  }
+
+  /// Declare a per-instance vertex buffer.
+  pub fn with_instance_buffer(
+    self,
+    buffer: Buffer,
+    attributes: Vec<VertexAttribute>,
+  ) -> Self {
+    return self.with_buffer_step_mode(
+      buffer,
+      attributes,
+      VertexStepMode::PerInstance,
+    );
   }
 
   /// Declare a push constant range for a shader stage in bytes.
@@ -472,6 +525,7 @@ impl RenderPipelineBuilder {
 
     // Vertex buffers and attributes
     let mut buffers = Vec::with_capacity(self.bindings.len());
+    let mut per_instance_slots = Vec::with_capacity(self.bindings.len());
     let mut rp_builder = platform_pipeline::RenderPipelineBuilder::new()
       .with_label(self.label.as_deref().unwrap_or("lambda-render-pipeline"))
       .with_layout(&pipeline_layout)
@@ -488,9 +542,16 @@ impl RenderPipelineBuilder {
         })
         .collect();
 
-      rp_builder =
-        rp_builder.with_vertex_buffer(binding.buffer.stride(), attributes);
+      rp_builder = rp_builder.with_vertex_buffer_step_mode(
+        binding.layout.stride,
+        to_platform_step_mode(binding.layout.step_mode),
+        attributes,
+      );
       buffers.push(binding.buffer.clone());
+      per_instance_slots.push(matches!(
+        binding.layout.step_mode,
+        VertexStepMode::PerInstance
+      ));
     }
 
     if fragment_module.is_some() {
@@ -591,6 +652,27 @@ impl RenderPipelineBuilder {
       // Depth/stencil is enabled when `with_depth*` was called on the builder.
       expects_depth_stencil: self.use_depth,
       uses_stencil: self.stencil.is_some(),
+      per_instance_slots,
     };
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn engine_step_mode_maps_to_platform_step_mode() {
+    let per_vertex = to_platform_step_mode(VertexStepMode::PerVertex);
+    let per_instance = to_platform_step_mode(VertexStepMode::PerInstance);
+
+    assert!(matches!(
+      per_vertex,
+      platform_pipeline::VertexStepMode::Vertex
+    ));
+    assert!(matches!(
+      per_instance,
+      platform_pipeline::VertexStepMode::Instance
+    ));
   }
 }

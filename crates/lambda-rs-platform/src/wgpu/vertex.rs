@@ -26,3 +26,24 @@ impl ColorFormat {
     };
   }
 }
+
+/// Step mode applied to a vertex buffer layout.
+///
+/// `Vertex` advances attributes per vertex; `Instance` advances attributes per
+/// instance. This mirrors `wgpu::VertexStepMode` without exposing the raw
+/// dependency to higher layers.
+#[derive(Clone, Copy, Debug)]
+pub enum VertexStepMode {
+  Vertex,
+  Instance,
+}
+
+impl VertexStepMode {
+  /// Map the engine step mode to the underlying graphics API.
+  pub(crate) fn to_wgpu(self) -> wgpu::VertexStepMode {
+    return match self {
+      VertexStepMode::Vertex => wgpu::VertexStepMode::Vertex,
+      VertexStepMode::Instance => wgpu::VertexStepMode::Instance,
+    };
+  }
+}

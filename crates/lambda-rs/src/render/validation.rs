@@ -1,5 +1,10 @@
 //! Small helpers for limits and alignment validation used by the renderer.
 
+use std::{
+  collections::HashSet,
+  ops::Range,
+};
+
 /// Align `value` up to the nearest multiple of `align`.
 /// If `align` is zero, returns `value` unchanged.
 pub fn align_up(value: u64, align: u64) -> u64 {
@@ -54,6 +59,47 @@ pub fn validate_sample_count(samples: u32) -> Result<(), String> {
   }
 }
 
+/// Validate that an instance range is well-formed for a draw command.
+///
+/// The `command_name` is included in any error message to make diagnostics
+/// easier to interpret when multiple draw commands are present.
+pub fn validate_instance_range(
+  command_name: &str,
+  instances: &Range<u32>,
+) -> Result<(), String> {
+  if instances.start > instances.end {
+    return Err(format!(
+      "{} instance range start {} is greater than end {}",
+      command_name, instances.start, instances.end
+    ));
+  }
+  return Ok(());
+}
+
+/// Validate that all per-instance vertex buffer slots have been bound before
+/// issuing a draw that consumes them.
+///
+/// The `pipeline_label` identifies the pipeline in diagnostics. The
+/// `per_instance_slots` slice marks which vertex buffer slots advance once
+/// per instance, while `bound_slots` tracks the vertex buffer slots that
+/// have been bound in the current render pass.
+pub fn validate_instance_bindings(
+  pipeline_label: &str,
+  per_instance_slots: &[bool],
+  bound_slots: &HashSet<u32>,
+) -> Result<(), String> {
+  for (slot, is_instance) in per_instance_slots.iter().enumerate() {
+    if *is_instance && !bound_slots.contains(&(slot as u32)) {
+      return Err(format!(
+        "Render pipeline '{}' requires a per-instance vertex buffer bound at slot {} but no BindVertexBuffer command bound that slot in this pass",
+        pipeline_label,
+        slot
+      ));
+    }
+  }
+  return Ok(());
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -88,5 +134,48 @@ mod tests {
       .err()
       .unwrap();
     assert!(err.contains("not 256-byte aligned"));
+  }
+
+  #[test]
+  fn validate_instance_range_accepts_valid_ranges() {
+    assert!(validate_instance_range("Draw", &(0..1)).is_ok());
+    assert!(validate_instance_range("DrawIndexed", &(2..2)).is_ok());
+  }
+
+  #[test]
+  fn validate_instance_range_rejects_negative_length() {
+    let err = validate_instance_range("Draw", &(5..1))
+      .err()
+      .expect("must error");
+    assert!(err.contains("Draw instance range start 5 is greater than end 1"));
+  }
+
+  #[test]
+  fn validate_instance_bindings_accepts_bound_slots() {
+    let per_instance_slots = vec![true, false, true];
+    let mut bound = HashSet::new();
+    bound.insert(0);
+    bound.insert(2);
+
+    assert!(validate_instance_bindings(
+      "test-pipeline",
+      &per_instance_slots,
+      &bound
+    )
+    .is_ok());
+  }
+
+  #[test]
+  fn validate_instance_bindings_rejects_missing_slot() {
+    let per_instance_slots = vec![true, false, true];
+    let mut bound = HashSet::new();
+    bound.insert(0);
+
+    let err =
+      validate_instance_bindings("instanced", &per_instance_slots, &bound)
+        .err()
+        .expect("must error");
+    assert!(err.contains("instanced"));
+    assert!(err.contains("slot 2"));
   }
 }

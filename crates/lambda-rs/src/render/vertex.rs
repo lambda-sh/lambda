@@ -26,6 +26,28 @@ impl ColorFormat {
   }
 }
 
+/// Step mode applied to a vertex buffer layout.
+///
+/// `PerVertex` advances attributes once per vertex; `PerInstance` advances
+/// attributes once per instance. This mirrors the platform step mode without
+/// exposing backend types.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VertexStepMode {
+  PerVertex,
+  PerInstance,
+}
+
+/// Layout for a single vertex buffer slot.
+///
+/// `stride` describes the size in bytes of one element in the buffer. The
+/// `step_mode` field determines whether attributes sourced from this buffer
+/// advance per vertex or per instance.
+#[derive(Clone, Copy, Debug)]
+pub struct VertexBufferLayout {
+  pub stride: u64,
+  pub step_mode: VertexStepMode,
+}
+
 /// A single vertex element (format + byte offset).
 #[derive(Clone, Copy, Debug)]
 ///
