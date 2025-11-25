@@ -3,13 +3,13 @@ title: "Instanced Rendering"
 document_id: "instanced-rendering-2025-11-23"
 status: "draft"
 created: "2025-11-23T00:00:00Z"
-last_updated: "2025-11-25T00:00:00Z"
-version: "0.1.2"
+last_updated: "2025-11-25T01:00:00Z"
+version: "0.1.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "b1f0509d245065823dff2721f97e16c0215acc4f"
+repo_commit: "7f8375d73a0dbca5eb143dda38e8e1600f62683c"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "instancing", "vertex-input"]
@@ -297,7 +297,7 @@ App Code
         `lambda-rs-platform`.
   - [x] Draw helpers in `lambda-rs-platform` accept and forward instance
         ranges.
-  - [ ] Existing draw paths continue to function with `instances = 0..1`.
+  - [x] Existing draw paths continue to function with `instances = 0..1`.
 - API Surface
   - [x] `VertexStepMode` exposed in `lambda-rs` and `lambda-rs-platform`.
   - [x] `RenderPipelineBuilder` in `lambda-rs` supports explicit per-instance
@@ -314,7 +314,7 @@ App Code
 - Documentation and Examples
   - [ ] User-facing rendering docs updated to describe instanced rendering and
         usage patterns.
-  - [ ] At least one example or runnable scenario added that demonstrates
+  - [x] At least one example or runnable scenario added that demonstrates
         instanced rendering.
   - [ ] Any necessary migration notes captured in `docs/rendering.md` or
         related documentation.
@@ -369,6 +369,7 @@ relevant code and tests, for example in the pull request description.
 
 ## Changelog
 
+- 2025-11-25 (v0.1.3) — Mark existing draw paths as compatible with `instances = 0..1`, record the addition of an instanced rendering example, and update metadata.
 - 2025-11-25 (v0.1.2) — Update terminology to reference crates by name, remove per-file implementation locations from the Requirements Checklist, and mark instancing validation features as implemented in `lambda-rs`.
 - 2025-11-24 (v0.1.1) — Mark initial instancing layout and step mode support as implemented in the Requirements Checklist; metadata updated.
 - 2025-11-23 (v0.1.0) — Initial draft of instanced rendering specification.
