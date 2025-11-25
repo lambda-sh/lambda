@@ -155,17 +155,10 @@ impl RenderContextBuilder {
     let present_mode = config.present_mode;
     let texture_usage = config.usage;
 
-    // Initialize a depth texture matching the surface size.
-    let depth_format = platform::texture::DepthFormat::Depth32Float;
-    let depth_texture = Some(
-      platform::texture::DepthTextureBuilder::new()
-        .with_size(size.0.max(1), size.1.max(1))
-        .with_format(depth_format)
-        .with_label("lambda-depth")
-        .build(&gpu),
-    );
+    // Initialize the render context with an engine-level depth format.
+    let depth_format = texture::DepthFormat::Depth32Float;
 
-    return Ok(RenderContext {
+    let mut render_context = RenderContext {
       label: name,
       instance,
       surface,
@@ -174,8 +167,8 @@ impl RenderContextBuilder {
       present_mode,
       texture_usage,
       size,
-      depth_texture,
       depth_format,
+      depth_texture: None,
       depth_sample_count: 1,
       msaa_color: None,
       msaa_sample_count: 1,
@@ -185,7 +178,18 @@ impl RenderContextBuilder {
       bind_groups: vec![],
       buffers: vec![],
       seen_error_messages: HashSet::new(),
-    });
+    };
+
+    // Initialize a depth texture matching the surface size using the
+    // high-level depth texture builder.
+    let depth_texture = texture::DepthTextureBuilder::new()
+      .with_size(size.0.max(1), size.1.max(1))
+      .with_format(depth_format)
+      .with_label("lambda-depth")
+      .build(&render_context);
+    render_context.depth_texture = Some(depth_texture);
+
+    return Ok(render_context);
   }
 }
 
@@ -214,8 +218,8 @@ pub struct RenderContext {
   present_mode: platform::surface::PresentMode,
   texture_usage: platform::surface::TextureUsages,
   size: (u32, u32),
-  depth_texture: Option<platform::texture::DepthTexture>,
-  depth_format: platform::texture::DepthFormat,
+  depth_texture: Option<texture::DepthTexture>,
+  depth_format: texture::DepthFormat,
   depth_sample_count: u32,
   msaa_color: Option<platform::texture::ColorAttachmentTexture>,
   msaa_sample_count: u32,
@@ -320,15 +324,14 @@ impl RenderContext {
       logging::error!("Failed to resize surface: {:?}", err);
     }
 
-    // Recreate depth texture to match new size.
-    self.depth_texture = Some(
-      platform::texture::DepthTextureBuilder::new()
-        .with_size(self.size.0.max(1), self.size.1.max(1))
-        .with_format(self.depth_format)
-        .with_sample_count(self.depth_sample_count)
-        .with_label("lambda-depth")
-        .build(self.gpu()),
-    );
+    // Recreate depth texture to match new size using the high-level builder.
+    let depth_texture = texture::DepthTextureBuilder::new()
+      .with_size(self.size.0.max(1), self.size.1.max(1))
+      .with_format(self.depth_format)
+      .with_sample_count(self.depth_sample_count)
+      .with_label("lambda-depth")
+      .build(self);
+    self.depth_texture = Some(depth_texture);
     // Drop MSAA color target so it is rebuilt on demand with the new size.
     self.msaa_color = None;
   }
@@ -356,7 +359,7 @@ impl RenderContext {
   }
 
   pub(crate) fn depth_format(&self) -> platform::texture::DepthFormat {
-    return self.depth_format;
+    return self.depth_format.to_platform();
   }
 
   pub(crate) fn supports_surface_sample_count(
@@ -511,8 +514,7 @@ impl RenderContext {
 
             // If stencil is requested on the pass, ensure we use a stencil-capable format.
             if pass.stencil_operations().is_some()
-              && self.depth_format
-                != platform::texture::DepthFormat::Depth24PlusStencil8
+              && self.depth_format != texture::DepthFormat::Depth24PlusStencil8
             {
               #[cfg(any(
                 debug_assertions,
@@ -522,8 +524,7 @@ impl RenderContext {
                 "Render pass has stencil ops but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
                 self.depth_format
               );
-              self.depth_format =
-                platform::texture::DepthFormat::Depth24PlusStencil8;
+              self.depth_format = texture::DepthFormat::Depth24PlusStencil8;
             }
 
             let format_mismatch = self
@@ -536,14 +537,13 @@ impl RenderContext {
               || self.depth_sample_count != desired_samples
               || format_mismatch
             {
-              self.depth_texture = Some(
-                platform::texture::DepthTextureBuilder::new()
-                  .with_size(self.size.0.max(1), self.size.1.max(1))
-                  .with_format(self.depth_format)
-                  .with_sample_count(desired_samples)
-                  .with_label("lambda-depth")
-                  .build(self.gpu()),
-              );
+              let depth_texture = texture::DepthTextureBuilder::new()
+                .with_size(self.size.0.max(1), self.size.1.max(1))
+                .with_format(self.depth_format)
+                .with_sample_count(desired_samples)
+                .with_label("lambda-depth")
+                .build(self);
+              self.depth_texture = Some(depth_texture);
               self.depth_sample_count = desired_samples;
             }
 
