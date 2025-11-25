@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2025-11-25T02:20:00Z"
-version: "0.1.3"
+last_updated: "2025-11-25T12:00:00Z"
+version: "0.1.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "c8f727f3774029135ed1f7a7224288faf7b9e442"
+repo_commit: "1cca6ebdf7cb0b786b3c46561b60fa2e44eecea4"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo"]
@@ -44,8 +44,8 @@ This document enumerates the primary Cargo features exposed by the workspace rel
 ## Render Validation
 
 Umbrella features (crate: `lambda-rs`)
-- `render-validation`: enables common builder/pipeline validation logs (MSAA counts, depth clear advisories, stencil format upgrades) by composing granular validation features.
-- `render-validation-strict`: includes `render-validation` and enables per-draw SetPipeline-time compatibility checks by composing additional granular encoder features.
+- `render-validation`: enables common builder/pipeline validation logs (MSAA counts, depth clear advisories, stencil format upgrades, render-target compatibility) by composing granular validation features. This umbrella includes `render-validation-msaa`, `render-validation-depth`, `render-validation-stencil`, `render-validation-pass-compat`, and `render-validation-render-targets`.
+- `render-validation-strict`: includes `render-validation` and enables per-draw SetPipeline-time compatibility checks by composing additional granular encoder features. This umbrella additionally enables `render-validation-encoder`.
 - `render-validation-all`: superset of `render-validation-strict` and enables device-probing advisories and instancing validation. This umbrella includes all granular render-validation flags, including `render-validation-instancing`.
 
 Granular features (crate: `lambda-rs`)
@@ -61,6 +61,10 @@ Granular features (crate: `lambda-rs`)
   - Validates that `instances.start <= instances.end` and treats `start == end` as a no-op (draw is skipped).
   - Ensures that all vertex buffer slots marked as per-instance on the active pipeline have been bound in the current render pass.
   - Adds per-draw checks proportional to the number of instanced draws and per-instance slots; SHOULD be enabled only when diagnosing instancing issues.
+- `render-validation-render-targets`: validates compatibility between offscreen `RenderTarget`s, `RenderPass` descriptions, and `RenderPipeline`s. Behavior:
+  - Verifies that pass and pipeline color formats and sample counts match the selected render target.
+  - Emits configuration logs when a pass targets an offscreen surface with significantly different size from the presentation surface or when a target lacks the attachments implied by pass configuration.
+  - Expected runtime cost is low to moderate; checks run at builder time and at the start of each pass, not per draw.
 
 Always-on safeguards (debug and release)
 - Clamp depth clear values to `[0.0, 1.0]`.
@@ -82,6 +86,7 @@ Usage examples
   - `cargo test -p lambda-rs --features render-validation-msaa`
 
 ## Changelog
+- 0.1.4 (2025-11-25): Document `render-validation-render-targets`, record its inclusion in the `render-validation` umbrella feature, and update metadata.
 - 0.1.3 (2025-11-25): Rename the instancing validation feature to `render-validation-instancing`, clarify umbrella composition, and update metadata.
 - 0.1.2 (2025-11-25): Clarify umbrella versus granular validation features, record that `render-validation-all` includes `render-instancing-validation`, and update metadata.
 - 0.1.1 (2025-11-25): Document `render-instancing-validation` behavior and update metadata.
