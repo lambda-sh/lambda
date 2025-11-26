@@ -3,13 +3,13 @@ title: "Offscreen Render Targets and Multipass Rendering"
 document_id: "offscreen-render-targets-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-11-25T01:00:00Z"
-version: "0.1.1"
+last_updated: "2025-11-26T00:00:00Z"
+version: "0.1.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "e924836491759efa083e9e27e462b2bce22ac317"
+repo_commit: "aabd30388e2d111ed1c6f42c355c2af9d53f8d5c"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "offscreen", "multipass"]
@@ -433,7 +433,7 @@ Per-frame commands:
 ## Requirements Checklist
 
 - Functionality
-  - [ ] `RenderTarget` and `RenderTargetBuilder` implemented in
+  - [x] `RenderTarget` and `RenderTargetBuilder` implemented in
         `crates/lambda-rs/src/render/target.rs`.
   - [ ] Offscreen targeting added to `RenderPassBuilder` and `RenderPass`.
   - [ ] Offscreen targeting supported in `RenderContext::render`.
