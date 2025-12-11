@@ -17,6 +17,7 @@ pub enum PresentMode {
 }
 
 impl PresentMode {
+  #[inline]
   pub(crate) fn to_platform(&self) -> platform_surface::PresentMode {
     match self {
       PresentMode::Fifo => platform_surface::PresentMode::Fifo,
@@ -28,6 +29,7 @@ impl PresentMode {
     }
   }
 
+  #[inline]
   pub(crate) fn from_platform(
     mode: &platform_surface::PresentMode,
   ) -> PresentMode {
