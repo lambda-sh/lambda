@@ -16,7 +16,7 @@ fn wgpu_texture3d_build_and_upload() {
   let pixels = vec![180u8; (w * h * d * 4) as usize];
 
   let _tex3d = lambda_platform::wgpu::texture::TextureBuilder::new_3d(
-    lambda_platform::wgpu::texture::TextureFormat::Rgba8Unorm,
+    lambda_platform::wgpu::texture::TextureFormat::RGBA8_UNORM,
   )
   .with_size_3d(w, h, d)
   .with_data(&pixels)

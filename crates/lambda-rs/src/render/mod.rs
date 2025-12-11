@@ -344,7 +344,7 @@ impl RenderContext {
     return &self.gpu;
   }
 
-  pub(crate) fn surface_format(&self) -> platform::surface::SurfaceFormat {
+  pub(crate) fn surface_format(&self) -> platform::texture::TextureFormat {
     return self.config.format;
   }
 
@@ -358,7 +358,7 @@ impl RenderContext {
   ) -> bool {
     return self
       .gpu
-      .supports_sample_count_for_surface(self.config.format, sample_count);
+      .supports_sample_count_for_format(self.config.format, sample_count);
   }
 
   pub(crate) fn supports_depth_sample_count(

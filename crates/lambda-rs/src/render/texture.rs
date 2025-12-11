@@ -41,8 +41,10 @@ pub enum TextureFormat {
 impl TextureFormat {
   fn to_platform(self) -> platform::TextureFormat {
     return match self {
-      TextureFormat::Rgba8Unorm => platform::TextureFormat::Rgba8Unorm,
-      TextureFormat::Rgba8UnormSrgb => platform::TextureFormat::Rgba8UnormSrgb,
+      TextureFormat::Rgba8Unorm => platform::TextureFormat::RGBA8_UNORM,
+      TextureFormat::Rgba8UnormSrgb => {
+        platform::TextureFormat::RGBA8_UNORM_SRGB
+      }
     };
   }
 }
@@ -222,6 +224,9 @@ impl TextureBuilder {
       }
       Err(platform::TextureBuildError::Overflow) => {
         Err("Overflow while computing texture layout")
+      }
+      Err(platform::TextureBuildError::UnsupportedFormat) => {
+        Err("Texture format does not support bytes_per_pixel calculation")
       }
     };
   }

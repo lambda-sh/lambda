@@ -302,7 +302,7 @@ impl RenderPassBuilder {
   fn resolve_sample_count<FSurface, FDepth>(
     &self,
     sample_count: u32,
-    surface_format: platform::surface::SurfaceFormat,
+    surface_format: platform::texture::TextureFormat,
     depth_format: platform::texture::DepthFormat,
     supports_surface: FSurface,
     supports_depth: FDepth,
@@ -380,8 +380,8 @@ mod tests {
 
   use super::*;
 
-  fn surface_format() -> platform::surface::SurfaceFormat {
-    return platform::surface::SurfaceFormat::BGRA8_UNORM_SRGB;
+  fn surface_format() -> platform::texture::TextureFormat {
+    return platform::texture::TextureFormat::BGRA8_UNORM_SRGB;
   }
 
   /// Falls back when the surface format rejects the requested sample count.

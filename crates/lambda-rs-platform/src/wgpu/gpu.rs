@@ -200,10 +200,10 @@ pub struct Gpu {
 }
 
 impl Gpu {
-  /// Whether the provided surface format supports the sample count for render attachments.
-  pub fn supports_sample_count_for_surface(
+  /// Whether the provided texture format supports the sample count for render attachments.
+  pub fn supports_sample_count_for_format(
     &self,
-    format: super::surface::SurfaceFormat,
+    format: texture::TextureFormat,
     sample_count: u32,
   ) -> bool {
     return self.supports_sample_count(format.to_wgpu(), sample_count);
@@ -350,11 +350,11 @@ mod tests {
       }
     };
     let surface_format =
-      surface::SurfaceFormat::from_wgpu(wgpu::TextureFormat::Bgra8UnormSrgb);
+      texture::TextureFormat::from_wgpu(wgpu::TextureFormat::Bgra8UnormSrgb);
     let depth_format = texture::DepthFormat::Depth32Float;
 
-    assert!(gpu.supports_sample_count_for_surface(surface_format, 1));
-    assert!(gpu.supports_sample_count_for_surface(surface_format, 0));
+    assert!(gpu.supports_sample_count_for_format(surface_format, 1));
+    assert!(gpu.supports_sample_count_for_format(surface_format, 0));
     assert!(gpu.supports_sample_count_for_depth(depth_format, 1));
     assert!(gpu.supports_sample_count_for_depth(depth_format, 0));
   }
@@ -372,10 +372,10 @@ mod tests {
       }
     };
     let surface_format =
-      surface::SurfaceFormat::from_wgpu(wgpu::TextureFormat::Bgra8Unorm);
+      texture::TextureFormat::from_wgpu(wgpu::TextureFormat::Bgra8Unorm);
     let depth_format = texture::DepthFormat::Depth32Float;
 
-    assert!(!gpu.supports_sample_count_for_surface(surface_format, 3));
+    assert!(!gpu.supports_sample_count_for_format(surface_format, 3));
     assert!(!gpu.supports_sample_count_for_depth(depth_format, 3));
   }
 
@@ -393,7 +393,7 @@ no compatible GPU adapter"
       }
     };
     let surface_format =
-      surface::SurfaceFormat::from_wgpu(wgpu::TextureFormat::Bgra8UnormSrgb);
+      texture::TextureFormat::from_wgpu(wgpu::TextureFormat::Bgra8UnormSrgb);
     let features = gpu
       .adapter
       .get_texture_format_features(surface_format.to_wgpu());
@@ -405,7 +405,7 @@ no compatible GPU adapter"
         .contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4);
 
     assert_eq!(
-      gpu.supports_sample_count_for_surface(surface_format, 4),
+      gpu.supports_sample_count_for_format(surface_format, 4),
       expected
     );
   }

@@ -71,6 +71,8 @@ pub enum TextureBuildError {
   DataLengthMismatch { expected: usize, actual: usize },
   /// Internal arithmetic overflow while computing sizes or paddings.
   Overflow,
+  /// The texture format does not support bytes_per_pixel calculation.
+  UnsupportedFormat,
 }
 
 /// Align `value` up to the next multiple of `alignment`.
@@ -116,26 +118,85 @@ impl AddressMode {
   }
 }
 
-/// Supported color texture formats for sampling.
+/// Unified texture format wrapper.
+///
+/// This abstraction wraps `wgpu::TextureFormat` to hide the underlying graphics
+/// API from higher layers. Common formats are exposed as associated constants.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum TextureFormat {
-  Rgba8Unorm,
-  Rgba8UnormSrgb,
-}
+pub struct TextureFormat(wgpu::TextureFormat);
 
 impl TextureFormat {
-  /// Map to the corresponding `wgpu::TextureFormat`.
+  // -------------------------------------------------------------------------
+  // Common color formats
+  // -------------------------------------------------------------------------
+
+  /// 8-bit RGBA, linear (non-sRGB).
+  pub const RGBA8_UNORM: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Rgba8Unorm);
+  /// 8-bit RGBA, sRGB encoded.
+  pub const RGBA8_UNORM_SRGB: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Rgba8UnormSrgb);
+  /// 8-bit BGRA, linear (non-sRGB). Common swapchain format.
+  pub const BGRA8_UNORM: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Bgra8Unorm);
+  /// 8-bit BGRA, sRGB encoded. Common swapchain format.
+  pub const BGRA8_UNORM_SRGB: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Bgra8UnormSrgb);
+
+  // -------------------------------------------------------------------------
+  // Depth/stencil formats
+  // -------------------------------------------------------------------------
+
+  /// 32-bit floating point depth.
+  pub const DEPTH32_FLOAT: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Depth32Float);
+  /// 24-bit depth (platform may choose precision).
+  pub const DEPTH24_PLUS: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Depth24Plus);
+  /// 24-bit depth + 8-bit stencil.
+  pub const DEPTH24_PLUS_STENCIL8: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Depth24PlusStencil8);
+
+  // -------------------------------------------------------------------------
+  // Conversions
+  // -------------------------------------------------------------------------
+
   pub(crate) fn to_wgpu(self) -> wgpu::TextureFormat {
-    return match self {
-      TextureFormat::Rgba8Unorm => wgpu::TextureFormat::Rgba8Unorm,
-      TextureFormat::Rgba8UnormSrgb => wgpu::TextureFormat::Rgba8UnormSrgb,
-    };
+    return self.0;
   }
 
-  /// Number of bytes per pixel for tightly packed data.
-  pub fn bytes_per_pixel(self) -> u32 {
-    return match self {
-      TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => 4,
+  pub(crate) fn from_wgpu(fmt: wgpu::TextureFormat) -> Self {
+    return TextureFormat(fmt);
+  }
+
+  // -------------------------------------------------------------------------
+  // Format queries
+  // -------------------------------------------------------------------------
+
+  /// Whether this format is sRGB encoded.
+  pub fn is_srgb(self) -> bool {
+    return self.0.is_srgb();
+  }
+
+  /// Return the sRGB variant of the format when applicable.
+  pub fn add_srgb_suffix(self) -> Self {
+    return TextureFormat(self.0.add_srgb_suffix());
+  }
+
+  /// Number of bytes per pixel for common formats.
+  ///
+  /// Returns `None` for compressed or exotic formats where a simple
+  /// bytes-per-pixel value is not applicable.
+  pub fn bytes_per_pixel(self) -> Option<u32> {
+    return match self.0 {
+      wgpu::TextureFormat::Rgba8Unorm
+      | wgpu::TextureFormat::Rgba8UnormSrgb
+      | wgpu::TextureFormat::Bgra8Unorm
+      | wgpu::TextureFormat::Bgra8UnormSrgb => Some(4),
+      wgpu::TextureFormat::Depth32Float => Some(4),
+      wgpu::TextureFormat::Depth24Plus => Some(4),
+      wgpu::TextureFormat::Depth24PlusStencil8 => Some(4),
+      _ => None,
     };
   }
 }
@@ -221,13 +282,13 @@ pub struct ColorAttachmentTextureBuilder {
   label: Option<String>,
   width: u32,
   height: u32,
-  format: crate::wgpu::surface::SurfaceFormat,
+  format: TextureFormat,
   sample_count: u32,
 }
 
 impl ColorAttachmentTextureBuilder {
   /// Create a builder with zero size and sample count 1.
-  pub fn new(format: crate::wgpu::surface::SurfaceFormat) -> Self {
+  pub fn new(format: TextureFormat) -> Self {
     return Self {
       label: None,
       width: 0,
@@ -714,7 +775,10 @@ impl TextureBuilder {
 
     // Validate data length if provided
     if let Some(ref pixels) = self.data {
-      let bpp = self.format.bytes_per_pixel() as usize;
+      let bpp = self
+        .format
+        .bytes_per_pixel()
+        .ok_or(TextureBuildError::UnsupportedFormat)? as usize;
       let wh = (self.width as usize)
         .checked_mul(self.height as usize)
         .ok_or(TextureBuildError::Overflow)?;
@@ -768,7 +832,10 @@ impl TextureBuilder {
 
     if let Some(pixels) = self.data.as_ref() {
       // Compute 256-byte aligned bytes_per_row and pad rows if necessary.
-      let bpp = self.format.bytes_per_pixel();
+      let bpp = self
+        .format
+        .bytes_per_pixel()
+        .ok_or(TextureBuildError::UnsupportedFormat)?;
       let row_bytes = self
         .width
         .checked_mul(bpp)
@@ -889,19 +956,29 @@ mod tests {
   #[test]
   fn texture_format_maps() {
     assert_eq!(
-      TextureFormat::Rgba8Unorm.to_wgpu(),
+      TextureFormat::RGBA8_UNORM.to_wgpu(),
       wgpu::TextureFormat::Rgba8Unorm
     );
     assert_eq!(
-      TextureFormat::Rgba8UnormSrgb.to_wgpu(),
+      TextureFormat::RGBA8_UNORM_SRGB.to_wgpu(),
       wgpu::TextureFormat::Rgba8UnormSrgb
+    );
+    assert_eq!(
+      TextureFormat::BGRA8_UNORM.to_wgpu(),
+      wgpu::TextureFormat::Bgra8Unorm
+    );
+    assert_eq!(
+      TextureFormat::BGRA8_UNORM_SRGB.to_wgpu(),
+      wgpu::TextureFormat::Bgra8UnormSrgb
     );
   }
 
   #[test]
   fn bytes_per_pixel_is_correct() {
-    assert_eq!(TextureFormat::Rgba8Unorm.bytes_per_pixel(), 4);
-    assert_eq!(TextureFormat::Rgba8UnormSrgb.bytes_per_pixel(), 4);
+    assert_eq!(TextureFormat::RGBA8_UNORM.bytes_per_pixel(), Some(4));
+    assert_eq!(TextureFormat::RGBA8_UNORM_SRGB.bytes_per_pixel(), Some(4));
+    assert_eq!(TextureFormat::BGRA8_UNORM.bytes_per_pixel(), Some(4));
+    assert_eq!(TextureFormat::BGRA8_UNORM_SRGB.bytes_per_pixel(), Some(4));
   }
 
   #[test]

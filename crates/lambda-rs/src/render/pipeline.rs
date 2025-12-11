@@ -226,12 +226,12 @@ pub struct StencilFaceState {
 
 impl StencilFaceState {
   fn to_platform(self) -> platform_pipeline::StencilFaceState {
-    platform_pipeline::StencilFaceState {
+    return platform_pipeline::StencilFaceState {
       compare: self.compare.to_platform(),
       fail_op: self.fail_op.to_platform(),
       depth_fail_op: self.depth_fail_op.to_platform(),
       pass_op: self.pass_op.to_platform(),
-    }
+    };
   }
 }
 
@@ -555,7 +555,7 @@ impl RenderPipelineBuilder {
     }
 
     if fragment_module.is_some() {
-      rp_builder = rp_builder.with_surface_color_target(surface_format);
+      rp_builder = rp_builder.with_color_target(surface_format);
     }
 
     if self.use_depth {

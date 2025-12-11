@@ -6,7 +6,10 @@ use wgpu::rwh::{
 use super::{
   gpu::Gpu,
   instance::Instance,
-  texture::TextureUsages,
+  texture::{
+    TextureFormat,
+    TextureUsages,
+  },
 };
 use crate::winit::WindowHandle;
 
@@ -55,43 +58,15 @@ impl PresentMode {
   }
 }
 
-/// Wrapper around a surface color format.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SurfaceFormat(wgpu::TextureFormat);
-
-impl SurfaceFormat {
-  /// Common sRGB swapchain format used for windowed rendering.
-  pub const BGRA8_UNORM_SRGB: SurfaceFormat =
-    SurfaceFormat(wgpu::TextureFormat::Bgra8UnormSrgb);
-
-  pub(crate) fn to_wgpu(self) -> wgpu::TextureFormat {
-    return self.0;
-  }
-
-  pub(crate) fn from_wgpu(fmt: wgpu::TextureFormat) -> Self {
-    return SurfaceFormat(fmt);
-  }
-
-  /// Whether this format is sRGB.
-  pub fn is_srgb(self) -> bool {
-    return self.0.is_srgb();
-  }
-
-  /// Return the sRGB variant of the format when applicable.
-  pub fn add_srgb_suffix(self) -> Self {
-    return SurfaceFormat(self.0.add_srgb_suffix());
-  }
-}
-
 /// Public, engine-facing surface configuration that avoids exposing `wgpu`.
 #[derive(Clone, Debug)]
 pub struct SurfaceConfig {
   pub width: u32,
   pub height: u32,
-  pub format: SurfaceFormat,
+  pub format: TextureFormat,
   pub present_mode: PresentMode,
   pub usage: TextureUsages,
-  pub view_formats: Vec<SurfaceFormat>,
+  pub view_formats: Vec<TextureFormat>,
 }
 
 impl SurfaceConfig {
@@ -99,14 +74,14 @@ impl SurfaceConfig {
     return SurfaceConfig {
       width: config.width,
       height: config.height,
-      format: SurfaceFormat::from_wgpu(config.format),
+      format: TextureFormat::from_wgpu(config.format),
       present_mode: PresentMode::from_wgpu(config.present_mode),
       usage: TextureUsages::from_wgpu(config.usage),
       view_formats: config
         .view_formats
         .iter()
         .copied()
-        .map(SurfaceFormat::from_wgpu)
+        .map(TextureFormat::from_wgpu)
         .collect(),
     };
   }
@@ -234,7 +209,7 @@ pub struct Surface<'window> {
   label: String,
   surface: wgpu::Surface<'window>,
   configuration: Option<SurfaceConfig>,
-  format: Option<SurfaceFormat>,
+  format: Option<TextureFormat>,
 }
 
 impl<'window> Surface<'window> {
@@ -254,7 +229,7 @@ impl<'window> Surface<'window> {
   }
 
   /// Preferred surface format if known (set during configuration).
-  pub fn format(&self) -> Option<SurfaceFormat> {
+  pub fn format(&self) -> Option<TextureFormat> {
     return self.format;
   }
 
@@ -266,7 +241,7 @@ impl<'window> Surface<'window> {
   ) {
     self.surface.configure(device, config);
     self.configuration = Some(SurfaceConfig::from_wgpu(config));
-    self.format = Some(SurfaceFormat::from_wgpu(config.format));
+    self.format = Some(TextureFormat::from_wgpu(config.format));
   }
 
   /// Configure the surface using common engine defaults:
