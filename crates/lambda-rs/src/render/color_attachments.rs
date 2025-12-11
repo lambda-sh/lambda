@@ -6,10 +6,7 @@
 
 use lambda_platform::wgpu as platform;
 
-use super::{
-  render_pass::RenderPass as RenderPassDesc,
-  RenderContext,
-};
+use super::surface::TextureView;
 
 #[derive(Debug, Default)]
 /// High‑level color attachments collection used when beginning a render pass.
@@ -30,20 +27,26 @@ impl<'view> RenderColorAttachments<'view> {
   }
 
   /// Append a color attachment targeting the provided texture view.
-  pub(crate) fn push_color(
-    &mut self,
-    view: platform::surface::TextureViewRef<'view>,
-  ) {
-    self.inner.push_color(view);
+  ///
+  /// Accepts a high-level `TextureView` and converts it internally to the
+  /// platform type.
+  pub(crate) fn push_color(&mut self, view: TextureView<'view>) {
+    self.inner.push_color(view.to_platform());
   }
 
   /// Append a multi‑sampled color attachment with a resolve target view.
+  ///
+  /// The `msaa_view` is the multi-sampled render target, and `resolve_view`
+  /// is the single-sample target that receives the resolved output.
+  /// Both accept high-level `TextureView` types and convert internally.
   pub(crate) fn push_msaa_color(
     &mut self,
-    msaa_view: platform::surface::TextureViewRef<'view>,
-    resolve_view: platform::surface::TextureViewRef<'view>,
+    msaa_view: TextureView<'view>,
+    resolve_view: TextureView<'view>,
   ) {
-    self.inner.push_msaa_color(msaa_view, resolve_view);
+    self
+      .inner
+      .push_msaa_color(msaa_view.to_platform(), resolve_view.to_platform());
   }
 
   /// Borrow the underlying platform attachments mutably for pass creation.
@@ -53,48 +56,35 @@ impl<'view> RenderColorAttachments<'view> {
     return &mut self.inner;
   }
 
-  /// Build color attachments for a surface‑backed render pass.
+  /// Build color attachments for a surface-backed render pass.
   ///
-  /// This helper encapsulates the logic for configuring single‑sample and
-  /// multi‑sample color attachments targeting the presentation surface,
-  /// including creation and reuse of the MSAA resolve target stored on the
-  /// `RenderContext`.
+  /// This helper configures single-sample or multi-sample color attachments
+  /// targeting the presentation surface. The MSAA view is optional and should
+  /// be provided when multi-sampling is enabled.
+  ///
+  /// # Arguments
+  /// * `uses_color` - Whether the render pass uses color output.
+  /// * `sample_count` - The MSAA sample count (1 for no MSAA).
+  /// * `msaa_view` - Optional high-level MSAA texture view (required when
+  ///   `sample_count > 1`).
+  /// * `surface_view` - The high-level surface texture view (resolve target
+  ///   for MSAA, or direct target for single-sample).
   pub(crate) fn for_surface_pass(
-    render_context: &mut RenderContext,
-    pass: &RenderPassDesc,
-    surface_view: platform::surface::TextureViewRef<'view>,
+    uses_color: bool,
+    sample_count: u32,
+    msaa_view: Option<TextureView<'view>>,
+    surface_view: TextureView<'view>,
   ) -> Self {
     let mut attachments = RenderColorAttachments::new();
-    if !pass.uses_color() {
+
+    if !uses_color {
       return attachments;
     }
 
-    let sample_count = pass.sample_count();
     if sample_count > 1 {
-      let need_recreate = match &render_context.msaa_color {
-        Some(_existing) => render_context.msaa_sample_count != sample_count,
-        None => true,
-      };
-
-      if need_recreate {
-        render_context.msaa_color = Some(
-          platform::texture::ColorAttachmentTextureBuilder::new(
-            render_context.config.format,
-          )
-          .with_size(render_context.size.0.max(1), render_context.size.1.max(1))
-          .with_sample_count(sample_count)
-          .with_label("lambda-msaa-color")
-          .build(render_context.gpu()),
-        );
-        render_context.msaa_sample_count = sample_count;
-      }
-
-      let msaa_view = render_context
-        .msaa_color
-        .as_ref()
-        .expect("MSAA color attachment should be created")
-        .view_ref();
-      attachments.push_msaa_color(msaa_view, surface_view);
+      let msaa =
+        msaa_view.expect("MSAA view must be provided when sample_count > 1");
+      attachments.push_msaa_color(msaa, surface_view);
     } else {
       attachments.push_color(surface_view);
     }

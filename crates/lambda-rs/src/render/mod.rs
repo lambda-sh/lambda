@@ -44,6 +44,9 @@ pub mod vertex;
 pub mod viewport;
 pub mod window;
 
+// Internal modules
+mod color_attachments;
+
 use std::{
   collections::HashSet,
   iter,
@@ -398,6 +401,40 @@ impl RenderContext {
     return self.gpu.limits().min_uniform_buffer_offset_alignment;
   }
 
+  /// Ensure the MSAA color attachment texture exists with the given sample
+  /// count, recreating it if necessary. Returns the texture view reference.
+  ///
+  /// This method manages the lifecycle of the internal MSAA texture, creating
+  /// or recreating it when the sample count changes.
+  fn ensure_msaa_color_texture(
+    &mut self,
+    sample_count: u32,
+  ) -> platform::surface::TextureViewRef<'_> {
+    let need_recreate = match &self.msaa_color {
+      Some(_) => self.msaa_sample_count != sample_count,
+      None => true,
+    };
+
+    if need_recreate {
+      self.msaa_color = Some(
+        platform::texture::ColorAttachmentTextureBuilder::new(
+          self.config.format.to_platform(),
+        )
+        .with_size(self.size.0.max(1), self.size.1.max(1))
+        .with_sample_count(sample_count)
+        .with_label("lambda-msaa-color")
+        .build(self.gpu()),
+      );
+      self.msaa_sample_count = sample_count;
+    }
+
+    return self
+      .msaa_color
+      .as_ref()
+      .expect("MSAA color attachment should exist")
+      .view_ref();
+  }
+
   /// Encode and submit GPU work for a single frame.
   fn render_internal(
     &mut self,
@@ -407,16 +444,18 @@ impl RenderContext {
       return Ok(());
     }
 
-    let mut frame = match self.surface.acquire_next_frame() {
-      Ok(frame) => frame,
+    let frame = match self.surface.acquire_next_frame() {
+      Ok(frame) => surface::Frame::from_platform(frame),
       Err(err) => {
         let high_level_err = surface::SurfaceError::from(err);
         match high_level_err {
           surface::SurfaceError::Lost | surface::SurfaceError::Outdated => {
             self.reconfigure_surface(self.size)?;
-            self.surface.acquire_next_frame().map_err(|e| {
-              RenderError::Surface(surface::SurfaceError::from(e))
-            })?
+            let platform_frame =
+              self.surface.acquire_next_frame().map_err(|e| {
+                RenderError::Surface(surface::SurfaceError::from(e))
+              })?;
+            surface::Frame::from_platform(platform_frame)
           }
           _ => return Err(RenderError::Surface(high_level_err)),
         }
@@ -436,11 +475,17 @@ impl RenderContext {
           render_pass,
           viewport,
         } => {
-          let pass = self.render_passes.get(render_pass).ok_or_else(|| {
-            RenderError::Configuration(format!(
-              "Unknown render pass {render_pass}"
-            ))
-          })?;
+          // Clone the render pass descriptor to avoid borrowing self while we
+          // need mutable access for MSAA texture creation.
+          let pass = self
+            .render_passes
+            .get(render_pass)
+            .ok_or_else(|| {
+              RenderError::Configuration(format!(
+                "Unknown render pass {render_pass}"
+              ))
+            })?
+            .clone();
 
           // Build (begin) the platform render pass using the builder API.
           let mut rp_builder = platform::render_pass::RenderPassBuilder::new();
@@ -464,38 +509,31 @@ impl RenderContext {
               rp_builder.with_store_op(platform::render_pass::StoreOp::Discard)
             }
           };
-          // Create variably sized color attachments and begin the pass.
-          let mut color_attachments =
-            platform::render_pass::RenderColorAttachments::new();
+
+          // Ensure MSAA texture exists if needed.
           let sample_count = pass.sample_count();
-          if pass.uses_color() {
-            if sample_count > 1 {
-              let need_recreate = match &self.msaa_color {
-                Some(_) => self.msaa_sample_count != sample_count,
-                None => true,
-              };
-              if need_recreate {
-                self.msaa_color = Some(
-                  platform::texture::ColorAttachmentTextureBuilder::new(
-                    self.config.format.to_platform(),
-                  )
-                  .with_size(self.size.0.max(1), self.size.1.max(1))
-                  .with_sample_count(sample_count)
-                  .with_label("lambda-msaa-color")
-                  .build(self.gpu()),
-                );
-                self.msaa_sample_count = sample_count;
-              }
-              let msaa_view = self
-                .msaa_color
-                .as_ref()
-                .expect("MSAA color attachment should be created")
-                .view_ref();
-              color_attachments.push_msaa_color(msaa_view, view);
-            } else {
-              color_attachments.push_color(view);
-            }
+          let uses_color = pass.uses_color();
+          if uses_color && sample_count > 1 {
+            self.ensure_msaa_color_texture(sample_count);
           }
+
+          // Create color attachments for the surface pass. The MSAA view is
+          // retrieved here after the mutable borrow for texture creation ends.
+          let msaa_view = if sample_count > 1 {
+            self
+              .msaa_color
+              .as_ref()
+              .map(|t| surface::TextureView::from_platform(t.view_ref()))
+          } else {
+            None
+          };
+          let mut color_attachments =
+            color_attachments::RenderColorAttachments::for_surface_pass(
+              uses_color,
+              sample_count,
+              msaa_view,
+              view,
+            );
 
           // Depth/stencil attachment when either depth or stencil requested.
           let want_depth_attachment = Self::has_depth_attachment(
@@ -583,7 +621,7 @@ impl RenderContext {
 
           let mut pass_encoder = rp_builder.build(
             &mut encoder,
-            &mut color_attachments,
+            color_attachments.as_platform_attachments_mut(),
             depth_view,
             depth_ops,
             stencil_ops,

@@ -5,6 +5,84 @@ use super::texture::{
   TextureUsages,
 };
 
+// ---------------------------------------------------------------------------
+// TextureView
+// ---------------------------------------------------------------------------
+
+/// High-level reference to a texture view for render pass attachments.
+///
+/// This type wraps the platform `TextureViewRef` and provides a stable
+/// engine-level API for referencing texture views without exposing `wgpu`
+/// types at call sites.
+#[derive(Clone, Copy)]
+pub struct TextureView<'a> {
+  inner: platform_surface::TextureViewRef<'a>,
+}
+
+impl<'a> TextureView<'a> {
+  /// Create a high-level texture view from a platform texture view reference.
+  #[inline]
+  pub(crate) fn from_platform(
+    view: platform_surface::TextureViewRef<'a>,
+  ) -> Self {
+    return TextureView { inner: view };
+  }
+
+  /// Convert to the platform texture view reference for internal use.
+  #[inline]
+  pub(crate) fn to_platform(&self) -> platform_surface::TextureViewRef<'a> {
+    return self.inner;
+  }
+}
+
+impl<'a> std::fmt::Debug for TextureView<'a> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    return f.debug_struct("TextureView").finish_non_exhaustive();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Frame
+// ---------------------------------------------------------------------------
+
+/// A single acquired frame from the presentation surface.
+///
+/// This type wraps the platform `Frame` and provides access to its texture
+/// view for rendering. The frame must be presented after rendering is complete
+/// by calling `present()`.
+pub struct Frame {
+  inner: platform_surface::Frame,
+}
+
+impl Frame {
+  /// Create a high-level frame from a platform frame.
+  #[inline]
+  pub(crate) fn from_platform(frame: platform_surface::Frame) -> Self {
+    return Frame { inner: frame };
+  }
+
+  /// Borrow the default texture view for rendering to this frame.
+  #[inline]
+  pub fn texture_view(&self) -> TextureView<'_> {
+    return TextureView::from_platform(self.inner.texture_view());
+  }
+
+  /// Present the frame to the swapchain.
+  ///
+  /// This consumes the frame and submits it for display. After calling this
+  /// method, the frame's texture is no longer valid for rendering.
+  #[inline]
+  pub fn present(self) {
+    self.inner.present();
+  }
+}
+
+impl std::fmt::Debug for Frame {
+  fn fmt(&self, frame: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    return frame.debug_struct("Frame").finish_non_exhaustive();
+  }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PresentMode {
   /// Vsync enabled; frames wait for vertical blanking interval.
