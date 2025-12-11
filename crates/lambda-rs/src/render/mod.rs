@@ -831,7 +831,7 @@ impl RenderContext {
 
           #[cfg(any(
             debug_assertions,
-            feature = "render-instancing-validation",
+            feature = "render-validation-instancing",
           ))]
           {
             bound_vertex_slots.insert(buffer);
