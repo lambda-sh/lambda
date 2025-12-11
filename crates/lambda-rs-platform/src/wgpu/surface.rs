@@ -234,7 +234,7 @@ impl<'window> Surface<'window> {
   }
 
   /// Configure the surface and cache the result for queries such as `format()`.
-  pub(crate) fn configure_raw(
+  fn configure_raw(
     &mut self,
     device: &wgpu::Device,
     config: &wgpu::SurfaceConfiguration,
