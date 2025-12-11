@@ -8,7 +8,10 @@
 use lambda_platform::wgpu as platform;
 use logging;
 
-use super::RenderContext;
+use super::{
+  texture,
+  RenderContext,
+};
 use crate::render::validation;
 
 /// Color load operation for the first color attachment.
@@ -303,13 +306,13 @@ impl RenderPassBuilder {
     &self,
     sample_count: u32,
     surface_format: platform::texture::TextureFormat,
-    depth_format: platform::texture::DepthFormat,
+    depth_format: texture::DepthFormat,
     supports_surface: FSurface,
     supports_depth: FDepth,
   ) -> u32
   where
     FSurface: Fn(u32) -> bool,
-    FDepth: Fn(platform::texture::DepthFormat, u32) -> bool,
+    FDepth: Fn(texture::DepthFormat, u32) -> bool,
   {
     let mut resolved_sample_count = sample_count.max(1);
 
@@ -330,7 +333,7 @@ impl RenderPassBuilder {
       self.depth_operations.is_some() || self.stencil_operations.is_some();
     if wants_depth_or_stencil && resolved_sample_count > 1 {
       let validated_depth_format = if self.stencil_operations.is_some() {
-        platform::texture::DepthFormat::Depth24PlusStencil8
+        texture::DepthFormat::Depth24PlusStencil8
       } else {
         depth_format
       };
@@ -392,7 +395,7 @@ mod tests {
     let resolved = builder.resolve_sample_count(
       4,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return false;
       },
@@ -412,7 +415,7 @@ mod tests {
     let resolved = builder.resolve_sample_count(
       8,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return true;
       },
@@ -428,13 +431,13 @@ mod tests {
   #[test]
   fn stencil_support_uses_stencil_capable_depth_format() {
     let builder = RenderPassBuilder::new().with_stencil().with_multi_sample(2);
-    let requested_formats: RefCell<Vec<platform::texture::DepthFormat>> =
+    let requested_formats: RefCell<Vec<texture::DepthFormat>> =
       RefCell::new(Vec::new());
 
     let resolved = builder.resolve_sample_count(
       2,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return true;
       },
@@ -447,7 +450,7 @@ mod tests {
     assert_eq!(resolved, 2);
     assert_eq!(
       requested_formats.borrow().first().copied(),
-      Some(platform::texture::DepthFormat::Depth24PlusStencil8)
+      Some(texture::DepthFormat::Depth24PlusStencil8)
     );
   }
 
@@ -459,7 +462,7 @@ mod tests {
     let resolved = builder.resolve_sample_count(
       4,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return true;
       },
@@ -479,7 +482,7 @@ mod tests {
     let resolved = builder.resolve_sample_count(
       0,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return true;
       },

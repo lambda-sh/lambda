@@ -580,7 +580,7 @@ impl RenderPipelineBuilder {
       // Derive the pass attachment depth format from pass configuration.
       let pass_has_stencil = _render_pass.stencil_operations().is_some();
       let pass_depth_format = if pass_has_stencil {
-        platform_texture::DepthFormat::Depth24PlusStencil8
+        texture::DepthFormat::Depth24PlusStencil8
       } else {
         render_context.depth_format()
       };
@@ -588,7 +588,9 @@ impl RenderPipelineBuilder {
       // Align the pipeline depth format with the pass attachment format to
       // avoid hidden global state on the render context. When formats differ,
       // prefer the pass attachment format and log for easier debugging.
-      let final_depth_format = if requested_depth_format != pass_depth_format {
+      let final_depth_format = if requested_depth_format
+        != pass_depth_format.to_platform()
+      {
         #[cfg(any(
           debug_assertions,
           feature = "render-validation-depth",
@@ -599,9 +601,9 @@ impl RenderPipelineBuilder {
             requested_depth_format,
             pass_depth_format
           );
-        pass_depth_format
+        pass_depth_format.to_platform()
       } else {
-        pass_depth_format
+        pass_depth_format.to_platform()
       };
 
       rp_builder = rp_builder.with_depth_stencil(final_depth_format);

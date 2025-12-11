@@ -161,14 +161,7 @@ impl RenderContextBuilder {
     let texture_usage = config.usage;
 
     // Initialize a depth texture matching the surface size.
-    let depth_format = platform::texture::DepthFormat::Depth32Float;
-    let depth_texture = Some(
-      platform::texture::DepthTextureBuilder::new()
-        .with_size(size.0.max(1), size.1.max(1))
-        .with_format(depth_format)
-        .with_label("lambda-depth")
-        .build(&gpu),
-    );
+    let depth_format = texture::DepthFormat::Depth32Float;
 
     return Ok(RenderContext {
       label: name,
@@ -179,7 +172,7 @@ impl RenderContextBuilder {
       present_mode,
       texture_usage,
       size,
-      depth_texture,
+      depth_texture: None,
       depth_format,
       depth_sample_count: 1,
       msaa_color: None,
@@ -219,10 +212,10 @@ pub struct RenderContext {
   present_mode: surface::PresentMode,
   texture_usage: texture::TextureUsages,
   size: (u32, u32),
-  depth_texture: Option<platform::texture::DepthTexture>,
-  depth_format: platform::texture::DepthFormat,
+  depth_texture: Option<texture::DepthTexture>,
+  depth_format: texture::DepthFormat,
   depth_sample_count: u32,
-  msaa_color: Option<platform::texture::ColorAttachmentTexture>,
+  msaa_color: Option<texture::ColorAttachmentTexture>,
   msaa_sample_count: u32,
   render_passes: Vec<RenderPassDesc>,
   render_pipelines: Vec<RenderPipeline>,
@@ -319,12 +312,12 @@ impl RenderContext {
 
     // Recreate depth texture to match new size.
     self.depth_texture = Some(
-      platform::texture::DepthTextureBuilder::new()
+      texture::DepthTextureBuilder::new()
         .with_size(self.size.0.max(1), self.size.1.max(1))
         .with_format(self.depth_format)
         .with_sample_count(self.depth_sample_count)
         .with_label("lambda-depth")
-        .build(self.gpu()),
+        .build(self),
     );
     // Drop MSAA color target so it is rebuilt on demand with the new size.
     self.msaa_color = None;
@@ -352,7 +345,7 @@ impl RenderContext {
     return self.config.format;
   }
 
-  pub(crate) fn depth_format(&self) -> platform::texture::DepthFormat {
+  pub(crate) fn depth_format(&self) -> texture::DepthFormat {
     return self.depth_format;
   }
 
@@ -368,12 +361,12 @@ impl RenderContext {
 
   pub(crate) fn supports_depth_sample_count(
     &self,
-    format: platform::texture::DepthFormat,
+    format: texture::DepthFormat,
     sample_count: u32,
   ) -> bool {
     return self
       .gpu
-      .supports_sample_count_for_depth(format, sample_count);
+      .supports_sample_count_for_depth(format.to_platform(), sample_count);
   }
 
   /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
@@ -409,7 +402,7 @@ impl RenderContext {
   fn ensure_msaa_color_texture(
     &mut self,
     sample_count: u32,
-  ) -> platform::surface::TextureViewRef<'_> {
+  ) -> surface::TextureView<'_> {
     let need_recreate = match &self.msaa_color {
       Some(_) => self.msaa_sample_count != sample_count,
       None => true,
@@ -417,13 +410,11 @@ impl RenderContext {
 
     if need_recreate {
       self.msaa_color = Some(
-        platform::texture::ColorAttachmentTextureBuilder::new(
-          self.config.format.to_platform(),
-        )
-        .with_size(self.size.0.max(1), self.size.1.max(1))
-        .with_sample_count(sample_count)
-        .with_label("lambda-msaa-color")
-        .build(self.gpu()),
+        texture::ColorAttachmentTextureBuilder::new(self.config.format)
+          .with_size(self.size.0.max(1), self.size.1.max(1))
+          .with_sample_count(sample_count)
+          .with_label("lambda-msaa-color")
+          .build(self),
       );
       self.msaa_sample_count = sample_count;
     }
@@ -520,10 +511,7 @@ impl RenderContext {
           // Create color attachments for the surface pass. The MSAA view is
           // retrieved here after the mutable borrow for texture creation ends.
           let msaa_view = if sample_count > 1 {
-            self
-              .msaa_color
-              .as_ref()
-              .map(|t| surface::TextureView::from_platform(t.view_ref()))
+            self.msaa_color.as_ref().map(|t| t.view_ref())
           } else {
             None
           };
@@ -547,8 +535,7 @@ impl RenderContext {
 
             // If stencil is requested on the pass, ensure we use a stencil-capable format.
             if pass.stencil_operations().is_some()
-              && self.depth_format
-                != platform::texture::DepthFormat::Depth24PlusStencil8
+              && self.depth_format != texture::DepthFormat::Depth24PlusStencil8
             {
               #[cfg(any(
                 debug_assertions,
@@ -558,8 +545,7 @@ impl RenderContext {
                 "Render pass has stencil ops but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
                 self.depth_format
               );
-              self.depth_format =
-                platform::texture::DepthFormat::Depth24PlusStencil8;
+              self.depth_format = texture::DepthFormat::Depth24PlusStencil8;
             }
 
             let format_mismatch = self
@@ -573,12 +559,12 @@ impl RenderContext {
               || format_mismatch
             {
               self.depth_texture = Some(
-                platform::texture::DepthTextureBuilder::new()
+                texture::DepthTextureBuilder::new()
                   .with_size(self.size.0.max(1), self.size.1.max(1))
                   .with_format(self.depth_format)
                   .with_sample_count(desired_samples)
                   .with_label("lambda-depth")
-                  .build(self.gpu()),
+                  .build(self),
               );
               self.depth_sample_count = desired_samples;
             }
@@ -587,7 +573,7 @@ impl RenderContext {
               .depth_texture
               .as_ref()
               .expect("depth texture should be present")
-              .view_ref();
+              .platform_view_ref();
 
             // Map depth operations when explicitly provided; leave depth
             // untouched for stencil-only passes.
