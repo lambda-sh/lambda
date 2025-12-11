@@ -139,7 +139,7 @@ impl RenderContextBuilder {
         &gpu,
         size,
         platform::surface::PresentMode::Fifo,
-        platform::surface::TextureUsages::RENDER_ATTACHMENT,
+        platform::texture::TextureUsages::RENDER_ATTACHMENT,
       )
       .map_err(|e| {
         RenderContextError::SurfaceConfig(format!(
@@ -213,7 +213,7 @@ pub struct RenderContext {
   gpu: platform::gpu::Gpu,
   config: platform::surface::SurfaceConfig,
   present_mode: platform::surface::PresentMode,
-  texture_usage: platform::surface::TextureUsages,
+  texture_usage: platform::texture::TextureUsages,
   size: (u32, u32),
   depth_texture: Option<platform::texture::DepthTexture>,
   depth_format: platform::texture::DepthFormat,

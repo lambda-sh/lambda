@@ -6,20 +6,27 @@ use wgpu::rwh::{
 use super::{
   gpu::Gpu,
   instance::Instance,
+  texture::TextureUsages,
 };
 use crate::winit::WindowHandle;
 
 /// Present modes supported by the surface.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 ///
 /// This wrapper hides the underlying `wgpu` type from higher layers while
 /// preserving the same semantics.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PresentMode {
+  /// Vsync enabled; frames wait for vertical blanking interval.
   Fifo,
+  /// Vsync with relaxed timing; may tear if frames miss the interval.
   FifoRelaxed,
+  /// No Vsync; immediate presentation (may tear).
   Immediate,
+  /// Triple-buffered presentation when supported.
   Mailbox,
+  /// Automatic Vsync selection by the platform.
   AutoVsync,
+  /// Automatic non-Vsync selection by the platform.
   AutoNoVsync,
 }
 
@@ -45,46 +52,6 @@ impl PresentMode {
       wgpu::PresentMode::AutoNoVsync => PresentMode::AutoNoVsync,
       _ => PresentMode::Fifo,
     };
-  }
-}
-
-/// Wrapper for texture usage flags used by surfaces.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct TextureUsages(wgpu::TextureUsages);
-
-impl TextureUsages {
-  /// Render attachment usage.
-  pub const RENDER_ATTACHMENT: TextureUsages =
-    TextureUsages(wgpu::TextureUsages::RENDER_ATTACHMENT);
-  /// Texture binding usage.
-  pub const TEXTURE_BINDING: TextureUsages =
-    TextureUsages(wgpu::TextureUsages::TEXTURE_BINDING);
-  /// Copy destination usage.
-  pub const COPY_DST: TextureUsages =
-    TextureUsages(wgpu::TextureUsages::COPY_DST);
-  /// Copy source usage.
-  pub const COPY_SRC: TextureUsages =
-    TextureUsages(wgpu::TextureUsages::COPY_SRC);
-
-  pub(crate) fn to_wgpu(self) -> wgpu::TextureUsages {
-    return self.0;
-  }
-
-  pub(crate) fn from_wgpu(flags: wgpu::TextureUsages) -> Self {
-    return TextureUsages(flags);
-  }
-
-  /// Check whether this flags set contains another set.
-  pub fn contains(self, other: TextureUsages) -> bool {
-    return self.0.contains(other.0);
-  }
-}
-
-impl std::ops::BitOr for TextureUsages {
-  type Output = TextureUsages;
-
-  fn bitor(self, rhs: TextureUsages) -> TextureUsages {
-    return TextureUsages(self.0 | rhs.0);
   }
 }
 
