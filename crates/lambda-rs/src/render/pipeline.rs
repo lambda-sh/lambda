@@ -555,7 +555,7 @@ impl RenderPipelineBuilder {
     }
 
     if fragment_module.is_some() {
-      rp_builder = rp_builder.with_color_target(surface_format);
+      rp_builder = rp_builder.with_color_target(surface_format.to_platform());
     }
 
     if self.use_depth {

@@ -138,7 +138,7 @@ impl RenderContextBuilder {
       .configure_with_defaults(
         &gpu,
         size,
-        platform::surface::PresentMode::Fifo,
+        surface::PresentMode::default().to_platform(),
         texture::TextureUsages::RENDER_ATTACHMENT.to_platform(),
       )
       .map_err(|e| {
@@ -148,13 +148,14 @@ impl RenderContextBuilder {
         ))
       })?;
 
-    let config = surface.configuration().cloned().ok_or_else(|| {
+    let config = surface.configuration().ok_or_else(|| {
       RenderContextError::SurfaceConfig(
         "Surface was not configured".to_string(),
       )
     })?;
+    let config = surface::SurfaceConfig::from_platform(config);
     let present_mode = config.present_mode;
-    let texture_usage = texture::TextureUsages::from_platform(config.usage);
+    let texture_usage = config.usage;
 
     // Initialize a depth texture matching the surface size.
     let depth_format = platform::texture::DepthFormat::Depth32Float;
@@ -211,8 +212,8 @@ pub struct RenderContext {
   instance: platform::instance::Instance,
   surface: platform::surface::Surface<'static>,
   gpu: platform::gpu::Gpu,
-  config: platform::surface::SurfaceConfig,
-  present_mode: platform::surface::PresentMode,
+  config: surface::SurfaceConfig,
+  present_mode: surface::PresentMode,
   texture_usage: texture::TextureUsages,
   size: (u32, u32),
   depth_texture: Option<platform::texture::DepthTexture>,
@@ -344,7 +345,7 @@ impl RenderContext {
     return &self.gpu;
   }
 
-  pub(crate) fn surface_format(&self) -> platform::texture::TextureFormat {
+  pub(crate) fn surface_format(&self) -> texture::TextureFormat {
     return self.config.format;
   }
 
@@ -356,9 +357,10 @@ impl RenderContext {
     &self,
     sample_count: u32,
   ) -> bool {
-    return self
-      .gpu
-      .supports_sample_count_for_format(self.config.format, sample_count);
+    return self.gpu.supports_sample_count_for_format(
+      self.config.format.to_platform(),
+      sample_count,
+    );
   }
 
   pub(crate) fn supports_depth_sample_count(
@@ -407,15 +409,18 @@ impl RenderContext {
 
     let mut frame = match self.surface.acquire_next_frame() {
       Ok(frame) => frame,
-      Err(platform::surface::SurfaceError::Lost)
-      | Err(platform::surface::SurfaceError::Outdated) => {
-        self.reconfigure_surface(self.size)?;
-        self
-          .surface
-          .acquire_next_frame()
-          .map_err(RenderError::Surface)?
+      Err(err) => {
+        let high_level_err = surface::SurfaceError::from(err);
+        match high_level_err {
+          surface::SurfaceError::Lost | surface::SurfaceError::Outdated => {
+            self.reconfigure_surface(self.size)?;
+            self.surface.acquire_next_frame().map_err(|e| {
+              RenderError::Surface(surface::SurfaceError::from(e))
+            })?
+          }
+          _ => return Err(RenderError::Surface(high_level_err)),
+        }
       }
-      Err(err) => return Err(RenderError::Surface(err)),
     };
 
     let view = frame.texture_view();
@@ -472,7 +477,7 @@ impl RenderContext {
               if need_recreate {
                 self.msaa_color = Some(
                   platform::texture::ColorAttachmentTextureBuilder::new(
-                    self.config.format,
+                    self.config.format.to_platform(),
                   )
                   .with_size(self.size.0.max(1), self.size.1.max(1))
                   .with_sample_count(sample_count)
@@ -1039,12 +1044,13 @@ impl RenderContext {
       .resize(&self.gpu, size)
       .map_err(RenderError::Configuration)?;
 
-    let config = self.surface.configuration().cloned().ok_or_else(|| {
+    let platform_config = self.surface.configuration().ok_or_else(|| {
       RenderError::Configuration("Surface was not configured".to_string())
     })?;
 
+    let config = surface::SurfaceConfig::from_platform(platform_config);
     self.present_mode = config.present_mode;
-    self.texture_usage = texture::TextureUsages::from_platform(config.usage);
+    self.texture_usage = config.usage;
     self.config = config;
     return Ok(());
   }
@@ -1089,12 +1095,12 @@ impl RenderContext {
 /// acquisition or command encoding. The renderer logs these and continues when
 /// possible; callers SHOULD treat them as warnings unless persistent.
 pub enum RenderError {
-  Surface(platform::surface::SurfaceError),
+  Surface(surface::SurfaceError),
   Configuration(String),
 }
 
-impl From<platform::surface::SurfaceError> for RenderError {
-  fn from(error: platform::surface::SurfaceError) -> Self {
+impl From<surface::SurfaceError> for RenderError {
+  fn from(error: surface::SurfaceError) -> Self {
     return RenderError::Surface(error);
   }
 }

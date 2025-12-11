@@ -280,7 +280,7 @@ impl RenderPassBuilder {
   pub fn build(self, render_context: &RenderContext) -> RenderPass {
     let sample_count = self.resolve_sample_count(
       self.sample_count,
-      render_context.surface_format(),
+      render_context.surface_format().to_platform(),
       render_context.depth_format(),
       |count| render_context.supports_surface_sample_count(count),
       |format, count| render_context.supports_depth_sample_count(format, count),
