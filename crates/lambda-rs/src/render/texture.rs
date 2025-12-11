@@ -31,21 +31,60 @@ impl DepthFormat {
   }
 }
 
-#[derive(Debug, Clone, Copy)]
-/// Supported color texture formats for sampling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Supported color texture formats for sampling and render targets.
 pub enum TextureFormat {
+  /// 8-bit RGBA, linear (non-sRGB).
   Rgba8Unorm,
+  /// 8-bit RGBA, sRGB encoded.
   Rgba8UnormSrgb,
+  /// 8-bit BGRA, linear (non-sRGB). Common swapchain format.
+  Bgra8Unorm,
+  /// 8-bit BGRA, sRGB encoded. Common swapchain format.
+  Bgra8UnormSrgb,
 }
 
 impl TextureFormat {
-  fn to_platform(self) -> platform::TextureFormat {
+  pub(crate) fn to_platform(self) -> platform::TextureFormat {
     return match self {
       TextureFormat::Rgba8Unorm => platform::TextureFormat::RGBA8_UNORM,
       TextureFormat::Rgba8UnormSrgb => {
         platform::TextureFormat::RGBA8_UNORM_SRGB
       }
+      TextureFormat::Bgra8Unorm => platform::TextureFormat::BGRA8_UNORM,
+      TextureFormat::Bgra8UnormSrgb => {
+        platform::TextureFormat::BGRA8_UNORM_SRGB
+      }
     };
+  }
+
+  pub(crate) fn from_platform(fmt: platform::TextureFormat) -> Option<Self> {
+    if fmt == platform::TextureFormat::RGBA8_UNORM {
+      return Some(TextureFormat::Rgba8Unorm);
+    }
+    if fmt == platform::TextureFormat::RGBA8_UNORM_SRGB {
+      return Some(TextureFormat::Rgba8UnormSrgb);
+    }
+    if fmt == platform::TextureFormat::BGRA8_UNORM {
+      return Some(TextureFormat::Bgra8Unorm);
+    }
+    if fmt == platform::TextureFormat::BGRA8_UNORM_SRGB {
+      return Some(TextureFormat::Bgra8UnormSrgb);
+    }
+    return None;
+  }
+
+  /// Whether this format is sRGB encoded.
+  pub fn is_srgb(self) -> bool {
+    return matches!(
+      self,
+      TextureFormat::Rgba8UnormSrgb | TextureFormat::Bgra8UnormSrgb
+    );
+  }
+
+  /// Number of bytes per pixel for this format.
+  pub fn bytes_per_pixel(self) -> u32 {
+    return 4;
   }
 }
 
@@ -96,6 +135,59 @@ impl AddressMode {
       AddressMode::Repeat => platform::AddressMode::Repeat,
       AddressMode::MirrorRepeat => platform::AddressMode::MirrorRepeat,
     };
+  }
+}
+
+/// Texture usage flags.
+///
+/// Use bitwise-OR to combine flags when creating textures with multiple usages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TextureUsages(platform::TextureUsages);
+
+impl TextureUsages {
+  /// Texture can be used as a render attachment (color or depth/stencil).
+  pub const RENDER_ATTACHMENT: TextureUsages =
+    TextureUsages(platform::TextureUsages::RENDER_ATTACHMENT);
+  /// Texture can be bound for sampling in shaders.
+  pub const TEXTURE_BINDING: TextureUsages =
+    TextureUsages(platform::TextureUsages::TEXTURE_BINDING);
+  /// Texture can be used as the destination of a copy operation.
+  pub const COPY_DST: TextureUsages =
+    TextureUsages(platform::TextureUsages::COPY_DST);
+  /// Texture can be used as the source of a copy operation.
+  pub const COPY_SRC: TextureUsages =
+    TextureUsages(platform::TextureUsages::COPY_SRC);
+
+  /// Create an empty flags set.
+  pub const fn empty() -> Self {
+    return TextureUsages(platform::TextureUsages::empty());
+  }
+
+  pub(crate) fn to_platform(self) -> platform::TextureUsages {
+    return self.0;
+  }
+
+  pub(crate) fn from_platform(usage: platform::TextureUsages) -> Self {
+    return TextureUsages(usage);
+  }
+
+  /// Check whether this flags set contains another set.
+  pub fn contains(self, other: TextureUsages) -> bool {
+    return self.0.contains(other.0);
+  }
+}
+
+impl std::ops::BitOr for TextureUsages {
+  type Output = TextureUsages;
+
+  fn bitor(self, rhs: TextureUsages) -> TextureUsages {
+    return TextureUsages(self.0 | rhs.0);
+  }
+}
+
+impl std::ops::BitOrAssign for TextureUsages {
+  fn bitor_assign(&mut self, rhs: TextureUsages) {
+    self.0 |= rhs.0;
   }
 }
 #[derive(Debug, Clone)]

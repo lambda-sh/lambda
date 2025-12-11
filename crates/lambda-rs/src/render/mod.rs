@@ -139,7 +139,7 @@ impl RenderContextBuilder {
         &gpu,
         size,
         platform::surface::PresentMode::Fifo,
-        platform::texture::TextureUsages::RENDER_ATTACHMENT,
+        texture::TextureUsages::RENDER_ATTACHMENT.to_platform(),
       )
       .map_err(|e| {
         RenderContextError::SurfaceConfig(format!(
@@ -154,7 +154,7 @@ impl RenderContextBuilder {
       )
     })?;
     let present_mode = config.present_mode;
-    let texture_usage = config.usage;
+    let texture_usage = texture::TextureUsages::from_platform(config.usage);
 
     // Initialize a depth texture matching the surface size.
     let depth_format = platform::texture::DepthFormat::Depth32Float;
@@ -213,7 +213,7 @@ pub struct RenderContext {
   gpu: platform::gpu::Gpu,
   config: platform::surface::SurfaceConfig,
   present_mode: platform::surface::PresentMode,
-  texture_usage: platform::texture::TextureUsages,
+  texture_usage: texture::TextureUsages,
   size: (u32, u32),
   depth_texture: Option<platform::texture::DepthTexture>,
   depth_format: platform::texture::DepthFormat,
@@ -1044,7 +1044,7 @@ impl RenderContext {
     })?;
 
     self.present_mode = config.present_mode;
-    self.texture_usage = config.usage;
+    self.texture_usage = texture::TextureUsages::from_platform(config.usage);
     self.config = config;
     return Ok(());
   }
