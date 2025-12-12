@@ -7,10 +7,7 @@
 //! `CommandEncoder` and texture view. The returned `RenderPass` borrows the
 //! encoder and remains valid until dropped.
 
-use wgpu::{
-  self,
-  RenderPassColorAttachment,
-};
+use wgpu;
 
 use super::{
   bind,
@@ -301,7 +298,11 @@ impl RenderPassBuilder {
     }
   }
 
-  /// Attach a debug label to the render pass.
+  /// Attach a debug label to the render pass (used only for debugging during
+  /// builder setup, the actual label must be passed to `build`).
+  #[deprecated(
+    note = "The label must be passed directly to build() for proper lifetime management"
+  )]
   pub fn with_label(mut self, label: &str) -> Self {
     self.config.label = Some(label.to_string());
     return self;
@@ -337,13 +338,22 @@ impl RenderPassBuilder {
   /// Build (begin) the render pass on the provided encoder using the provided
   /// color attachments list. The attachments list MUST outlive the returned
   /// render pass value.
+  ///
+  /// # Arguments
+  /// * `encoder` - The command encoder to begin the pass on.
+  /// * `attachments` - Color attachments for the pass.
+  /// * `depth_view` - Optional depth view.
+  /// * `depth_ops` - Optional depth operations.
+  /// * `stencil_ops` - Optional stencil operations.
+  /// * `label` - Optional debug label (must outlive the pass).
   pub fn build<'view>(
-    &'view self,
+    self,
     encoder: &'view mut command::CommandEncoder,
     attachments: &'view mut RenderColorAttachments<'view>,
     depth_view: Option<crate::wgpu::surface::TextureViewRef<'view>>,
     depth_ops: Option<DepthOperations>,
     stencil_ops: Option<StencilOperations>,
+    label: Option<&'view str>,
   ) -> RenderPass<'view> {
     let operations = match self.config.color_operations.load {
       ColorLoadOp::Load => wgpu::Operations {
@@ -417,8 +427,8 @@ impl RenderPassBuilder {
       }
     });
 
-    let desc: wgpu::RenderPassDescriptor<'view> = wgpu::RenderPassDescriptor {
-      label: self.config.label.as_deref(),
+    let desc = wgpu::RenderPassDescriptor {
+      label,
       color_attachments: attachments.as_slice(),
       depth_stencil_attachment,
       timestamp_writes: None,

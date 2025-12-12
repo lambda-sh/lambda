@@ -30,10 +30,7 @@ use std::{
   rc::Rc,
 };
 
-use lambda_platform::wgpu::{
-  pipeline as platform_pipeline,
-  texture as platform_texture,
-};
+use lambda_platform::wgpu::pipeline as platform_pipeline;
 use logging;
 
 use super::{

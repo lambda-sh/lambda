@@ -32,6 +32,7 @@
 pub mod bind;
 pub mod buffer;
 pub mod command;
+pub mod encoder;
 pub mod mesh;
 pub mod pipeline;
 pub mod render_pass;
@@ -480,9 +481,7 @@ impl RenderContext {
 
           // Build (begin) the platform render pass using the builder API.
           let mut rp_builder = platform::render_pass::RenderPassBuilder::new();
-          if let Some(label) = pass.label() {
-            rp_builder = rp_builder.with_label(label);
-          }
+          let pass_label = pass.label();
           let ops = pass.color_operations();
           rp_builder = match ops.load {
             self::render_pass::ColorLoadOp::Load => rp_builder
@@ -611,6 +610,7 @@ impl RenderContext {
             depth_view,
             depth_ops,
             stencil_ops,
+            pass_label,
           );
 
           self.encode_pass(
@@ -726,7 +726,7 @@ impl RenderContext {
           #[cfg(any(
             debug_assertions,
             feature = "render-validation-encoder",
-            feature = "render-instancing-validation",
+            feature = "render-validation-instancing",
           ))]
           {
             current_pipeline = Some(pipeline);
