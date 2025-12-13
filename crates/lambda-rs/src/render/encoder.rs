@@ -15,9 +15,9 @@
 //!
 //! ```ignore
 //! let mut encoder = CommandEncoder::new(&render_context, "frame-encoder");
-//! encoder.with_render_pass(config, &mut attachments, depth, None, None, Some("main-pass"), |pass| {
-//!   pass.set_pipeline(&pipeline)?;
-//!   pass.draw(0..3, 0..1)?;
+//! encoder.with_render_pass(&pass, &mut attachments, depth, |rp_encoder| {
+//!   rp_encoder.set_pipeline(&pipeline)?;
+//!   rp_encoder.draw(0..3, 0..1)?;
 //!   Ok(())
 //! })?;
 //! encoder.finish(&render_context);
@@ -43,11 +43,9 @@ use super::{
   pipeline::RenderPipeline,
   render_pass::{
     ColorLoadOp,
-    ColorOperations,
     DepthLoadOp,
-    DepthOperations,
+    RenderPass,
     StencilLoadOp,
-    StencilOperations,
     StoreOp,
   },
   texture::DepthTexture,
@@ -90,42 +88,37 @@ impl CommandEncoder {
   /// returns. This ensures proper resource cleanup and lifetime management.
   ///
   /// # Arguments
-  /// * `config` - Configuration for the render pass (label, color/depth ops).
+  /// * `pass` - The high-level render pass configuration.
   /// * `color_attachments` - Color attachment views for the pass.
   /// * `depth_texture` - Optional depth texture for depth/stencil operations.
-  /// * `depth_ops` - Optional depth operations (load/store).
-  /// * `stencil_ops` - Optional stencil operations (load/store).
-  /// * `label` - Optional debug label for the pass (must outlive the pass).
-  /// * `f` - Closure that records commands to the render pass.
+  /// * `f` - Closure that records commands to the render pass encoder.
+  ///
+  /// # Type Parameters
+  /// * `'pass` - Lifetime of resources borrowed during the render pass.
+  /// * `PassFn` - The closure type that records commands to the pass.
+  /// * `Output` - The return type of the closure.
   ///
   /// # Returns
   /// The result of the closure, or any render pass error encountered.
-  pub(crate) fn with_render_pass<'a, F, R>(
-    &'a mut self,
-    config: RenderPassConfig,
-    color_attachments: &'a mut RenderColorAttachments<'a>,
-    depth_texture: Option<&'a DepthTexture>,
-    depth_ops: Option<DepthOperations>,
-    stencil_ops: Option<StencilOperations>,
-    label: Option<&'a str>,
-    f: F,
-  ) -> Result<R, RenderPassError>
+  pub(crate) fn with_render_pass<'pass, PassFn, Output>(
+    &'pass mut self,
+    pass: &'pass RenderPass,
+    color_attachments: &'pass mut RenderColorAttachments<'pass>,
+    depth_texture: Option<&'pass DepthTexture>,
+    f: PassFn,
+  ) -> Result<Output, RenderPassError>
   where
-    F: FnOnce(&mut RenderPassEncoder<'_>) -> Result<R, RenderPassError>,
+    PassFn:
+      FnOnce(&mut RenderPassEncoder<'_>) -> Result<Output, RenderPassError>,
   {
-    let mut pass_encoder = RenderPassEncoder::new(
+    let pass_encoder = RenderPassEncoder::new(
       &mut self.inner,
-      config,
+      pass,
       color_attachments,
       depth_texture,
-      depth_ops,
-      stencil_ops,
-      label,
     );
 
-    let result = f(&mut pass_encoder);
-    // Pass is automatically dropped here, ending the render pass
-    return result;
+    return f(&mut { pass_encoder });
   }
 
   /// Finish recording and submit the command buffer to the GPU.
@@ -145,81 +138,6 @@ impl std::fmt::Debug for CommandEncoder {
 }
 
 // ---------------------------------------------------------------------------
-// RenderPassConfig
-// ---------------------------------------------------------------------------
-
-/// Configuration for beginning a render pass.
-#[derive(Clone, Debug)]
-pub struct RenderPassConfig {
-  /// Optional debug label for the pass.
-  pub label: Option<String>,
-  /// Color operations (load/store) for color attachments.
-  pub color_operations: ColorOperations,
-  /// Initial viewport for the pass.
-  pub viewport: Viewport,
-  /// Whether the pass uses color attachments.
-  pub uses_color: bool,
-  /// MSAA sample count for the pass.
-  pub sample_count: u32,
-}
-
-impl RenderPassConfig {
-  /// Create a new render pass configuration with default settings.
-  pub fn new() -> Self {
-    return Self {
-      label: None,
-      color_operations: ColorOperations::default(),
-      viewport: Viewport {
-        x: 0,
-        y: 0,
-        width: 1,
-        height: 1,
-        min_depth: 0.0,
-        max_depth: 1.0,
-      },
-      uses_color: true,
-      sample_count: 1,
-    };
-  }
-
-  /// Set the debug label for the pass.
-  pub fn with_label(mut self, label: &str) -> Self {
-    self.label = Some(label.to_string());
-    return self;
-  }
-
-  /// Set the color operations for the pass.
-  pub fn with_color_operations(mut self, ops: ColorOperations) -> Self {
-    self.color_operations = ops;
-    return self;
-  }
-
-  /// Set the initial viewport for the pass.
-  pub fn with_viewport(mut self, viewport: Viewport) -> Self {
-    self.viewport = viewport;
-    return self;
-  }
-
-  /// Set whether the pass uses color attachments.
-  pub fn with_color(mut self, uses_color: bool) -> Self {
-    self.uses_color = uses_color;
-    return self;
-  }
-
-  /// Set the MSAA sample count for the pass.
-  pub fn with_sample_count(mut self, sample_count: u32) -> Self {
-    self.sample_count = sample_count;
-    return self;
-  }
-}
-
-impl Default for RenderPassConfig {
-  fn default() -> Self {
-    return Self::new();
-  }
-}
-
-// ---------------------------------------------------------------------------
 // RenderPassEncoder
 // ---------------------------------------------------------------------------
 
@@ -230,9 +148,13 @@ impl Default for RenderPassConfig {
 ///
 /// The encoder borrows the command encoder for the duration of the pass and
 /// performs validation on all operations.
-pub struct RenderPassEncoder<'a> {
+///
+/// # Type Parameters
+/// * `'pass` - The lifetime of the render pass, tied to the borrowed encoder
+///   and attachments.
+pub struct RenderPassEncoder<'pass> {
   /// Platform render pass for issuing GPU commands.
-  pass: platform::render_pass::RenderPass<'a>,
+  pass: platform::render_pass::RenderPass<'pass>,
   /// Whether the pass uses color attachments.
   uses_color: bool,
   /// Whether the pass has a depth attachment.
@@ -280,29 +202,27 @@ struct BoundIndexBuffer {
   max_indices: u32,
 }
 
-impl<'a> RenderPassEncoder<'a> {
+impl<'pass> RenderPassEncoder<'pass> {
   /// Create a new render pass encoder (internal).
   fn new(
-    encoder: &'a mut platform::command::CommandEncoder,
-    config: RenderPassConfig,
-    color_attachments: &'a mut RenderColorAttachments<'a>,
-    depth_texture: Option<&'a DepthTexture>,
-    depth_ops: Option<DepthOperations>,
-    stencil_ops: Option<StencilOperations>,
-    label: Option<&'a str>,
+    encoder: &'pass mut platform::command::CommandEncoder,
+    pass: &'pass RenderPass,
+    color_attachments: &'pass mut RenderColorAttachments<'pass>,
+    depth_texture: Option<&'pass DepthTexture>,
   ) -> Self {
     // Build the platform render pass
     let mut rp_builder = platform::render_pass::RenderPassBuilder::new();
 
-    // Map color operations
-    rp_builder = match config.color_operations.load {
+    // Map color operations from the high-level RenderPass
+    let color_ops = pass.color_operations();
+    rp_builder = match color_ops.load {
       ColorLoadOp::Load => {
         rp_builder.with_color_load_op(platform::render_pass::ColorLoadOp::Load)
       }
       ColorLoadOp::Clear(color) => rp_builder
         .with_color_load_op(platform::render_pass::ColorLoadOp::Clear(color)),
     };
-    rp_builder = match config.color_operations.store {
+    rp_builder = match color_ops.store {
       StoreOp::Store => {
         rp_builder.with_store_op(platform::render_pass::StoreOp::Store)
       }
@@ -311,9 +231,9 @@ impl<'a> RenderPassEncoder<'a> {
       }
     };
 
-    // Map depth operations
-    let platform_depth_ops =
-      depth_ops.map(|dop| platform::render_pass::DepthOperations {
+    // Map depth operations from the high-level RenderPass
+    let platform_depth_ops = pass.depth_operations().map(|dop| {
+      platform::render_pass::DepthOperations {
         load: match dop.load {
           DepthLoadOp::Load => platform::render_pass::DepthLoadOp::Load,
           DepthLoadOp::Clear(v) => {
@@ -324,11 +244,12 @@ impl<'a> RenderPassEncoder<'a> {
           StoreOp::Store => platform::render_pass::StoreOp::Store,
           StoreOp::Discard => platform::render_pass::StoreOp::Discard,
         },
-      });
+      }
+    });
 
-    // Map stencil operations
-    let platform_stencil_ops =
-      stencil_ops.map(|sop| platform::render_pass::StencilOperations {
+    // Map stencil operations from the high-level RenderPass
+    let platform_stencil_ops = pass.stencil_operations().map(|sop| {
+      platform::render_pass::StencilOperations {
         load: match sop.load {
           StencilLoadOp::Load => platform::render_pass::StencilLoadOp::Load,
           StencilLoadOp::Clear(v) => {
@@ -339,27 +260,28 @@ impl<'a> RenderPassEncoder<'a> {
           StoreOp::Store => platform::render_pass::StoreOp::Store,
           StoreOp::Discard => platform::render_pass::StoreOp::Discard,
         },
-      });
+      }
+    });
 
     let depth_view = depth_texture.map(|dt| dt.platform_view_ref());
     let has_depth_attachment = depth_texture.is_some();
-    let has_stencil = stencil_ops.is_some();
+    let has_stencil = pass.stencil_operations().is_some();
 
-    let pass = rp_builder.build(
+    let platform_pass = rp_builder.build(
       encoder,
       color_attachments.as_platform_attachments_mut(),
       depth_view,
       platform_depth_ops,
       platform_stencil_ops,
-      label,
+      pass.label(),
     );
 
-    let mut encoder_instance = RenderPassEncoder {
-      pass,
-      uses_color: config.uses_color,
+    return RenderPassEncoder {
+      pass: platform_pass,
+      uses_color: pass.uses_color(),
       has_depth_attachment,
       has_stencil,
-      sample_count: config.sample_count,
+      sample_count: pass.sample_count(),
       #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
       current_pipeline: None,
       #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
@@ -379,11 +301,6 @@ impl<'a> RenderPassEncoder<'a> {
       ))]
       warned_no_depth_for_pipeline: HashSet::new(),
     };
-
-    // Apply initial viewport
-    encoder_instance.set_viewport(&config.viewport);
-
-    return encoder_instance;
   }
 
   /// Set the active render pipeline.
@@ -496,6 +413,7 @@ impl<'a> RenderPassEncoder<'a> {
     self
       .pass
       .set_viewport(x, y, width, height, min_depth, max_depth);
+
     let (sx, sy, sw, sh) = viewport.scissor_u32();
     self.pass.set_scissor_rect(sx, sy, sw, sh);
   }
