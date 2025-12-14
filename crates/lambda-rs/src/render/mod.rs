@@ -60,7 +60,6 @@ use self::{
   command::RenderCommand,
   encoder::{
     CommandEncoder,
-    RenderPassEncoder,
     RenderPassError,
   },
   pipeline::RenderPipeline,
