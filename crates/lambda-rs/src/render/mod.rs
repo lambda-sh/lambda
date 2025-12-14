@@ -752,29 +752,6 @@ impl RenderContext {
   ) -> bool {
     return depth_ops.is_some() || stencil_ops.is_some();
   }
-
-  /// Map high-level depth operations to platform depth operations, returning
-  /// `None` when no depth operations were requested.
-  fn map_depth_ops(
-    depth_ops: Option<render_pass::DepthOperations>,
-  ) -> Option<platform::render_pass::DepthOperations> {
-    return depth_ops.map(|dops| platform::render_pass::DepthOperations {
-      load: match dops.load {
-        render_pass::DepthLoadOp::Load => {
-          platform::render_pass::DepthLoadOp::Load
-        }
-        render_pass::DepthLoadOp::Clear(value) => {
-          platform::render_pass::DepthLoadOp::Clear(value as f32)
-        }
-      },
-      store: match dops.store {
-        render_pass::StoreOp::Store => platform::render_pass::StoreOp::Store,
-        render_pass::StoreOp::Discard => {
-          platform::render_pass::StoreOp::Discard
-        }
-      },
-    });
-  }
 }
 
 /// Errors reported while preparing or presenting a frame.
@@ -849,22 +826,5 @@ mod tests {
     let stencil_ops = Some(render_pass::StencilOperations::default());
     let has_attachment = RenderContext::has_depth_attachment(None, stencil_ops);
     assert!(has_attachment);
-  }
-
-  #[test]
-  fn map_depth_ops_none_when_no_depth_operations() {
-    let mapped = RenderContext::map_depth_ops(None);
-    assert!(mapped.is_none());
-  }
-
-  #[test]
-  fn map_depth_ops_maps_clear_and_store() {
-    let depth_ops = render_pass::DepthOperations {
-      load: render_pass::DepthLoadOp::Clear(0.5),
-      store: render_pass::StoreOp::Store,
-    };
-    let mapped = RenderContext::map_depth_ops(Some(depth_ops)).expect("mapped");
-    assert_eq!(mapped.load, platform::render_pass::DepthLoadOp::Clear(0.5));
-    assert_eq!(mapped.store, platform::render_pass::StoreOp::Store);
   }
 }
