@@ -160,7 +160,6 @@ impl RenderContextBuilder {
       )
     })?;
     let config = surface::SurfaceConfig::from_platform(config);
-    let present_mode = config.present_mode;
     let texture_usage = config.usage;
 
     // Initialize a depth texture matching the surface size.
@@ -172,7 +171,6 @@ impl RenderContextBuilder {
       surface,
       gpu,
       config,
-      present_mode,
       texture_usage,
       size,
       depth_texture: None,
@@ -212,7 +210,6 @@ pub struct RenderContext {
   surface: platform::surface::Surface<'static>,
   gpu: platform::gpu::Gpu,
   config: surface::SurfaceConfig,
-  present_mode: surface::PresentMode,
   texture_usage: texture::TextureUsages,
   size: (u32, u32),
   depth_texture: Option<texture::DepthTexture>,
@@ -717,7 +714,6 @@ impl RenderContext {
     })?;
 
     let config = surface::SurfaceConfig::from_platform(platform_config);
-    self.present_mode = config.present_mode;
     self.texture_usage = config.usage;
     self.config = config;
     return Ok(());
