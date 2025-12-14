@@ -570,15 +570,122 @@ impl RenderContext {
             &mut color_attachments,
             depth_texture_ref,
             |rp_encoder| {
-              Self::encode_pass_commands(
-                rp_encoder,
-                render_pipelines,
-                bind_groups,
-                buffers,
-                min_uniform_buffer_offset_alignment,
-                viewport,
-                &mut command_iter,
-              )
+              rp_encoder.set_viewport(&viewport);
+
+              while let Some(cmd) = command_iter.next() {
+                match cmd {
+                  RenderCommand::EndRenderPass => return Ok(()),
+                  RenderCommand::SetStencilReference { reference } => {
+                    rp_encoder.set_stencil_reference(reference);
+                  }
+                  RenderCommand::SetPipeline { pipeline } => {
+                    let pipeline_ref =
+                      render_pipelines.get(pipeline).ok_or_else(|| {
+                        RenderPassError::Validation(format!(
+                          "Unknown pipeline {pipeline}"
+                        ))
+                      })?;
+                    rp_encoder.set_pipeline(pipeline_ref)?;
+                  }
+                  RenderCommand::SetViewports { viewports, .. } => {
+                    for vp in viewports {
+                      rp_encoder.set_viewport(&vp);
+                    }
+                  }
+                  RenderCommand::SetScissors { viewports, .. } => {
+                    for vp in viewports {
+                      rp_encoder.set_scissor(&vp);
+                    }
+                  }
+                  RenderCommand::SetBindGroup {
+                    set,
+                    group,
+                    dynamic_offsets,
+                  } => {
+                    let group_ref =
+                      bind_groups.get(group).ok_or_else(|| {
+                        RenderPassError::Validation(format!(
+                          "Unknown bind group {group}"
+                        ))
+                      })?;
+                    rp_encoder.set_bind_group(
+                      set,
+                      group_ref,
+                      &dynamic_offsets,
+                      min_uniform_buffer_offset_alignment,
+                    )?;
+                  }
+                  RenderCommand::BindVertexBuffer { pipeline, buffer } => {
+                    let pipeline_ref =
+                      render_pipelines.get(pipeline).ok_or_else(|| {
+                        RenderPassError::Validation(format!(
+                          "Unknown pipeline {pipeline}"
+                        ))
+                      })?;
+                    let buffer_ref = pipeline_ref
+                      .buffers()
+                      .get(buffer as usize)
+                      .ok_or_else(|| {
+                        RenderPassError::Validation(format!(
+                          "Vertex buffer index {buffer} not found for \
+                           pipeline {pipeline}"
+                        ))
+                      })?;
+                    rp_encoder.set_vertex_buffer(buffer as u32, buffer_ref);
+                  }
+                  RenderCommand::BindIndexBuffer { buffer, format } => {
+                    let buffer_ref = buffers.get(buffer).ok_or_else(|| {
+                      RenderPassError::Validation(format!(
+                        "Index buffer id {} not found",
+                        buffer
+                      ))
+                    })?;
+                    rp_encoder.set_index_buffer(buffer_ref, format)?;
+                  }
+                  RenderCommand::PushConstants {
+                    pipeline,
+                    stage,
+                    offset,
+                    bytes,
+                  } => {
+                    let _ =
+                      render_pipelines.get(pipeline).ok_or_else(|| {
+                        RenderPassError::Validation(format!(
+                          "Unknown pipeline {pipeline}"
+                        ))
+                      })?;
+                    let slice = unsafe {
+                      std::slice::from_raw_parts(
+                        bytes.as_ptr() as *const u8,
+                        bytes.len() * std::mem::size_of::<u32>(),
+                      )
+                    };
+                    rp_encoder.set_push_constants(stage, offset, slice);
+                  }
+                  RenderCommand::Draw {
+                    vertices,
+                    instances,
+                  } => {
+                    rp_encoder.draw(vertices, instances)?;
+                  }
+                  RenderCommand::DrawIndexed {
+                    indices,
+                    base_vertex,
+                    instances,
+                  } => {
+                    rp_encoder.draw_indexed(indices, base_vertex, instances)?;
+                  }
+                  RenderCommand::BeginRenderPass { .. } => {
+                    return Err(RenderPassError::Validation(
+                      "Nested render passes are not supported.".to_string(),
+                    ));
+                  }
+                }
+              }
+
+              return Err(RenderPassError::Validation(
+                "Render pass did not terminate with EndRenderPass".to_string(),
+              ));
             },
           )?;
         }
@@ -594,133 +701,6 @@ impl RenderContext {
     encoder.finish(self);
     frame.present();
     return Ok(());
-  }
-
-  /// Encode commands to a render pass encoder using the high-level API.
-  ///
-  /// This method processes `RenderCommand` items from the iterator until
-  /// `EndRenderPass` is encountered. Commands are translated to calls on the
-  /// `RenderPassEncoder`, which performs validation and issues GPU commands.
-  fn encode_pass_commands<Commands>(
-    encoder: &mut RenderPassEncoder<'_>,
-    render_pipelines: &[RenderPipeline],
-    bind_groups: &[bind::BindGroup],
-    buffers: &[Rc<buffer::Buffer>],
-    min_uniform_buffer_offset_alignment: u32,
-    initial_viewport: viewport::Viewport,
-    commands: &mut Commands,
-  ) -> Result<(), RenderPassError>
-  where
-    Commands: Iterator<Item = RenderCommand>,
-  {
-    encoder.set_viewport(&initial_viewport);
-
-    while let Some(command) = commands.next() {
-      match command {
-        RenderCommand::EndRenderPass => return Ok(()),
-        RenderCommand::SetStencilReference { reference } => {
-          encoder.set_stencil_reference(reference);
-        }
-        RenderCommand::SetPipeline { pipeline } => {
-          let pipeline_ref =
-            render_pipelines.get(pipeline).ok_or_else(|| {
-              RenderPassError::Validation(format!(
-                "Unknown pipeline {pipeline}"
-              ))
-            })?;
-          encoder.set_pipeline(pipeline_ref)?;
-        }
-        RenderCommand::SetViewports { viewports, .. } => {
-          for viewport in viewports {
-            encoder.set_viewport(&viewport);
-          }
-        }
-        RenderCommand::SetScissors { viewports, .. } => {
-          for viewport in viewports {
-            encoder.set_scissor(&viewport);
-          }
-        }
-        RenderCommand::SetBindGroup {
-          set,
-          group,
-          dynamic_offsets,
-        } => {
-          let group_ref = bind_groups.get(group).ok_or_else(|| {
-            RenderPassError::Validation(format!("Unknown bind group {group}"))
-          })?;
-          encoder.set_bind_group(
-            set,
-            group_ref,
-            &dynamic_offsets,
-            min_uniform_buffer_offset_alignment,
-          )?;
-        }
-        RenderCommand::BindVertexBuffer { pipeline, buffer } => {
-          let pipeline_ref =
-            render_pipelines.get(pipeline).ok_or_else(|| {
-              RenderPassError::Validation(format!(
-                "Unknown pipeline {pipeline}"
-              ))
-            })?;
-          let buffer_ref =
-            pipeline_ref.buffers().get(buffer as usize).ok_or_else(|| {
-              RenderPassError::Validation(format!(
-                "Vertex buffer index {buffer} not found for pipeline \
-                 {pipeline}"
-              ))
-            })?;
-          encoder.set_vertex_buffer(buffer as u32, buffer_ref);
-        }
-        RenderCommand::BindIndexBuffer { buffer, format } => {
-          let buffer_ref = buffers.get(buffer).ok_or_else(|| {
-            RenderPassError::Validation(format!(
-              "Index buffer id {} not found",
-              buffer
-            ))
-          })?;
-          encoder.set_index_buffer(buffer_ref, format)?;
-        }
-        RenderCommand::PushConstants {
-          pipeline,
-          stage,
-          offset,
-          bytes,
-        } => {
-          let _ = render_pipelines.get(pipeline).ok_or_else(|| {
-            RenderPassError::Validation(format!("Unknown pipeline {pipeline}"))
-          })?;
-          let slice = unsafe {
-            std::slice::from_raw_parts(
-              bytes.as_ptr() as *const u8,
-              bytes.len() * std::mem::size_of::<u32>(),
-            )
-          };
-          encoder.set_push_constants(stage, offset, slice);
-        }
-        RenderCommand::Draw {
-          vertices,
-          instances,
-        } => {
-          encoder.draw(vertices, instances)?;
-        }
-        RenderCommand::DrawIndexed {
-          indices,
-          base_vertex,
-          instances,
-        } => {
-          encoder.draw_indexed(indices, base_vertex, instances)?;
-        }
-        RenderCommand::BeginRenderPass { .. } => {
-          return Err(RenderPassError::Validation(
-            "Nested render passes are not supported.".to_string(),
-          ));
-        }
-      }
-    }
-
-    return Err(RenderPassError::Validation(
-      "Render pass did not terminate with EndRenderPass".to_string(),
-    ));
   }
 
   /// Reconfigure the presentation surface using current present mode/usage.
