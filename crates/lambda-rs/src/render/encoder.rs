@@ -91,7 +91,7 @@ impl CommandEncoder {
   /// * `pass` - The high-level render pass configuration.
   /// * `color_attachments` - Color attachment views for the pass.
   /// * `depth_texture` - Optional depth texture for depth/stencil operations.
-  /// * `f` - Closure that records commands to the render pass encoder.
+  /// * `func` - Closure that records commands to the render pass encoder.
   ///
   /// # Type Parameters
   /// * `'pass` - Lifetime of resources borrowed during the render pass.
@@ -105,7 +105,7 @@ impl CommandEncoder {
     pass: &'pass RenderPass,
     color_attachments: &'pass mut RenderColorAttachments<'pass>,
     depth_texture: Option<&'pass DepthTexture>,
-    f: PassFn,
+    func: PassFn,
   ) -> Result<Output, RenderPassError>
   where
     PassFn:
@@ -118,7 +118,7 @@ impl CommandEncoder {
       depth_texture,
     );
 
-    return f(&mut { pass_encoder });
+    return func(&mut { pass_encoder });
   }
 
   /// Finish recording and submit the command buffer to the GPU.
