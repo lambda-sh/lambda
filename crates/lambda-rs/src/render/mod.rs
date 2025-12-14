@@ -50,7 +50,6 @@ mod color_attachments;
 
 use std::{
   collections::HashSet,
-  iter,
   rc::Rc,
 };
 
@@ -59,10 +58,14 @@ use logging;
 
 use self::{
   command::RenderCommand,
+  encoder::{
+    CommandEncoder,
+    RenderPassEncoder,
+    RenderPassError,
+  },
   pipeline::RenderPipeline,
   render_pass::RenderPass as RenderPassDesc,
 };
-use crate::util;
 
 /// Builder for configuring a `RenderContext` tied to one window.
 ///
@@ -455,10 +458,8 @@ impl RenderContext {
     };
 
     let view = frame.texture_view();
-    let mut encoder = platform::command::CommandEncoder::new(
-      self.gpu(),
-      Some("lambda-render-command-encoder"),
-    );
+    let mut encoder =
+      CommandEncoder::new(self, "lambda-render-command-encoder");
 
     let mut command_iter = commands.into_iter();
     while let Some(command) = command_iter.next() {
@@ -478,27 +479,6 @@ impl RenderContext {
               ))
             })?
             .clone();
-
-          // Build (begin) the platform render pass using the builder API.
-          let mut rp_builder = platform::render_pass::RenderPassBuilder::new();
-          let pass_label = pass.label();
-          let ops = pass.color_operations();
-          rp_builder = match ops.load {
-            self::render_pass::ColorLoadOp::Load => rp_builder
-              .with_color_load_op(platform::render_pass::ColorLoadOp::Load),
-            self::render_pass::ColorLoadOp::Clear(color) => rp_builder
-              .with_color_load_op(platform::render_pass::ColorLoadOp::Clear(
-                color,
-              )),
-          };
-          rp_builder = match ops.store {
-            self::render_pass::StoreOp::Store => {
-              rp_builder.with_store_op(platform::render_pass::StoreOp::Store)
-            }
-            self::render_pass::StoreOp::Discard => {
-              rp_builder.with_store_op(platform::render_pass::StoreOp::Discard)
-            }
-          };
 
           // Ensure MSAA texture exists if needed.
           let sample_count = pass.sample_count();
@@ -528,11 +508,13 @@ impl RenderContext {
             pass.stencil_operations(),
           );
 
-          let (depth_view, depth_ops) = if want_depth_attachment {
+          // Prepare depth texture if needed.
+          if want_depth_attachment {
             // Ensure depth texture exists, with proper sample count and format.
             let desired_samples = sample_count.max(1);
 
-            // If stencil is requested on the pass, ensure we use a stencil-capable format.
+            // If stencil is requested on the pass, ensure we use a
+            // stencil-capable format.
             if pass.stencil_operations().is_some()
               && self.depth_format != texture::DepthFormat::Depth24PlusStencil8
             {
@@ -541,7 +523,8 @@ impl RenderContext {
                 feature = "render-validation-stencil",
               ))]
               logging::error!(
-                "Render pass has stencil ops but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
+                "Render pass has stencil ops but depth format {:?} lacks \
+                 stencil; upgrading to Depth24PlusStencil8",
                 self.depth_format
               );
               self.depth_format = texture::DepthFormat::Depth24PlusStencil8;
@@ -567,59 +550,36 @@ impl RenderContext {
               );
               self.depth_sample_count = desired_samples;
             }
+          }
 
-            let view_ref = self
-              .depth_texture
-              .as_ref()
-              .expect("depth texture should be present")
-              .platform_view_ref();
-
-            // Map depth operations when explicitly provided; leave depth
-            // untouched for stencil-only passes.
-            let depth_ops = Self::map_depth_ops(pass.depth_operations());
-            (Some(view_ref), depth_ops)
+          let depth_texture_ref = if want_depth_attachment {
+            self.depth_texture.as_ref()
           } else {
-            (None, None)
+            None
           };
 
-          // Optional stencil operations
-          let stencil_ops = pass.stencil_operations().map(|sop| {
-            platform::render_pass::StencilOperations {
-              load: match sop.load {
-                render_pass::StencilLoadOp::Load => {
-                  platform::render_pass::StencilLoadOp::Load
-                }
-                render_pass::StencilLoadOp::Clear(v) => {
-                  platform::render_pass::StencilLoadOp::Clear(v)
-                }
-              },
-              store: match sop.store {
-                render_pass::StoreOp::Store => {
-                  platform::render_pass::StoreOp::Store
-                }
-                render_pass::StoreOp::Discard => {
-                  platform::render_pass::StoreOp::Discard
-                }
-              },
-            }
-          });
+          // Use the high-level encoder's with_render_pass callback API.
+          let min_uniform_buffer_offset_alignment =
+            self.limit_min_uniform_buffer_offset_alignment();
+          let render_pipelines = &self.render_pipelines;
+          let bind_groups = &self.bind_groups;
+          let buffers = &self.buffers;
 
-          let mut pass_encoder = rp_builder.build(
-            &mut encoder,
-            color_attachments.as_platform_attachments_mut(),
-            depth_view,
-            depth_ops,
-            stencil_ops,
-            pass_label,
-          );
-
-          self.encode_pass(
-            &mut pass_encoder,
-            pass.uses_color(),
-            want_depth_attachment,
-            pass.stencil_operations().is_some(),
-            viewport,
-            &mut command_iter,
+          encoder.with_render_pass(
+            &pass,
+            &mut color_attachments,
+            depth_texture_ref,
+            |rp_encoder| {
+              Self::encode_pass_commands(
+                rp_encoder,
+                render_pipelines,
+                bind_groups,
+                buffers,
+                min_uniform_buffer_offset_alignment,
+                viewport,
+                &mut command_iter,
+              )
+            },
           )?;
         }
         other => {
@@ -631,164 +591,53 @@ impl RenderContext {
       }
     }
 
-    self.gpu.submit(iter::once(encoder.finish()));
+    encoder.finish(self);
     frame.present();
     return Ok(());
   }
 
-  /// Encode a single render pass and consume commands until `EndRenderPass`.
-  fn encode_pass<Commands>(
-    &self,
-    pass: &mut platform::render_pass::RenderPass<'_>,
-    uses_color: bool,
-    pass_has_depth_attachment: bool,
-    pass_has_stencil: bool,
+  /// Encode commands to a render pass encoder using the high-level API.
+  ///
+  /// This method processes `RenderCommand` items from the iterator until
+  /// `EndRenderPass` is encountered. Commands are translated to calls on the
+  /// `RenderPassEncoder`, which performs validation and issues GPU commands.
+  fn encode_pass_commands<Commands>(
+    encoder: &mut RenderPassEncoder<'_>,
+    render_pipelines: &[RenderPipeline],
+    bind_groups: &[bind::BindGroup],
+    buffers: &[Rc<buffer::Buffer>],
+    min_uniform_buffer_offset_alignment: u32,
     initial_viewport: viewport::Viewport,
     commands: &mut Commands,
-  ) -> Result<(), RenderError>
+  ) -> Result<(), RenderPassError>
   where
     Commands: Iterator<Item = RenderCommand>,
   {
-    Self::apply_viewport(pass, &initial_viewport);
-
-    #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
-    let mut current_pipeline: Option<usize> = None;
-
-    #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
-    let mut bound_index_buffer: Option<(usize, u32)> = None;
-
-    #[cfg(any(debug_assertions, feature = "render-validation-instancing",))]
-    let mut bound_vertex_slots: HashSet<u32> = HashSet::new();
-
-    // De-duplicate advisories within this pass
-    #[cfg(any(
-      debug_assertions,
-      feature = "render-validation-depth",
-      feature = "render-validation-stencil",
-    ))]
-    let mut warned_no_stencil_for_pipeline: HashSet<usize> = HashSet::new();
-
-    #[cfg(any(
-      debug_assertions,
-      feature = "render-validation-depth",
-      feature = "render-validation-stencil",
-    ))]
-    let mut warned_no_depth_for_pipeline: HashSet<usize> = HashSet::new();
+    encoder.set_viewport(&initial_viewport);
 
     while let Some(command) = commands.next() {
       match command {
         RenderCommand::EndRenderPass => return Ok(()),
         RenderCommand::SetStencilReference { reference } => {
-          pass.set_stencil_reference(reference);
+          encoder.set_stencil_reference(reference);
         }
         RenderCommand::SetPipeline { pipeline } => {
           let pipeline_ref =
-            self.render_pipelines.get(pipeline).ok_or_else(|| {
-              return RenderError::Configuration(format!(
+            render_pipelines.get(pipeline).ok_or_else(|| {
+              RenderPassError::Validation(format!(
                 "Unknown pipeline {pipeline}"
-              ));
+              ))
             })?;
-
-          // Validate pass/pipeline compatibility before deferring to the platform.
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-validation-pass-compat",
-            feature = "render-validation-encoder",
-          ))]
-          {
-            if !uses_color && pipeline_ref.has_color_targets() {
-              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-              return Err(RenderError::Configuration(format!(
-                "Render pipeline '{}' declares color targets but the current pass has no color attachments",
-                label
-              )));
-            }
-            if uses_color && !pipeline_ref.has_color_targets() {
-              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-              return Err(RenderError::Configuration(format!(
-                "Render pipeline '{}' has no color targets but the current pass declares color attachments",
-                label
-              )));
-            }
-            if !pass_has_depth_attachment
-              && pipeline_ref.expects_depth_stencil()
-            {
-              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-              return Err(RenderError::Configuration(format!(
-                "Render pipeline '{}' expects a depth/stencil attachment but the current pass has none",
-                label
-              )));
-            }
-          }
-
-          // Keep track of the current pipeline to ensure that draw calls
-          // happen only after a pipeline is set when validation is enabled.
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-validation-encoder",
-            feature = "render-validation-instancing",
-          ))]
-          {
-            current_pipeline = Some(pipeline);
-          }
-
-          // Advisory checks to help reason about stencil/depth behavior.
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-validation-depth",
-            feature = "render-validation-stencil",
-          ))]
-          {
-            if pass_has_stencil
-              && !pipeline_ref.uses_stencil()
-              && warned_no_stencil_for_pipeline.insert(pipeline)
-            {
-              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-              let key = format!("stencil:no_test:{}", label);
-              let msg = format!(
-                "Pass provides stencil ops but pipeline '{}' has no stencil test; stencil will not affect rendering",
-                label
-              );
-              util::warn_once(&key, &msg);
-            }
-
-            // Warn if pipeline uses stencil but pass has no stencil ops.
-            if !pass_has_stencil && pipeline_ref.uses_stencil() {
-              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-              let key = format!("stencil:pass_no_operations:{}", label);
-              let msg = format!(
-                "Pipeline '{}' enables stencil but pass has no stencil ops configured; stencil reference/tests may be ineffective",
-                label
-              );
-              util::warn_once(&key, &msg);
-            }
-
-            // Warn if pass has depth attachment but pipeline does not test/write depth.
-            if pass_has_depth_attachment
-              && !pipeline_ref.expects_depth_stencil()
-              && warned_no_depth_for_pipeline.insert(pipeline)
-            {
-              let label = pipeline_ref.pipeline().label().unwrap_or("unnamed");
-              let key = format!("depth:no_test:{}", label);
-              let msg = format!(
-                "Pass has depth attachment but pipeline '{}' does not enable depth testing; depth values will not be tested/written",
-                label
-              );
-              util::warn_once(&key, &msg);
-            }
-          }
-
-          pass.set_pipeline(pipeline_ref.pipeline());
+          encoder.set_pipeline(pipeline_ref)?;
         }
         RenderCommand::SetViewports { viewports, .. } => {
           for viewport in viewports {
-            Self::apply_viewport(pass, &viewport);
+            encoder.set_viewport(&viewport);
           }
         }
         RenderCommand::SetScissors { viewports, .. } => {
           for viewport in viewports {
-            let (x, y, width, height) = viewport.scissor_u32();
-            pass.set_scissor_rect(x, y, width, height);
+            encoder.set_scissor(&viewport);
           }
         }
         RenderCommand::SetBindGroup {
@@ -796,94 +645,40 @@ impl RenderContext {
           group,
           dynamic_offsets,
         } => {
-          let group_ref = self.bind_groups.get(group).ok_or_else(|| {
-            return RenderError::Configuration(format!(
-              "Unknown bind group {group}"
-            ));
+          let group_ref = bind_groups.get(group).ok_or_else(|| {
+            RenderPassError::Validation(format!("Unknown bind group {group}"))
           })?;
-          // Validate dynamic offsets count and alignment before binding.
-          validation::validate_dynamic_offsets(
-            group_ref.dynamic_binding_count(),
-            &dynamic_offsets,
-            self.limit_min_uniform_buffer_offset_alignment(),
+          encoder.set_bind_group(
             set,
-          )
-          .map_err(RenderError::Configuration)?;
-          pass.set_bind_group(
-            set,
-            group_ref.platform_group(),
+            group_ref,
             &dynamic_offsets,
-          );
+            min_uniform_buffer_offset_alignment,
+          )?;
         }
         RenderCommand::BindVertexBuffer { pipeline, buffer } => {
           let pipeline_ref =
-            self.render_pipelines.get(pipeline).ok_or_else(|| {
-              return RenderError::Configuration(format!(
+            render_pipelines.get(pipeline).ok_or_else(|| {
+              RenderPassError::Validation(format!(
                 "Unknown pipeline {pipeline}"
-              ));
+              ))
             })?;
           let buffer_ref =
             pipeline_ref.buffers().get(buffer as usize).ok_or_else(|| {
-              return RenderError::Configuration(format!(
-                "Vertex buffer index {buffer} not found for pipeline {pipeline}"
-              ));
+              RenderPassError::Validation(format!(
+                "Vertex buffer index {buffer} not found for pipeline \
+                 {pipeline}"
+              ))
             })?;
-
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-validation-instancing",
-          ))]
-          {
-            bound_vertex_slots.insert(buffer);
-          }
-
-          pass.set_vertex_buffer(buffer as u32, buffer_ref.raw());
+          encoder.set_vertex_buffer(buffer as u32, buffer_ref);
         }
         RenderCommand::BindIndexBuffer { buffer, format } => {
-          let buffer_ref = self.buffers.get(buffer).ok_or_else(|| {
-            return RenderError::Configuration(format!(
+          let buffer_ref = buffers.get(buffer).ok_or_else(|| {
+            RenderPassError::Validation(format!(
               "Index buffer id {} not found",
               buffer
-            ));
+            ))
           })?;
-          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
-          {
-            if buffer_ref.buffer_type() != buffer::BufferType::Index {
-              return Err(RenderError::Configuration(format!(
-                "Binding buffer id {} as index but logical type is {:?}; expected BufferType::Index",
-                buffer,
-                buffer_ref.buffer_type()
-              )));
-            }
-            let element_size = match format {
-              command::IndexFormat::Uint16 => 2u64,
-              command::IndexFormat::Uint32 => 4u64,
-            };
-            let stride = buffer_ref.stride();
-            if stride != element_size {
-              return Err(RenderError::Configuration(format!(
-                "Index buffer id {} has element stride {} bytes but BindIndexBuffer specified format {:?} ({} bytes)",
-                buffer,
-                stride,
-                format,
-                element_size
-              )));
-            }
-            let buffer_size = buffer_ref.raw().size();
-            if buffer_size % element_size != 0 {
-              return Err(RenderError::Configuration(format!(
-                "Index buffer id {} has size {} bytes which is not a multiple of element size {} for format {:?}",
-                buffer,
-                buffer_size,
-                element_size,
-                format
-              )));
-            }
-            let max_indices =
-              (buffer_size / element_size).min(u32::MAX as u64) as u32;
-            bound_index_buffer = Some((buffer, max_indices));
-          }
-          pass.set_index_buffer(buffer_ref.raw(), format.to_platform());
+          encoder.set_index_buffer(buffer_ref, format)?;
         }
         RenderCommand::PushConstants {
           pipeline,
@@ -891,10 +686,8 @@ impl RenderContext {
           offset,
           bytes,
         } => {
-          let _ = self.render_pipelines.get(pipeline).ok_or_else(|| {
-            return RenderError::Configuration(format!(
-              "Unknown pipeline {pipeline}"
-            ));
+          let _ = render_pipelines.get(pipeline).ok_or_else(|| {
+            RenderPassError::Validation(format!("Unknown pipeline {pipeline}"))
           })?;
           let slice = unsafe {
             std::slice::from_raw_parts(
@@ -902,160 +695,32 @@ impl RenderContext {
               bytes.len() * std::mem::size_of::<u32>(),
             )
           };
-          pass.set_push_constants(stage, offset, slice);
+          encoder.set_push_constants(stage, offset, slice);
         }
         RenderCommand::Draw {
           vertices,
           instances,
         } => {
-          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
-          {
-            if current_pipeline.is_none() {
-              return Err(RenderError::Configuration(
-                "Draw command encountered before any pipeline was set in this render pass"
-                  .to_string(),
-              ));
-            }
-          }
-
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-validation-instancing",
-          ))]
-          {
-            let pipeline_index = current_pipeline
-              .expect("current_pipeline must be set when validation is active");
-            let pipeline_ref = &self.render_pipelines[pipeline_index];
-
-            validation::validate_instance_bindings(
-              pipeline_ref.pipeline().label().unwrap_or("unnamed"),
-              pipeline_ref.per_instance_slots(),
-              &bound_vertex_slots,
-            )
-            .map_err(RenderError::Configuration)?;
-
-            if let Err(msg) =
-              validation::validate_instance_range("Draw", &instances)
-            {
-              return Err(RenderError::Configuration(msg));
-            }
-          }
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-validation-instancing",
-          ))]
-          {
-            if instances.start == instances.end {
-              logging::debug!(
-                "Skipping Draw with empty instance range {}..{}",
-                instances.start,
-                instances.end
-              );
-              continue;
-            }
-          }
-          pass.draw(vertices, instances);
+          encoder.draw(vertices, instances)?;
         }
         RenderCommand::DrawIndexed {
           indices,
           base_vertex,
           instances,
         } => {
-          #[cfg(any(debug_assertions, feature = "render-validation-encoder",))]
-          {
-            if current_pipeline.is_none() {
-              return Err(RenderError::Configuration(
-                "DrawIndexed command encountered before any pipeline was set in this render pass"
-                  .to_string(),
-              ));
-            }
-            let (buffer_id, max_indices) = match bound_index_buffer {
-              Some(state) => state,
-              None => {
-                return Err(RenderError::Configuration(
-                  "DrawIndexed command encountered without a bound index buffer in this render pass"
-                    .to_string(),
-                ));
-              }
-            };
-            if indices.start > indices.end {
-              return Err(RenderError::Configuration(format!(
-                "DrawIndexed index range start {} is greater than end {} for index buffer id {}",
-                indices.start,
-                indices.end,
-                buffer_id
-              )));
-            }
-            if indices.end > max_indices {
-              return Err(RenderError::Configuration(format!(
-                "DrawIndexed index range {}..{} exceeds bound index buffer id {} capacity {}",
-                indices.start,
-                indices.end,
-                buffer_id,
-                max_indices
-              )));
-            }
-          }
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-validation-instancing",
-          ))]
-          {
-            let pipeline_index = current_pipeline
-              .expect("current_pipeline must be set when validation is active");
-            let pipeline_ref = &self.render_pipelines[pipeline_index];
-
-            validation::validate_instance_bindings(
-              pipeline_ref.pipeline().label().unwrap_or("unnamed"),
-              pipeline_ref.per_instance_slots(),
-              &bound_vertex_slots,
-            )
-            .map_err(RenderError::Configuration)?;
-
-            if let Err(msg) =
-              validation::validate_instance_range("DrawIndexed", &instances)
-            {
-              return Err(RenderError::Configuration(msg));
-            }
-          }
-          #[cfg(any(
-            debug_assertions,
-            feature = "render-validation-instancing",
-          ))]
-          {
-            if instances.start == instances.end {
-              logging::debug!(
-                "Skipping DrawIndexed with empty instance range {}..{}",
-                instances.start,
-                instances.end
-              );
-              continue;
-            }
-          }
-          pass.draw_indexed(indices, base_vertex, instances);
+          encoder.draw_indexed(indices, base_vertex, instances)?;
         }
         RenderCommand::BeginRenderPass { .. } => {
-          return Err(RenderError::Configuration(
+          return Err(RenderPassError::Validation(
             "Nested render passes are not supported.".to_string(),
           ));
         }
       }
     }
 
-    return Err(RenderError::Configuration(
+    return Err(RenderPassError::Validation(
       "Render pass did not terminate with EndRenderPass".to_string(),
     ));
-  }
-
-  /// Apply both viewport and scissor state to the active pass.
-  fn apply_viewport(
-    pass: &mut platform::render_pass::RenderPass<'_>,
-    viewport: &viewport::Viewport,
-  ) {
-    let (x, y, width, height, min_depth, max_depth) = viewport.viewport_f32();
-    pass.set_viewport(x, y, width, height, min_depth, max_depth);
-    let (sx, sy, sw, sh) = viewport.scissor_u32();
-    pass.set_scissor_rect(sx, sy, sw, sh);
   }
 
   /// Reconfigure the presentation surface using current present mode/usage.
@@ -1126,6 +791,12 @@ pub enum RenderError {
 impl From<surface::SurfaceError> for RenderError {
   fn from(error: surface::SurfaceError) -> Self {
     return RenderError::Surface(error);
+  }
+}
+
+impl From<RenderPassError> for RenderError {
+  fn from(error: RenderPassError) -> Self {
+    return RenderError::Configuration(error.to_string());
   }
 }
 
