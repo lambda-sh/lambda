@@ -23,6 +23,18 @@ pub enum ColorLoadOp {
   Clear([f64; 4]),
 }
 
+impl ColorLoadOp {
+  /// Convert to the platform color load operation.
+  pub(crate) fn to_platform(self) -> platform::render_pass::ColorLoadOp {
+    return match self {
+      ColorLoadOp::Load => platform::render_pass::ColorLoadOp::Load,
+      ColorLoadOp::Clear(color) => {
+        platform::render_pass::ColorLoadOp::Clear(color)
+      }
+    };
+  }
+}
+
 /// Store operation for the first color attachment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreOp {
@@ -30,6 +42,16 @@ pub enum StoreOp {
   Store,
   /// Discard results when possible.
   Discard,
+}
+
+impl StoreOp {
+  /// Convert to the platform store operation.
+  pub(crate) fn to_platform(self) -> platform::render_pass::StoreOp {
+    return match self {
+      StoreOp::Store => platform::render_pass::StoreOp::Store,
+      StoreOp::Discard => platform::render_pass::StoreOp::Discard,
+    };
+  }
 }
 
 /// Combined color operations for the first color attachment.
@@ -48,6 +70,18 @@ impl Default for ColorOperations {
   }
 }
 
+impl ColorOperations {
+  /// Convert to the platform color load and store operations.
+  pub(crate) fn to_platform(
+    self,
+  ) -> (
+    platform::render_pass::ColorLoadOp,
+    platform::render_pass::StoreOp,
+  ) {
+    return (self.load.to_platform(), self.store.to_platform());
+  }
+}
+
 /// Depth load operation for the depth attachment.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DepthLoadOp {
@@ -55,6 +89,18 @@ pub enum DepthLoadOp {
   Load,
   /// Clear to the provided depth value in [0,1].
   Clear(f64),
+}
+
+impl DepthLoadOp {
+  /// Convert to the platform depth load operation.
+  pub(crate) fn to_platform(self) -> platform::render_pass::DepthLoadOp {
+    return match self {
+      DepthLoadOp::Load => platform::render_pass::DepthLoadOp::Load,
+      DepthLoadOp::Clear(value) => {
+        platform::render_pass::DepthLoadOp::Clear(value as f32)
+      }
+    };
+  }
 }
 
 /// Depth operations for the first depth attachment.
@@ -69,6 +115,16 @@ impl Default for DepthOperations {
     return Self {
       load: DepthLoadOp::Clear(1.0),
       store: StoreOp::Store,
+    };
+  }
+}
+
+impl DepthOperations {
+  /// Convert to the platform depth operations.
+  pub(crate) fn to_platform(self) -> platform::render_pass::DepthOperations {
+    return platform::render_pass::DepthOperations {
+      load: self.load.to_platform(),
+      store: self.store.to_platform(),
     };
   }
 }
@@ -361,6 +417,18 @@ pub enum StencilLoadOp {
   Clear(u32),
 }
 
+impl StencilLoadOp {
+  /// Convert to the platform stencil load operation.
+  pub(crate) fn to_platform(self) -> platform::render_pass::StencilLoadOp {
+    return match self {
+      StencilLoadOp::Load => platform::render_pass::StencilLoadOp::Load,
+      StencilLoadOp::Clear(value) => {
+        platform::render_pass::StencilLoadOp::Clear(value)
+      }
+    };
+  }
+}
+
 /// Stencil operations for the first stencil attachment.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StencilOperations {
@@ -373,6 +441,16 @@ impl Default for StencilOperations {
     return Self {
       load: StencilLoadOp::Clear(0),
       store: StoreOp::Store,
+    };
+  }
+}
+
+impl StencilOperations {
+  /// Convert to the platform stencil operations.
+  pub(crate) fn to_platform(self) -> platform::render_pass::StencilOperations {
+    return platform::render_pass::StencilOperations {
+      load: self.load.to_platform(),
+      store: self.store.to_platform(),
     };
   }
 }

@@ -41,13 +41,7 @@ use super::{
   command::IndexFormat,
   pipeline,
   pipeline::RenderPipeline,
-  render_pass::{
-    ColorLoadOp,
-    DepthLoadOp,
-    RenderPass,
-    StencilLoadOp,
-    StoreOp,
-  },
+  render_pass::RenderPass,
   texture::DepthTexture,
   validation,
   viewport::Viewport,
@@ -214,54 +208,16 @@ impl<'pass> RenderPassEncoder<'pass> {
     let mut rp_builder = platform::render_pass::RenderPassBuilder::new();
 
     // Map color operations from the high-level RenderPass
-    let color_ops = pass.color_operations();
-    rp_builder = match color_ops.load {
-      ColorLoadOp::Load => {
-        rp_builder.with_color_load_op(platform::render_pass::ColorLoadOp::Load)
-      }
-      ColorLoadOp::Clear(color) => rp_builder
-        .with_color_load_op(platform::render_pass::ColorLoadOp::Clear(color)),
-    };
-    rp_builder = match color_ops.store {
-      StoreOp::Store => {
-        rp_builder.with_store_op(platform::render_pass::StoreOp::Store)
-      }
-      StoreOp::Discard => {
-        rp_builder.with_store_op(platform::render_pass::StoreOp::Discard)
-      }
-    };
+    let (color_load_op, color_store_op) = pass.color_operations().to_platform();
+    rp_builder = rp_builder
+      .with_color_load_op(color_load_op)
+      .with_store_op(color_store_op);
 
-    // Map depth operations from the high-level RenderPass
-    let platform_depth_ops = pass.depth_operations().map(|dop| {
-      platform::render_pass::DepthOperations {
-        load: match dop.load {
-          DepthLoadOp::Load => platform::render_pass::DepthLoadOp::Load,
-          DepthLoadOp::Clear(v) => {
-            platform::render_pass::DepthLoadOp::Clear(v as f32)
-          }
-        },
-        store: match dop.store {
-          StoreOp::Store => platform::render_pass::StoreOp::Store,
-          StoreOp::Discard => platform::render_pass::StoreOp::Discard,
-        },
-      }
-    });
-
-    // Map stencil operations from the high-level RenderPass
-    let platform_stencil_ops = pass.stencil_operations().map(|sop| {
-      platform::render_pass::StencilOperations {
-        load: match sop.load {
-          StencilLoadOp::Load => platform::render_pass::StencilLoadOp::Load,
-          StencilLoadOp::Clear(v) => {
-            platform::render_pass::StencilLoadOp::Clear(v)
-          }
-        },
-        store: match sop.store {
-          StoreOp::Store => platform::render_pass::StoreOp::Store,
-          StoreOp::Discard => platform::render_pass::StoreOp::Discard,
-        },
-      }
-    });
+    // Map depth and stencil operations from the high-level RenderPass
+    let platform_depth_ops =
+      pass.depth_operations().map(|dop| dop.to_platform());
+    let platform_stencil_ops =
+      pass.stencil_operations().map(|sop| sop.to_platform());
 
     let depth_view = depth_texture.map(|dt| dt.platform_view_ref());
     let has_depth_attachment = depth_texture.is_some();
