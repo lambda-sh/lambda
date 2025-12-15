@@ -34,6 +34,7 @@ pub mod buffer;
 pub mod command;
 pub mod encoder;
 pub mod gpu;
+pub mod instance;
 pub mod mesh;
 pub mod pipeline;
 pub mod render_pass;
@@ -117,13 +118,13 @@ impl RenderContextBuilder {
   ) -> Result<RenderContext, RenderContextError> {
     let RenderContextBuilder { name, .. } = self;
 
-    let instance = platform::instance::InstanceBuilder::new()
+    let instance = instance::InstanceBuilder::new()
       .with_label(&format!("{} Instance", name))
       .build();
 
     let mut surface = platform::surface::SurfaceBuilder::new()
       .with_label(&format!("{} Surface", name))
-      .build(&instance, window.window_handle())
+      .build(instance.platform(), window.window_handle())
       .map_err(|e| {
         RenderContextError::SurfaceCreate(format!(
           "Failed to create rendering surface: {:?}",
@@ -208,7 +209,7 @@ impl RenderContextBuilder {
 ///   reconfiguration with preserved present mode and usage.
 pub struct RenderContext {
   label: String,
-  instance: platform::instance::Instance,
+  instance: instance::Instance,
   surface: platform::surface::Surface<'static>,
   gpu: gpu::Gpu,
   config: surface::SurfaceConfig,

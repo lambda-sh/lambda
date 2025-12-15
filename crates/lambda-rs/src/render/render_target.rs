@@ -20,6 +20,7 @@ use lambda_platform::wgpu as platform;
 
 use super::{
   gpu::Gpu,
+  instance::Instance,
   surface::{
     Frame,
     PresentMode,
@@ -86,12 +87,12 @@ impl WindowSurface {
   /// The surface must be configured before use by calling
   /// `configure_with_defaults` or `resize`.
   pub fn new(
-    instance: &platform::instance::Instance,
+    instance: &Instance,
     window: &Window,
   ) -> Result<Self, WindowSurfaceError> {
     let surface = platform::surface::SurfaceBuilder::new()
       .with_label("Lambda Window Surface")
-      .build(instance, window.window_handle())
+      .build(instance.platform(), window.window_handle())
       .map_err(|_| {
         WindowSurfaceError::CreationFailed(
           "Failed to create window surface".to_string(),

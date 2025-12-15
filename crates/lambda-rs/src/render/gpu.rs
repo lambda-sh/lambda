@@ -23,9 +23,12 @@
 
 use lambda_platform::wgpu as platform;
 
-use super::texture::{
-  DepthFormat,
-  TextureFormat,
+use super::{
+  instance::Instance,
+  texture::{
+    DepthFormat,
+    TextureFormat,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -222,12 +225,12 @@ impl GpuBuilder {
   /// presentation. Pass `None` for headless/compute-only contexts.
   pub fn build(
     self,
-    instance: &platform::instance::Instance,
+    instance: &Instance,
     surface: Option<&platform::surface::Surface<'_>>,
   ) -> Result<Gpu, GpuBuildError> {
     let platform_gpu = self
       .inner
-      .build(instance, surface)
+      .build(instance.platform(), surface)
       .map_err(GpuBuildError::from_platform)?;
     return Ok(Gpu::from_platform(platform_gpu));
   }
