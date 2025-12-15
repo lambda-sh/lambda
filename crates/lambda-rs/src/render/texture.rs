@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use lambda_platform::wgpu::texture as platform;
 
-use super::RenderContext;
+use super::gpu::Gpu;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Engine-level depth texture formats.
@@ -31,19 +31,60 @@ impl DepthFormat {
   }
 }
 
-#[derive(Debug, Clone, Copy)]
-/// Supported color texture formats for sampling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Supported color texture formats for sampling and render targets.
 pub enum TextureFormat {
+  /// 8-bit RGBA, linear (non-sRGB).
   Rgba8Unorm,
+  /// 8-bit RGBA, sRGB encoded.
   Rgba8UnormSrgb,
+  /// 8-bit BGRA, linear (non-sRGB). Common swapchain format.
+  Bgra8Unorm,
+  /// 8-bit BGRA, sRGB encoded. Common swapchain format.
+  Bgra8UnormSrgb,
 }
 
 impl TextureFormat {
-  fn to_platform(self) -> platform::TextureFormat {
+  pub(crate) fn to_platform(self) -> platform::TextureFormat {
     return match self {
-      TextureFormat::Rgba8Unorm => platform::TextureFormat::Rgba8Unorm,
-      TextureFormat::Rgba8UnormSrgb => platform::TextureFormat::Rgba8UnormSrgb,
+      TextureFormat::Rgba8Unorm => platform::TextureFormat::RGBA8_UNORM,
+      TextureFormat::Rgba8UnormSrgb => {
+        platform::TextureFormat::RGBA8_UNORM_SRGB
+      }
+      TextureFormat::Bgra8Unorm => platform::TextureFormat::BGRA8_UNORM,
+      TextureFormat::Bgra8UnormSrgb => {
+        platform::TextureFormat::BGRA8_UNORM_SRGB
+      }
     };
+  }
+
+  pub(crate) fn from_platform(fmt: platform::TextureFormat) -> Option<Self> {
+    if fmt == platform::TextureFormat::RGBA8_UNORM {
+      return Some(TextureFormat::Rgba8Unorm);
+    }
+    if fmt == platform::TextureFormat::RGBA8_UNORM_SRGB {
+      return Some(TextureFormat::Rgba8UnormSrgb);
+    }
+    if fmt == platform::TextureFormat::BGRA8_UNORM {
+      return Some(TextureFormat::Bgra8Unorm);
+    }
+    if fmt == platform::TextureFormat::BGRA8_UNORM_SRGB {
+      return Some(TextureFormat::Bgra8UnormSrgb);
+    }
+    return None;
+  }
+
+  /// Whether this format is sRGB encoded.
+  pub fn is_srgb(self) -> bool {
+    return matches!(
+      self,
+      TextureFormat::Rgba8UnormSrgb | TextureFormat::Bgra8UnormSrgb
+    );
+  }
+
+  /// Number of bytes per pixel for this format.
+  pub fn bytes_per_pixel(self) -> u32 {
+    return 4;
   }
 }
 
@@ -96,6 +137,260 @@ impl AddressMode {
     };
   }
 }
+
+/// Texture usage flags.
+///
+/// Use bitwise-OR to combine flags when creating textures with multiple usages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TextureUsages(platform::TextureUsages);
+
+impl TextureUsages {
+  /// Texture can be used as a render attachment (color or depth/stencil).
+  pub const RENDER_ATTACHMENT: TextureUsages =
+    TextureUsages(platform::TextureUsages::RENDER_ATTACHMENT);
+  /// Texture can be bound for sampling in shaders.
+  pub const TEXTURE_BINDING: TextureUsages =
+    TextureUsages(platform::TextureUsages::TEXTURE_BINDING);
+  /// Texture can be used as the destination of a copy operation.
+  pub const COPY_DST: TextureUsages =
+    TextureUsages(platform::TextureUsages::COPY_DST);
+  /// Texture can be used as the source of a copy operation.
+  pub const COPY_SRC: TextureUsages =
+    TextureUsages(platform::TextureUsages::COPY_SRC);
+
+  /// Create an empty flags set.
+  pub const fn empty() -> Self {
+    return TextureUsages(platform::TextureUsages::empty());
+  }
+
+  pub(crate) fn to_platform(self) -> platform::TextureUsages {
+    return self.0;
+  }
+
+  pub(crate) fn from_platform(usage: platform::TextureUsages) -> Self {
+    return TextureUsages(usage);
+  }
+
+  /// Check whether this flags set contains another set.
+  pub fn contains(self, other: TextureUsages) -> bool {
+    return self.0.contains(other.0);
+  }
+}
+
+impl std::ops::BitOr for TextureUsages {
+  type Output = TextureUsages;
+
+  fn bitor(self, rhs: TextureUsages) -> TextureUsages {
+    return TextureUsages(self.0 | rhs.0);
+  }
+}
+
+impl std::ops::BitOrAssign for TextureUsages {
+  fn bitor_assign(&mut self, rhs: TextureUsages) {
+    self.0 |= rhs.0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ColorAttachmentTexture
+// ---------------------------------------------------------------------------
+
+/// High-level wrapper for a multi-sampled color render target texture.
+///
+/// This type is used for MSAA color attachments and other intermediate render
+/// targets that need to be resolved to a single-sample texture before
+/// presentation.
+#[derive(Debug)]
+pub struct ColorAttachmentTexture {
+  inner: platform::ColorAttachmentTexture,
+}
+
+impl ColorAttachmentTexture {
+  /// Create a high-level color attachment texture from a platform texture.
+  pub(crate) fn from_platform(
+    texture: platform::ColorAttachmentTexture,
+  ) -> Self {
+    return ColorAttachmentTexture { inner: texture };
+  }
+
+  /// Borrow a texture view reference for use in render pass attachments.
+  pub(crate) fn view_ref(&self) -> crate::render::surface::TextureView<'_> {
+    return crate::render::surface::TextureView::from_platform(
+      self.inner.view_ref(),
+    );
+  }
+}
+
+/// Builder for creating a color attachment texture (commonly used for MSAA).
+pub struct ColorAttachmentTextureBuilder {
+  label: Option<String>,
+  format: TextureFormat,
+  width: u32,
+  height: u32,
+  sample_count: u32,
+}
+
+impl ColorAttachmentTextureBuilder {
+  /// Create a builder with zero size and sample count 1.
+  pub fn new(format: TextureFormat) -> Self {
+    return Self {
+      label: None,
+      format,
+      width: 0,
+      height: 0,
+      sample_count: 1,
+    };
+  }
+
+  /// Set the 2D attachment size in pixels.
+  pub fn with_size(mut self, width: u32, height: u32) -> Self {
+    self.width = width;
+    self.height = height;
+    return self;
+  }
+
+  /// Configure multisampling. Count MUST be >= 1.
+  pub fn with_sample_count(mut self, count: u32) -> Self {
+    self.sample_count = count.max(1);
+    return self;
+  }
+
+  /// Attach a debug label for the created texture.
+  pub fn with_label(mut self, label: &str) -> Self {
+    self.label = Some(label.to_string());
+    return self;
+  }
+
+  /// Create the color attachment texture on the device.
+  pub fn build(self, gpu: &Gpu) -> ColorAttachmentTexture {
+    let mut builder =
+      platform::ColorAttachmentTextureBuilder::new(self.format.to_platform())
+        .with_size(self.width, self.height)
+        .with_sample_count(self.sample_count);
+
+    if let Some(ref label) = self.label {
+      builder = builder.with_label(label);
+    }
+
+    let texture = builder.build(gpu.platform());
+    return ColorAttachmentTexture::from_platform(texture);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DepthTexture
+// ---------------------------------------------------------------------------
+
+/// High-level wrapper for a depth (and optional stencil) render attachment.
+///
+/// This type manages a depth texture used for depth testing and stencil
+/// operations in render passes.
+#[derive(Debug)]
+pub struct DepthTexture {
+  inner: platform::DepthTexture,
+}
+
+impl DepthTexture {
+  /// Create a high-level depth texture from a platform texture.
+  pub(crate) fn from_platform(texture: platform::DepthTexture) -> Self {
+    return DepthTexture { inner: texture };
+  }
+
+  /// The depth format used by this attachment.
+  pub fn format(&self) -> DepthFormat {
+    return match self.inner.format() {
+      platform::DepthFormat::Depth32Float => DepthFormat::Depth32Float,
+      platform::DepthFormat::Depth24Plus => DepthFormat::Depth24Plus,
+      platform::DepthFormat::Depth24PlusStencil8 => {
+        DepthFormat::Depth24PlusStencil8
+      }
+    };
+  }
+
+  /// Borrow a texture view reference for use in render pass attachments.
+  pub(crate) fn view_ref(&self) -> crate::render::surface::TextureView<'_> {
+    return crate::render::surface::TextureView::from_platform(
+      self.inner.view_ref(),
+    );
+  }
+
+  /// Access the underlying platform texture view reference directly.
+  ///
+  /// This is needed for the render pass builder which expects the platform
+  /// type.
+  pub(crate) fn platform_view_ref(
+    &self,
+  ) -> lambda_platform::wgpu::surface::TextureViewRef<'_> {
+    return self.inner.view_ref();
+  }
+}
+
+/// Builder for creating a depth texture attachment.
+pub struct DepthTextureBuilder {
+  label: Option<String>,
+  format: DepthFormat,
+  width: u32,
+  height: u32,
+  sample_count: u32,
+}
+
+impl DepthTextureBuilder {
+  /// Create a builder with no size and `Depth32Float` format.
+  pub fn new() -> Self {
+    return Self {
+      label: None,
+      format: DepthFormat::Depth32Float,
+      width: 0,
+      height: 0,
+      sample_count: 1,
+    };
+  }
+
+  /// Set the 2D attachment size in pixels.
+  pub fn with_size(mut self, width: u32, height: u32) -> Self {
+    self.width = width;
+    self.height = height;
+    return self;
+  }
+
+  /// Choose a depth format.
+  pub fn with_format(mut self, format: DepthFormat) -> Self {
+    self.format = format;
+    return self;
+  }
+
+  /// Configure multi-sampling.
+  pub fn with_sample_count(mut self, count: u32) -> Self {
+    self.sample_count = count.max(1);
+    return self;
+  }
+
+  /// Attach a debug label for the created texture.
+  pub fn with_label(mut self, label: &str) -> Self {
+    self.label = Some(label.to_string());
+    return self;
+  }
+
+  /// Create the depth texture on the device.
+  pub fn build(self, gpu: &Gpu) -> DepthTexture {
+    let mut builder = platform::DepthTextureBuilder::new()
+      .with_size(self.width, self.height)
+      .with_format(self.format.to_platform())
+      .with_sample_count(self.sample_count);
+
+    if let Some(ref label) = self.label {
+      builder = builder.with_label(label);
+    }
+
+    let texture = builder.build(gpu.platform());
+    return DepthTexture::from_platform(texture);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Texture (sampled)
+// ---------------------------------------------------------------------------
+
 #[derive(Debug, Clone)]
 /// High‑level texture wrapper that owns a platform texture.
 pub struct Texture {
@@ -189,10 +484,7 @@ impl TextureBuilder {
   }
 
   /// Create the texture and upload initial data if provided.
-  pub fn build(
-    self,
-    render_context: &mut RenderContext,
-  ) -> Result<Texture, &'static str> {
+  pub fn build(self, gpu: &Gpu) -> Result<Texture, &'static str> {
     let mut builder =
       if self.depth <= 1 {
         platform::TextureBuilder::new_2d(self.format.to_platform())
@@ -210,7 +502,7 @@ impl TextureBuilder {
       builder = builder.with_data(pixels);
     }
 
-    return match builder.build(render_context.gpu()) {
+    return match builder.build(gpu.platform()) {
       Ok(texture) => Ok(Texture {
         inner: Rc::new(texture),
       }),
@@ -222,6 +514,9 @@ impl TextureBuilder {
       }
       Err(platform::TextureBuildError::Overflow) => {
         Err("Overflow while computing texture layout")
+      }
+      Err(platform::TextureBuildError::UnsupportedFormat) => {
+        Err("Texture format does not support bytes_per_pixel calculation")
       }
     };
   }
@@ -300,9 +595,9 @@ impl SamplerBuilder {
     return self;
   }
 
-  /// Create the sampler on the current device.
-  pub fn build(self, render_context: &mut RenderContext) -> Sampler {
-    let sampler = self.inner.build(render_context.gpu());
+  /// Create the sampler on the provided GPU device.
+  pub fn build(self, gpu: &Gpu) -> Sampler {
+    let sampler = self.inner.build(gpu.platform());
     return Sampler {
       inner: Rc::new(sampler),
     };

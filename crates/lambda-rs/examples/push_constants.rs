@@ -126,7 +126,11 @@ impl Component<ComponentResult, String> for PushConstantsExample {
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
-    let render_pass = RenderPassBuilder::new().build(render_context);
+    let render_pass = RenderPassBuilder::new().build(
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
+    );
     let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
 
     // Create triangle mesh.
@@ -188,11 +192,18 @@ impl Component<ComponentResult, String> for PushConstantsExample {
       .with_culling(lambda::render::pipeline::CullingMode::None)
       .with_push_constant(PipelineStage::VERTEX, push_constant_size)
       .with_buffer(
-        BufferBuilder::build_from_mesh(&mesh, render_context)
+        BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
           .expect("Failed to create buffer"),
         mesh.attributes().to_vec(),
       )
-      .build(render_context, &render_pass, &self.shader, Some(&self.fs));
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+        &render_pass,
+        &self.shader,
+        Some(&self.fs),
+      );
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));

@@ -111,7 +111,11 @@ impl Component<ComponentResult, String> for IndexedMultiBufferExample {
     &mut self,
     render_context: &mut RenderContext,
   ) -> Result<ComponentResult, String> {
-    let render_pass = RenderPassBuilder::new().build(render_context);
+    let render_pass = RenderPassBuilder::new().build(
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
+    );
 
     // Quad composed from two triangles in clip space.
     let positions: Vec<PositionVertex> = vec![
@@ -153,7 +157,7 @@ impl Component<ComponentResult, String> for IndexedMultiBufferExample {
       .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Vertex)
       .with_label("indexed-positions")
-      .build(render_context, positions)
+      .build(render_context.gpu(), positions)
       .map_err(|e| e.to_string())?;
 
     let color_buffer = BufferBuilder::new()
@@ -161,7 +165,7 @@ impl Component<ComponentResult, String> for IndexedMultiBufferExample {
       .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Vertex)
       .with_label("indexed-colors")
-      .build(render_context, colors)
+      .build(render_context.gpu(), colors)
       .map_err(|e| e.to_string())?;
 
     // Build a 16-bit index buffer.
@@ -170,7 +174,7 @@ impl Component<ComponentResult, String> for IndexedMultiBufferExample {
       .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Index)
       .with_label("indexed-indices")
-      .build(render_context, indices)
+      .build(render_context.gpu(), indices)
       .map_err(|e| e.to_string())?;
 
     let pipeline = RenderPipelineBuilder::new()
@@ -198,7 +202,9 @@ impl Component<ComponentResult, String> for IndexedMultiBufferExample {
         }],
       )
       .build(
-        render_context,
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
         &render_pass,
         &self.vertex_shader,
         Some(&self.fragment_shader),

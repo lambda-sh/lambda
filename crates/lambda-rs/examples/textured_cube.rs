@@ -172,7 +172,11 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
     let render_pass = RenderPassBuilder::new()
       .with_label("textured-cube-pass")
       .with_depth()
-      .build(render_context);
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+      );
 
     let mut shader_builder = ShaderBuilder::new();
     let shader_vs = shader_builder.build(VirtualShader::Source {
@@ -310,19 +314,21 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       .with_size(tex_w, tex_h)
       .with_data(&pixels)
       .with_label("checkerboard")
-      .build(render_context)
+      .build(render_context.gpu())
       .expect("Failed to create 2D texture");
-    let sampler = SamplerBuilder::new().linear_clamp().build(render_context);
+    let sampler = SamplerBuilder::new()
+      .linear_clamp()
+      .build(render_context.gpu());
 
     let layout = BindGroupLayoutBuilder::new()
       .with_sampled_texture(1)
       .with_sampler(2)
-      .build(render_context);
+      .build(render_context.gpu());
     let bind_group = BindGroupBuilder::new()
       .with_layout(&layout)
       .with_texture(1, &texture2d)
       .with_sampler(2, &sampler)
-      .build(render_context);
+      .build(render_context.gpu());
 
     let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
     let pipeline = RenderPipelineBuilder::new()
@@ -330,12 +336,19 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       .with_depth()
       .with_push_constant(PipelineStage::VERTEX, push_constants_size)
       .with_buffer(
-        BufferBuilder::build_from_mesh(&mesh, render_context)
+        BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
           .expect("Failed to create vertex buffer"),
         mesh.attributes().to_vec(),
       )
       .with_layouts(&[&layout])
-      .build(render_context, &render_pass, &shader_vs, Some(&shader_fs));
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+        &render_pass,
+        &shader_vs,
+        Some(&shader_fs),
+      );
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));

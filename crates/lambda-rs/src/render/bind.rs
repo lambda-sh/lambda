@@ -22,12 +22,12 @@ use std::rc::Rc;
 
 use super::{
   buffer::Buffer,
+  gpu::Gpu,
   texture::{
     Sampler,
     Texture,
     ViewDimension,
   },
-  RenderContext,
 };
 
 /// Visibility of a binding across shader stages (engine‑facing).
@@ -200,8 +200,8 @@ impl BindGroupLayoutBuilder {
     return self;
   }
 
-  /// Build the layout using the `RenderContext` device.
-  pub fn build(self, render_context: &RenderContext) -> BindGroupLayout {
+  /// Build the layout using the provided GPU device.
+  pub fn build(self, gpu: &Gpu) -> BindGroupLayout {
     let mut builder =
       lambda_platform::wgpu::bind::BindGroupLayoutBuilder::new();
 
@@ -272,7 +272,7 @@ impl BindGroupLayoutBuilder {
       builder = builder.with_sampler(binding, visibility.to_platform());
     }
 
-    let layout = builder.build(render_context.gpu());
+    let layout = builder.build(gpu.platform());
 
     return BindGroupLayout {
       layout: Rc::new(layout),
@@ -350,8 +350,8 @@ impl<'a> BindGroupBuilder<'a> {
     return self;
   }
 
-  /// Build the bind group on the current device.
-  pub fn build(self, render_context: &RenderContext) -> BindGroup {
+  /// Build the bind group on the provided GPU device.
+  pub fn build(self, gpu: &Gpu) -> BindGroup {
     let layout = self
       .layout
       .expect("BindGroupBuilder requires a layout before build");
@@ -363,7 +363,7 @@ impl<'a> BindGroupBuilder<'a> {
       platform = platform.with_label(label);
     }
 
-    let max_binding = render_context.limit_max_uniform_buffer_binding_size();
+    let max_binding = gpu.limit_max_uniform_buffer_binding_size();
 
     for (binding, buffer, offset, size) in self.entries.into_iter() {
       if let Some(sz) = size {
@@ -397,7 +397,7 @@ impl<'a> BindGroupBuilder<'a> {
       platform = platform.with_sampler(*binding, sampler_handle.as_ref());
     }
 
-    let group = platform.build(render_context.gpu());
+    let group = platform.build(gpu.platform());
     return BindGroup {
       group: Rc::new(group),
       dynamic_binding_count: layout.dynamic_binding_count(),

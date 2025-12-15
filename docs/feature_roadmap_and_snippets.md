@@ -1,3 +1,20 @@
+---
+title: "Lambda RS: Immediate Feature Ideas and Example APIs"
+document_id: "feature-roadmap-snippets-2025-09-24"
+status: "living"
+created: "2025-09-24T00:00:00Z"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.2.0"
+engine_workspace_version: "2023.1.30"
+wgpu_version: "26.0.1"
+shader_backend_default: "naga"
+winit_version: "0.29.10"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
+owners: ["lambda-sh"]
+reviewers: ["engine", "rendering"]
+tags: ["roadmap", "features", "api-design", "rendering"]
+---
+
 # Lambda RS: Immediate Feature Ideas + Example APIs
 
 This document proposes high‑impact features to add next to the Lambda RS
@@ -23,7 +40,7 @@ use lambda::render::{
 // Layout: set(0) has a uniform buffer at binding(0)
 let layout = BindGroupLayoutBuilder::new()
   .with_uniform(binding = 0, visibility = PipelineStage::VERTEX)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 // Create and upload a uniform buffer
 let ubo = BufferBuilder::new()
@@ -31,19 +48,26 @@ let ubo = BufferBuilder::new()
   .with_usage(Usage::UNIFORM)
   .with_properties(Properties::CPU_VISIBLE)
   .with_label("globals")
-  .build(&mut rc, vec![initial_globals])?;
+  .build(rc.gpu(), vec![initial_globals])?;
 
 // Bind group that points the layout(0)@binding(0) to our UBO
 let group0 = BindGroupBuilder::new()
   .with_layout(&layout)
   .with_uniform(binding = 0, &ubo)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 // Pipeline accepts optional bind group layouts
 let pipe = RenderPipelineBuilder::new()
   .with_layouts(&[&layout])
   .with_buffer(vbo, attributes)
-  .build(&mut rc, &pass, &vs, Some(&fs));
+  .build(
+    rc.gpu(),
+    rc.surface_format(),
+    rc.depth_format(),
+    &pass,
+    &vs,
+    Some(&fs),
+  );
 
 // Commands inside a render pass
 RC::SetPipeline { pipeline: pipe_id },
@@ -64,25 +88,25 @@ let texture = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
   .with_size(512, 512)
   .with_data(&pixels)
   .with_label("albedo")
-  .build(&mut rc);
+  .build(rc.gpu());
 
 let sampler = SamplerBuilder::new()
   .linear_clamp()
-  .build(&mut rc);
+  .build(rc.gpu());
 
 // Layout: binding(0) uniform buffer, binding(1) sampled texture, binding(2) sampler
 let layout = BindGroupLayoutBuilder::new()
   .with_uniform(0, PipelineStage::VERTEX | PipelineStage::FRAGMENT)
   .with_sampled_texture(1)
   .with_sampler(2)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 let group = BindGroupBuilder::new()
   .with_layout(&layout)
   .with_uniform(0, &ubo)
   .with_texture(1, &texture)
   .with_sampler(2, &sampler)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 RC::BindGroup { set: 0, group: group_id, offsets: &[] },
 ```
@@ -105,12 +129,23 @@ let pass = RenderPassBuilder::new()
      depth_compare = wgpu::CompareFunction::Less,
   )
   .with_msaa(samples = 4)
-  .build(&rc);
+  .build(
+    rc.gpu(),
+    rc.surface_format(),
+    rc.depth_format(),
+  );
 
 let pipe = RenderPipelineBuilder::new()
   .with_msaa(samples = 4)
   .with_depth_format(wgpu::TextureFormat::Depth32Float)
-  .build(&mut rc, &pass, &vs, Some(&fs));
+  .build(
+    rc.gpu(),
+    rc.surface_format(),
+    rc.depth_format(),
+    &pass,
+    &vs,
+    Some(&fs),
+  );
 ```
 
 ## 4) Indexed Draw + Multiple Vertex Buffers
@@ -140,13 +175,21 @@ let offscreen = RenderTargetBuilder::new()
   .with_color(TextureFormat::Rgba8UnormSrgb, width, height)
   .with_depth(TextureFormat::Depth32Float)
   .with_label("offscreen")
-  .build(&mut rc);
+  .build(rc.gpu());
 
 // Pass 1: draw scene into `offscreen`
-let p1 = RenderPassBuilder::new().with_target(&offscreen).build(&rc);
+let p1 = RenderPassBuilder::new().with_target(&offscreen).build(
+  rc.gpu(),
+  rc.surface_format(),
+  rc.depth_format(),
+);
 
 // Pass 2: sample offscreen color into swapchain
-let p2 = RenderPassBuilder::new().build(&rc);
+let p2 = RenderPassBuilder::new().build(
+  rc.gpu(),
+  rc.surface_format(),
+  rc.depth_format(),
+);
 
 // Commands
 RC::BeginRenderPass { render_pass: p1_id, viewport },
@@ -246,4 +289,3 @@ These proposals aim to keep Lambda’s surface area small while unlocking common
 workflows (texturing, uniforms, depth/MSAA, compute, multipass). I can begin
 implementing any of them next; uniform buffers/bind groups and depth/MSAA are
 usually the quickest wins for examples and demos.
-

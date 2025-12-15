@@ -8,7 +8,10 @@
 use lambda_platform::wgpu as platform;
 use logging;
 
-use super::RenderContext;
+use super::{
+  gpu::Gpu,
+  texture,
+};
 use crate::render::validation;
 
 /// Color load operation for the first color attachment.
@@ -20,6 +23,18 @@ pub enum ColorLoadOp {
   Clear([f64; 4]),
 }
 
+impl ColorLoadOp {
+  /// Convert to the platform color load operation.
+  pub(crate) fn to_platform(self) -> platform::render_pass::ColorLoadOp {
+    return match self {
+      ColorLoadOp::Load => platform::render_pass::ColorLoadOp::Load,
+      ColorLoadOp::Clear(color) => {
+        platform::render_pass::ColorLoadOp::Clear(color)
+      }
+    };
+  }
+}
+
 /// Store operation for the first color attachment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreOp {
@@ -27,6 +42,16 @@ pub enum StoreOp {
   Store,
   /// Discard results when possible.
   Discard,
+}
+
+impl StoreOp {
+  /// Convert to the platform store operation.
+  pub(crate) fn to_platform(self) -> platform::render_pass::StoreOp {
+    return match self {
+      StoreOp::Store => platform::render_pass::StoreOp::Store,
+      StoreOp::Discard => platform::render_pass::StoreOp::Discard,
+    };
+  }
 }
 
 /// Combined color operations for the first color attachment.
@@ -45,6 +70,18 @@ impl Default for ColorOperations {
   }
 }
 
+impl ColorOperations {
+  /// Convert to the platform color load and store operations.
+  pub(crate) fn to_platform(
+    self,
+  ) -> (
+    platform::render_pass::ColorLoadOp,
+    platform::render_pass::StoreOp,
+  ) {
+    return (self.load.to_platform(), self.store.to_platform());
+  }
+}
+
 /// Depth load operation for the depth attachment.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DepthLoadOp {
@@ -52,6 +89,18 @@ pub enum DepthLoadOp {
   Load,
   /// Clear to the provided depth value in [0,1].
   Clear(f64),
+}
+
+impl DepthLoadOp {
+  /// Convert to the platform depth load operation.
+  pub(crate) fn to_platform(self) -> platform::render_pass::DepthLoadOp {
+    return match self {
+      DepthLoadOp::Load => platform::render_pass::DepthLoadOp::Load,
+      DepthLoadOp::Clear(value) => {
+        platform::render_pass::DepthLoadOp::Clear(value as f32)
+      }
+    };
+  }
 }
 
 /// Depth operations for the first depth attachment.
@@ -66,6 +115,16 @@ impl Default for DepthOperations {
     return Self {
       load: DepthLoadOp::Clear(1.0),
       store: StoreOp::Store,
+    };
+  }
+}
+
+impl DepthOperations {
+  /// Convert to the platform depth operations.
+  pub(crate) fn to_platform(self) -> platform::render_pass::DepthOperations {
+    return platform::render_pass::DepthOperations {
+      load: self.load.to_platform(),
+      store: self.store.to_platform(),
     };
   }
 }
@@ -87,7 +146,7 @@ pub struct RenderPass {
 
 impl RenderPass {
   /// Destroy the pass. Kept for symmetry with other resources.
-  pub fn destroy(self, _render_context: &RenderContext) {}
+  pub fn destroy(self, _gpu: &Gpu) {}
 
   pub(crate) fn clear_color(&self) -> [f64; 4] {
     return self.clear_color;
@@ -277,13 +336,23 @@ impl RenderPassBuilder {
   }
 
   /// Build the description used when beginning a render pass.
-  pub fn build(self, render_context: &RenderContext) -> RenderPass {
+  ///
+  /// # Arguments
+  /// * `gpu` - The GPU device for sample count validation.
+  /// * `surface_format` - The surface texture format for sample count validation.
+  /// * `depth_format` - The depth texture format for sample count validation.
+  pub fn build(
+    self,
+    gpu: &Gpu,
+    surface_format: texture::TextureFormat,
+    depth_format: texture::DepthFormat,
+  ) -> RenderPass {
     let sample_count = self.resolve_sample_count(
       self.sample_count,
-      render_context.surface_format(),
-      render_context.depth_format(),
-      |count| render_context.supports_surface_sample_count(count),
-      |format, count| render_context.supports_depth_sample_count(format, count),
+      surface_format.to_platform(),
+      depth_format,
+      |count| gpu.supports_sample_count_for_format(surface_format, count),
+      |format, count| gpu.supports_sample_count_for_depth(format, count),
     );
 
     return RenderPass {
@@ -302,14 +371,14 @@ impl RenderPassBuilder {
   fn resolve_sample_count<FSurface, FDepth>(
     &self,
     sample_count: u32,
-    surface_format: platform::surface::SurfaceFormat,
-    depth_format: platform::texture::DepthFormat,
+    surface_format: platform::texture::TextureFormat,
+    depth_format: texture::DepthFormat,
     supports_surface: FSurface,
     supports_depth: FDepth,
   ) -> u32
   where
     FSurface: Fn(u32) -> bool,
-    FDepth: Fn(platform::texture::DepthFormat, u32) -> bool,
+    FDepth: Fn(texture::DepthFormat, u32) -> bool,
   {
     let mut resolved_sample_count = sample_count.max(1);
 
@@ -330,7 +399,7 @@ impl RenderPassBuilder {
       self.depth_operations.is_some() || self.stencil_operations.is_some();
     if wants_depth_or_stencil && resolved_sample_count > 1 {
       let validated_depth_format = if self.stencil_operations.is_some() {
-        platform::texture::DepthFormat::Depth24PlusStencil8
+        texture::DepthFormat::Depth24PlusStencil8
       } else {
         depth_format
       };
@@ -358,6 +427,18 @@ pub enum StencilLoadOp {
   Clear(u32),
 }
 
+impl StencilLoadOp {
+  /// Convert to the platform stencil load operation.
+  pub(crate) fn to_platform(self) -> platform::render_pass::StencilLoadOp {
+    return match self {
+      StencilLoadOp::Load => platform::render_pass::StencilLoadOp::Load,
+      StencilLoadOp::Clear(value) => {
+        platform::render_pass::StencilLoadOp::Clear(value)
+      }
+    };
+  }
+}
+
 /// Stencil operations for the first stencil attachment.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StencilOperations {
@@ -374,14 +455,24 @@ impl Default for StencilOperations {
   }
 }
 
+impl StencilOperations {
+  /// Convert to the platform stencil operations.
+  pub(crate) fn to_platform(self) -> platform::render_pass::StencilOperations {
+    return platform::render_pass::StencilOperations {
+      load: self.load.to_platform(),
+      store: self.store.to_platform(),
+    };
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use std::cell::RefCell;
 
   use super::*;
 
-  fn surface_format() -> platform::surface::SurfaceFormat {
-    return platform::surface::SurfaceFormat::BGRA8_UNORM_SRGB;
+  fn surface_format() -> platform::texture::TextureFormat {
+    return platform::texture::TextureFormat::BGRA8_UNORM_SRGB;
   }
 
   /// Falls back when the surface format rejects the requested sample count.
@@ -392,7 +483,7 @@ mod tests {
     let resolved = builder.resolve_sample_count(
       4,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return false;
       },
@@ -412,7 +503,7 @@ mod tests {
     let resolved = builder.resolve_sample_count(
       8,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return true;
       },
@@ -428,13 +519,13 @@ mod tests {
   #[test]
   fn stencil_support_uses_stencil_capable_depth_format() {
     let builder = RenderPassBuilder::new().with_stencil().with_multi_sample(2);
-    let requested_formats: RefCell<Vec<platform::texture::DepthFormat>> =
+    let requested_formats: RefCell<Vec<texture::DepthFormat>> =
       RefCell::new(Vec::new());
 
     let resolved = builder.resolve_sample_count(
       2,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return true;
       },
@@ -447,7 +538,7 @@ mod tests {
     assert_eq!(resolved, 2);
     assert_eq!(
       requested_formats.borrow().first().copied(),
-      Some(platform::texture::DepthFormat::Depth24PlusStencil8)
+      Some(texture::DepthFormat::Depth24PlusStencil8)
     );
   }
 
@@ -459,7 +550,7 @@ mod tests {
     let resolved = builder.resolve_sample_count(
       4,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return true;
       },
@@ -479,7 +570,7 @@ mod tests {
     let resolved = builder.resolve_sample_count(
       0,
       surface_format(),
-      platform::texture::DepthFormat::Depth32Float,
+      texture::DepthFormat::Depth32Float,
       |_samples| {
         return true;
       },

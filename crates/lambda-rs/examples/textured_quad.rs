@@ -106,7 +106,11 @@ impl Component<ComponentResult, String> for TexturedQuadExample {
     // Build render pass and shaders
     let render_pass = RenderPassBuilder::new()
       .with_label("textured-quad-pass")
-      .build(render_context);
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+      );
 
     let mut shader_builder = ShaderBuilder::new();
     let shader_vs = shader_builder.build(VirtualShader::Source {
@@ -209,35 +213,42 @@ impl Component<ComponentResult, String> for TexturedQuadExample {
       .with_size(tex_w, tex_h)
       .with_data(&pixels)
       .with_label("checkerboard")
-      .build(render_context)
+      .build(render_context.gpu())
       .expect("Failed to create texture");
 
     let sampler = SamplerBuilder::new()
       .linear_clamp()
       .with_label("linear-clamp")
-      .build(render_context);
+      .build(render_context.gpu());
 
     // Layout: binding(1) texture2D, binding(2) sampler
     let layout = BindGroupLayoutBuilder::new()
       .with_sampled_texture(1)
       .with_sampler(2)
-      .build(render_context);
+      .build(render_context.gpu());
 
     let bind_group = BindGroupBuilder::new()
       .with_layout(&layout)
       .with_texture(1, &texture)
       .with_sampler(2, &sampler)
-      .build(render_context);
+      .build(render_context.gpu());
 
     let pipeline = RenderPipelineBuilder::new()
       .with_culling(CullingMode::None)
       .with_layouts(&[&layout])
       .with_buffer(
-        BufferBuilder::build_from_mesh(&mesh, render_context)
+        BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
           .expect("Failed to create vertex buffer"),
         mesh.attributes().to_vec(),
       )
-      .build(render_context, &render_pass, &shader_vs, Some(&shader_fs));
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+        &render_pass,
+        &shader_vs,
+        Some(&shader_fs),
+      );
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));

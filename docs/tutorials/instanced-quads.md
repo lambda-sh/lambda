@@ -3,19 +3,20 @@ title: "Instanced Rendering: Grid of Colored Quads"
 document_id: "instanced-quads-tutorial-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-11-25T02:20:00Z"
-version: "0.1.1"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "c8f727f3774029135ed1f7a7224288faf7b9e442"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "instancing", "vertex-buffers", "rust", "wgpu"]
 ---
 
 ## Overview <a name="overview"></a>
+
 This tutorial builds an instanced rendering example using the `lambda-rs` crate. The final application renders a grid of 2D quads that all share the same geometry but read per-instance offsets and colors from a second vertex buffer. The example demonstrates how to configure per-vertex and per-instance buffers, construct an instanced render pipeline, and issue draw commands with a multi-instance range.
 
 Reference implementation: `crates/lambda-rs/examples/instanced_quads.rs`.
@@ -69,6 +70,7 @@ Render Pass
 ## Implementation Steps <a name="implementation-steps"></a>
 
 ### Step 1 — Shaders and Attribute Layout <a name="step-1"></a>
+
 Step 1 defines the vertex and fragment shaders for instanced quads. The vertex shader consumes per-vertex positions and per-instance offsets and colors, and the fragment shader writes the interpolated color.
 
 ```glsl
@@ -101,6 +103,7 @@ void main() {
 Attribute locations `0`, `1`, and `2` correspond to pipeline vertex attribute definitions for the per-vertex position and the per-instance offset and color. These locations will be matched by `VertexAttribute` entries when the render pipeline is constructed.
 
 ### Step 2 — Vertex and Instance Types and Component State <a name="step-2"></a>
+
 Step 2 introduces the Rust vertex and instance structures and prepares the component state. The component stores compiled shaders and identifiers for the render pass, pipeline, and buffers.
 
 ```rust
@@ -210,6 +213,7 @@ impl Default for InstancedQuadsExample {
 The `QuadVertex` and `InstanceData` structures mirror the GLSL inputs as arrays of `f32`, and the component tracks resource identifiers and counts that are populated during attachment. The `Default` implementation constructs shader objects from the GLSL source so that the component is ready to build a pipeline when it receives a `RenderContext`.
 
 ### Step 3 — Render Pass, Geometry, Instances, and Buffers <a name="step-3"></a>
+
 Step 3 implements the `on_attach` method for the component. This method creates the render pass, quad geometry, instance data, GPU buffers, and the render pipeline. It also records the number of indices and instances for use during rendering.
 
 ```rust
@@ -217,7 +221,11 @@ fn on_attach(
   &mut self,
   render_context: &mut RenderContext,
 ) -> Result<ComponentResult, String> {
-  let render_pass = RenderPassBuilder::new().build(render_context);
+  let render_pass = RenderPassBuilder::new().build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+  );
 
   // Quad geometry in clip space centered at the origin.
   let quad_vertices: Vec<QuadVertex> = vec![
@@ -269,7 +277,7 @@ fn on_attach(
     .with_properties(Properties::DEVICE_LOCAL)
     .with_buffer_type(BufferType::Vertex)
     .with_label("instanced-quads-vertices")
-    .build(render_context, quad_vertices)
+    .build(render_context.gpu(), quad_vertices)
     .map_err(|error| error.to_string())?;
 
   let instance_buffer = BufferBuilder::new()
@@ -277,7 +285,7 @@ fn on_attach(
     .with_properties(Properties::DEVICE_LOCAL)
     .with_buffer_type(BufferType::Vertex)
     .with_label("instanced-quads-instances")
-    .build(render_context, instances)
+    .build(render_context.gpu(), instances)
     .map_err(|error| error.to_string())?;
 
   let index_buffer = BufferBuilder::new()
@@ -285,7 +293,7 @@ fn on_attach(
     .with_properties(Properties::DEVICE_LOCAL)
     .with_buffer_type(BufferType::Index)
     .with_label("instanced-quads-indices")
-    .build(render_context, indices)
+    .build(render_context.gpu(), indices)
     .map_err(|error| error.to_string())?;
 
   // Vertex attributes for per-vertex positions in slot 0.
@@ -323,7 +331,9 @@ fn on_attach(
     .with_buffer(vertex_buffer, vertex_attributes)
     .with_instance_buffer(instance_buffer, instance_attributes)
     .build(
-      render_context,
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
       &render_pass,
       &self.vertex_shader,
       Some(&self.fragment_shader),
@@ -346,6 +356,7 @@ fn on_attach(
 The first buffer created by `with_buffer` is treated as a per-vertex buffer in slot `0`, while `with_instance_buffer` registers the instance buffer in slot `1` with per-instance step mode. The `vertex_attributes` and `instance_attributes` vectors connect shader locations `0`, `1`, and `2` to their corresponding buffer slots and formats, and the component records index and instance counts for later draws. The effective byte offset of each attribute is computed as `attribute.offset + attribute.element.offset`. In this example `attribute.offset` is kept at `0` for all attributes, and the struct layout is expressed entirely through `VertexElement::offset` (for example, the `color` field in `InstanceData` starts 12 bytes after the `offset` field). More complex layouts MAY use a non-zero `attribute.offset` to reuse the same attribute description at different base positions within a vertex or instance element.
 
 ### Step 4 — Resize Handling and Updates <a name="step-4"></a>
+
 Step 4 wires window resize events into the component and implements detach and update hooks. The resize handler keeps `width` and `height` in sync with the window so that the viewport matches the surface size.
 
 ```rust
@@ -387,6 +398,7 @@ fn on_update(
 The component does not modify instance data over time, so `on_update` is a no-op. The resize path is the only dynamic input and ensures that the viewport used during rendering matches the current window size.
 
 ### Step 5 — Render Commands and Runtime Entry Point <a name="step-5"></a>
+
 Step 5 records the render commands that bind the pipeline, vertex buffers, and index buffer, then wires the component into the `lambda-rs` runtime as a windowed application.
 
 ```rust
@@ -497,5 +509,6 @@ This tutorial demonstrates how the `lambda-rs` crate uses per-vertex and per-ins
 
 ## Changelog <a name="changelog"></a>
 
+- 2025-12-15 (v0.2.0) — Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-25 (v0.1.1) — Align feature naming with `render-validation-instancing` and update metadata.
 - 2025-11-25 (v0.1.0) — Initial instanced quads tutorial describing per-vertex and per-instance buffers and the `instanced_quads` example.
