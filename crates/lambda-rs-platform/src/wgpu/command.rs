@@ -18,7 +18,7 @@ pub struct CommandBuffer {
 
 impl CommandBuffer {
   /// Convert to the raw wgpu command buffer.
-  pub fn into_raw(self) -> wgpu::CommandBuffer {
+  pub(crate) fn into_raw(self) -> wgpu::CommandBuffer {
     self.raw
   }
 }
