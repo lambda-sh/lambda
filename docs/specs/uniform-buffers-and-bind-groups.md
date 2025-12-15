@@ -18,6 +18,7 @@ tags: ["spec", "rendering", "uniforms", "bind-groups", "wgpu"]
 # Uniform Buffers and Bind Groups
 
 Summary
+
 - Specifies uniform buffer objects (UBOs) and bind groups for the
   wgpu‑backed renderer, preserving builder/command patterns and the separation
   between platform and high‑level layers.
@@ -72,6 +73,7 @@ Summary
     platform layer.
 
 Data flow (one-time setup → per-frame):
+
 ```
 BindGroupLayoutBuilder --> BindGroupLayout --+--> RenderPipelineBuilder (layouts)
                                              |
@@ -142,6 +144,7 @@ Per-frame commands: BeginRenderPass -> SetPipeline -> SetBindGroup -> Draw -> En
 ## Example Usage
 
 Rust (high level)
+
 ```rust
 use lambda::render::{
   bind::{BindGroupLayoutBuilder, BindGroupBuilder, BindingVisibility},
@@ -198,6 +201,7 @@ rc.render(cmds);
 ```
 
 WGSL snippet
+
 ```wgsl
 struct Globals { view_proj: mat4x4<f32>; };
 @group(0) @binding(0) var<uniform> globals: Globals;
@@ -209,12 +213,14 @@ fn vs_main(in_pos: vec3<f32>) -> @builtin(position) vec4<f32> {
 ```
 
 GLSL snippet (via naga -> SPIR-V)
+
 ```glsl
 layout(set = 0, binding = 0) uniform Globals { mat4 view_proj; } globals;
 void main() { gl_Position = globals.view_proj * vec4(in_pos, 1.0); }
 ```
 
 Dynamic offsets
+
 ```rust
 let dyn_layout = BindGroupLayoutBuilder::new()
   .with_uniform_dynamic(0, BindingVisibility::Vertex)
@@ -226,6 +232,7 @@ let stride = lambda::render::validation::align_up(size, align);
 let offsets = vec![0u32, stride as u32, (2*stride) as u32];
 RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
 ```
+
 ## Performance Considerations
 
 - Prefer `Properties::DEVICE_LOCAL` for long‑lived uniform buffers that are
@@ -292,8 +299,6 @@ RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
 - No breaking changes. The feature is additive. Existing pipelines without bind
   groups continue to function. New pipelines MAY specify layouts via
   `with_layouts` without impacting prior behavior.
-
-
 
 ## Changelog
 

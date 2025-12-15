@@ -16,11 +16,13 @@ tags: ["tutorial", "graphics", "indexed-draws", "vertex-buffers", "rust", "wgpu"
 ---
 
 ## Overview <a name="overview"></a>
+
 This tutorial constructs a small scene rendered with indexed geometry and multiple vertex buffers. The example separates per-vertex positions from per-vertex colors and draws the result using the engine’s high-level buffer and command builders.
 
 Reference implementation: `crates/lambda-rs/examples/indexed_multi_vertex_buffers.rs`.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Goals](#goals)
 - [Prerequisites](#prerequisites)
@@ -86,6 +88,7 @@ Render Pass → wgpu::RenderPass::{set_vertex_buffer, set_index_buffer, draw_ind
 ## Implementation Steps <a name="implementation-steps"></a>
 
 ### Step 1 — Shaders and Vertex Types <a name="step-1"></a>
+
 Step 1 defines the shader interface and vertex structures used by the example. The shaders consume positions and colors at locations `0` and `1`, and the vertex types store those attributes as three-component floating-point arrays.
 
 ```glsl
@@ -130,6 +133,7 @@ struct ColorVertex {
 The shader `location` qualifiers match the vertex buffer layouts declared on the pipeline, and the `PositionVertex` and `ColorVertex` types mirror the `vec3` inputs as `[f32; 3]` arrays in Rust.
 
 ### Step 2 — Component State and Shader Construction <a name="step-2"></a>
+
 Step 2 introduces the `IndexedMultiBufferExample` component and its `Default` implementation, which builds shader objects from the GLSL source and initializes render-resource fields and window dimensions.
 
 ```rust
@@ -192,6 +196,7 @@ impl Default for IndexedMultiBufferExample {
 This `Default` implementation ensures that the component has valid shaders and initial dimensions before it attaches to the render context.
 
 ### Step 3 — Render Pass, Vertex Data, Buffers, and Pipeline <a name="step-3"></a>
+
 Step 3 implements `on_attach` to create the render pass, vertex and index data, GPU buffers, and the render pipeline, then attaches them to the `RenderContext`.
 
 ```rust
@@ -328,6 +333,7 @@ fn on_attach(
 The pipeline uses the order of `with_buffer` calls to assign vertex buffer slots. The first buffer occupies slot `0` and provides attributes at location `0`, while the second buffer occupies slot `1` and provides attributes at location `1`. The component stores attached resource identifiers and the index count for use during rendering.
 
 ### Step 4 — Resize Handling and Updates <a name="step-4"></a>
+
 Step 4 wires window resize events into the component and implements detach and update hooks. The resize handler keeps `width` and `height` in sync with the window so that the viewport matches the surface size.
 
 ```rust
@@ -368,6 +374,7 @@ fn on_update(
 The resize path is the only dynamic input in this example. The update hook is a no-op that keeps the component interface aligned with other examples.
 
 ### Step 5 — Render Commands and Runtime Entry Point <a name="step-5"></a>
+
 Step 5 records the render commands that bind the pipeline, vertex buffers, and index buffer, and then wires the component into the runtime as a windowed application.
 
 ```rust

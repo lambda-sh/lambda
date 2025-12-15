@@ -18,6 +18,7 @@ tags: ["spec", "rendering", "depth", "stencil", "msaa"]
 # Depth/Stencil and Multi-Sample Rendering
 
 Summary
+
 - Add configurable depth testing/writes and multi-sample anti-aliasing (MSAA)
   to the high-level rendering API via builders, without exposing `wgpu` types.
 - Provide validation and predictable defaults to enable 3D scenes and
@@ -85,6 +86,7 @@ App Code
     - `RenderPipelineBuilder::with_stencil(StencilState) -> Self`
     - `RenderPipelineBuilder::with_multi_sample(u32) -> Self`
   - Example (engine types only)
+
     ```rust
     use lambda::render::render_pass::RenderPassBuilder;
     use lambda::render::pipeline::{RenderPipelineBuilder, CompareFunction};
@@ -113,6 +115,7 @@ App Code
         Some(&fragment_shader),
       );
     ```
+
 - Behavior
   - Defaults
     - If neither depth nor stencil is requested on the pass, the pass MUST NOT
@@ -178,6 +181,7 @@ App Code
   - `render-validation-device`: device/format capability advisories (MSAA sample support).
 
 Always-on safeguards (release and debug)
+
 - Clamp depth clear to `[0.0, 1.0]`.
 - Align pipeline `sample_count` to the pass `sample_count`.
 - Clamp invalid MSAA sample counts to `1`.
@@ -254,6 +258,7 @@ Always-on safeguards (release and debug)
   defaults (no depth, no multi-sampling) unless explicitly configured.
 
 ## Changelog
+
 - 2025-12-15 (v0.5.0) — Update example code to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-21 (v0.4.1) — Clarify depth attachment and clear behavior for
   stencil-only passes; align specification with engine behavior that preserves

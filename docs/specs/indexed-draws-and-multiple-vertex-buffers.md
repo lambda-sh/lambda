@@ -18,6 +18,7 @@ tags: ["spec", "rendering", "vertex-input", "indexed-draws"]
 # Indexed Draws and Multiple Vertex Buffers
 
 ## Table of Contents
+
 - [Summary](#summary)
 - [Scope](#scope)
 - [Terminology](#terminology)

@@ -24,6 +24,7 @@ This document outlines current engine capabilities, the gaps to address for 2D/3
 Key modules: windowing/events (winit), GPU (wgpu), render context, runtime loop, and GLSL→SPIR‑V shader compilation (naga).
 
 Frame flow:
+
 ```
 App Components --> ApplicationRuntime --> RenderContext --> wgpu (Device/Queue/Surface)
          |                 |                 |                  |
@@ -49,6 +50,7 @@ Currently supported commands: Begin/EndRenderPass, SetPipeline, SetViewports, Se
 ## Targeted API Additions (sketches)
 
 Bind groups and uniforms (value: larger, structured GPU data; portable across adapters; enables cameras/materials):
+
 ```rust
 // Layout with one uniform buffer at set(0) binding(0)
 let layout = BindGroupLayoutBuilder::new()
@@ -84,10 +86,12 @@ RC::Draw { vertices: 0..3 };
 ```
 
 Notes
+
 - UBO vs push constants: UBOs scale to KBs and are supported widely; use for view/projection and per‑frame data.
 - Dynamic offsets (optional later) let you pack many small structs into one UBO.
 
 Textures and samplers (value: sprites, materials, UI images; sRGB correctness):
+
 ```rust
 let tex = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
   .with_size(w, h)
@@ -109,6 +113,7 @@ let tex_group = BindGroupBuilder::new(&tex_layout)
 ```
 
 Index draw and instancing (value: reduce vertex duplication; batch many objects in one draw):
+
 ```rust
 RC::BindVertexBuffer { pipeline: pipe_id, buffer: 0 };
 RC::BindVertexBuffer { pipeline: pipe_id, buffer: 1 }; // instances
@@ -117,6 +122,7 @@ RC::DrawIndexed { indices: 0..index_count, base_vertex: 0, instances: 0..instanc
 ```
 
 Instance buffer attributes example
+
 ```rust
 // slot 1: per-instance mat3x2 (2D) packed as 3x vec2, plus tint color
 let instance_attrs = vec![
@@ -130,6 +136,7 @@ let instance_attrs = vec![
 ```
 
 Depth/MSAA (value: correct 3D visibility and improved edge quality):
+
 ```rust
 let pass = RenderPassBuilder::new()
   .with_clear_color(wgpu::Color::BLACK)
@@ -154,10 +161,12 @@ let pipe = RenderPipelineBuilder::new()
 ```
 
 Notes
+
 - Use reversed‑Z (Greater) later for precision, but start with Less.
 - MSAA sample count must match between pass and pipeline.
 
 Offscreen render targets (value: post‑processing, shadow maps, UI composition, picking):
+
 ```rust
 let offscreen = RenderTargetBuilder::new()
   .with_color(TextureFormat::Rgba8UnormSrgb, width, height)
@@ -189,6 +198,7 @@ RC::EndRenderPass;
 ```
 
 WGSL support (value: first‑class wgpu shader language, fewer translation pitfalls):
+
 ```rust
 let vs = VirtualShader::WgslSource { source: include_str!("shaders/quad.wgsl").into(), name: "quad".into(), entry_point: "vs_main".into() };
 let fs = VirtualShader::WgslSource { source: include_str!("shaders/quad.wgsl").into(), name: "quad".into(), entry_point: "fs_main".into() };
@@ -201,6 +211,7 @@ Shader hot‑reload (value: faster iteration; no rebuild): watch file timestamps
 Goals: sprite batching via instancing; atlas textures; ortho camera; input mapping; text HUD. Target 60 FPS with 10k sprites (mid‑range GPU).
 
 Core draw:
+
 ```rust
 RC::BeginRenderPass { render_pass: pass_id, viewport };
 RC::SetPipeline { pipeline: pipe_id };
@@ -214,12 +225,14 @@ RC::EndRenderPass;
 ```
 
 Building instance data each frame (value: dynamic transforms with minimal overhead):
+
 ```rust
 // CPU side: update transforms and pack into a Vec<Instance>
 queue.write_buffer(instance_vbo.raw(), 0, bytemuck::cast_slice(&instances));
 ```
 
 Text rendering options (value: legible UI/HUD):
+
 - Bitmap font atlas: simplest path; pack glyphs into the sprite pipeline.
 - glyphon/glyph_brush integration: high‑quality layout; more deps; implement later.
 
@@ -230,6 +243,7 @@ Goals: depth test/write, indexed mesh, textured material, simple lighting; orbit
 Core draw mirrors 2D but with depth enabled and mesh buffers.
 
 Camera helpers (value: reduce boilerplate and bugs):
+
 ```rust
 let proj = matrix::perspective_matrix(60f32.to_radians(), width as f32 / height as f32, 0.1, 100.0);
 let view = matrix::translation_matrix([0.0, 0.0, -5.0]); // or look_at helper later

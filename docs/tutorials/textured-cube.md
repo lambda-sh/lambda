@@ -16,11 +16,13 @@ tags: ["tutorial", "graphics", "3d", "push-constants", "textures", "samplers", "
 ---
 
 ## Overview <a name="overview"></a>
+
 This tutorial builds a spinning 3D cube that uses push constants to provide model‑view‑projection (MVP) and model matrices to the vertex shader, and samples a 2D checkerboard texture in the fragment shader. Depth testing and back‑face culling are enabled so hidden faces do not render.
 
 Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Goals](#goals)
 - [Prerequisites](#prerequisites)
@@ -51,10 +53,12 @@ Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
 - Sample a 2D texture in the fragment stage using a separate sampler, and apply simple Lambert lighting to emphasize shape.
 
 ## Prerequisites <a name="prerequisites"></a>
+
 - Workspace builds: `cargo build --workspace`.
 - Run a quick example: `cargo run --example minimal`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
+
 - Push constant size and stage visibility MUST match the shader declaration. This example sends 128 bytes (two `mat4`), at vertex stage only.
 - The push constant byte order MUST match the shader’s expected matrix layout. This example transposes matrices before upload to match column‑major multiplication in GLSL.
 - Face winding MUST be counter‑clockwise (CCW) for back‑face culling to work with `CullingMode::Back`.
@@ -83,6 +87,7 @@ Render Pass (depth enabled, back‑face culling) → Draw 36 vertices
 ## Implementation Steps <a name="implementation-steps"></a>
 
 ### Step 1 — Runtime and Component Skeleton <a name="step-1"></a>
+
 Create the application runtime and a `Component` that stores shader handles, GPU resource identifiers, window size, and elapsed time for animation.
 
 ```rust
@@ -151,6 +156,7 @@ fn main() {
 This scaffold establishes the runtime and stores component state required to create resources and animate the cube.
 
 ### Step 2 — Shaders with Push Constants <a name="step-2"></a>
+
 Define GLSL 450 shaders. The vertex shader declares a push constant block with two `mat4` values: `mvp` and `model`. The fragment shader samples a 2D texture using a separate sampler and applies simple Lambert lighting for shape definition.
 
 ```glsl
@@ -221,6 +227,7 @@ void main() {
 Compile these as `VirtualShader::Source` instances using `ShaderBuilder` during `on_attach` or `Default`. Keep the binding indices in the shader consistent with the Rust side.
 
 ### Step 3 — Cube Mesh and Vertex Layout <a name="step-3"></a>
+
 Build a unit cube centered at the origin. The following snippet uses a helper to add a face as two triangles with a shared normal. Attribute layout matches the shaders: location 0 = position, 1 = normal, 2 = color (unused).
 
 ```rust
@@ -280,6 +287,7 @@ let mesh: Mesh = mesh_builder
 This produces 36 vertices (6 faces × 2 triangles × 3 vertices) with CCW winding and per‑face normals.
 
 ### Step 4 — Build a 2D Checkerboard Texture <a name="step-4"></a>
+
 Generate a simple grayscale checkerboard and upload it as an sRGB 2D texture.
 
 ```rust
@@ -311,6 +319,7 @@ let texture2d = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
 Using `Rgba8UnormSrgb` ensures sampling converts from sRGB to linear space before shading.
 
 ### Step 5 — Create a Sampler <a name="step-5"></a>
+
 Create a linear filtering sampler with clamp‑to‑edge addressing.
 
 ```rust
@@ -322,6 +331,7 @@ let sampler = SamplerBuilder::new()
 ```
 
 ### Step 6 — Bind Group Layout and Bind Group <a name="step-6"></a>
+
 Declare the layout and bind the texture and sampler at set 0, bindings 1 and 2.
 
 ```rust
@@ -340,6 +350,7 @@ let bind_group = BindGroupBuilder::new()
 ```
 
 ### Step 7 — Render Pipeline with Depth and Culling <a name="step-7"></a>
+
 Enable depth, back‑face culling, and declare a vertex buffer built from the mesh. Add a push constant range for the vertex stage.
 
 ```rust
@@ -386,6 +397,7 @@ self.bind_group = Some(render_context.attach_bind_group(bind_group));
 ```
 
 ### Step 8 — Per‑Frame Camera and Transforms <a name="step-8"></a>
+
 Compute yaw and pitch from elapsed time, build `model`, `view`, and perspective `projection`, then combine to an MVP matrix. Update `elapsed` in `on_update`.
 
 ```rust
@@ -423,6 +435,7 @@ let mvp = projection.multiply(&view).multiply(&model);
 This multiplication order produces clip‑space positions as `mvp * vec4(position, 1)`. The final upload transposes matrices to match GLSL column‑major layout.
 
 ### Step 9 — Record Draw Commands with Push Constants <a name="step-9"></a>
+
 Define a push constant struct and a helper to reinterpret it as `[u32]`. Record commands to begin the pass, set pipeline state, bind the texture and sampler, push constants, and draw 36 vertices.
 
 ```rust
@@ -474,6 +487,7 @@ let commands = vec![
 ```
 
 ### Step 10 — Handle Window Resize <a name="step-10"></a>
+
 Track window size from events so the projection and viewport use current dimensions.
 
 ```rust
@@ -489,11 +503,13 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 ```
 
 ## Validation <a name="validation"></a>
+
 - Build the workspace: `cargo build --workspace`
 - Run the example: `cargo run -p lambda-rs --example textured_cube`
 - Expected behavior: a spinning cube shows a gray checkerboard on all faces, shaded by a directional light. Hidden faces do not render due to back‑face culling and depth testing.
 
 ## Notes <a name="notes"></a>
+
 - Push constant limits: total size MUST be within the device’s push constant limit. This example uses 128 bytes, which fits common defaults.
 - Matrix layout: GLSL multiplies column‑major by default; transposing on upload aligns memory layout and multiplication order.
 - Normal transform: `mat3(model)` is correct when the model matrix contains only rotations and uniform scale. For non‑uniform scale, compute the normal matrix as the inverse‑transpose of the upper‑left 3×3.
@@ -502,6 +518,7 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 - Indices: the cube uses non‑indexed vertices for clarity. An index buffer SHOULD be used for efficiency in production code.
 
 ## Conclusion <a name="conclusion"></a>
+
 This tutorial delivered a rotating, textured cube with depth testing and
 back‑face culling. It compiled shaders that use a vertex push‑constant block
 for model‑view‑projection and model matrices, built a cube mesh and vertex
@@ -511,10 +528,12 @@ constants, and draw commands were recorded. The result demonstrates push
 constants for per‑draw transforms alongside 2D sampling in a 3D render path.
 
 ## Putting It Together <a name="putting-it-together"></a>
+
 - Full reference: `crates/lambda-rs/examples/textured_cube.rs`
 - The example includes logging in `on_attach` and uses the same builders and commands shown here.
 
 ## Exercises <a name="exercises"></a>
+
 - Exercise 1: Add roll
   - Add a Z‑axis rotation to the model matrix and verify culling remains correct.
 - Exercise 2: Nearest filtering
@@ -531,6 +550,7 @@ constants for per‑draw transforms alongside 2D sampling in a 3D render path.
   - Bind two textures and blend per face based on projected UVs.
 
 ## Changelog <a name="changelog"></a>
+
 - 0.2.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.1.1 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
 - 0.1.0 (2025-11-10): Initial draft aligned with `crates/lambda-rs/examples/textured_cube.rs` including push constants, depth, culling, and projected UV sampling.

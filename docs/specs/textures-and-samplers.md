@@ -18,6 +18,7 @@ tags: ["spec", "rendering", "textures", "samplers", "wgpu"]
 # Textures and Samplers
 
 Summary
+
 - Introduces first-class 2D and 3D sampled textures and samplers with a
   builder-based application programming interface and platform abstraction.
 - Rationale: Texture sampling is foundational for images, sprites, materials,
@@ -305,6 +306,7 @@ Render pass: SetPipeline -> SetBindGroup -> Draw
 ## Example Usage
 
 Rust (2D high level)
+
 ```rust
 use lambda::render::texture::{TextureBuilder, SamplerBuilder, TextureFormat};
 use lambda::render::bind::{BindGroupLayoutBuilder, BindGroupBuilder, BindingVisibility};
@@ -338,6 +340,7 @@ RC::SetBindGroup { set: 0, group: group_id, dynamic_offsets: vec![] };
 ```
 
 WGSL snippet (2D)
+
 ```wgsl
 @group(0) @binding(1) var texture_color: texture_2d<f32>;
 @group(0) @binding(2) var sampler_color: sampler;
@@ -350,6 +353,7 @@ fn fs_main(in_uv: vec2<f32>) -> @location(0) vec4<f32> {
 ```
 
 Rust (3D high level)
+
 ```rust
 use lambda::render::texture::{TextureBuilder, TextureFormat};
 use lambda::render::bind::{BindGroupLayoutBuilder, BindGroupBuilder};
@@ -375,6 +379,7 @@ let group3d = BindGroupBuilder::new()
 ```
 
 WGSL snippet (3D)
+
 ```wgsl
 @group(0) @binding(1) var volume_tex: texture_3d<f32>;
 @group(0) @binding(2) var volume_samp: sampler;
