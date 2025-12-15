@@ -89,7 +89,7 @@ pub struct Gpu {
 
 impl Gpu {
   /// Create a new high-level GPU from a platform GPU.
-  pub(crate) fn from_platform(gpu: platform::gpu::Gpu) -> Self {
+  fn from_platform(gpu: platform::gpu::Gpu) -> Self {
     let limits = GpuLimits::from_platform(gpu.limits());
     return Gpu { inner: gpu, limits };
   }
