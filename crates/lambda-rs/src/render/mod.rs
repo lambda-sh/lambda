@@ -67,6 +67,7 @@ use self::{
   },
   pipeline::RenderPipeline,
   render_pass::RenderPass as RenderPassDesc,
+  render_target::RenderTarget,
 };
 
 /// Builder for configuring a `RenderContext` tied to one window.
@@ -122,9 +123,7 @@ impl RenderContextBuilder {
       .with_label(&format!("{} Instance", name))
       .build();
 
-    let mut surface = platform::surface::SurfaceBuilder::new()
-      .with_label(&format!("{} Surface", name))
-      .build(instance.platform(), window.window_handle())
+    let mut surface = render_target::WindowSurface::new(&instance, window)
       .map_err(|e| {
         RenderContextError::SurfaceCreate(format!(
           "Failed to create rendering surface: {:?}",
@@ -145,10 +144,10 @@ impl RenderContextBuilder {
     let size = window.dimensions();
     surface
       .configure_with_defaults(
-        gpu.platform(),
+        &gpu,
         size,
-        surface::PresentMode::default().to_platform(),
-        texture::TextureUsages::RENDER_ATTACHMENT.to_platform(),
+        surface::PresentMode::default(),
+        texture::TextureUsages::RENDER_ATTACHMENT,
       )
       .map_err(|e| {
         RenderContextError::SurfaceConfig(format!(
@@ -162,8 +161,8 @@ impl RenderContextBuilder {
         "Surface was not configured".to_string(),
       )
     })?;
-    let config = surface::SurfaceConfig::from_platform(config);
     let texture_usage = config.usage;
+    let config = config.clone();
 
     // Initialize a depth texture matching the surface size.
     let depth_format = texture::DepthFormat::Depth32Float;
@@ -210,7 +209,7 @@ impl RenderContextBuilder {
 pub struct RenderContext {
   label: String,
   instance: instance::Instance,
-  surface: platform::surface::Surface<'static>,
+  surface: render_target::WindowSurface,
   gpu: gpu::Gpu,
   config: surface::SurfaceConfig,
   texture_usage: texture::TextureUsages,
@@ -443,22 +442,18 @@ impl RenderContext {
       return Ok(());
     }
 
-    let frame = match self.surface.acquire_next_frame() {
-      Ok(frame) => surface::Frame::from_platform(frame),
-      Err(err) => {
-        let high_level_err = surface::SurfaceError::from(err);
-        match high_level_err {
-          surface::SurfaceError::Lost | surface::SurfaceError::Outdated => {
-            self.reconfigure_surface(self.size)?;
-            let platform_frame =
-              self.surface.acquire_next_frame().map_err(|e| {
-                RenderError::Surface(surface::SurfaceError::from(e))
-              })?;
-            surface::Frame::from_platform(platform_frame)
-          }
-          _ => return Err(RenderError::Surface(high_level_err)),
+    let frame = match self.surface.acquire_frame() {
+      Ok(frame) => frame,
+      Err(err) => match err {
+        surface::SurfaceError::Lost | surface::SurfaceError::Outdated => {
+          self.reconfigure_surface(self.size)?;
+          self
+            .surface
+            .acquire_frame()
+            .map_err(|e| RenderError::Surface(e))?
         }
-      }
+        _ => return Err(RenderError::Surface(err)),
+      },
     };
 
     let view = frame.texture_view();
@@ -714,16 +709,15 @@ impl RenderContext {
   ) -> Result<(), RenderError> {
     self
       .surface
-      .resize(self.gpu.platform(), size)
+      .resize(&self.gpu, size)
       .map_err(RenderError::Configuration)?;
 
-    let platform_config = self.surface.configuration().ok_or_else(|| {
+    let config = self.surface.configuration().ok_or_else(|| {
       RenderError::Configuration("Surface was not configured".to_string())
     })?;
 
-    let config = surface::SurfaceConfig::from_platform(platform_config);
     self.texture_usage = config.usage;
-    self.config = config;
+    self.config = config.clone();
     return Ok(());
   }
 

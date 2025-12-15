@@ -25,6 +25,7 @@ use lambda_platform::wgpu as platform;
 
 use super::{
   instance::Instance,
+  render_target::WindowSurface,
   texture::{
     DepthFormat,
     TextureFormat,
@@ -226,11 +227,12 @@ impl GpuBuilder {
   pub fn build(
     self,
     instance: &Instance,
-    surface: Option<&platform::surface::Surface<'_>>,
+    surface: Option<&WindowSurface>,
   ) -> Result<Gpu, GpuBuildError> {
+    let platform_surface = surface.map(|s| s.platform());
     let platform_gpu = self
       .inner
-      .build(instance.platform(), surface)
+      .build(instance.platform(), platform_surface)
       .map_err(GpuBuildError::from_platform)?;
     return Ok(Gpu::from_platform(platform_gpu));
   }
