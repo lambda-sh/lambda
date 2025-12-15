@@ -3,13 +3,13 @@ title: "Textured Cube: 3D Push Constants + 2D Sampling"
 document_id: "textured-cube-tutorial-2025-11-10"
 status: "draft"
 created: "2025-11-10T00:00:00Z"
-last_updated: "2025-11-10T03:00:00Z"
-version: "0.1.1"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "fe79756541e33270eca76638400bb64c6ec9f732"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "3d", "push-constants", "textures", "samplers", "rust", "wgpu"]
@@ -304,7 +304,7 @@ let texture2d = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
   .with_size(tex_w, tex_h)
   .with_data(&pixels)
   .with_label("checkerboard")
-  .build(render_context)
+  .build(render_context.gpu())
   .expect("Failed to create 2D texture");
 ```
 
@@ -318,7 +318,7 @@ use lambda::render::texture::SamplerBuilder;
 
 let sampler = SamplerBuilder::new()
   .linear_clamp()
-  .build(render_context);
+  .build(render_context.gpu());
 ```
 
 ### Step 6 — Bind Group Layout and Bind Group <a name="step-6"></a>
@@ -330,13 +330,13 @@ use lambda::render::bind::{BindGroupBuilder, BindGroupLayoutBuilder};
 let layout = BindGroupLayoutBuilder::new()
   .with_sampled_texture(1)
   .with_sampler(2)
-  .build(render_context);
+  .build(render_context.gpu());
 
 let bind_group = BindGroupBuilder::new()
   .with_layout(&layout)
   .with_texture(1, &texture2d)
   .with_sampler(2, &sampler)
-  .build(render_context);
+  .build(render_context.gpu());
 ```
 
 ### Step 7 — Render Pipeline with Depth and Culling <a name="step-7"></a>
@@ -352,7 +352,11 @@ use lambda::render::{
 let render_pass = RenderPassBuilder::new()
   .with_label("textured-cube-pass")
   .with_depth()
-  .build(render_context);
+  .build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+  );
 
 let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
 
@@ -361,12 +365,19 @@ let pipeline = RenderPipelineBuilder::new()
   .with_depth()
   .with_push_constant(PipelineStage::VERTEX, push_constants_size)
   .with_buffer(
-    BufferBuilder::build_from_mesh(&mesh, render_context)
+    BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
       .expect("Failed to create vertex buffer"),
     mesh.attributes().to_vec(),
   )
   .with_layouts(&[&layout])
-  .build(render_context, &render_pass, &self.shader_vs, Some(&self.shader_fs));
+  .build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+    &render_pass,
+    &self.shader_vs,
+    Some(&self.shader_fs),
+  );
 
 // Attach to obtain ResourceId handles
 self.render_pass = Some(render_context.attach_render_pass(render_pass));
@@ -520,5 +531,6 @@ constants for per‑draw transforms alongside 2D sampling in a 3D render path.
   - Bind two textures and blend per face based on projected UVs.
 
 ## Changelog <a name="changelog"></a>
+- 0.2.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.1.1 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
 - 0.1.0 (2025-11-10): Initial draft aligned with `crates/lambda-rs/examples/textured_cube.rs` including push constants, depth, culling, and projected UV sampling.

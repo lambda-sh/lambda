@@ -3,13 +3,13 @@ title: "Textures and Samplers"
 document_id: "texture-sampler-spec-2025-10-30"
 status: "draft"
 created: "2025-10-30T00:00:00Z"
-last_updated: "2025-11-10T00:00:00Z"
-version: "0.3.1"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.4.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "fc5eb52c74eb0835225959f941db8e991112b87d"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "textures", "samplers", "wgpu"]
@@ -314,25 +314,25 @@ let texture2d = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
   .with_size(512, 512)
   .with_data(&pixels)
   .with_label("albedo")
-  .build(&mut render_context)?;
+  .build(render_context.gpu())?;
 
 let sampler = SamplerBuilder::new()
   .linear_clamp()
   .with_label("albedo-sampler")
-  .build(&mut render_context);
+  .build(render_context.gpu());
 
 let layout2d = BindGroupLayoutBuilder::new()
   .with_uniform(0, BindingVisibility::VertexAndFragment)
   .with_sampled_texture(1) // 2D shorthand
   .with_sampler(2)
-  .build(&mut render_context);
+  .build(render_context.gpu());
 
 let group2d = BindGroupBuilder::new()
   .with_layout(&layout2d)
   .with_uniform(0, &uniform_buffer)
   .with_texture(1, &texture2d)
   .with_sampler(2, &sampler)
-  .build(&mut render_context);
+  .build(render_context.gpu());
 
 RC::SetBindGroup { set: 0, group: group_id, dynamic_offsets: vec![] };
 ```
@@ -360,18 +360,18 @@ let texture3d = TextureBuilder::new_3d(TextureFormat::Rgba8Unorm)
   .with_size_3d(128, 128, 64)
   .with_data(&voxels)
   .with_label("volume")
-  .build(&mut render_context)?;
+  .build(render_context.gpu())?;
 
 let layout3d = BindGroupLayoutBuilder::new()
   .with_sampled_texture_dim(1, ViewDimension::D3, BindingVisibility::Fragment)
   .with_sampler(2)
-  .build(&mut render_context);
+  .build(render_context.gpu());
 
 let group3d = BindGroupBuilder::new()
   .with_layout(&layout3d)
   .with_texture(1, &texture3d)
   .with_sampler(2, &sampler)
-  .build(&mut render_context);
+  .build(render_context.gpu());
 ```
 
 WGSL snippet (3D)
@@ -389,7 +389,8 @@ fn fs_main(in_uv: vec2<f32>) -> @location(0) vec4<f32> {
 
 ## Changelog
 
-- 2025-11-10 (v0.3.1) — Merge “Future Extensions” into the Requirements
+- 2025-12-15 (v0.4.0) — Update example code to use `render_context.gpu()` for all builder calls.
+- 2025-11-10 (v0.3.1) — Merge "Future Extensions" into the Requirements
   Checklist and mark implemented status; metadata updated.
 - 2025-11-09 (v0.3.0) — Clarify layout visibility parameters; make sampler
   build infallible; correct `BindingVisibility` usage in examples;

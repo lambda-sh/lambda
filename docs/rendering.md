@@ -1,3 +1,20 @@
+---
+title: "Lambda RS Rendering Guide"
+document_id: "rendering-guide-2025-09-24"
+status: "living"
+created: "2025-09-24T00:00:00Z"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.2.0"
+engine_workspace_version: "2023.1.30"
+wgpu_version: "26.0.1"
+shader_backend_default: "naga"
+winit_version: "0.29.10"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
+owners: ["lambda-sh"]
+reviewers: ["engine", "rendering"]
+tags: ["guide", "rendering", "wgpu", "shaders", "pipelines"]
+---
+
 # Lambda RS Rendering Guide (wgpu backend)
 
 This guide shows how to build windows, compile shaders, create pipelines,
@@ -117,7 +134,11 @@ use lambda_platform::wgpu::types as wgpu;
 
 let pass = RenderPassBuilder::new()
   .with_clear_color(wgpu::Color { r: 0.02, g: 0.02, b: 0.06, a: 1.0 })
-  .build(&render_context);
+  .build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+  );
 ```
 
 ## Vertex Data: Mesh and Buffer
@@ -212,4 +233,3 @@ if let Events::Window { event: WindowEvent::Resize { width, height }, .. } = e {
   the feature flag `with-shaderc`.
 - All examples live under `crates/lambda-rs/examples/` and are runnable via:
   `cargo run -p lambda-rs --example <name>`
-

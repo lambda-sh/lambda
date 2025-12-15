@@ -3,13 +3,13 @@ title: "Depth/Stencil and Multi-Sample Rendering"
 document_id: "depth-stencil-msaa-2025-11-11"
 status: "draft"
 created: "2025-11-11T00:00:00Z"
-last_updated: "2025-11-21T22:00:00Z"
-version: "0.4.1"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.5.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "415167f4238c21debb385eef1192e2da7476c586"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "depth", "stencil", "msaa"]
@@ -94,13 +94,24 @@ App Code
       .with_clear_color([0.0, 0.0, 0.0, 1.0])
       .with_depth_clear(1.0)
       .with_multi_sample(4)
-      .build(&render_context);
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+      );
 
     let pipeline = RenderPipelineBuilder::new()
       .with_multi_sample(4)
       .with_depth_format(DepthFormat::Depth32Float)
       .with_depth_compare(CompareFunction::Less)
-      .build(&mut render_context, &pass, &vertex_shader, Some(&fragment_shader));
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+        &pass,
+        &vertex_shader,
+        Some(&fragment_shader),
+      );
     ```
 - Behavior
   - Defaults
@@ -243,6 +254,7 @@ Always-on safeguards (release and debug)
   defaults (no depth, no multi-sampling) unless explicitly configured.
 
 ## Changelog
+- 2025-12-15 (v0.5.0) — Update example code to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-21 (v0.4.1) — Clarify depth attachment and clear behavior for
   stencil-only passes; align specification with engine behavior that preserves
   depth when only stencil operations are configured.

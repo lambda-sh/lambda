@@ -3,13 +3,13 @@ title: "Indexed Draws and Multiple Vertex Buffers"
 document_id: "indexed-draws-multiple-vertex-buffers-tutorial-2025-11-22"
 status: "draft"
 created: "2025-11-22T00:00:00Z"
-last_updated: "2025-11-23T00:00:00Z"
-version: "0.2.0"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.3.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "db7fa78d143e5ff69028413fe86c948be9ba76ee"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "indexed-draws", "vertex-buffers", "rust", "wgpu"]
@@ -219,7 +219,11 @@ fn on_attach(
   &mut self,
   render_context: &mut RenderContext,
 ) -> Result<ComponentResult, String> {
-    let render_pass = RenderPassBuilder::new().build(render_context);
+    let render_pass = RenderPassBuilder::new().build(
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
+    );
 
     let positions: Vec<PositionVertex> = vec![
       PositionVertex {
@@ -259,7 +263,7 @@ fn on_attach(
       .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Vertex)
       .with_label("indexed-positions")
-      .build(render_context, positions)
+      .build(render_context.gpu(), positions)
       .map_err(|error| error.to_string())?;
 
     let color_buffer = BufferBuilder::new()
@@ -267,7 +271,7 @@ fn on_attach(
       .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Vertex)
       .with_label("indexed-colors")
-      .build(render_context, colors)
+      .build(render_context.gpu(), colors)
       .map_err(|error| error.to_string())?;
 
     let index_buffer = BufferBuilder::new()
@@ -275,7 +279,7 @@ fn on_attach(
       .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Index)
       .with_label("indexed-indices")
-      .build(render_context, indices)
+      .build(render_context.gpu(), indices)
       .map_err(|error| error.to_string())?;
 
     let pipeline = RenderPipelineBuilder::new()
@@ -303,7 +307,9 @@ fn on_attach(
       }],
     )
     .build(
-      render_context,
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
       &render_pass,
       &self.vertex_shader,
       Some(&self.fragment_shader),
@@ -484,5 +490,6 @@ This tutorial demonstrates how indexed draws and multiple vertex buffers combine
 
 ## Changelog <a name="changelog"></a>
 
+- 2025-12-15 (v0.3.0) — Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-23 (v0.2.0) — Filled in the implementation steps for the indexed draws and multiple vertex buffers tutorial and aligned the narrative with the `indexed_multi_vertex_buffers` example.
 - 2025-11-22 (v0.1.0) — Initial skeleton for the indexed draws and multiple vertex buffers tutorial; content placeholders added for future implementation.

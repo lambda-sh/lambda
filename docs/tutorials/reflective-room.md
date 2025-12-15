@@ -3,13 +3,13 @@ title: "Reflective Floor: Stencil‑Masked Planar Reflections"
 document_id: "reflective-room-tutorial-2025-11-17"
 status: "draft"
 created: "2025-11-17T00:00:00Z"
-last_updated: "2025-11-21T00:00:00Z"
-version: "0.2.2"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.3.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "1f91ff4ec776ec5435fce8a53441010d9e0c86e6"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "stencil", "depth", "msaa", "mirror", "3d", "push-constants", "wgpu", "rust"]
@@ -200,14 +200,22 @@ let pass_mask = RenderPassBuilder::new()
   .with_stencil_clear(0)
   .with_multi_sample(msaa_samples)
   .without_color() // no color target
-  .build(ctx);
+  .build(
+    ctx.gpu(),
+    ctx.surface_format(),
+    ctx.depth_format(),
+  );
 
 let pass_color = RenderPassBuilder::new()
   .with_label("reflective-room-pass-color")
   .with_multi_sample(msaa_samples)
   .with_depth_clear(1.0) // or .with_depth_load() when depth test is off
   .with_stencil_load()   // preserve mask from pass 1
-  .build(ctx);
+  .build(
+    ctx.gpu(),
+    ctx.surface_format(),
+    ctx.depth_format(),
+  );
 ```
 
 Rationale: pipelines that use stencil require a depth‑stencil attachment, even if depth testing is disabled.
@@ -231,7 +239,14 @@ let pipe_floor_mask = RenderPipelineBuilder::new()
     read_mask: 0xFF, write_mask: 0xFF,
   })
   .with_multi_sample(msaa_samples)
-  .build(ctx, &pass_mask, &shader_vs, None);
+  .build(
+    ctx.gpu(),
+    ctx.surface_format(),
+    ctx.depth_format(),
+    &pass_mask,
+    &shader_vs,
+    None,
+  );
 ```
 
 ### Step 6 — Pipeline: Reflected Cube (Stencil Test) <a name="step-6"></a>
@@ -253,7 +268,14 @@ let mut builder = RenderPipelineBuilder::new()
   .with_depth_write(false)
   .with_depth_compare(CompareFunction::Always);
 
-let pipe_reflected = builder.build(ctx, &pass_color, &shader_vs, Some(&shader_fs_lit));
+let pipe_reflected = builder.build(
+  ctx.gpu(),
+  ctx.surface_format(),
+  ctx.depth_format(),
+  &pass_color,
+  &shader_vs,
+  Some(&shader_fs_lit),
+);
 ```
 
 ### Step 7 — Pipeline: Floor Visual (Tinted) <a name="step-7"></a>
@@ -273,7 +295,14 @@ if depth_test_enabled || stencil_enabled {
     .with_depth_compare(if depth_test_enabled { CompareFunction::LessEqual } else { CompareFunction::Always });
 }
 
-let pipe_floor_visual = floor_vis.build(ctx, &pass_color, &shader_vs, Some(&shader_fs_floor));
+let pipe_floor_visual = floor_vis.build(
+  ctx.gpu(),
+  ctx.surface_format(),
+  ctx.depth_format(),
+  &pass_color,
+  &shader_vs,
+  Some(&shader_fs_floor),
+);
 ```
 
 ### Step 8 — Pipeline: Normal Cube <a name="step-8"></a>
@@ -293,7 +322,14 @@ if depth_test_enabled || stencil_enabled {
     .with_depth_compare(if depth_test_enabled { CompareFunction::Less } else { CompareFunction::Always });
 }
 
-let pipe_normal = normal.build(ctx, &pass_color, &shader_vs, Some(&shader_fs_lit));
+let pipe_normal = normal.build(
+  ctx.gpu(),
+  ctx.surface_format(),
+  ctx.depth_format(),
+  &pass_color,
+  &shader_vs,
+  Some(&shader_fs_lit),
+);
 ```
 
 ### Step 9 — Per‑Frame Transforms and Reflection <a name="step-9"></a>
@@ -422,6 +458,7 @@ The reflective floor combines a simple stencil mask with an optional depth test 
 
 ## Changelog <a name="changelog"></a>
 
+- 2025-12-15, 0.3.0: Update builder API calls to use `ctx.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-21, 0.2.2: Align tutorial with removal of the unmasked reflection debug toggle in the example and update metadata to the current engine workspace commit.
 - 0.2.0 (2025‑11‑19): Updated for camera pitch, front‑face culling on reflection, lit translucent floor, unmasked reflection debug toggle, floor overlay toggle, and Metal portability note.
 - 0.1.0 (2025‑11‑17): Initial draft aligned with `crates/lambda-rs/examples/reflective_room.rs`, including stencil mask pass, reflected pipeline, and MSAA/depth toggles.

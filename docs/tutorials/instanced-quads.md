@@ -3,13 +3,13 @@ title: "Instanced Rendering: Grid of Colored Quads"
 document_id: "instanced-quads-tutorial-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-11-25T02:20:00Z"
-version: "0.1.1"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "c8f727f3774029135ed1f7a7224288faf7b9e442"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "instancing", "vertex-buffers", "rust", "wgpu"]
@@ -217,7 +217,11 @@ fn on_attach(
   &mut self,
   render_context: &mut RenderContext,
 ) -> Result<ComponentResult, String> {
-  let render_pass = RenderPassBuilder::new().build(render_context);
+  let render_pass = RenderPassBuilder::new().build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+  );
 
   // Quad geometry in clip space centered at the origin.
   let quad_vertices: Vec<QuadVertex> = vec![
@@ -269,7 +273,7 @@ fn on_attach(
     .with_properties(Properties::DEVICE_LOCAL)
     .with_buffer_type(BufferType::Vertex)
     .with_label("instanced-quads-vertices")
-    .build(render_context, quad_vertices)
+    .build(render_context.gpu(), quad_vertices)
     .map_err(|error| error.to_string())?;
 
   let instance_buffer = BufferBuilder::new()
@@ -277,7 +281,7 @@ fn on_attach(
     .with_properties(Properties::DEVICE_LOCAL)
     .with_buffer_type(BufferType::Vertex)
     .with_label("instanced-quads-instances")
-    .build(render_context, instances)
+    .build(render_context.gpu(), instances)
     .map_err(|error| error.to_string())?;
 
   let index_buffer = BufferBuilder::new()
@@ -285,7 +289,7 @@ fn on_attach(
     .with_properties(Properties::DEVICE_LOCAL)
     .with_buffer_type(BufferType::Index)
     .with_label("instanced-quads-indices")
-    .build(render_context, indices)
+    .build(render_context.gpu(), indices)
     .map_err(|error| error.to_string())?;
 
   // Vertex attributes for per-vertex positions in slot 0.
@@ -323,7 +327,9 @@ fn on_attach(
     .with_buffer(vertex_buffer, vertex_attributes)
     .with_instance_buffer(instance_buffer, instance_attributes)
     .build(
-      render_context,
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
       &render_pass,
       &self.vertex_shader,
       Some(&self.fragment_shader),
@@ -497,5 +503,6 @@ This tutorial demonstrates how the `lambda-rs` crate uses per-vertex and per-ins
 
 ## Changelog <a name="changelog"></a>
 
+- 2025-12-15 (v0.2.0) — Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-25 (v0.1.1) — Align feature naming with `render-validation-instancing` and update metadata.
 - 2025-11-25 (v0.1.0) — Initial instanced quads tutorial describing per-vertex and per-instance buffers and the `instanced_quads` example.

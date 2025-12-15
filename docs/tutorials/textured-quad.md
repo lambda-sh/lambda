@@ -3,13 +3,13 @@ title: "Textured Quad: Sample a 2D Texture"
 document_id: "textured-quad-tutorial-2025-11-01"
 status: "draft"
 created: "2025-11-01T00:00:00Z"
-last_updated: "2025-11-10T03:00:00Z"
-version: "0.3.3"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.4.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "fe79756541e33270eca76638400bb64c6ec9f732"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "textures", "samplers", "rust", "wgpu"]
@@ -306,7 +306,7 @@ let texture = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
   .with_size(texture_width, texture_height)
   .with_data(&pixels)
   .with_label("checkerboard")
-  .build(render_context)
+  .build(render_context.gpu())
   .expect("Failed to create texture");
 ```
 
@@ -321,7 +321,7 @@ use lambda::render::texture::SamplerBuilder;
 let sampler = SamplerBuilder::new()
   .linear_clamp()
   .with_label("linear-clamp")
-  .build(render_context);
+  .build(render_context.gpu());
 ```
 
 This sampler selects linear minification and magnification with clamp‑to‑edge addressing. Linear filtering smooths the checkerboard when scaled, while clamping prevents wrapping at the texture borders.
@@ -335,13 +335,13 @@ use lambda::render::bind::{BindGroupLayoutBuilder, BindGroupBuilder};
 let layout = BindGroupLayoutBuilder::new()
   .with_sampled_texture(1) // texture2D at binding 1
   .with_sampler(2)         // sampler   at binding 2
-  .build(render_context);
+  .build(render_context.gpu());
 
 let bind_group = BindGroupBuilder::new()
   .with_layout(&layout)
   .with_texture(1, &texture)
   .with_sampler(2, &sampler)
-  .build(render_context);
+  .build(render_context.gpu());
 ```
 
 The bind group layout declares the shader‑visible interface for set 0: a sampled `texture2D` at binding 1 and a `sampler` at binding 2. The bind group then binds the concrete texture and sampler objects to those indices so the fragment shader can sample them during rendering.
@@ -358,7 +358,11 @@ use lambda::render::{
 
 let render_pass = RenderPassBuilder::new()
   .with_label("textured-quad-pass")
-  .build(render_context);
+  .build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+  );
 
 let mesh = self.mesh.as_ref().expect("mesh must be created");
 
@@ -366,11 +370,18 @@ let pipeline = RenderPipelineBuilder::new()
   .with_culling(CullingMode::None)
   .with_layouts(&[&layout])
   .with_buffer(
-    BufferBuilder::build_from_mesh(mesh, render_context)
+    BufferBuilder::build_from_mesh(mesh, render_context.gpu())
       .expect("Failed to create vertex buffer"),
     mesh.attributes().to_vec(),
   )
-  .build(render_context, &render_pass, &self.shader_vs, Some(&self.shader_fs));
+  .build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+    &render_pass,
+    &self.shader_vs,
+    Some(&self.shader_fs),
+  );
 
 // Attach resources to obtain `ResourceId`s for rendering
 self.render_pass = Some(render_context.attach_render_pass(render_pass));
@@ -474,6 +485,7 @@ with correct color space handling and filtering.
   - Discuss artifacts without mipmaps and how multiple levels would improve minification.
 
 ## Changelog <a name="changelog"></a>
+- 0.4.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.3.3 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
 - 0.3.2 (2025-11-10): Add narrative explanations after each code block; clarify lifecycle and binding flow.
 - 0.3.1 (2025-11-10): Align with example; add shader constants; attach resources; fix variable names; add missing section.

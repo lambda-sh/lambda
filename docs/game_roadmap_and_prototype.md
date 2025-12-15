@@ -3,13 +3,13 @@ title: "Lambda RS: Gaps, Roadmap, and Prototype Plan"
 document_id: "game-roadmap-2025-09-24"
 status: "living"
 created: "2025-09-24T05:09:25Z"
-last_updated: "2025-09-26T19:37:55Z"
-version: "0.2.0"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.3.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "2e7a3abcf60a780fa6bf089ca8a6f4124e60f660"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["roadmap","games","2d","3d","desktop"]
@@ -53,22 +53,29 @@ Bind groups and uniforms (value: larger, structured GPU data; portable across ad
 // Layout with one uniform buffer at set(0) binding(0)
 let layout = BindGroupLayoutBuilder::new()
   .with_uniform(0, PipelineStage::VERTEX)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 let ubo = BufferBuilder::new()
   .with_length(std::mem::size_of::<Globals>())
   .with_usage(Usage::UNIFORM)
   .with_properties(Properties::CPU_VISIBLE)
-  .build(&mut rc, vec![initial_globals])?;
+  .build(rc.gpu(), vec![initial_globals])?;
 
 let group = BindGroupBuilder::new(&layout)
   .with_uniform(0, &ubo)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 let pipe = RenderPipelineBuilder::new()
   .with_layouts(&[&layout])
   .with_buffer(vbo, attrs)
-  .build(&mut rc, &pass, &vs, Some(&fs));
+  .build(
+    rc.gpu(),
+    rc.surface_format(),
+    rc.depth_format(),
+    &pass,
+    &vs,
+    Some(&fs),
+  );
 
 // Commands inside a pass
 RC::SetPipeline { pipeline: pipe_id };
@@ -85,17 +92,17 @@ Textures and samplers (value: sprites, materials, UI images; sRGB correctness):
 let tex = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
   .with_size(w, h)
   .with_data(&pixels)
-  .build(&mut rc);
-let samp = SamplerBuilder::linear_clamp().build(&mut rc);
+  .build(rc.gpu());
+let samp = SamplerBuilder::linear_clamp().build(rc.gpu());
 
 let tex_layout = BindGroupLayoutBuilder::new()
   .with_sampled_texture(0)
   .with_sampler(1)
-  .build(&mut rc);
+  .build(rc.gpu());
 let tex_group = BindGroupBuilder::new(&tex_layout)
   .with_texture(0, &tex)
   .with_sampler(1, &samp)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 // In fragment shader, sample with: sampler2D + UVs; ensure vertex inputs provide UVs.
 // Upload path should convert source assets to sRGB formats when appropriate.
@@ -128,11 +135,22 @@ let pass = RenderPassBuilder::new()
   .with_clear_color(wgpu::Color::BLACK)
   .with_depth_stencil(wgpu::TextureFormat::Depth32Float, 1.0, true, wgpu::CompareFunction::Less)
   .with_msaa(4)
-  .build(&rc);
+  .build(
+    rc.gpu(),
+    rc.surface_format(),
+    rc.depth_format(),
+  );
 
 let pipe = RenderPipelineBuilder::new()
   .with_depth_format(wgpu::TextureFormat::Depth32Float)
-  .build(&mut rc, &pass, &vs, Some(&fs));
+  .build(
+    rc.gpu(),
+    rc.surface_format(),
+    rc.depth_format(),
+    &pass,
+    &vs,
+    Some(&fs),
+  );
 ```
 
 Notes
@@ -144,10 +162,18 @@ Offscreen render targets (value: post‑processing, shadow maps, UI composition,
 let offscreen = RenderTargetBuilder::new()
   .with_color(TextureFormat::Rgba8UnormSrgb, width, height)
   .with_depth(TextureFormat::Depth32Float)
-  .build(&mut rc);
+  .build(rc.gpu());
 
-let pass1 = RenderPassBuilder::new().with_target(&offscreen).build(&rc);
-let pass2 = RenderPassBuilder::new().build(&rc); // backbuffer
+let pass1 = RenderPassBuilder::new().with_target(&offscreen).build(
+  rc.gpu(),
+  rc.surface_format(),
+  rc.depth_format(),
+);
+let pass2 = RenderPassBuilder::new().build(
+  rc.gpu(),
+  rc.surface_format(),
+  rc.depth_format(),
+); // backbuffer
 
 // Pass 1: draw scene
 RC::BeginRenderPass { render_pass: pass1_id, viewport };

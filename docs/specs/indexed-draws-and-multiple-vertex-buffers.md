@@ -3,13 +3,13 @@ title: "Indexed Draws and Multiple Vertex Buffers"
 document_id: "indexed-draws-multiple-vertex-buffers-2025-11-22"
 status: "draft"
 created: "2025-11-22T00:00:00Z"
-last_updated: "2025-11-23T00:00:00Z"
-version: "0.1.2"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "db7fa78d143e5ff69028413fe86c948be9ba76ee"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "vertex-input", "indexed-draws"]
@@ -134,24 +134,31 @@ let vertex_buffer_positions = BufferBuilder::new()
   .with_usage(Usage::VERTEX)
   .with_buffer_type(BufferType::Vertex)
   .with_label("positions")
-  .build(&mut render_context, position_vertices)?;
+  .build(render_context.gpu(), position_vertices)?;
 
 let vertex_buffer_colors = BufferBuilder::new()
   .with_usage(Usage::VERTEX)
   .with_buffer_type(BufferType::Vertex)
   .with_label("colors")
-  .build(&mut render_context, color_vertices)?;
+  .build(render_context.gpu(), color_vertices)?;
 
 let index_buffer = BufferBuilder::new()
   .with_usage(Usage::INDEX)
   .with_buffer_type(BufferType::Index)
   .with_label("indices")
-  .build(&mut render_context, indices)?;
+  .build(render_context.gpu(), indices)?;
 
 let pipeline = RenderPipelineBuilder::new()
   .with_buffer(vertex_buffer_positions, position_attributes)
   .with_buffer(vertex_buffer_colors, color_attributes)
-  .build(&mut render_context, &render_pass, &vertex_shader, Some(&fragment_shader));
+  .build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+    &render_pass,
+    &vertex_shader,
+    Some(&fragment_shader),
+  );
 
 let commands = vec![
   RenderCommand::BeginRenderPass { render_pass: render_pass_id, viewport },
@@ -277,6 +284,7 @@ let commands = vec![
 
 ## Changelog
 
+- 2025-12-15 (v0.2.0) — Update example code to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPipelineBuilder`.
 - 2025-11-22 (v0.1.0) — Initial draft specifying indexed draws and multiple vertex buffers, including API surface, behavior, validation hooks, performance guidance, and verification plan.
 - 2025-11-22 (v0.1.1) — Added engine-level `IndexFormat`, instance ranges to `Draw`/`DrawIndexed`, encoder-side validation for pipeline and index buffer bindings, and updated requirements checklist.
 - 2025-11-23 (v0.1.2) — Added index buffer stride and range validation, device limit checks for vertex buffer slots and attributes, an example scene with indexed draws and multiple vertex buffers, and updated the requirements checklist.
