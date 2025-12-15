@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use lambda_platform::wgpu::texture as platform;
 
-use super::RenderContext;
+use super::gpu::Gpu;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Engine-level depth texture formats.
@@ -262,7 +262,7 @@ impl ColorAttachmentTextureBuilder {
   }
 
   /// Create the color attachment texture on the device.
-  pub fn build(self, render_context: &RenderContext) -> ColorAttachmentTexture {
+  pub fn build(self, gpu: &Gpu) -> ColorAttachmentTexture {
     let mut builder =
       platform::ColorAttachmentTextureBuilder::new(self.format.to_platform())
         .with_size(self.width, self.height)
@@ -272,7 +272,7 @@ impl ColorAttachmentTextureBuilder {
       builder = builder.with_label(label);
     }
 
-    let texture = builder.build(render_context.gpu());
+    let texture = builder.build(gpu.platform());
     return ColorAttachmentTexture::from_platform(texture);
   }
 }
@@ -372,7 +372,7 @@ impl DepthTextureBuilder {
   }
 
   /// Create the depth texture on the device.
-  pub fn build(self, render_context: &RenderContext) -> DepthTexture {
+  pub fn build(self, gpu: &Gpu) -> DepthTexture {
     let mut builder = platform::DepthTextureBuilder::new()
       .with_size(self.width, self.height)
       .with_format(self.format.to_platform())
@@ -382,7 +382,7 @@ impl DepthTextureBuilder {
       builder = builder.with_label(label);
     }
 
-    let texture = builder.build(render_context.gpu());
+    let texture = builder.build(gpu.platform());
     return DepthTexture::from_platform(texture);
   }
 }
@@ -484,10 +484,7 @@ impl TextureBuilder {
   }
 
   /// Create the texture and upload initial data if provided.
-  pub fn build(
-    self,
-    render_context: &mut RenderContext,
-  ) -> Result<Texture, &'static str> {
+  pub fn build(self, gpu: &Gpu) -> Result<Texture, &'static str> {
     let mut builder =
       if self.depth <= 1 {
         platform::TextureBuilder::new_2d(self.format.to_platform())
@@ -505,7 +502,7 @@ impl TextureBuilder {
       builder = builder.with_data(pixels);
     }
 
-    return match builder.build(render_context.gpu()) {
+    return match builder.build(gpu.platform()) {
       Ok(texture) => Ok(Texture {
         inner: Rc::new(texture),
       }),
@@ -598,9 +595,9 @@ impl SamplerBuilder {
     return self;
   }
 
-  /// Create the sampler on the current device.
-  pub fn build(self, render_context: &mut RenderContext) -> Sampler {
-    let sampler = self.inner.build(render_context.gpu());
+  /// Create the sampler on the provided GPU device.
+  pub fn build(self, gpu: &Gpu) -> Sampler {
+    let sampler = self.inner.build(gpu.platform());
     return Sampler {
       inner: Rc::new(sampler),
     };

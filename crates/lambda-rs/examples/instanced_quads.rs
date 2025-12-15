@@ -116,7 +116,11 @@ impl Component<ComponentResult, String> for InstancedQuadsExample {
     &mut self,
     render_context: &mut RenderContext,
   ) -> Result<ComponentResult, String> {
-    let render_pass = RenderPassBuilder::new().build(render_context);
+    let render_pass = RenderPassBuilder::new().build(
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
+    );
 
     // Quad geometry in clip space centered at the origin.
     let quad_vertices: Vec<QuadVertex> = vec![
@@ -168,7 +172,7 @@ impl Component<ComponentResult, String> for InstancedQuadsExample {
       .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Vertex)
       .with_label("instanced-quads-vertices")
-      .build(render_context, quad_vertices)
+      .build(render_context.gpu(), quad_vertices)
       .map_err(|error| error.to_string())?;
 
     let instance_buffer = BufferBuilder::new()
@@ -176,7 +180,7 @@ impl Component<ComponentResult, String> for InstancedQuadsExample {
       .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Vertex)
       .with_label("instanced-quads-instances")
-      .build(render_context, instances)
+      .build(render_context.gpu(), instances)
       .map_err(|error| error.to_string())?;
 
     let index_buffer = BufferBuilder::new()
@@ -184,7 +188,7 @@ impl Component<ComponentResult, String> for InstancedQuadsExample {
       .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Index)
       .with_label("instanced-quads-indices")
-      .build(render_context, indices)
+      .build(render_context.gpu(), indices)
       .map_err(|error| error.to_string())?;
 
     // Vertex attributes for per-vertex positions in slot 0.
@@ -222,7 +226,9 @@ impl Component<ComponentResult, String> for InstancedQuadsExample {
       .with_buffer(vertex_buffer, vertex_attributes)
       .with_instance_buffer(instance_buffer, instance_attributes)
       .build(
-        render_context,
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
         &render_pass,
         &self.vertex_shader,
         Some(&self.fragment_shader),

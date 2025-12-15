@@ -70,8 +70,10 @@ impl CommandEncoder {
   /// The encoder is tied to the current frame and should not be reused across
   /// frames.
   pub fn new(render_context: &RenderContext, label: &str) -> Self {
-    let inner =
-      platform::command::CommandEncoder::new(render_context.gpu(), Some(label));
+    let inner = platform::command::CommandEncoder::new(
+      render_context.gpu().platform(),
+      Some(label),
+    );
     return CommandEncoder { inner };
   }
 
@@ -121,7 +123,10 @@ impl CommandEncoder {
   /// execution.
   pub fn finish(self, render_context: &RenderContext) {
     let buffer = self.inner.finish();
-    render_context.gpu().submit(std::iter::once(buffer));
+    render_context
+      .gpu()
+      .platform()
+      .submit(std::iter::once(buffer));
   }
 }
 

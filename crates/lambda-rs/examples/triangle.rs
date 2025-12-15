@@ -42,11 +42,16 @@ impl Component<ComponentResult, String> for DemoComponent {
     render_context: &mut RenderContext,
   ) -> Result<ComponentResult, String> {
     logging::info!("Attached the demo component to the renderer");
-    let render_pass =
-      render_pass::RenderPassBuilder::new().build(&render_context);
+    let render_pass = render_pass::RenderPassBuilder::new().build(
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
+    );
 
     let pipeline = pipeline::RenderPipelineBuilder::new().build(
-      render_context,
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
       &render_pass,
       &self.vertex_shader,
       Some(&self.fragment_shader),

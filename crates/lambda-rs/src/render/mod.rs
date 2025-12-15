@@ -131,7 +131,7 @@ impl RenderContextBuilder {
         ))
       })?;
 
-    let gpu = platform::gpu::GpuBuilder::new()
+    let gpu = gpu::GpuBuilder::new()
       .with_label(&format!("{} Device", name))
       .build(&instance, Some(&surface))
       .map_err(|e| {
@@ -144,7 +144,7 @@ impl RenderContextBuilder {
     let size = window.dimensions();
     surface
       .configure_with_defaults(
-        &gpu,
+        gpu.platform(),
         size,
         surface::PresentMode::default().to_platform(),
         texture::TextureUsages::RENDER_ATTACHMENT.to_platform(),
@@ -210,7 +210,7 @@ pub struct RenderContext {
   label: String,
   instance: platform::instance::Instance,
   surface: platform::surface::Surface<'static>,
-  gpu: platform::gpu::Gpu,
+  gpu: gpu::Gpu,
   config: surface::SurfaceConfig,
   texture_usage: texture::TextureUsages,
   size: (u32, u32),
@@ -319,7 +319,7 @@ impl RenderContext {
         .with_format(self.depth_format)
         .with_sample_count(self.depth_sample_count)
         .with_label("lambda-depth")
-        .build(self),
+        .build(&self.gpu),
     );
     // Drop MSAA color target so it is rebuilt on demand with the new size.
     self.msaa_color = None;
@@ -339,15 +339,21 @@ impl RenderContext {
     return &self.render_pipelines[id];
   }
 
-  pub(crate) fn gpu(&self) -> &platform::gpu::Gpu {
+  /// Access the GPU device for resource creation.
+  ///
+  /// Use this to pass to resource builders (buffers, textures, bind groups,
+  /// etc.) when creating GPU resources.
+  pub fn gpu(&self) -> &gpu::Gpu {
     return &self.gpu;
   }
 
-  pub(crate) fn surface_format(&self) -> texture::TextureFormat {
+  /// The texture format of the render surface.
+  pub fn surface_format(&self) -> texture::TextureFormat {
     return self.config.format;
   }
 
-  pub(crate) fn depth_format(&self) -> texture::DepthFormat {
+  /// The depth texture format used for depth/stencil operations.
+  pub fn depth_format(&self) -> texture::DepthFormat {
     return self.depth_format;
   }
 
@@ -355,10 +361,9 @@ impl RenderContext {
     &self,
     sample_count: u32,
   ) -> bool {
-    return self.gpu.supports_sample_count_for_format(
-      self.config.format.to_platform(),
-      sample_count,
-    );
+    return self
+      .gpu
+      .supports_sample_count_for_format(self.config.format, sample_count);
   }
 
   pub(crate) fn supports_depth_sample_count(
@@ -368,32 +373,32 @@ impl RenderContext {
   ) -> bool {
     return self
       .gpu
-      .supports_sample_count_for_depth(format.to_platform(), sample_count);
+      .supports_sample_count_for_depth(format, sample_count);
   }
 
   /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
   pub fn limit_max_uniform_buffer_binding_size(&self) -> u64 {
-    return self.gpu.limits().max_uniform_buffer_binding_size;
+    return self.gpu.limit_max_uniform_buffer_binding_size();
   }
 
   /// Device limit: number of bind groups that can be used by a pipeline layout.
   pub fn limit_max_bind_groups(&self) -> u32 {
-    return self.gpu.limits().max_bind_groups;
+    return self.gpu.limit_max_bind_groups();
   }
 
   /// Device limit: maximum number of vertex buffers that can be bound.
   pub fn limit_max_vertex_buffers(&self) -> u32 {
-    return self.gpu.limits().max_vertex_buffers;
+    return self.gpu.limit_max_vertex_buffers();
   }
 
   /// Device limit: maximum number of vertex attributes that can be declared.
   pub fn limit_max_vertex_attributes(&self) -> u32 {
-    return self.gpu.limits().max_vertex_attributes;
+    return self.gpu.limit_max_vertex_attributes();
   }
 
   /// Device limit: required alignment in bytes for dynamic uniform buffer offsets.
   pub fn limit_min_uniform_buffer_offset_alignment(&self) -> u32 {
-    return self.gpu.limits().min_uniform_buffer_offset_alignment;
+    return self.gpu.limit_min_uniform_buffer_offset_alignment();
   }
 
   /// Ensure the MSAA color attachment texture exists with the given sample
@@ -416,7 +421,7 @@ impl RenderContext {
           .with_size(self.size.0.max(1), self.size.1.max(1))
           .with_sample_count(sample_count)
           .with_label("lambda-msaa-color")
-          .build(self),
+          .build(&self.gpu),
       );
       self.msaa_sample_count = sample_count;
     }
@@ -544,7 +549,7 @@ impl RenderContext {
                   .with_format(self.depth_format)
                   .with_sample_count(desired_samples)
                   .with_label("lambda-depth")
-                  .build(self),
+                  .build(&self.gpu),
               );
               self.depth_sample_count = desired_samples;
             }
@@ -708,7 +713,7 @@ impl RenderContext {
   ) -> Result<(), RenderError> {
     self
       .surface
-      .resize(&self.gpu, size)
+      .resize(self.gpu.platform(), size)
       .map_err(RenderError::Configuration)?;
 
     let platform_config = self.surface.configuration().ok_or_else(|| {

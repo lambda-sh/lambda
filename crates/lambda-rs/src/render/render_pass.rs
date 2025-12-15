@@ -9,8 +9,8 @@ use lambda_platform::wgpu as platform;
 use logging;
 
 use super::{
+  gpu::Gpu,
   texture,
-  RenderContext,
 };
 use crate::render::validation;
 
@@ -146,7 +146,7 @@ pub struct RenderPass {
 
 impl RenderPass {
   /// Destroy the pass. Kept for symmetry with other resources.
-  pub fn destroy(self, _render_context: &RenderContext) {}
+  pub fn destroy(self, _gpu: &Gpu) {}
 
   pub(crate) fn clear_color(&self) -> [f64; 4] {
     return self.clear_color;
@@ -336,13 +336,23 @@ impl RenderPassBuilder {
   }
 
   /// Build the description used when beginning a render pass.
-  pub fn build(self, render_context: &RenderContext) -> RenderPass {
+  ///
+  /// # Arguments
+  /// * `gpu` - The GPU device for sample count validation.
+  /// * `surface_format` - The surface texture format for sample count validation.
+  /// * `depth_format` - The depth texture format for sample count validation.
+  pub fn build(
+    self,
+    gpu: &Gpu,
+    surface_format: texture::TextureFormat,
+    depth_format: texture::DepthFormat,
+  ) -> RenderPass {
     let sample_count = self.resolve_sample_count(
       self.sample_count,
-      render_context.surface_format().to_platform(),
-      render_context.depth_format(),
-      |count| render_context.supports_surface_sample_count(count),
-      |format, count| render_context.supports_depth_sample_count(format, count),
+      surface_format.to_platform(),
+      depth_format,
+      |count| gpu.supports_sample_count_for_format(surface_format, count),
+      |format, count| gpu.supports_sample_count_for_depth(format, count),
     );
 
     return RenderPass {

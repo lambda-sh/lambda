@@ -46,14 +46,19 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     &mut self,
     render_context: &mut RenderContext,
   ) -> Result<ComponentResult, String> {
-    let render_pass =
-      render_pass::RenderPassBuilder::new().build(&render_context);
+    let render_pass = render_pass::RenderPassBuilder::new().build(
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
+    );
 
     let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
     let pipeline = pipeline::RenderPipelineBuilder::new()
       .with_push_constant(PipelineStage::VERTEX, push_constants_size)
       .build(
-        render_context,
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
         &render_pass,
         &self.vertex_shader,
         Some(&self.triangle_vertex),

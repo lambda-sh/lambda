@@ -39,6 +39,7 @@ use super::{
     Buffer,
     BufferType,
   },
+  gpu::Gpu,
   render_pass::RenderPass,
   shader::Shader,
   texture,
@@ -422,24 +423,32 @@ impl RenderPipelineBuilder {
 
   /// Build a graphics pipeline using the provided shader modules and
   /// previously registered vertex inputs and push constants.
+  ///
+  /// # Arguments
+  /// * `gpu` - The GPU device to create the pipeline on.
+  /// * `surface_format` - The texture format of the render target surface.
+  /// * `depth_format` - The depth format for depth/stencil operations.
+  /// * `render_pass` - The render pass this pipeline will be used with.
+  /// * `vertex_shader` - The vertex shader module.
+  /// * `fragment_shader` - Optional fragment shader module.
   pub fn build(
     self,
-    render_context: &mut RenderContext,
-    _render_pass: &RenderPass,
+    gpu: &Gpu,
+    surface_format: texture::TextureFormat,
+    depth_format: texture::DepthFormat,
+    render_pass: &RenderPass,
     vertex_shader: &Shader,
     fragment_shader: Option<&Shader>,
   ) -> RenderPipeline {
-    let surface_format = render_context.surface_format();
-
     // Shader modules
     let vertex_module = platform_pipeline::ShaderModule::from_spirv(
-      render_context.gpu(),
+      gpu.platform(),
       vertex_shader.binary(),
       Some("lambda-vertex-shader"),
     );
     let fragment_module = fragment_shader.map(|shader| {
       platform_pipeline::ShaderModule::from_spirv(
-        render_context.gpu(),
+        gpu.platform(),
         shader.binary(),
         Some("lambda-fragment-shader"),
       )
@@ -456,7 +465,7 @@ impl RenderPipelineBuilder {
       .collect();
 
     // Bind group layouts limit check
-    let max_bind_groups = render_context.limit_max_bind_groups() as usize;
+    let max_bind_groups = gpu.limit_max_bind_groups() as usize;
     if self.bind_group_layouts.len() > max_bind_groups {
       logging::error!(
         "Pipeline declares {} bind group layouts, exceeds device max {}",
@@ -472,7 +481,7 @@ impl RenderPipelineBuilder {
     );
 
     // Vertex buffer slot and attribute count limit checks.
-    let max_vertex_buffers = render_context.limit_max_vertex_buffers() as usize;
+    let max_vertex_buffers = gpu.limit_max_vertex_buffers() as usize;
     if self.bindings.len() > max_vertex_buffers {
       logging::error!(
         "Pipeline declares {} vertex buffers, exceeds device max {}",
@@ -492,8 +501,7 @@ impl RenderPipelineBuilder {
       .iter()
       .map(|binding| binding.attributes.len())
       .sum();
-    let max_vertex_attributes =
-      render_context.limit_max_vertex_attributes() as usize;
+    let max_vertex_attributes = gpu.limit_max_vertex_attributes() as usize;
     if total_vertex_attributes > max_vertex_attributes {
       logging::error!(
         "Pipeline declares {} vertex attributes across all vertex buffers, exceeds device max {}",
@@ -518,7 +526,7 @@ impl RenderPipelineBuilder {
       .with_label("lambda-pipeline-layout")
       .with_layouts(&bgl_platform)
       .with_push_constants(push_constant_ranges)
-      .build(render_context.gpu());
+      .build(gpu.platform());
 
     // Vertex buffers and attributes
     let mut buffers = Vec::with_capacity(self.bindings.len());
@@ -575,11 +583,11 @@ impl RenderPipelineBuilder {
       let requested_depth_format = dfmt.to_platform();
 
       // Derive the pass attachment depth format from pass configuration.
-      let pass_has_stencil = _render_pass.stencil_operations().is_some();
+      let pass_has_stencil = render_pass.stencil_operations().is_some();
       let pass_depth_format = if pass_has_stencil {
         texture::DepthFormat::Depth24PlusStencil8
       } else {
-        render_context.depth_format()
+        depth_format
       };
 
       // Align the pipeline depth format with the pass attachment format to
@@ -618,7 +626,7 @@ impl RenderPipelineBuilder {
     // Apply multi-sampling to the pipeline.
     // Always align to the pass sample count; gate logs.
     let mut pipeline_samples = self.sample_count;
-    let pass_samples = _render_pass.sample_count();
+    let pass_samples = render_pass.sample_count();
     if pipeline_samples != pass_samples {
       #[cfg(any(debug_assertions, feature = "render-validation-msaa",))]
       logging::error!(
@@ -638,7 +646,7 @@ impl RenderPipelineBuilder {
     rp_builder = rp_builder.with_sample_count(pipeline_samples);
 
     let pipeline = rp_builder.build(
-      render_context.gpu(),
+      gpu.platform(),
       &vertex_module,
       fragment_module.as_ref(),
     );
