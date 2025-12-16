@@ -6,7 +6,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this template to propose new functionality or enhancements. Provide sufficient detail for maintainers to evaluate scope, feasibility, and alignment with project goals.
+        Use this template to propose new functionality or enhancements. Provide
+        sufficient detail for maintainers to evaluate scope, feasibility, and
+        alignment with project goals.
 
   - type: textarea
     id: overview
@@ -14,7 +16,8 @@ body:
       label: Overview
       description: A concise summary of the proposed feature and its purpose.
       placeholder: |
-        Describe the feature in one paragraph. Include the problem it solves and the expected outcome.
+        Describe the feature in one paragraph. Include the problem it solves and
+        the expected outcome.
     validations:
       required: true
 

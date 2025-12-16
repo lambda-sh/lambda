@@ -6,7 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this template to report bugs. Provide sufficient detail for maintainers to reproduce and diagnose the issue.
+        Use this template to report bugs. Provide sufficient detail for
+        maintainers to reproduce and diagnose the issue.
 
   - type: textarea
     id: summary
