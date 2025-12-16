@@ -69,9 +69,9 @@ cargo test --workspace
 
 <!-- Mark platforms where changes were verified -->
 
-- [ ] macOS (Metal)
-- [ ] Windows (DX12)
-- [ ] Linux (Vulkan)
+- [ ] macOS
+- [ ] Windows
+- [ ] Linux
 
 ## Additional Notes
 
