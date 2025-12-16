@@ -1,0 +1,116 @@
+name: Feature Request
+description: Propose a new feature or enhancement for lambda-rs.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to propose new functionality or enhancements. Provide sufficient detail for maintainers to evaluate scope, feasibility, and alignment with project goals.
+
+  - type: textarea
+    id: overview
+    attributes:
+      label: Overview
+      description: A concise summary of the proposed feature and its purpose.
+      placeholder: |
+        Describe the feature in one paragraph. Include the problem it solves and the expected outcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current State
+      description: Describe the current behavior or limitation that motivates this request.
+      placeholder: |
+        Reference existing code, APIs, or behavior. Include file paths or code snippets where relevant.
+        Example:
+        ```rust
+        // crates/lambda-rs/src/example.rs:42-50
+        // Current implementation does X but lacks Y
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Define goals and non-goals for this feature.
+      placeholder: |
+        **Goals:**
+        - Goal 1
+        - Goal 2
+
+        **Non-Goals:**
+        - Item explicitly out of scope
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-api
+    attributes:
+      label: Proposed API
+      description: Outline the public API surface, types, and usage patterns.
+      placeholder: |
+        ```rust
+        pub struct ExampleBuilder {
+          // fields
+        }
+
+        impl ExampleBuilder {
+          pub fn new() -> Self;
+          pub fn with_option(self, value: u32) -> Self;
+          pub fn build(self) -> Result<Example, ExampleError>;
+        }
+        ```
+
+        **Example Usage:**
+        ```rust
+        let example = ExampleBuilder::new()
+          .with_option(42)
+          .build()?;
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: List concrete, testable criteria for completion.
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Documentation updated
+        - [ ] Example added or updated
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected-crates
+    attributes:
+      label: Affected Crates
+      description: Select the crate(s) this feature impacts.
+      multiple: true
+      options:
+        - lambda-rs
+        - lambda-rs-platform
+        - lambda-rs-args
+        - lambda-rs-logging
+        - Other/Multiple
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Additional context, constraints, or considerations.
+      placeholder: |
+        - Related issues or PRs
+        - Platform-specific considerations
+        - Future work explicitly deferred
+    validations:
+      required: false
