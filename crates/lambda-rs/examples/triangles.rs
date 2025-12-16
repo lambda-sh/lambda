@@ -54,6 +54,7 @@ impl Component<ComponentResult, String> for TrianglesComponent {
 
     let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
     let pipeline = pipeline::RenderPipelineBuilder::new()
+      .with_culling(pipeline::CullingMode::None)
       .with_push_constant(PipelineStage::VERTEX, push_constants_size)
       .build(
         render_context.gpu(),
