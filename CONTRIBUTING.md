@@ -10,16 +10,6 @@ guidelines for contributing to the project.
 3. Build the workspace: `cargo build --workspace`
 4. Run tests: `cargo test --workspace`
 
-## Repository Guidelines
-
-Refer to [`AGENTS.md`](./AGENTS.md) for detailed information about:
-
-- Project structure and module organization
-- Architecture and design principles
-- Coding practices and style conventions
-- Testing guidelines
-- Documentation standards
-
 ## Code Style
 
 Before submitting changes:
