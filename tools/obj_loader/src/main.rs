@@ -10,7 +10,6 @@ use args::{
 use lambda::{
   component::Component,
   events::{
-    ComponentEvent,
     Events,
     WindowEvent,
   },
@@ -36,11 +35,6 @@ use lambda::{
       ShaderBuilder,
       ShaderKind,
       VirtualShader,
-    },
-    vertex::{
-      Vertex,
-      VertexAttribute,
-      VertexElement,
     },
     viewport,
     ResourceId,
@@ -197,7 +191,12 @@ impl Component<ComponentResult, String> for ObjLoader {
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
-    let render_pass = RenderPassBuilder::new().build(render_context);
+    let gpu = render_context.gpu();
+    let surface_format = render_context.surface_format();
+    let depth_format = render_context.depth_format();
+
+    let render_pass =
+      RenderPassBuilder::new().build(gpu, surface_format, depth_format);
     let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
 
     let mesh = MeshBuilder::new().build_from_obj(&self.obj_path);
@@ -211,12 +210,14 @@ impl Component<ComponentResult, String> for ObjLoader {
     let pipeline = RenderPipelineBuilder::new()
       .with_push_constant(PipelineStage::VERTEX, push_constant_size)
       .with_buffer(
-        BufferBuilder::build_from_mesh(&mesh, render_context)
+        BufferBuilder::build_from_mesh(&mesh, gpu)
           .expect("Failed to create buffer"),
         mesh.attributes().to_vec(),
       )
       .build(
-        render_context,
+        gpu,
+        surface_format,
+        depth_format,
         &render_pass,
         &self.vertex_shader,
         Some(&self.fragment_shader),

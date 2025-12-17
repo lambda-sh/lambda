@@ -1,0 +1,119 @@
+name: Bug Report
+description: Report incorrect behavior or a defect in lambda-rs.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to report bugs. Provide sufficient detail for
+        maintainers to reproduce and diagnose the issue.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A concise description of the bug.
+      placeholder: Describe the incorrect behavior in one or two sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: Describe what should happen.
+      placeholder: The expected correct behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: Describe what currently happens.
+      placeholder: The observed incorrect behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Reproduction Steps
+      description: Provide minimal steps to reproduce the issue.
+      placeholder: |
+        1. Clone repository
+        2. Run `cargo run --example <name>`
+        3. Observe error/unexpected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: code-sample
+    attributes:
+      label: Code Sample
+      description: Include a minimal code snippet that demonstrates the issue.
+      placeholder: |
+        ```rust
+        // Minimal reproduction code
+        fn main() {
+          // ...
+        }
+        ```
+      render: rust
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Provide details about the environment.
+      placeholder: |
+        - OS: macOS 14.0 / Windows 11 / Ubuntu 24.04
+        - Rust version: `rustc --version`
+        - GPU: NVIDIA RTX 4090 / Apple M3 / Intel UHD 770
+        - Graphics backend: Vulkan / Metal / DX12
+        - lambda-rs version or commit: `main` / `abc1234`
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected-crates
+    attributes:
+      label: Affected Crates
+      description: Select the crate(s) this bug impacts.
+      multiple: true
+      options:
+        - lambda-rs
+        - lambda-rs-platform
+        - lambda-rs-args
+        - lambda-rs-logging
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs-output
+    attributes:
+      label: Logs and Output
+      description: Include relevant error messages, stack traces, or console output.
+      placeholder: |
+        ```
+        error[E0XXX]: ...
+        ```
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information that may help diagnose the issue.
+      placeholder: |
+        - Related issues
+        - Screenshots or screen recordings (for visual bugs)
+        - Workarounds discovered
+    validations:
+      required: false

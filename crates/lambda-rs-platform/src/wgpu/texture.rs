@@ -8,6 +8,60 @@ use wgpu;
 
 use crate::wgpu::gpu::Gpu;
 
+/// Wrapper for texture usage flags.
+///
+/// This abstraction hides `wgpu::TextureUsages` from higher layers while
+/// preserving bitwise-OR composition for combining flags.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TextureUsages(wgpu::TextureUsages);
+
+impl TextureUsages {
+  /// Render attachment usage.
+  pub const RENDER_ATTACHMENT: TextureUsages =
+    TextureUsages(wgpu::TextureUsages::RENDER_ATTACHMENT);
+  /// Texture binding usage.
+  pub const TEXTURE_BINDING: TextureUsages =
+    TextureUsages(wgpu::TextureUsages::TEXTURE_BINDING);
+  /// Copy destination usage.
+  pub const COPY_DST: TextureUsages =
+    TextureUsages(wgpu::TextureUsages::COPY_DST);
+  /// Copy source usage.
+  pub const COPY_SRC: TextureUsages =
+    TextureUsages(wgpu::TextureUsages::COPY_SRC);
+
+  /// Create an empty flags set.
+  pub const fn empty() -> Self {
+    return TextureUsages(wgpu::TextureUsages::empty());
+  }
+
+  pub(crate) fn to_wgpu(self) -> wgpu::TextureUsages {
+    return self.0;
+  }
+
+  pub(crate) fn from_wgpu(flags: wgpu::TextureUsages) -> Self {
+    return TextureUsages(flags);
+  }
+
+  /// Check whether this flags set contains another set.
+  pub fn contains(self, other: TextureUsages) -> bool {
+    return self.0.contains(other.0);
+  }
+}
+
+impl std::ops::BitOr for TextureUsages {
+  type Output = TextureUsages;
+
+  fn bitor(self, rhs: TextureUsages) -> TextureUsages {
+    return TextureUsages(self.0 | rhs.0);
+  }
+}
+
+impl std::ops::BitOrAssign for TextureUsages {
+  fn bitor_assign(&mut self, rhs: TextureUsages) {
+    self.0 |= rhs.0;
+  }
+}
+
 #[derive(Debug)]
 /// Errors returned when building a texture or preparing its initial upload.
 pub enum TextureBuildError {
@@ -17,6 +71,8 @@ pub enum TextureBuildError {
   DataLengthMismatch { expected: usize, actual: usize },
   /// Internal arithmetic overflow while computing sizes or paddings.
   Overflow,
+  /// The texture format does not support bytes_per_pixel calculation.
+  UnsupportedFormat,
 }
 
 /// Align `value` up to the next multiple of `alignment`.
@@ -62,26 +118,85 @@ impl AddressMode {
   }
 }
 
-/// Supported color texture formats for sampling.
+/// Unified texture format wrapper.
+///
+/// This abstraction wraps `wgpu::TextureFormat` to hide the underlying graphics
+/// API from higher layers. Common formats are exposed as associated constants.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum TextureFormat {
-  Rgba8Unorm,
-  Rgba8UnormSrgb,
-}
+pub struct TextureFormat(wgpu::TextureFormat);
 
 impl TextureFormat {
-  /// Map to the corresponding `wgpu::TextureFormat`.
+  // -------------------------------------------------------------------------
+  // Common color formats
+  // -------------------------------------------------------------------------
+
+  /// 8-bit RGBA, linear (non-sRGB).
+  pub const RGBA8_UNORM: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Rgba8Unorm);
+  /// 8-bit RGBA, sRGB encoded.
+  pub const RGBA8_UNORM_SRGB: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Rgba8UnormSrgb);
+  /// 8-bit BGRA, linear (non-sRGB). Common swapchain format.
+  pub const BGRA8_UNORM: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Bgra8Unorm);
+  /// 8-bit BGRA, sRGB encoded. Common swapchain format.
+  pub const BGRA8_UNORM_SRGB: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Bgra8UnormSrgb);
+
+  // -------------------------------------------------------------------------
+  // Depth/stencil formats
+  // -------------------------------------------------------------------------
+
+  /// 32-bit floating point depth.
+  pub const DEPTH32_FLOAT: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Depth32Float);
+  /// 24-bit depth (platform may choose precision).
+  pub const DEPTH24_PLUS: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Depth24Plus);
+  /// 24-bit depth + 8-bit stencil.
+  pub const DEPTH24_PLUS_STENCIL8: TextureFormat =
+    TextureFormat(wgpu::TextureFormat::Depth24PlusStencil8);
+
+  // -------------------------------------------------------------------------
+  // Conversions
+  // -------------------------------------------------------------------------
+
   pub(crate) fn to_wgpu(self) -> wgpu::TextureFormat {
-    return match self {
-      TextureFormat::Rgba8Unorm => wgpu::TextureFormat::Rgba8Unorm,
-      TextureFormat::Rgba8UnormSrgb => wgpu::TextureFormat::Rgba8UnormSrgb,
-    };
+    return self.0;
   }
 
-  /// Number of bytes per pixel for tightly packed data.
-  pub fn bytes_per_pixel(self) -> u32 {
-    return match self {
-      TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => 4,
+  pub(crate) fn from_wgpu(fmt: wgpu::TextureFormat) -> Self {
+    return TextureFormat(fmt);
+  }
+
+  // -------------------------------------------------------------------------
+  // Format queries
+  // -------------------------------------------------------------------------
+
+  /// Whether this format is sRGB encoded.
+  pub fn is_srgb(self) -> bool {
+    return self.0.is_srgb();
+  }
+
+  /// Return the sRGB variant of the format when applicable.
+  pub fn add_srgb_suffix(self) -> Self {
+    return TextureFormat(self.0.add_srgb_suffix());
+  }
+
+  /// Number of bytes per pixel for common formats.
+  ///
+  /// Returns `None` for compressed or exotic formats where a simple
+  /// bytes-per-pixel value is not applicable.
+  pub fn bytes_per_pixel(self) -> Option<u32> {
+    return match self.0 {
+      wgpu::TextureFormat::Rgba8Unorm
+      | wgpu::TextureFormat::Rgba8UnormSrgb
+      | wgpu::TextureFormat::Bgra8Unorm
+      | wgpu::TextureFormat::Bgra8UnormSrgb => Some(4),
+      wgpu::TextureFormat::Depth32Float => Some(4),
+      wgpu::TextureFormat::Depth24Plus => Some(4),
+      wgpu::TextureFormat::Depth24PlusStencil8 => Some(4),
+      _ => None,
     };
   }
 }
@@ -167,13 +282,13 @@ pub struct ColorAttachmentTextureBuilder {
   label: Option<String>,
   width: u32,
   height: u32,
-  format: crate::wgpu::surface::SurfaceFormat,
+  format: TextureFormat,
   sample_count: u32,
 }
 
 impl ColorAttachmentTextureBuilder {
   /// Create a builder with zero size and sample count 1.
-  pub fn new(format: crate::wgpu::surface::SurfaceFormat) -> Self {
+  pub fn new(format: TextureFormat) -> Self {
     return Self {
       label: None,
       width: 0,
@@ -551,21 +666,17 @@ pub struct TextureBuilder {
   height: u32,
   /// Depth in texels (1 for 2D).
   depth: u32,
-  /// Include `TEXTURE_BINDING` usage.
-  usage_texture_binding: bool,
-  /// Include `COPY_DST` usage when uploading initial data.
-  usage_copy_dst: bool,
-  /// Include `COPY_SRC` usage when the texture is used as a readback source.
-  usage_copy_source: bool,
-  /// Include `RENDER_ATTACHMENT` usage when the texture is used as a color
-  /// render target.
-  usage_render_attachment: bool,
+  /// Combined usage flags for the texture.
+  usage: TextureUsages,
   /// Optional tightly‑packed pixel payload for level 0 (rows are `width*bpp`).
   data: Option<Vec<u8>>,
 }
 
 impl TextureBuilder {
   /// Construct a new 2D texture builder for a color format.
+  ///
+  /// Default usage is `TEXTURE_BINDING | COPY_DST` for sampling with initial
+  /// data upload.
   pub fn new_2d(format: TextureFormat) -> Self {
     return Self {
       label: None,
@@ -574,15 +685,15 @@ impl TextureBuilder {
       width: 0,
       height: 0,
       depth: 1,
-      usage_texture_binding: true,
-      usage_copy_dst: true,
-      usage_copy_source: false,
-      usage_render_attachment: false,
+      usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
       data: None,
     };
   }
 
   /// Construct a new 3D texture builder for a color format.
+  ///
+  /// Default usage is `TEXTURE_BINDING | COPY_DST` for sampling with initial
+  /// data upload.
   pub fn new_3d(format: TextureFormat) -> Self {
     return Self {
       label: None,
@@ -591,10 +702,7 @@ impl TextureBuilder {
       width: 0,
       height: 0,
       depth: 0,
-      usage_texture_binding: true,
-      usage_copy_dst: true,
-      usage_copy_source: false,
-      usage_render_attachment: false,
+      usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
       data: None,
     };
   }
@@ -621,10 +729,14 @@ impl TextureBuilder {
     return self;
   }
 
-  /// Control usage flags. Defaults are suitable for sampling with initial upload.
-  pub fn with_usage(mut self, texture_binding: bool, copy_dst: bool) -> Self {
-    self.usage_texture_binding = texture_binding;
-    self.usage_copy_dst = copy_dst;
+  /// Set the texture usage flags.
+  ///
+  /// Use bitwise-OR to combine flags:
+  /// ```ignore
+  /// .with_usage(TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST)
+  /// ```
+  pub fn with_usage(mut self, usage: TextureUsages) -> Self {
+    self.usage = usage;
     return self;
   }
 
@@ -677,7 +789,10 @@ impl TextureBuilder {
 
     // Validate data length if provided
     if let Some(ref pixels) = self.data {
-      let bpp = self.format.bytes_per_pixel() as usize;
+      let bpp = self
+        .format
+        .bytes_per_pixel()
+        .ok_or(TextureBuildError::UnsupportedFormat)? as usize;
       let wh = (self.width as usize)
         .checked_mul(self.height as usize)
         .ok_or(TextureBuildError::Overflow)?;
@@ -699,19 +814,7 @@ impl TextureBuilder {
     }
 
     // Resolve usage flags
-    let mut usage = wgpu::TextureUsages::empty();
-    if self.usage_texture_binding {
-      usage |= wgpu::TextureUsages::TEXTURE_BINDING;
-    }
-    if self.usage_copy_dst {
-      usage |= wgpu::TextureUsages::COPY_DST;
-    }
-    if self.usage_copy_source {
-      usage |= wgpu::TextureUsages::COPY_SRC;
-    }
-    if self.usage_render_attachment {
-      usage |= wgpu::TextureUsages::RENDER_ATTACHMENT;
-    }
+    let usage = self.usage.to_wgpu();
 
     let descriptor = wgpu::TextureDescriptor {
       label: self.label.as_deref(),
@@ -743,7 +846,10 @@ impl TextureBuilder {
 
     if let Some(pixels) = self.data.as_ref() {
       // Compute 256-byte aligned bytes_per_row and pad rows if necessary.
-      let bpp = self.format.bytes_per_pixel();
+      let bpp = self
+        .format
+        .bytes_per_pixel()
+        .ok_or(TextureBuildError::UnsupportedFormat)?;
       let row_bytes = self
         .width
         .checked_mul(bpp)
@@ -864,19 +970,29 @@ mod tests {
   #[test]
   fn texture_format_maps() {
     assert_eq!(
-      TextureFormat::Rgba8Unorm.to_wgpu(),
+      TextureFormat::RGBA8_UNORM.to_wgpu(),
       wgpu::TextureFormat::Rgba8Unorm
     );
     assert_eq!(
-      TextureFormat::Rgba8UnormSrgb.to_wgpu(),
+      TextureFormat::RGBA8_UNORM_SRGB.to_wgpu(),
       wgpu::TextureFormat::Rgba8UnormSrgb
+    );
+    assert_eq!(
+      TextureFormat::BGRA8_UNORM.to_wgpu(),
+      wgpu::TextureFormat::Bgra8Unorm
+    );
+    assert_eq!(
+      TextureFormat::BGRA8_UNORM_SRGB.to_wgpu(),
+      wgpu::TextureFormat::Bgra8UnormSrgb
     );
   }
 
   #[test]
   fn bytes_per_pixel_is_correct() {
-    assert_eq!(TextureFormat::Rgba8Unorm.bytes_per_pixel(), 4);
-    assert_eq!(TextureFormat::Rgba8UnormSrgb.bytes_per_pixel(), 4);
+    assert_eq!(TextureFormat::RGBA8_UNORM.bytes_per_pixel(), Some(4));
+    assert_eq!(TextureFormat::RGBA8_UNORM_SRGB.bytes_per_pixel(), Some(4));
+    assert_eq!(TextureFormat::BGRA8_UNORM.bytes_per_pixel(), Some(4));
+    assert_eq!(TextureFormat::BGRA8_UNORM_SRGB.bytes_per_pixel(), Some(4));
   }
 
   #[test]

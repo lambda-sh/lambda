@@ -19,7 +19,7 @@ fn wgpu_bind_layout_and_group_texture_sampler() {
   let (w, h) = (4u32, 4u32);
   let pixels = vec![255u8; (w * h * 4) as usize];
   let texture = lambda_platform::wgpu::texture::TextureBuilder::new_2d(
-    lambda_platform::wgpu::texture::TextureFormat::Rgba8Unorm,
+    lambda_platform::wgpu::texture::TextureFormat::RGBA8_UNORM,
   )
   .with_size(w, h)
   .with_data(&pixels)

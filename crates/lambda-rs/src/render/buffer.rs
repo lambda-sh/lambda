@@ -23,6 +23,7 @@ use std::rc::Rc;
 use lambda_platform::wgpu::buffer as platform_buffer;
 
 use super::{
+  gpu::Gpu,
   mesh::Mesh,
   vertex::Vertex,
   RenderContext,
@@ -141,12 +142,7 @@ impl Buffer {
   /// Write a single plain-old-data value into this buffer at the specified
   /// byte offset. This is intended for updating uniform buffer contents from
   /// the CPU. The `data` type must be trivially copyable.
-  pub fn write_value<T: Copy>(
-    &self,
-    render_context: &RenderContext,
-    offset: u64,
-    data: &T,
-  ) {
+  pub fn write_value<T: Copy>(&self, gpu: &Gpu, offset: u64, data: &T) {
     let bytes = unsafe {
       std::slice::from_raw_parts(
         (data as *const T) as *const u8,
@@ -154,7 +150,7 @@ impl Buffer {
       )
     };
 
-    self.buffer.write_bytes(render_context.gpu(), offset, bytes);
+    self.buffer.write_bytes(gpu.platform(), offset, bytes);
   }
 }
 
@@ -184,7 +180,7 @@ pub struct UniformBuffer<T> {
 impl<T: Copy> UniformBuffer<T> {
   /// Create a new uniform buffer initialized with `initial`.
   pub fn new(
-    render_context: &mut RenderContext,
+    gpu: &Gpu,
     initial: &T,
     label: Option<&str>,
   ) -> Result<Self, &'static str> {
@@ -197,7 +193,7 @@ impl<T: Copy> UniformBuffer<T> {
       builder = builder.with_label(l);
     }
 
-    let inner = builder.build(render_context, vec![*initial])?;
+    let inner = builder.build(gpu, vec![*initial])?;
     return Ok(Self {
       inner,
       _phantom: core::marker::PhantomData,
@@ -210,8 +206,8 @@ impl<T: Copy> UniformBuffer<T> {
   }
 
   /// Write a new value to the GPU buffer at offset 0.
-  pub fn write(&self, render_context: &RenderContext, value: &T) {
-    self.inner.write_value(render_context, 0, value);
+  pub fn write(&self, gpu: &Gpu, value: &T) {
+    self.inner.write_value(gpu, 0, value);
   }
 }
 
@@ -288,7 +284,7 @@ impl BufferBuilder {
   /// Returns an error if the resolved length would be zero.
   pub fn build<Data: Copy>(
     &self,
-    render_context: &mut RenderContext,
+    gpu: &Gpu,
     data: Vec<Data>,
   ) -> Result<Buffer, &'static str> {
     let element_size = std::mem::size_of::<Data>();
@@ -312,7 +308,7 @@ impl BufferBuilder {
       builder = builder.with_label(label);
     }
 
-    let buffer = builder.build_init(render_context.gpu(), bytes);
+    let buffer = builder.build_init(gpu.platform(), bytes);
 
     return Ok(Buffer {
       buffer: Rc::new(buffer),
@@ -324,15 +320,15 @@ impl BufferBuilder {
   /// Convenience: create a vertex buffer from a `Mesh`'s vertices.
   pub fn build_from_mesh(
     mesh: &Mesh,
-    render_context: &mut RenderContext,
+    gpu: &Gpu,
   ) -> Result<Buffer, &'static str> {
-    let mut builder = Self::new();
+    let builder = Self::new();
     return builder
       .with_length(mesh.vertices().len() * std::mem::size_of::<Vertex>())
       .with_usage(Usage::VERTEX)
       .with_properties(Properties::CPU_VISIBLE)
       .with_buffer_type(BufferType::Vertex)
-      .build(render_context, mesh.vertices().to_vec());
+      .build(gpu, mesh.vertices().to_vec());
   }
 }
 

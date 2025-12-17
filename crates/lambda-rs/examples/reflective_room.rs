@@ -587,7 +587,11 @@ impl ReflectiveRoomExample {
           .with_stencil_clear(0)
           .with_multi_sample(self.msaa_samples)
           .without_color()
-          .build(render_context),
+          .build(
+            render_context.gpu(),
+            render_context.surface_format(),
+            render_context.depth_format(),
+          ),
       )
     } else {
       None
@@ -606,7 +610,11 @@ impl ReflectiveRoomExample {
     if self.stencil_enabled {
       rp_color_builder = rp_color_builder.with_stencil_load();
     }
-    let rp_color_desc = rp_color_builder.build(render_context);
+    let rp_color_desc = rp_color_builder.build(
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
+    );
 
     // Floor mask pipeline (stencil write)
     self.pipe_floor_mask = if self.stencil_enabled {
@@ -626,7 +634,7 @@ impl ReflectiveRoomExample {
             .with_usage(Usage::VERTEX)
             .with_properties(Properties::DEVICE_LOCAL)
             .with_buffer_type(BufferType::Vertex)
-            .build(render_context, floor_mesh.vertices().to_vec())
+            .build(render_context.gpu(), floor_mesh.vertices().to_vec())
             .map_err(|e| format!("Failed to create floor buffer: {}", e))?,
           floor_mesh.attributes().to_vec(),
         )
@@ -648,7 +656,9 @@ impl ReflectiveRoomExample {
         })
         .with_multi_sample(self.msaa_samples)
         .build(
-          render_context,
+          render_context.gpu(),
+          render_context.surface_format(),
+          render_context.depth_format(),
           rp_mask_desc
             .as_ref()
             .expect("mask pass missing for stencil"),
@@ -676,7 +686,7 @@ impl ReflectiveRoomExample {
             .with_usage(Usage::VERTEX)
             .with_properties(Properties::DEVICE_LOCAL)
             .with_buffer_type(BufferType::Vertex)
-            .build(render_context, cube_mesh.vertices().to_vec())
+            .build(render_context.gpu(), cube_mesh.vertices().to_vec())
             .map_err(|e| format!("Failed to create cube buffer: {}", e))?,
           cube_mesh.attributes().to_vec(),
         )
@@ -702,7 +712,9 @@ impl ReflectiveRoomExample {
         .with_depth_write(false)
         .with_depth_compare(CompareFunction::Always);
       let p = builder.build(
-        render_context,
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
         &rp_color_desc,
         &self.shader_vs,
         Some(&self.shader_fs_lit),
@@ -727,7 +739,7 @@ impl ReflectiveRoomExample {
           .with_usage(Usage::VERTEX)
           .with_properties(Properties::DEVICE_LOCAL)
           .with_buffer_type(BufferType::Vertex)
-          .build(render_context, floor_mesh.vertices().to_vec())
+          .build(render_context.gpu(), floor_mesh.vertices().to_vec())
           .map_err(|e| format!("Failed to create floor buffer: {}", e))?,
         floor_mesh.attributes().to_vec(),
       )
@@ -743,7 +755,9 @@ impl ReflectiveRoomExample {
         });
     }
     let floor_pipe = floor_builder.build(
-      render_context,
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
       &rp_color_desc,
       &self.shader_vs,
       Some(&self.shader_fs_floor),
@@ -763,7 +777,7 @@ impl ReflectiveRoomExample {
           .with_usage(Usage::VERTEX)
           .with_properties(Properties::DEVICE_LOCAL)
           .with_buffer_type(BufferType::Vertex)
-          .build(render_context, cube_mesh.vertices().to_vec())
+          .build(render_context.gpu(), cube_mesh.vertices().to_vec())
           .map_err(|e| format!("Failed to create cube buffer: {}", e))?,
         cube_mesh.attributes().to_vec(),
       )
@@ -779,7 +793,9 @@ impl ReflectiveRoomExample {
         });
     }
     let normal_pipe = normal_builder.build(
-      render_context,
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
       &rp_color_desc,
       &self.shader_vs,
       Some(&self.shader_fs_lit),

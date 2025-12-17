@@ -3,24 +3,26 @@ title: "Textured Quad: Sample a 2D Texture"
 document_id: "textured-quad-tutorial-2025-11-01"
 status: "draft"
 created: "2025-11-01T00:00:00Z"
-last_updated: "2025-11-10T03:00:00Z"
-version: "0.3.3"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.4.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "fe79756541e33270eca76638400bb64c6ec9f732"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "textures", "samplers", "rust", "wgpu"]
 ---
 
 ## Overview <a name="overview"></a>
+
 This tutorial builds a textured quad using a sampled 2D texture and sampler. It covers creating pixel data on the central processing unit (CPU), uploading to a graphics processing unit (GPU) texture, defining a sampler, wiring a bind group layout, and sampling the texture in the fragment shader.
 
 Reference implementation: `crates/lambda-rs/examples/textured_quad.rs`.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Goals](#goals)
 - [Prerequisites](#prerequisites)
@@ -50,10 +52,12 @@ Reference implementation: `crates/lambda-rs/examples/textured_quad.rs`.
 - Create a `Texture` and `Sampler`, bind them in a layout, and draw using Lambda’s builders.
 
 ## Prerequisites <a name="prerequisites"></a>
+
 - Workspace builds: `cargo build --workspace`.
 - Run any example to verify setup: `cargo run --example minimal`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
+
 - Binding indices MUST match between Rust and shaders: set 0, binding 1 is the 2D texture; set 0, binding 2 is the sampler.
 - The example uses `TextureFormat::Rgba8UnormSrgb` so sampling converts from sRGB to linear space before shading. Rationale: produces correct color and filtering behavior for color images.
 - The CPU pixel buffer length MUST equal `width * height * 4` bytes for `Rgba8*` formats.
@@ -75,6 +79,7 @@ Render pass -> SetPipeline -> SetBindGroup -> Draw (fragment samples)
 ## Implementation Steps <a name="implementation-steps"></a>
 
 ### Step 1 — Runtime and Component Skeleton <a name="step-1"></a>
+
 Create the application runtime and a `Component` that receives lifecycle
 callbacks and a render context for resource creation and command submission.
 
@@ -171,6 +176,7 @@ fn main() {
 This scaffold establishes the runtime entry point and a component that participates in the engine lifecycle. The struct stores shader handles and placeholders for GPU resources that will be created during attachment. The `Default` implementation compiles inline GLSL into `Shader` objects up front so pipeline creation can proceed deterministically. At this stage the window is created and ready; no rendering occurs yet.
 
 ### Step 2 — Vertex and Fragment Shaders <a name="step-2"></a>
+
 Define GLSL 450 shaders. The vertex shader forwards UV to the fragment shader; the fragment samples `sampler2D(tex, samp)`.
 
 Place these constants near the top of `textured_quad.rs`:
@@ -233,6 +239,7 @@ self.shader_fs = shader_fs;
 This compiles the virtual shaders to SPIR‑V using the engine’s shader builder and stores the resulting `Shader` objects on the component. The shaders are now ready for pipeline creation; drawing will begin only after a pipeline and render pass are created and attached.
 
 ### Step 3 — Mesh Data and Vertex Layout <a name="step-3"></a>
+
 Placement: on_attach.
 
 Define two triangles forming a quad. Pack UV into the vertex attribute at
@@ -280,6 +287,7 @@ self.mesh = Some(mesh);
 This builds a quad from two triangles and declares the vertex attribute layout that the shaders consume. Positions map to location 0, normals to location 1, and UVs are encoded in the color field at location 2. The mesh currently resides on the CPU; a vertex buffer is created when building the pipeline.
 
 ### Step 4 — Build a 2D Texture (Checkerboard) <a name="step-4"></a>
+
 Placement: on_attach.
 
 Generate a simple checkerboard and upload it as an sRGB 2D texture.
@@ -306,13 +314,14 @@ let texture = TextureBuilder::new_2d(TextureFormat::Rgba8UnormSrgb)
   .with_size(texture_width, texture_height)
   .with_data(&pixels)
   .with_label("checkerboard")
-  .build(render_context)
+  .build(render_context.gpu())
   .expect("Failed to create texture");
 ```
 
 This produces a GPU texture in `Rgba8UnormSrgb` format containing a checkerboard pattern. The builder uploads the CPU byte buffer and returns a handle suitable for binding. Using an sRGB color format ensures correct linearization during sampling in the fragment shader.
 
 ### Step 5 — Create a Sampler <a name="step-5"></a>
+
 Create a linear filtering sampler with clamp‑to‑edge addressing.
 
 ```rust
@@ -321,12 +330,13 @@ use lambda::render::texture::SamplerBuilder;
 let sampler = SamplerBuilder::new()
   .linear_clamp()
   .with_label("linear-clamp")
-  .build(render_context);
+  .build(render_context.gpu());
 ```
 
 This sampler selects linear minification and magnification with clamp‑to‑edge addressing. Linear filtering smooths the checkerboard when scaled, while clamping prevents wrapping at the texture borders.
 
 ### Step 6 — Bind Group Layout and Bind Group <a name="step-6"></a>
+
 Declare the layout and bind the texture and sampler at set 0, bindings 1 and 2.
 
 ```rust
@@ -335,18 +345,19 @@ use lambda::render::bind::{BindGroupLayoutBuilder, BindGroupBuilder};
 let layout = BindGroupLayoutBuilder::new()
   .with_sampled_texture(1) // texture2D at binding 1
   .with_sampler(2)         // sampler   at binding 2
-  .build(render_context);
+  .build(render_context.gpu());
 
 let bind_group = BindGroupBuilder::new()
   .with_layout(&layout)
   .with_texture(1, &texture)
   .with_sampler(2, &sampler)
-  .build(render_context);
+  .build(render_context.gpu());
 ```
 
 The bind group layout declares the shader‑visible interface for set 0: a sampled `texture2D` at binding 1 and a `sampler` at binding 2. The bind group then binds the concrete texture and sampler objects to those indices so the fragment shader can sample them during rendering.
 
 ### Step 7 — Create the Render Pipeline <a name="step-7"></a>
+
 Build a pipeline that consumes the mesh vertex buffer and the layout. Disable face culling for simplicity.
 
 ```rust
@@ -358,7 +369,11 @@ use lambda::render::{
 
 let render_pass = RenderPassBuilder::new()
   .with_label("textured-quad-pass")
-  .build(render_context);
+  .build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+  );
 
 let mesh = self.mesh.as_ref().expect("mesh must be created");
 
@@ -366,11 +381,18 @@ let pipeline = RenderPipelineBuilder::new()
   .with_culling(CullingMode::None)
   .with_layouts(&[&layout])
   .with_buffer(
-    BufferBuilder::build_from_mesh(mesh, render_context)
+    BufferBuilder::build_from_mesh(mesh, render_context.gpu())
       .expect("Failed to create vertex buffer"),
     mesh.attributes().to_vec(),
   )
-  .build(render_context, &render_pass, &self.shader_vs, Some(&self.shader_fs));
+  .build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+    &render_pass,
+    &self.shader_vs,
+    Some(&self.shader_fs),
+  );
 
 // Attach resources to obtain `ResourceId`s for rendering
 self.render_pass = Some(render_context.attach_render_pass(render_pass));
@@ -381,6 +403,7 @@ self.bind_group = Some(render_context.attach_bind_group(bind_group));
 The render pass targets the surface’s color attachment. The pipeline uses the compiled shaders, disables face culling for clarity, and declares a vertex buffer built from the mesh with attribute descriptors that match the shader locations. Attaching the pass, pipeline, and bind group to the render context yields stable `ResourceId`s that render commands will reference.
 
 ### Step 8 — Record Draw Commands <a name="step-8"></a>
+
 Center a square viewport inside the window, bind pipeline, bind group, and draw six vertices.
 
 ```rust
@@ -418,6 +441,7 @@ let commands = vec![
 These commands open a render pass with a centered square viewport, select the pipeline, bind the texture and sampler group at set 0, bind the vertex buffer at slot 0, draw six vertices, and end the pass. When submitted, they render a textured quad while preserving aspect ratio via the viewport.
 
 ### Step 9 — Handle Window Resize <a name="step-9"></a>
+
 Track window size from events and recompute the centered square viewport.
 
 ```rust
@@ -435,12 +459,14 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 This event handler updates the stored window dimensions when a resize occurs. The render path uses these values to recompute the centered square viewport so the quad remains square and centered as the window changes size.
 
 ## Validation <a name="validation"></a>
+
 - Build the workspace: `cargo build --workspace`
 - Run the example (workspace root): `cargo run --example textured_quad`
   - If needed, specify the package: `cargo run -p lambda-rs --example textured_quad`
 - Expected behavior: a centered square quad shows a gray checkerboard. Resizing the window preserves square aspect ratio by letterboxing with the viewport. With linear filtering, downscaling appears smooth.
 
 ## Notes <a name="notes"></a>
+
 - sRGB vs linear formats: `Rgba8UnormSrgb` SHOULD be used for color images so sampling converts to linear space automatically. Use non‑sRGB formats (for example, `Rgba8Unorm`) for data textures like normal maps.
 - Binding indices: The `BindGroupLayout` and `BindGroup` indices MUST match shader `set` and `binding` qualifiers. Mismatches surface as validation errors.
 - Vertex attributes: Packing UV into the color slot is a simplification for the example. Defining a dedicated UV attribute at its own location is RECOMMENDED for production code.
@@ -448,6 +474,7 @@ This event handler updates the stored window dimensions when a resize occurs. Th
 - Pipeline layout: Include all used layouts via `.with_layouts(...)` when creating the pipeline; otherwise binding state is incomplete at draw time.
 
 ## Conclusion <a name="conclusion"></a>
+
 This tutorial implemented a complete 2D sampling path. It generated a
 checkerboard on the CPU, uploaded it as an sRGB texture, created a
 linear‑clamp sampler, and defined matching binding layouts. Shaders forwarded
@@ -456,10 +483,12 @@ were recorded using a centered viewport. The result renders a textured quad
 with correct color space handling and filtering.
 
 ## Putting It Together <a name="putting-it-together"></a>
+
 - Full reference: `crates/lambda-rs/examples/textured_quad.rs`
 - Minimal differences: the example includes empty `on_detach` and `on_update` hooks and a log line in `on_attach`.
 
 ## Exercises <a name="exercises"></a>
+
 - Exercise 1: Nearest filtering
   - Replace `linear_clamp()` with `nearest_clamp()` and observe sharper scaling.
 - Exercise 2: Repeat addressing
@@ -474,6 +503,8 @@ with correct color space handling and filtering.
   - Discuss artifacts without mipmaps and how multiple levels would improve minification.
 
 ## Changelog <a name="changelog"></a>
+
+- 0.4.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.3.3 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
 - 0.3.2 (2025-11-10): Add narrative explanations after each code block; clarify lifecycle and binding flow.
 - 0.3.1 (2025-11-10): Align with example; add shader constants; attach resources; fix variable names; add missing section.

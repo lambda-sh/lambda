@@ -3,24 +3,26 @@ title: "Reflective Floor: Stencil‑Masked Planar Reflections"
 document_id: "reflective-room-tutorial-2025-11-17"
 status: "draft"
 created: "2025-11-17T00:00:00Z"
-last_updated: "2025-11-21T00:00:00Z"
-version: "0.2.2"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.3.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "1f91ff4ec776ec5435fce8a53441010d9e0c86e6"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "stencil", "depth", "msaa", "mirror", "3d", "push-constants", "wgpu", "rust"]
 ---
 
 ## Overview <a name="overview"></a>
+
 This tutorial builds a reflective floor using the stencil buffer with an optional depth test and 4× multi‑sample anti‑aliasing (MSAA). The scene renders in four phases: a floor mask into stencil, a mirrored cube clipped by the mask, a translucent lit floor surface, and a normal cube above the plane. The camera looks down at a moderate angle so the reflection is clearly visible.
 
 Reference implementation: `crates/lambda-rs/examples/reflective_room.rs`.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Goals](#goals)
 - [Prerequisites](#prerequisites)
@@ -53,10 +55,12 @@ Reference implementation: `crates/lambda-rs/examples/reflective_room.rs`.
 - Provide runtime toggles for MSAA, stencil, and depth testing, plus camera pitch and visibility helpers.
 
 ## Prerequisites <a name="prerequisites"></a>
+
 - Build the workspace: `cargo build --workspace`.
 - Run an example to verify setup: `cargo run --example minimal`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
+
 - A pipeline that uses stencil state MUST render into a pass with a depth‑stencil attachment. Use `DepthFormat::Depth24PlusStencil8`.
 - The mask pass MUST disable depth writes and write stencil with `Replace` so the floor area becomes `1`.
 - The reflected cube pipeline MUST test stencil `Equal` against reference `1` and SHOULD set stencil write mask to `0x00`.
@@ -88,6 +92,7 @@ Pass 4: Color — draw normal cube above the floor
 ## Implementation Steps <a name="implementation-steps"></a>
 
 ### Step 1 — Runtime and Component Skeleton <a name="step-1"></a>
+
 Define a `Component` that owns shaders, meshes, render passes, pipelines, window size, elapsed time, and user‑toggleable settings for MSAA, stencil, and depth testing.
 
 ```rust
@@ -124,6 +129,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample { /* lifecycle
 Narrative: The component stores GPU handles and toggles. When settings change, mark `needs_rebuild = true` and rebuild pipelines/passes on the next frame.
 
 ### Step 2 — Shaders and Push Constants <a name="step-2"></a>
+
 Use one vertex shader and two fragment shaders. The vertex shader expects push constants with two `mat4` values: the MVP and the model matrix, used to transform positions and rotate normals to world space. The floor fragment shader is lit and translucent so the reflection reads beneath it.
 
 ```glsl
@@ -184,11 +190,13 @@ pub fn push_constants_to_words(pc: &PushConstant) -> &[u32] {
 ```
 
 ### Step 3 — Meshes: Cube and Floor <a name="step-3"></a>
+
 Build a unit cube (36 vertices) with per‑face normals and a large XZ floor quad at `y = 0`. Provide matching vertex attributes for position and normal at locations 0 and 1.
 
 Reference: `crates/lambda-rs/examples/reflective_room.rs:740` and `crates/lambda-rs/examples/reflective_room.rs:807`.
 
 ### Step 4 — Render Passes: Mask and Color <a name="step-4"></a>
+
 Create a depth/stencil‑only pass for the floor mask and a color pass for the scene. Use the same sample count on both.
 
 ```rust
@@ -200,19 +208,28 @@ let pass_mask = RenderPassBuilder::new()
   .with_stencil_clear(0)
   .with_multi_sample(msaa_samples)
   .without_color() // no color target
-  .build(ctx);
+  .build(
+    ctx.gpu(),
+    ctx.surface_format(),
+    ctx.depth_format(),
+  );
 
 let pass_color = RenderPassBuilder::new()
   .with_label("reflective-room-pass-color")
   .with_multi_sample(msaa_samples)
   .with_depth_clear(1.0) // or .with_depth_load() when depth test is off
   .with_stencil_load()   // preserve mask from pass 1
-  .build(ctx);
+  .build(
+    ctx.gpu(),
+    ctx.surface_format(),
+    ctx.depth_format(),
+  );
 ```
 
 Rationale: pipelines that use stencil require a depth‑stencil attachment, even if depth testing is disabled.
 
 ### Step 5 — Pipeline: Floor Mask (Stencil Write) <a name="step-5"></a>
+
 Draw the floor geometry to write `stencil = 1` where the floor covers. Do not write to color. Disable depth writes and set depth compare to `Always`.
 
 ```rust
@@ -231,10 +248,18 @@ let pipe_floor_mask = RenderPipelineBuilder::new()
     read_mask: 0xFF, write_mask: 0xFF,
   })
   .with_multi_sample(msaa_samples)
-  .build(ctx, &pass_mask, &shader_vs, None);
+  .build(
+    ctx.gpu(),
+    ctx.surface_format(),
+    ctx.depth_format(),
+    &pass_mask,
+    &shader_vs,
+    None,
+  );
 ```
 
 ### Step 6 — Pipeline: Reflected Cube (Stencil Test) <a name="step-6"></a>
+
 Render the mirrored cube only where the floor mask is present. Mirroring flips the winding, so cull front faces for the reflected draw. Use `depth_compare = Always` and disable depth writes so the reflection remains visible; the stencil confines it to the floor.
 
 ```rust
@@ -253,10 +278,18 @@ let mut builder = RenderPipelineBuilder::new()
   .with_depth_write(false)
   .with_depth_compare(CompareFunction::Always);
 
-let pipe_reflected = builder.build(ctx, &pass_color, &shader_vs, Some(&shader_fs_lit));
+let pipe_reflected = builder.build(
+  ctx.gpu(),
+  ctx.surface_format(),
+  ctx.depth_format(),
+  &pass_color,
+  &shader_vs,
+  Some(&shader_fs_lit),
+);
 ```
 
 ### Step 7 — Pipeline: Floor Visual (Tinted) <a name="step-7"></a>
+
 Draw the floor surface with a translucent tint so the reflection remains visible beneath.
 
 ```rust
@@ -273,10 +306,18 @@ if depth_test_enabled || stencil_enabled {
     .with_depth_compare(if depth_test_enabled { CompareFunction::LessEqual } else { CompareFunction::Always });
 }
 
-let pipe_floor_visual = floor_vis.build(ctx, &pass_color, &shader_vs, Some(&shader_fs_floor));
+let pipe_floor_visual = floor_vis.build(
+  ctx.gpu(),
+  ctx.surface_format(),
+  ctx.depth_format(),
+  &pass_color,
+  &shader_vs,
+  Some(&shader_fs_floor),
+);
 ```
 
 ### Step 8 — Pipeline: Normal Cube <a name="step-8"></a>
+
 Draw the unreflected cube above the floor using the lit fragment shader. Enable back‑face culling and depth testing when requested.
 
 ```rust
@@ -293,10 +334,18 @@ if depth_test_enabled || stencil_enabled {
     .with_depth_compare(if depth_test_enabled { CompareFunction::Less } else { CompareFunction::Always });
 }
 
-let pipe_normal = normal.build(ctx, &pass_color, &shader_vs, Some(&shader_fs_lit));
+let pipe_normal = normal.build(
+  ctx.gpu(),
+  ctx.surface_format(),
+  ctx.depth_format(),
+  &pass_color,
+  &shader_vs,
+  Some(&shader_fs_lit),
+);
 ```
 
 ### Step 9 — Per‑Frame Transforms and Reflection <a name="step-9"></a>
+
 Compute camera, model rotation, and the mirror transform across the floor plane. The camera pitches downward and translates to a higher vantage point. Build the mirror using the plane‑reflection matrix `R = I − 2 n n^T` for a plane through the origin with unit normal `n` (for a flat floor, `n = (0,1,0)`).
 
 ```rust
@@ -328,6 +377,7 @@ let mvp_reflect = projection.multiply(&view).multiply(&model_reflect);
 ```
 
 ### Step 10 — Record Commands and Draw Order <a name="step-10"></a>
+
 Record commands in the following order. Set `viewport` and `scissor` to the window dimensions.
 
 ```rust
@@ -368,6 +418,7 @@ cmds.push(RenderCommand::EndRenderPass);
 ```
 
 ### Step 11 — Input, MSAA/Depth/Stencil Toggles, and Resize <a name="step-11"></a>
+
 Support runtime toggles to observe the impact of each setting:
 
 - `M` toggles MSAA between `1×` and `4×`. Rebuild passes and pipelines when it changes.
@@ -422,6 +473,7 @@ The reflective floor combines a simple stencil mask with an optional depth test 
 
 ## Changelog <a name="changelog"></a>
 
+- 2025-12-15, 0.3.0: Update builder API calls to use `ctx.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-21, 0.2.2: Align tutorial with removal of the unmasked reflection debug toggle in the example and update metadata to the current engine workspace commit.
 - 0.2.0 (2025‑11‑19): Updated for camera pitch, front‑face culling on reflection, lit translucent floor, unmasked reflection debug toggle, floor overlay toggle, and Metal portability note.
 - 0.1.0 (2025‑11‑17): Initial draft aligned with `crates/lambda-rs/examples/reflective_room.rs`, including stencil mask pass, reflected pipeline, and MSAA/depth toggles.

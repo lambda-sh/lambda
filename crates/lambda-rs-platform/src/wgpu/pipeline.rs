@@ -8,8 +8,10 @@ pub use crate::wgpu::vertex::VertexStepMode;
 use crate::wgpu::{
   bind,
   gpu::Gpu,
-  surface::SurfaceFormat,
-  texture::DepthFormat,
+  texture::{
+    DepthFormat,
+    TextureFormat,
+  },
   vertex::ColorFormat,
 };
 
@@ -378,8 +380,8 @@ impl<'a> RenderPipelineBuilder<'a> {
     return self;
   }
 
-  /// Set single color target for fragment stage from a surface format.
-  pub fn with_surface_color_target(mut self, format: SurfaceFormat) -> Self {
+  /// Set single color target for fragment stage from a texture format.
+  pub fn with_color_target(mut self, format: TextureFormat) -> Self {
     self.color_target_format = Some(format.to_wgpu());
     return self;
   }

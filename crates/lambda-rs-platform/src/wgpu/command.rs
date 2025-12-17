@@ -17,6 +17,7 @@ pub struct CommandBuffer {
 }
 
 impl CommandBuffer {
+  /// Convert to the raw wgpu command buffer.
   pub(crate) fn into_raw(self) -> wgpu::CommandBuffer {
     self.raw
   }
@@ -32,10 +33,10 @@ impl CommandEncoder {
   }
 
   /// Internal helper for beginning a render pass. Used by the render pass builder.
-  pub(crate) fn begin_render_pass_raw<'view>(
-    &'view mut self,
-    desc: &wgpu::RenderPassDescriptor<'view>,
-  ) -> wgpu::RenderPass<'view> {
+  pub(crate) fn begin_render_pass_raw<'pass>(
+    &'pass mut self,
+    desc: &wgpu::RenderPassDescriptor<'pass>,
+  ) -> wgpu::RenderPass<'pass> {
     return self.raw.begin_render_pass(desc);
   }
 

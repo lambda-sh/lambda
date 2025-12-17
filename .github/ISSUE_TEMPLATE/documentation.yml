@@ -1,0 +1,81 @@
+name: Documentation
+description: Report missing, incorrect, or unclear documentation.
+title: "[Docs] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to report documentation issues or request improvements.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the documentation issue or improvement.
+      placeholder: A concise description of what is missing, incorrect, or unclear.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: documentation-type
+    attributes:
+      label: Documentation Type
+      description: Select the type of documentation affected.
+      options:
+        - API documentation (rustdoc)
+        - Specification (docs/specs/)
+        - Tutorial (docs/tutorials/)
+        - Guide (docs/)
+        - README
+        - Code comments
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: Identify the file path or URL of the affected documentation.
+      placeholder: |
+        - File: `docs/tutorials/uniform-buffers.md`
+        - Module: `lambda_rs::render`
+        - URL: https://docs.rs/lambda-rs/...
+    validations:
+      required: false
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: Current Content
+      description: Quote or describe the current documentation (if applicable).
+      placeholder: |
+        The current documentation states:
+        > "..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: proposed-change
+    attributes:
+      label: Proposed Change
+      description: Describe the improvement or correction.
+      placeholder: |
+        The documentation should:
+        - Clarify X
+        - Add example for Y
+        - Correct statement about Z
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information.
+      placeholder: |
+        - Related code changes
+        - User confusion observed
+    validations:
+      required: false

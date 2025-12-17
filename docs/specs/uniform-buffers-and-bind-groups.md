@@ -3,13 +3,13 @@ title: "Uniform Buffers and Bind Groups"
 document_id: "ubo-spec-2025-10-11"
 status: "living"
 created: "2025-10-11T00:00:00Z"
-last_updated: "2025-10-17T00:00:00Z"
-version: "0.4.0"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.5.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "00aababeb76370ebdeb67fc12ab4393aac5e4193"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "uniforms", "bind-groups", "wgpu"]
@@ -18,6 +18,7 @@ tags: ["spec", "rendering", "uniforms", "bind-groups", "wgpu"]
 # Uniform Buffers and Bind Groups
 
 Summary
+
 - Specifies uniform buffer objects (UBOs) and bind groups for the
   wgpu‑backed renderer, preserving builder/command patterns and the separation
   between platform and high‑level layers.
@@ -72,6 +73,7 @@ Summary
     platform layer.
 
 Data flow (one-time setup → per-frame):
+
 ```
 BindGroupLayoutBuilder --> BindGroupLayout --+--> RenderPipelineBuilder (layouts)
                                              |
@@ -142,6 +144,7 @@ Per-frame commands: BeginRenderPass -> SetPipeline -> SetBindGroup -> Draw -> En
 ## Example Usage
 
 Rust (high level)
+
 ```rust
 use lambda::render::{
   bind::{BindGroupLayoutBuilder, BindGroupBuilder, BindingVisibility},
@@ -157,7 +160,7 @@ struct Globals { view_proj: [[f32; 4]; 4] }
 // Layout: set(0)@binding(0) uniform visible to vertex stage
 let layout = BindGroupLayoutBuilder::new()
   .with_uniform(0, BindingVisibility::Vertex)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 // Create UBO
 let ubo = BufferBuilder::new()
@@ -165,19 +168,26 @@ let ubo = BufferBuilder::new()
   .with_usage(Usage::UNIFORM)
   .with_properties(Properties::CPU_VISIBLE)
   .with_label("globals-ubo")
-  .build(&mut rc, vec![Globals { view_proj }])?;
+  .build(rc.gpu(), vec![Globals { view_proj }])?;
 
 // Bind group that points binding(0) at our UBO
 let group0 = BindGroupBuilder::new()
   .with_layout(&layout)
   .with_uniform(0, &ubo, 0, None)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 // Pipeline includes the layout
 let pipe = RenderPipelineBuilder::new()
   .with_layouts(&[&layout])
   .with_buffer(vbo, attributes)
-  .build(&mut rc, &pass, &vs, Some(&fs));
+  .build(
+    rc.gpu(),
+    rc.surface_format(),
+    rc.depth_format(),
+    &pass,
+    &vs,
+    Some(&fs),
+  );
 
 // Encode commands
 let cmds = vec![
@@ -191,6 +201,7 @@ rc.render(cmds);
 ```
 
 WGSL snippet
+
 ```wgsl
 struct Globals { view_proj: mat4x4<f32>; };
 @group(0) @binding(0) var<uniform> globals: Globals;
@@ -202,16 +213,18 @@ fn vs_main(in_pos: vec3<f32>) -> @builtin(position) vec4<f32> {
 ```
 
 GLSL snippet (via naga -> SPIR-V)
+
 ```glsl
 layout(set = 0, binding = 0) uniform Globals { mat4 view_proj; } globals;
 void main() { gl_Position = globals.view_proj * vec4(in_pos, 1.0); }
 ```
 
 Dynamic offsets
+
 ```rust
 let dyn_layout = BindGroupLayoutBuilder::new()
   .with_uniform_dynamic(0, BindingVisibility::Vertex)
-  .build(&mut rc);
+  .build(rc.gpu());
 
 let align = rc.limit_min_uniform_buffer_offset_alignment() as u64;
 let size = core::mem::size_of::<Globals>() as u64;
@@ -219,6 +232,7 @@ let stride = lambda::render::validation::align_up(size, align);
 let offsets = vec![0u32, stride as u32, (2*stride) as u32];
 RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
 ```
+
 ## Performance Considerations
 
 - Prefer `Properties::DEVICE_LOCAL` for long‑lived uniform buffers that are
@@ -286,10 +300,9 @@ RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
   groups continue to function. New pipelines MAY specify layouts via
   `with_layouts` without impacting prior behavior.
 
-
-
 ## Changelog
 
+- 2025-12-15 (v0.5.0) — Update example code to use `rc.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPipelineBuilder`.
 - 2025-10-17 (v0.4.0) — Restructure to match spec template: add Summary, Scope,
   Terminology, Design (API/Behavior/Validation), Constraints and Rules,
   Requirements Checklist, Verification and Testing, and Compatibility. Remove

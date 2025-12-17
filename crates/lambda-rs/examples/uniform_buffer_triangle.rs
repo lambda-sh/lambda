@@ -119,7 +119,11 @@ impl Component<ComponentResult, String> for UniformBufferExample {
     &mut self,
     render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
-    let render_pass = RenderPassBuilder::new().build(render_context);
+    let render_pass = RenderPassBuilder::new().build(
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
+    );
 
     // Create triangle mesh.
     let vertices = [
@@ -179,7 +183,7 @@ impl Component<ComponentResult, String> for UniformBufferExample {
     // Create a bind group layout with a single uniform buffer at binding 0.
     let layout = BindGroupLayoutBuilder::new()
       .with_uniform(0, BindingVisibility::Vertex)
-      .build(&render_context);
+      .build(render_context.gpu());
 
     // Create the uniform buffer with an initial matrix.
     let camera = SimpleCamera {
@@ -209,25 +213,27 @@ impl Component<ComponentResult, String> for UniformBufferExample {
       .with_usage(Usage::UNIFORM)
       .with_properties(Properties::CPU_VISIBLE)
       .with_label("globals-uniform")
-      .build(render_context, vec![initial_uniform])
+      .build(render_context.gpu(), vec![initial_uniform])
       .expect("Failed to create uniform buffer");
 
     // Create the bind group using the layout and uniform buffer.
     let bind_group = BindGroupBuilder::new()
       .with_layout(&layout)
       .with_uniform(0, &uniform_buffer, 0, None)
-      .build(render_context);
+      .build(render_context.gpu());
 
     let pipeline = RenderPipelineBuilder::new()
       .with_culling(lambda::render::pipeline::CullingMode::None)
       .with_layouts(&[&layout])
       .with_buffer(
-        BufferBuilder::build_from_mesh(&mesh, render_context)
+        BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
           .expect("Failed to create buffer"),
         mesh.attributes().to_vec(),
       )
       .build(
-        render_context,
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
         &render_pass,
         &self.shader,
         Some(&self.fragment_shader),
@@ -310,7 +316,7 @@ impl Component<ComponentResult, String> for UniformBufferExample {
       let value = GlobalsUniform {
         render_matrix: render_matrix.transpose(),
       };
-      uniform_buffer.write_value(render_context, 0, &value);
+      uniform_buffer.write_value(render_context.gpu(), 0, &value);
     }
 
     // Create viewport.

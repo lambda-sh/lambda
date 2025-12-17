@@ -3,24 +3,26 @@ title: "Uniform Buffers: Build a Spinning Triangle"
 document_id: "uniform-buffers-tutorial-2025-10-17"
 status: "draft"
 created: "2025-10-17T00:00:00Z"
-last_updated: "2025-11-10T03:00:00Z"
-version: "0.4.1"
+last_updated: "2025-12-15T00:00:00Z"
+version: "0.5.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "fe79756541e33270eca76638400bb64c6ec9f732"
+repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "uniform-buffers", "rust", "wgpu"]
 ---
 
 ## Overview <a name="overview"></a>
+
 Uniform buffer objects (UBOs) are a standard mechanism to pass per‑frame or per‑draw constants to shaders. This document demonstrates a minimal 3D spinning triangle that uses a UBO to provide a model‑view‑projection matrix to the vertex shader.
 
 Reference implementation: `crates/lambda-rs/examples/uniform_buffer_triangle.rs`.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Goals](#goals)
 - [Prerequisites](#prerequisites)
@@ -51,17 +53,20 @@ Reference implementation: `crates/lambda-rs/examples/uniform_buffer_triangle.rs`
 - Learn how to construct a render pipeline and issue draw commands using Lambda’s builders.
 
 ## Prerequisites <a name="prerequisites"></a>
+
 - Rust toolchain installed and the workspace builds: `cargo build --workspace`.
 - Familiarity with basic Rust and the repository’s example layout.
 - Ability to run examples: `cargo run --example minimal` verifies setup.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
+
 - The uniform block layout in the shader and the Rust structure MUST match in size, alignment, and field order.
 - The bind group layout in Rust MUST match the shader `set` and `binding` indices.
 - Matrices MUST be provided in the order expected by the shader (column‑major in this example). Rationale: prevents implicit driver conversions and avoids incorrect transforms.
 - Acronyms MUST be defined on first use (e.g., uniform buffer object (UBO)).
 
 ## Data Flow <a name="data-flow"></a>
+
 - CPU writes → UBO → bind group (set 0) → pipeline layout → vertex shader.
 - A single UBO MAY be reused across multiple draws and pipelines.
 
@@ -80,6 +85,7 @@ Bind Group ──▶ Pipeline Layout ──▶ Render Pipeline ──▶ Vertex 
 ## Implementation Steps <a name="implementation-steps"></a>
 
 ### Step 1 — Runtime and Component Skeleton <a name="step-1"></a>
+
 Before rendering, create a minimal application entry point and a `Component` that receives lifecycle callbacks. The engine routes initialization, input, updates, and rendering through the component interface, which provides the context needed to create GPU resources and submit commands.
 
 ```rust
@@ -121,6 +127,7 @@ fn main() {
 ```
 
 ### Step 2 — Vertex and Fragment Shaders <a name="step-2"></a>
+
 Define shader stages next. The vertex shader declares three vertex attributes and a uniform block at set 0, binding 0. It multiplies the incoming position by the matrix stored in the UBO. The fragment shader returns the interpolated color. Declaring the uniform block now establishes the contract that the Rust side will satisfy via a matching bind group layout and buffer.
 
 ```glsl
@@ -176,6 +183,7 @@ let fragment_shader: Shader = shader_builder.build(fragment_virtual);
 ```
 
 ### Step 3 — Mesh Data and Vertex Layout <a name="step-3"></a>
+
 Provide vertex data for a single triangle and describe how the pipeline reads it. Each vertex stores position, normal, and color as three `f32` values. The attribute descriptors specify locations and byte offsets so the pipeline can interpret the packed buffer consistently across platforms.
 
 ```rust
@@ -213,6 +221,7 @@ let mesh: Mesh = mesh_builder
 ```
 
 ### Step 4 — Uniform Data Layout in Rust <a name="step-4"></a>
+
 Mirror the shader’s uniform block with a Rust structure. Use `#[repr(C)]` so the memory layout is predictable. A `mat4` in the shader corresponds to a 4×4 `f32` array here. Many GPU interfaces expect column‑major matrices; transpose before upload if the local math library is row‑major. This avoids implicit driver conversions and prevents incorrect transforms.
 
 ```rust
@@ -224,6 +233,7 @@ pub struct GlobalsUniform {
 ```
 
 ### Step 5 — Bind Group Layout at Set 0 <a name="step-5"></a>
+
 Create a bind group layout that matches the shader declaration. This layout says: at set 0, binding 0 there is a uniform buffer visible to the vertex stage. The pipeline layout will incorporate this, ensuring the shader and the bound resources agree at draw time.
 
 ```rust
@@ -231,10 +241,11 @@ use lambda::render::bind::{BindGroupLayoutBuilder, BindingVisibility};
 
 let layout = BindGroupLayoutBuilder::new()
   .with_uniform(0, BindingVisibility::Vertex) // binding 0
-  .build(render_context);
+  .build(render_context.gpu());
 ```
 
 ### Step 6 — Create the Uniform Buffer and Bind Group <a name="step-6"></a>
+
 Allocate the uniform buffer, seed it with an initial matrix, and create a bind group using the layout. Mark the buffer usage as `UNIFORM` and properties as `CPU_VISIBLE` to permit direct per‑frame writes from the CPU. This is the simplest path for frequently updated data.
 
 ```rust
@@ -247,7 +258,7 @@ let uniform_buffer = BufferBuilder::new()
   .with_usage(Usage::UNIFORM)
   .with_properties(Properties::CPU_VISIBLE)
   .with_label("globals-uniform")
-  .build(render_context, vec![initial_uniform])
+  .build(render_context.gpu(), vec![initial_uniform])
   .expect("Failed to create uniform buffer");
 
 use lambda::render::bind::BindGroupBuilder;
@@ -255,10 +266,11 @@ use lambda::render::bind::BindGroupBuilder;
 let bind_group = BindGroupBuilder::new()
   .with_layout(&layout)
   .with_uniform(0, &uniform_buffer, 0, None) // binding 0
-  .build(render_context);
+  .build(render_context.gpu());
 ```
 
 ### Step 7 — Build the Render Pipeline <a name="step-7"></a>
+
 Construct the render pipeline, supplying the bind group layouts, vertex buffer, and the shader pair. Disable face culling for simplicity so both sides of the triangle remain visible regardless of winding during early experimentation.
 
 ```rust
@@ -267,19 +279,31 @@ use lambda::render::{
   render_pass::RenderPassBuilder,
 };
 
-let render_pass = RenderPassBuilder::new().build(render_context);
+let render_pass = RenderPassBuilder::new().build(
+  render_context.gpu(),
+  render_context.surface_format(),
+  render_context.depth_format(),
+);
 
 let pipeline = RenderPipelineBuilder::new()
   .with_culling(lambda::render::pipeline::CullingMode::None)
   .with_layouts(&[&layout])
   .with_buffer(
-    BufferBuilder::build_from_mesh(&mesh, render_context).expect("Failed to create buffer"),
+    BufferBuilder::build_from_mesh(&mesh, render_context.gpu()).expect("Failed to create buffer"),
     mesh.attributes().to_vec(),
   )
-  .build(render_context, &render_pass, &vertex_shader, Some(&fragment_shader));
+  .build(
+    render_context.gpu(),
+    render_context.surface_format(),
+    render_context.depth_format(),
+    &render_pass,
+    &vertex_shader,
+    Some(&fragment_shader),
+  );
 ```
 
 ### Step 8 — Per‑Frame Update and Write <a name="step-8"></a>
+
 Animate by recomputing the model‑view‑projection matrix each frame and writing it into the uniform buffer. The helper `compute_model_view_projection_matrix_about_pivot` maintains a correct aspect ratio using the current window dimensions and rotates the model around a chosen pivot.
 
 ```rust
@@ -314,11 +338,12 @@ fn update_uniform_each_frame(
   );
 
   let value = GlobalsUniform { render_matrix: model_view_projection_matrix.transpose() };
-  uniform_buffer.write_value(render_context, 0, &value);
+  uniform_buffer.write_value(render_context.gpu(), 0, &value);
 }
 ```
 
 ### Step 9 — Issue Draw Commands <a name="step-9"></a>
+
 Record commands in the order the GPU expects: begin the render pass, set the pipeline, configure viewport and scissors, bind the vertex buffer and the uniform bind group, draw the vertices, then end the pass. This sequence describes the full state required for a single draw.
 
 ```rust
@@ -342,6 +367,7 @@ let commands = vec![
 ```
 
 ### Step 10 — Handle Window Resize <a name="step-10"></a>
+
 Track window dimensions and update the per‑frame matrix using the new aspect ratio. Forwarding resize events into stored `width` and `height` maintains consistent camera projection across resizes.
 
 ```rust
@@ -359,10 +385,12 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 ```
 
 ## Validation <a name="validation"></a>
+
 - Build the workspace: `cargo build --workspace`
 - Run the example: `cargo run --example uniform_buffer_triangle`
 
 ## Notes <a name="notes"></a>
+
 - Layout matching: The Rust `GlobalsUniform` MUST match the shader block layout. Keep `#[repr(C)]` and follow alignment rules.
 - Matrix order: The shader expects column‑major matrices, so the uploaded matrix MUST be transposed if the local math library uses row‑major.
 - Binding indices: The Rust bind group layout and `.with_uniform(0, ...)`, plus the shader `set = 0, binding = 0`, MUST be consistent.
@@ -370,6 +398,7 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 - Pipeline layout: All bind group layouts used by the pipeline MUST be included via `.with_layouts(...)`.
 
 ## Conclusion <a name="conclusion"></a>
+
 This tutorial produced a spinning triangle that reads a model‑view‑projection
 matrix from a uniform buffer. The implementation aligned the shader and Rust
 layouts, created shaders and a mesh, defined a bind group layout and uniform
@@ -412,9 +441,9 @@ multiple objects and passes.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.5.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.4.1 (2025‑11‑10): Add Conclusion section summarizing accomplishments; update
 metadata and commit.
-
 - 0.4.0 (2025‑10‑30): Added table of contents with links; converted sections to anchored headings; added ASCII data flow diagram; metadata updated.
 - 0.2.0 (2025‑10‑17): Added goals and book‑style step explanations; expanded
 rationale before code blocks; refined validation and notes.

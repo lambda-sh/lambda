@@ -15,7 +15,7 @@ fn wgpu_bind_layout_dim3_and_group() {
   let (w, h, d) = (2u32, 2u32, 2u32);
   let pixels = vec![255u8; (w * h * d * 4) as usize];
   let tex3d = lambda_platform::wgpu::texture::TextureBuilder::new_3d(
-    lambda_platform::wgpu::texture::TextureFormat::Rgba8Unorm,
+    lambda_platform::wgpu::texture::TextureFormat::RGBA8_UNORM,
   )
   .with_size_3d(w, h, d)
   .with_data(&pixels)

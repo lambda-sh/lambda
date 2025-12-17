@@ -30,7 +30,7 @@ fn wgpu_texture_build_and_upload_succeeds() {
   }
 
   let _texture = lambda_platform::wgpu::texture::TextureBuilder::new_2d(
-    lambda_platform::wgpu::texture::TextureFormat::Rgba8UnormSrgb,
+    lambda_platform::wgpu::texture::TextureFormat::RGBA8_UNORM_SRGB,
   )
   .with_size(w, h)
   .with_data(&pixels)
@@ -46,7 +46,7 @@ fn wgpu_texture_upload_with_padding_bytes_per_row() {
   let (w, h) = (13u32, 7u32);
   let pixels = vec![128u8; (w * h * 4) as usize];
   let _ = lambda_platform::wgpu::texture::TextureBuilder::new_2d(
-    lambda_platform::wgpu::texture::TextureFormat::Rgba8Unorm,
+    lambda_platform::wgpu::texture::TextureFormat::RGBA8_UNORM,
   )
   .with_size(w, h)
   .with_data(&pixels)
