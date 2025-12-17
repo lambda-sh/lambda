@@ -3,13 +3,13 @@ title: "Offscreen Render Targets and Multipass Rendering"
 document_id: "offscreen-render-targets-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-11-26T00:00:00Z"
-version: "0.1.2"
+last_updated: "2025-12-17T00:00:00Z"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "aabd30388e2d111ed1c6f42c355c2af9d53f8d5c"
+repo_commit: "9d16168136e560133c937d5202e6e1c80c3b2d28"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "offscreen", "multipass"]
@@ -18,23 +18,35 @@ tags: ["spec", "rendering", "offscreen", "multipass"]
 # Offscreen Render Targets and Multipass Rendering
 
 Summary
-- Introduces offscreen render targets as first-class resources in `lambda-rs`
-  for render-to-texture workflows (post-processing, shadow maps, UI
-  composition).
-- Defines multipass rendering semantics and API changes so passes can write to
-  and sample from offscreen targets without exposing `wgpu` types.
-- Preserves existing builder and command patterns while extending
-  `lambda-rs-platform` to support textures that are both render attachments and
-  sampled resources.
+- Defines an offscreen render-to-texture resource that produces a sampleable
+  color texture.
+- Extends the command-driven renderer so a pass begin selects a render
+  destination: the presentation surface or an offscreen target.
+- Defines the MSAA resolve model for offscreen targets so later passes sample a
+  single-sample resolve texture.
+
+## Table of Contents
+- [Scope](#scope)
+- [Terminology](#terminology)
+- [Architecture Overview](#architecture-overview)
+- [Design](#design)
+- [Behavior](#behavior)
+- [Validation and Errors](#validation-and-errors)
+- [Constraints and Rules](#constraints-and-rules)
+- [Performance Considerations](#performance-considerations)
+- [Requirements Checklist](#requirements-checklist)
+- [Verification and Testing](#verification-and-testing)
+- [Compatibility and Migration](#compatibility-and-migration)
+- [Changelog](#changelog)
 
 ## Scope
 
 ### Goals
 
-- Add first-class offscreen render targets with color and optional depth
-  attachments in `lambda-rs`.
-- Allow render passes to target either the presentation surface or an offscreen
-  render target.
+- Add a first-class offscreen target resource with one color output and
+  optional depth.
+- Allow a render pass begin command to select a destination: the surface or a
+  specific offscreen target.
 - Enable multipass workflows where later passes sample from textures produced
   by earlier passes.
 - Provide validation and feature flags for render-target compatibility, sample
@@ -44,8 +56,7 @@ Summary
 
 - Multiple simultaneous color attachments (MRT) per pass; a single color
   attachment per pass remains the default in this specification.
-- Compute pipelines, storage textures, and general framegraph scheduling;
-  separate specifications cover these areas.
+- A full framegraph scheduler; ordering remains the explicit command sequence.
 - Headless contexts without a presentation surface; this specification assumes
   a window-backed `RenderContext`.
 - Vendor-specific optimizations beyond what `wgpu` exposes via limits and
@@ -53,58 +64,49 @@ Summary
 
 ## Terminology
 
-- Offscreen render target: A 2D color texture with an optional depth attachment
-  that can be bound as a render attachment but is not presented directly to the
-  window surface.
-- Render target: Either the default presentation surface or an offscreen render
-  target.
+- Presentation render target: A window-backed render target that acquires and
+  presents swapchain frames (see `render_target::WindowSurface`).
+- Offscreen target: A persistent resource that owns textures for render-to-
+  texture workflows and exposes a sampleable color texture.
+- Render destination: The destination selected when beginning a render pass:
+  the presentation surface or a specific offscreen target.
+- Resolve texture: The single-sample color texture produced by resolving an
+  MSAA color attachment; this is the texture sampled by later passes.
 - Multipass rendering: A sequence of two or more render passes in a single
   frame where later passes consume the results of earlier passes (for example,
   post-processing or shadow map sampling).
-- Default render target: The swapchain-backed surface associated with a
-  `RenderContext`.
 - Ping-pong target: A pair of offscreen render targets alternated between read
   and write roles across passes.
 
 ## Architecture Overview
 
-- High-level (`lambda-rs`)
-  - Introduces `RenderTarget` and `RenderTargetBuilder` in
-    `lambda::render::target` to construct offscreen color (and optional depth)
-    attachments sized independently of the window.
-  - Extends `RenderPassBuilder` so a pass can declare a target: the default
-    surface or a specific `RenderTarget`.
-  - Extends `RenderPipelineBuilder` so pipelines can declare the expected color
-    format independently of the surface while still aligning sample counts and
-    depth formats with the active pass.
-- Platform (`lambda-rs-platform`)
-  - Extends `TextureBuilder` to create textures that include
-    `RENDER_ATTACHMENT` usage in addition to sampling usage.
-  - Reuses the existing render pass and pipeline builders to bind offscreen
-    texture views as color attachments and to configure color target formats
-    from texture formats instead of only surface formats.
+`lambda-rs` currently has two distinct concepts that collide in naming:
+- `lambda::render::render_target::RenderTarget`: trait for acquiring and
+  presenting frames.
+- `lambda::render::target::RenderTarget`: offscreen render-to-texture resource.
+
+This specification treats the trait in `render_target` as the canonical meaning
+of \"render target\". The offscreen resource is specified as `OffscreenTarget`.
+The implementation SHOULD rename `lambda::render::target::RenderTarget` to
+avoid API ambiguity.
 
 Data flow (setup → per-frame multipass):
 ```
-RenderTargetBuilder
-  --> RenderTarget { color_texture, depth_format, sample_count }
-        └── bound into bind groups for sampling
-
 RenderPassBuilder::new()
-  .with_target(&offscreen)         // or default surface
-  .with_depth_clear(1.0)          // optional depth ops
   .with_multi_sample(1 | 2 | 4 | 8)
   --> RenderPass
         └── RenderContext::attach_render_pass(...)
 
+OffscreenTargetBuilder
+  --> OffscreenTarget { resolve_texture, msaa_texture?, depth_texture? }
+        └── RenderContext::attach_offscreen_target(...)
+
 RenderPipelineBuilder::new()
-  .with_color_format(TextureFormat::Rgba8UnormSrgb)
-  .with_depth_format(DepthFormat::Depth32Float)
   .with_multi_sample(...)
-  --> RenderPipeline
+  --> RenderPipeline (built for a specific color format)
 
 Per-frame commands:
-  BeginRenderPass { pass_id, viewport }  // surface or offscreen target
+  BeginRenderPassTo { pass_id, viewport, destination } // surface or offscreen
     SetPipeline / SetBindGroup / Draw...
   EndRenderPass
   (repeat for additional passes)
@@ -116,300 +118,208 @@ Per-frame commands:
 
 #### High-level layer (`lambda-rs`)
 
-- Module `lambda::render::target`
-  - `pub struct RenderTarget`
-    - Represents a 2D offscreen render target with a single color attachment
-      and an optional depth attachment.
-    - Encapsulates texture size, color format, depth format (if any), and
-      sample count.
-    - Exposes immutable accessors for binding in shaders and builders:
-      - `pub fn size(&self) -> (u32, u32)`
-      - `pub fn color_format(&self) -> texture::TextureFormat`
-      - `pub fn depth_format(&self) -> Option<texture::DepthFormat>`
-      - `pub fn sample_count(&self) -> u32`
-      - `pub fn color_texture(&self) -> &texture::Texture`
-    - Provides explicit destruction:
-      - `pub fn destroy(self, render_context: &mut RenderContext)`
-  - `pub struct RenderTargetBuilder`
-    - Builder for constructing `RenderTarget` values.
-    - API:
-      - `pub fn new() -> Self`
-      - `pub fn with_color(mut self, format: texture::TextureFormat, width: u32, height: u32) -> Self`
-      - `pub fn with_depth(mut self, format: texture::DepthFormat) -> Self`
-      - `pub fn with_multi_sample(mut self, samples: u32) -> Self`
-      - `pub fn with_label(mut self, label: &str) -> Self`
-      - `pub fn build(self, render_context: &mut RenderContext) -> Result<RenderTarget, RenderTargetError>`
-    - Behavior:
-      - Fails with `RenderTargetError::MissingColorAttachment` when no color
-        attachment was configured.
-      - Fails with `RenderTargetError::InvalidSize` when width or height is
-        zero.
-      - Defaults:
-        - Size defaults to the current surface size when not explicitly
-          provided.
-        - Sample count defaults to `1` (no multi-sampling).
-  - `pub enum RenderTargetError`
+- Module `lambda::render::target` (offscreen resource)
+  - `pub struct OffscreenTarget`
+    - Represents a 2D offscreen destination with a single color output and
+      optional depth attachment.
+    - `OffscreenTarget::color_texture()` MUST return the single-sample resolve
+      texture (even when MSAA is enabled on the destination).
+  - `pub struct OffscreenTargetBuilder`
+    - `pub fn new() -> Self`
+    - `pub fn with_color(self, format: texture::TextureFormat, width: u32, height: u32) -> Self`
+    - `pub fn with_depth(self, format: texture::DepthFormat) -> Self`
+    - `pub fn with_multi_sample(self, samples: u32) -> Self`
+    - `pub fn with_label(self, label: &str) -> Self`
+    - `pub fn build(self, render_context: &mut RenderContext) -> Result<OffscreenTarget, OffscreenTargetError>`
+    - Defaults:
+      - When width or height is zero, the builder uses
+        `RenderContext::surface_size()` as the size.
+      - When size is defaulted from the surface, the target MUST NOT
+        auto-resize; the application rebuilds it on resize.
+  - `pub enum OffscreenTargetError`
+    - `MissingColorAttachment`
     - `InvalidSize { width: u32, height: u32 }`
     - `UnsupportedSampleCount { requested: u32 }`
     - `UnsupportedFormat { message: String }`
-    - `DeviceError(String)` for device-level failures returned by the platform
-      layer.
-
-- Module `lambda::render::render_pass`
-  - Extend `RenderPassBuilder` with target selection:
-    - `pub fn with_target(mut self, target: &RenderTarget) -> Self`
-      - Configures the pass to use the provided `RenderTarget` color and depth
-        attachments instead of the default surface and context-managed depth
-        texture.
-      - The pass inherits the target size and sample count; explicit
-        `with_multi_sample` on the pass MUST align with the target sample count
-        (see Behavior).
-    - Existing methods (for example, `with_clear_color`, `with_depth_clear`,
-      `with_stencil_clear`, `with_multi_sample`) remain unchanged and apply to
-      the selected target.
-  - Extend `RenderPass` to expose its target:
-    - `pub(crate) fn uses_default_surface(&self) -> bool`
-    - `pub(crate) fn target(&self) -> Option<RenderTarget>`
-      - Used internally by `RenderContext` to choose attachments when encoding
-        passes.
-
-- Module `lambda::render::pipeline`
-  - Extend `RenderPipelineBuilder` to allow explicit color format selection:
-    - `pub fn with_color_format(mut self, format: texture::TextureFormat) -> Self`
-      - Declares the color format expected by the fragment stage.
-      - When omitted:
-        - For surface-backed passes, defaults to the current surface format.
-        - For offscreen passes with a `RenderTarget`, defaults to the target
-          color format.
-  - `RenderPipelineBuilder::build` behavior changes:
-    - Derives the color target format from:
-      - Explicit `with_color_format`, when provided.
-      - Otherwise from the associated `RenderPass` target:
-        - `RenderContext::surface_format()` for the default surface.
-        - `RenderTarget::color_format()` for offscreen targets.
-    - Retains depth and sample count alignment rules:
-      - Depth format continues to be derived from `with_depth_format` or the
-        pass depth attachment, including stencil upgrades.
-      - Sample count is aligned to the pass sample count, as in the MSAA spec.
-
-- Module `lambda::render::texture`
-  - Extend `TextureBuilder` to support render-target usage:
-    - `pub fn for_render_target(mut self) -> Self`
-      - Marks the texture for combined sampling and render-attachment usage.
-      - Maps to `TEXTURE_BINDING | RENDER_ATTACHMENT | COPY_SRC` at the
-        platform layer.
-    - Existing uses that do not call `for_render_target` continue to produce
-      sampled-only textures.
+    - `DeviceError(String)`
+  - Note: The current implementation uses the name `RenderTarget` in
+    `lambda::render::target`. The public API SHOULD be renamed to
+    `OffscreenTarget` to avoid confusion with `render_target::RenderTarget`.
 
 - Module `lambda::render::command`
-  - No new commands are required; multipass rendering continues to use
-    `RenderCommand::BeginRenderPass` / `EndRenderPass` with different pass
-    handles.
-  - The semantics of `BeginRenderPass` change to:
-    - If the referenced `RenderPass` uses the default surface, the pass writes
-      to the swapchain (with optional MSAA resolve).
-    - If the `RenderPass` references an offscreen `RenderTarget`, the pass
-      writes to the target's color attachment (with optional depth).
+  - Add explicit destination selection for pass begins:
+    - `pub enum RenderDestination { Surface, Offscreen(ResourceId) }`
+    - `RenderCommand::BeginRenderPassTo { render_pass, viewport, destination }`
+    - `RenderCommand::BeginRenderPass { render_pass, viewport }` MUST remain
+      and be equivalent to `BeginRenderPassTo { destination: Surface, ... }`.
 
 - Module `lambda::render::RenderContext`
-  - Extend internal state with an optional pool of offscreen resources owned by
-    `RenderTarget`:
-    - `render_targets` remains managed by application code via `RenderTarget`;
-      `RenderContext` only borrows platform textures when encoding passes.
-  - Expose the surface size for convenience:
-    - `pub fn surface_size(&self) -> (u32, u32)`
-      - Used by `RenderTargetBuilder::new()` as a default size when none is
-        provided.
+  - Add an offscreen target registry:
+    - `pub fn attach_offscreen_target(&mut self, target: OffscreenTarget) -> ResourceId`
+    - `pub fn get_offscreen_target(&self, id: ResourceId) -> &OffscreenTarget`
+
+- Module `lambda::render::render_pass`
+  - The pass description remains destination-agnostic (clear/load/store,
+    depth/stencil ops, sample count, and `uses_color`).
+  - Destination selection occurs in `BeginRenderPassTo`, not in the pass
+    builder.
+
+- Module `lambda::render::pipeline`
+  - Pipelines with a fragment stage are built for one color target format.
+  - `RenderPipelineBuilder::build` MUST treat its `surface_format` parameter as
+    the active color target format:
+    - Surface passes pass `RenderContext::surface_format()`.
+    - Offscreen passes pass `OffscreenTarget::color_format()`.
+
+- Module `lambda::render::texture`
+  - `TextureBuilder::for_render_target` MUST create textures with usage flags
+    suitable for both sampling and render attachments.
 
 #### Platform layer (`lambda-rs-platform`)
 
 - Module `lambda_platform::wgpu::texture`
-  - Extend `TextureBuilder` usage flags:
-    - Add internal `usage_render_attachment: bool` field.
-    - Add `pub fn with_render_attachment_usage(mut self, enabled: bool) -> Self`
-      - When enabled, include `wgpu::TextureUsages::RENDER_ATTACHMENT` in the
-        created texture and its default view usage.
-    - Offscreen color targets use:
-      - `TEXTURE_BINDING | RENDER_ATTACHMENT | COPY_SRC` for flexible sampling
-        and optional readback.
+  - Offscreen resolve textures MUST support both `RENDER_ATTACHMENT` and
+    `TEXTURE_BINDING` usage.
+  - Offscreen MSAA attachment textures MUST support `RENDER_ATTACHMENT` usage.
 - Module `lambda_platform::wgpu::pipeline`
-  - Extend `RenderPipelineBuilder`:
-    - Add `pub fn with_color_target_format(mut self, format: texture::TextureFormat) -> Self`
-      - Converts the texture format into a `wgpu::TextureFormat` and stores it
-        as the color target format.
-    - `with_surface_color_target` remains for surface-backed pipelines and is
-      used when the color target should match the swapchain format.
+  - Pipelines use `RenderPipelineBuilder::with_color_target` to declare the
+    active color target format.
 - Module `lambda_platform::wgpu::render_pass`
-  - No structural changes are required; existing `RenderColorAttachments`
-    already accepts arbitrary `TextureView` references.
-  - Offscreen passes provide `TextureViewRef` from `Texture` at pass-encode
-    time.
+  - Existing `RenderColorAttachments` already supports arbitrary texture views,
+    including MSAA attachments with resolve views.
 
-### Behavior
+## Behavior
 
-#### RenderTarget creation and lifetime
+### Offscreen target creation and lifetime
 
 - Creation
-  - `RenderTargetBuilder::build` MUST fail when:
+  - `OffscreenTargetBuilder::build` MUST fail when:
     - `with_color` was never called.
-    - Width or height is zero.
-    - The requested sample count is not supported by the device for the chosen
-      format.
-  - When no explicit size is set, the builder uses the current
-    `RenderContext::surface_size()` as the color attachment size.
-  - Depth is optional:
-    - When `with_depth` is omitted, the target has no depth attachment.
-    - When `with_depth` is provided, the target allocates a depth texture using
-      `texture::DepthFormat`.
+    - Resolved width or height is zero.
+    - The requested sample count is unsupported for the chosen color format.
+    - The requested sample count is unsupported for the chosen depth format
+      when depth is enabled.
+  - When no explicit size is set, the builder MUST use the current
+    `RenderContext::surface_size()` as the default size.
+- MSAA resolve model
+  - When `sample_count == 1`, the destination owns a single-sample color
+    texture that is both rendered into and sampled by later passes.
+  - When `sample_count > 1`, the destination MUST own:
+    - A multi-sampled color attachment texture used only as the render
+      attachment.
+    - A single-sample resolve texture used as the resolve destination and later
+      sampled.
+  - `OffscreenTarget::color_texture()` MUST return the single-sample resolve
+    texture in both cases.
 - Lifetime
-  - `RenderTarget` owns its color (and optional depth) textures.
-  - `RenderPassBuilder::with_target` clones the target handle; the application
-    MUST keep the `RenderTarget` alive for as long as any attached passes and
-    pipelines are used.
-  - `RenderTarget::destroy` releases underlying resources; further use in
-    passes is invalid and SHOULD be prevented by application code.
+  - When an offscreen target is attached to a `RenderContext` and referenced by
+    id, the application MUST keep the target attached for as long as any
+    commands reference that id.
 
-#### Render pass targeting semantics
+### Render pass destination semantics
 
-- Default behavior (existing)
-  - When `RenderPassBuilder` is used without `with_target`, the pass targets
-    the presentation surface:
-    - Color attachment: swapchain view (with optional MSAA resolve).
-    - Depth attachment: `RenderContext`-managed depth texture.
-- Offscreen behavior (new)
-  - When `with_target(&offscreen)` is used:
-    - Color attachment: offscreen target color texture view.
-    - Depth attachment:
-      - When the target has a depth format, a depth texture is allocated for
-        the target and used as the pass depth attachment.
-      - When the target has no depth format, depth is disabled unless the pass
-        explicitly requests depth operations, in which case the pass MUST
-        produce a configuration error.
-    - Sample count:
-      - The pass sample count MUST equal the target sample count.
-      - When `with_multi_sample` is called with a different value, the pass
-        aligns its sample count to `RenderTarget::sample_count()` and, under
-        validation features, logs an error.
-  - Color load/store operations, depth operations, and stencil operations apply
-    to the offscreen attachments exactly as they apply to the surface-backed
-    attachments.
+- Destination selection occurs in `RenderCommand::BeginRenderPassTo`.
+- `RenderCommand::BeginRenderPass` is equivalent to `RenderDestination::Surface`.
+- `RenderDestination::Surface`
+  - Color attachment is the swapchain view (with optional MSAA resolve).
+  - Depth attachment is the `RenderContext`-managed depth texture.
+- `RenderDestination::Offscreen(target_id)`
+  - Color attachment is the offscreen target:
+    - When `sample_count == 1`, the resolve texture view.
+    - When `sample_count > 1`, the MSAA attachment view with resolve to the
+      resolve texture view.
+  - Depth attachment is the offscreen depth texture view when present.
+  - When the offscreen target has no depth attachment, depth and stencil
+    operations MUST be rejected as configuration errors.
+- Sample count
+  - The pass sample count MUST equal the destination sample count.
+  - The pipeline sample count MUST equal the pass sample count.
 
-#### Multipass flows
+### Multipass flows
 
 - Command ordering
-  - Multipass rendering is expressed as multiple
-    `BeginRenderPass`/`EndRenderPass` pairs in a single command list.
-  - Nested passes remain invalid and MUST continue to be rejected by
-    `RenderContext::encode_pass`.
+  - Multipass rendering is expressed as multiple `BeginRenderPass` /
+    `BeginRenderPassTo` / `EndRenderPass` pairs in a single command list.
+  - Nested passes remain invalid and MUST be rejected by `RenderContext::render`.
 - Data dependencies
-  - Passes that render into an offscreen target produce textures that MAY be
-    sampled in subsequent passes:
-    - Typical pattern:
-      - Pass 1: scene → offscreen color (and depth).
-      - Pass 2: fullscreen quad sampling offscreen.color → surface.
-  - The specification does not introduce an explicit framegraph; ordering is
-    determined solely by the command sequence.
+  - Passes that render into an offscreen destination produce resolve textures
+    that MAY be sampled in subsequent passes.
 - Hazards
-  - Writing to a `RenderTarget` and sampling from the same texture in the same
-    pass is undefined behavior and MUST NOT be supported; validation MAY detect
-    obvious cases but cannot guarantee all hazards are caught.
-  - Using the same `RenderTarget` as the destination for multiple passes in one
-    frame is supported; the clear/load operations on each pass determine
-    whether results accumulate or overwrite.
+  - Sampling from a resolve texture while writing to that resolve texture in
+    the same pass is undefined behavior and MUST NOT be supported.
 
-#### Pipeline and target compatibility
+### Pipeline and destination compatibility
 
 - Color format
-  - For surface-backed passes:
-    - When `with_color_format` is omitted, the pipeline color format is derived
-      from `RenderContext::surface_format()` (existing behavior).
-    - When `with_color_format` is provided and differs from the surface
-      format, pipeline creation MUST fail under `render-validation-pass-compat`
-      or debug assertions.
-  - For offscreen passes:
-    - When `with_color_format` is omitted, the pipeline color format is derived
-      from `RenderTarget::color_format()`.
-    - When `with_color_format` is provided and differs from the target format,
-      pipeline creation MUST either:
-      - Fail configuration-time validation, or
-      - Align to the target format and log an error under
-        `render-validation-render-targets`.
+  - Pipelines with a fragment stage MUST be built for the destination color
+    format:
+    - Surface destinations use `RenderContext::surface_format()`.
+    - Offscreen destinations use `OffscreenTarget::color_format()`.
 - Depth format
-  - Depth behavior follows the depth/stencil specification:
-    - When the pass requests stencil operations, the depth format MUST include
-      a stencil aspect; otherwise, the engine upgrades to
-      `Depth24PlusStencil8` and logs an error under
-      `render-validation-stencil`.
-    - For offscreen targets with a depth format, pipeline depth format MUST
-      match the target depth format; mismatches are treated as configuration
-      errors or aligned with logging, consistent with the depth spec.
+  - When the pass requests stencil operations, the destination depth format
+    MUST include a stencil aspect.
+  - For offscreen destinations with a depth format, pipeline depth format MUST
+    match the destination depth format.
 - Sample count
-  - Pass and pipeline sample counts are aligned as in the MSAA specification:
-    - Pipeline sample count is aligned to the pass sample count.
-    - For offscreen passes, both pass and pipeline sample counts MUST equal the
-      target sample count; invalid sample counts are clamped to `1` with
-      validation logs.
+  - Pipelines MUST match the pass sample count, and the pass sample count MUST
+    match the destination sample count.
 
-### Validation and Errors
+## Validation and Errors
 
-- Builder-level validation (always on)
-  - `RenderTargetBuilder::build` MUST:
-    - Reject zero width or height.
-    - Clamp sample counts less than `1` to `1`.
-  - `RenderPassBuilder::with_target` MUST ensure that a target has a color
-    attachment; targets without color are invalid for the current specification
-    (depth-only targets MAY be added later).
-  - `RenderPipelineBuilder::build` MUST:
-    - Validate that the chosen color format is supported for render attachments
-      on the device.
-- Runtime validation (feature-gated)
-  - New granular feature (crate: `lambda-rs`):
-    - `render-validation-render-targets`
-      - Validates compatibility between `RenderTarget`, `RenderPass`, and
-        `RenderPipeline`:
-        - Verifies that pass and pipeline color formats match the target color
-          format.
-        - Verifies that pass and pipeline sample counts equal the target sample
-          count.
-        - Logs when a pass references a `RenderTarget` whose size differs
-          significantly from the surface size (for example, for debug
-          visibility issues).
-      - Expected runtime cost: low to moderate; checks occur at pass/pipeline
-        build time and pass begin time, not per draw.
-  - Existing granular features:
-    - `render-validation-pass-compat` continues to enforce SetPipeline-time
-      compatibility checks and MUST be updated to consider offscreen targets.
-    - `render-validation-msaa`, `render-validation-depth`,
-      `render-validation-stencil`, and `render-validation-device` remain
-      unchanged but apply equally to offscreen passes.
-- Build-type behavior
-  - Debug builds (`debug_assertions`):
-    - All render-target validations are active regardless of feature flags.
-  - Release builds:
-    - Only cheap size and sample-count clamps are always on.
-    - Detailed compatibility logs require `render-validation-render-targets` or
-      the appropriate umbrella features.
+### Always-on safeguards
+
+- Reject zero-sized offscreen targets at build time.
+- Clamp invalid MSAA sample count inputs to `1` in builder APIs.
+
+### Feature-gated validation
+
+Crate: `lambda-rs`
+- Granular feature:
+  - `render-validation-render-targets`
+    - Validates compatibility between:
+      - `RenderDestination` selection at `BeginRenderPassTo`.
+      - Offscreen target attachments (color + optional depth).
+      - The active `RenderPass` description (sample count, depth/stencil ops).
+      - The active `RenderPipeline` (color target presence, format, and sample
+        count).
+    - Checks MUST occur at pass begin and at `SetPipeline` time, not per draw.
+    - Logs SHOULD include:
+      - Destination size mismatches versus `RenderContext::surface_size()`.
+      - Missing depth attachment when depth or stencil ops are requested.
+      - Color format mismatches between destination and pipeline.
+    - Expected runtime cost is low to moderate.
+
+Umbrella composition (crate: `lambda-rs`)
+- `render-validation` MUST include `render-validation-render-targets`.
+- Umbrella features MUST only compose granular features.
+
+Build-type behavior
+- Debug builds (`debug_assertions`) MAY enable offscreen validation regardless
+  of features.
+- Release builds MUST keep offscreen validation disabled by default and enable
+  it only via `render-validation-render-targets` (or umbrellas that include it).
 
 ## Constraints and Rules
 
-- RenderTarget constraints
-  - Width and height MUST be strictly positive.
-  - Color formats are limited to `TextureFormat::Rgba8Unorm` and
-    `TextureFormat::Rgba8UnormSrgb` in the initial implementation.
-  - Depth formats are limited to `DepthFormat::Depth32Float`,
-    `DepthFormat::Depth24Plus`, and `DepthFormat::Depth24PlusStencil8`.
-  - Sample counts MUST be one of the device-supported values; the initial
-    spec assumes {1, 2, 4, 8}.
+- Offscreen target constraints
+  - Width and height MUST be strictly positive after resolving defaults.
+  - A destination produces exactly one color output.
+  - Color formats MUST be limited to formats supported by `texture::TextureFormat`.
+  - Depth formats MUST be limited to `texture::DepthFormat`.
+  - Sample counts MUST be supported by the device for the chosen color and
+    depth formats; the initial spec assumes {1, 2, 4, 8}.
+  - When `sample_count > 1`, the destination MUST provide a single-sample
+    resolve texture for sampling.
 - Pass constraints
-  - A pass with an offscreen target MUST not also target the surface; the
-    target is exclusive.
-  - Nested `BeginRenderPass`/`EndRenderPass` sequences remain invalid.
-  - Viewport and scissor rectangles are expressed in target-relative
-    coordinates when an offscreen target is selected.
+  - Each `BeginRenderPassTo` MUST select exactly one destination.
+  - Nested `BeginRenderPass`/`BeginRenderPassTo`/`EndRenderPass` sequences
+    remain invalid.
+  - Viewport and scissor rectangles are expressed in destination-relative
+    coordinates when an offscreen destination is selected.
 - Pipeline constraints
-  - Pipelines used with offscreen passes MUST declare a color target; vertex-
-    only pipelines without a fragment stage are not compatible with offscreen
-    color passes in this revision.
+  - Pipelines used with destinations that have color output MUST declare a
+    color target (a fragment stage must be present).
+  - Pipelines MUST match destination format and sample count.
 
 ## Performance Considerations
 
@@ -417,7 +327,7 @@ Per-frame commands:
   effects (for example, half-resolution bloom).
   - Rationale: Smaller render targets reduce fill-rate and bandwidth demands
     while preserving acceptable visual quality for blurred or combined passes.
-- Reuse `RenderTarget` instances across frames instead of recreating them.
+- Reuse offscreen targets across frames instead of recreating them.
   - Rationale: Repeated allocation and destruction of GPU textures can fragment
     memory and increase driver overhead; long-lived targets amortize setup
     costs.
@@ -425,61 +335,53 @@ Per-frame commands:
   multi-sampling to geometry passes.
   - Rationale: MSAA increases memory bandwidth and shader cost; geometric
     passes benefit most, while post-process passes typically do not.
-- Pack related passes that use the same `RenderTarget` close together in the
-  command stream.
+- Pack related passes that use the same offscreen destination close together in
+  the command stream.
   - Rationale: Grouping passes reduces state changes and keeps relevant
     resources warm in caches and descriptor pools.
 
 ## Requirements Checklist
 
 - Functionality
-  - [x] `RenderTarget` and `RenderTargetBuilder` implemented in
-        `crates/lambda-rs/src/render/target.rs`.
-  - [ ] Offscreen targeting added to `RenderPassBuilder` and `RenderPass`.
-  - [ ] Offscreen targeting supported in `RenderContext::render`.
-  - [ ] Edge cases handled (invalid size, unsupported sample count, missing
-        depth when required).
+  - [x] Offscreen target resource exists in `crates/lambda-rs/src/render/target.rs`.
+  - [ ] Rename public API to `OffscreenTarget` to avoid collision with
+        `render_target::RenderTarget`.
+  - [ ] Add `RenderDestination` and `RenderCommand::BeginRenderPassTo`.
+  - [ ] Add `RenderContext::{attach,get}_offscreen_target`.
+  - [ ] Support offscreen destinations in `RenderContext::render`.
+  - [ ] Implement offscreen MSAA resolve textures (render to MSAA, resolve to
+        single-sample, sample resolve).
+  - [ ] Ensure offscreen depth sample count matches destination sample count.
 - API Surface
-  - [ ] High-level public types and builders added in `lambda-rs`.
-  - [x] Platform texture usage for render targets implemented in
-        `lambda-rs-platform`.
-  - [x] Engine texture builder helpers for render targets implemented in
-        `lambda-rs`.
-  - [ ] Pipeline color target changes implemented in `lambda-rs-platform`.
-  - [ ] Backwards compatibility assessed for existing surface-backed paths.
+  - [x] Platform pipeline supports explicit color targets.
+  - [x] Engine `TextureBuilder::for_render_target` sets attachment-capable usage.
 - Validation and Errors
   - [ ] `render-validation-render-targets` feature implemented and composed
         into umbrella validation features.
-  - [ ] Pass/pipeline/target compatibility checks implemented.
-  - [ ] Device limit checks for offscreen formats/sample counts implemented.
-- Performance
-  - [ ] Critical render-target creation paths profiled or reasoned about.
-  - [ ] Memory usage for long-lived render targets characterized.
-  - [ ] Performance recommendations validated against representative examples.
+  - [ ] Pass/pipeline/destination compatibility checks implemented.
+  - [ ] `docs/features.md` updated to list the feature, default state, and cost.
 - Documentation and Examples
-  - [ ] Rendering guide updated to include offscreen/multipass examples.
-  - [ ] Minimal render-to-texture example added under
-        `crates/lambda-rs/examples/`.
-  - [ ] Migration notes added for consumers adopting offscreen targets.
+  - [ ] Minimal render-to-texture example added under `crates/lambda-rs/examples/`.
+  - [ ] Rendering guide updated to include an offscreen multipass walkthrough.
+  - [ ] Migration notes added for consumers adopting destination-based passes.
 
 ## Verification and Testing
 
 - Unit tests
-  - `RenderTargetBuilder` validation:
-    - Invalid sizes and sample counts.
-    - Mapping to platform texture builder usage flags.
-  - Pipeline color format selection:
-    - Surface-backed vs offscreen-backed passes.
-  - Commands:
-    - `cargo test --workspace`
+  - Offscreen target builder validation:
+    - Invalid sizes.
+    - Unsupported sample counts for color and depth formats.
+    - Resolve texture usage flags suitable for attachment and sampling.
+  - Destination validation:
+    - Surface versus offscreen attachment selection at `BeginRenderPassTo`.
+    - Sample count mismatch handling (destination, pass, pipeline).
+    - Depth/stencil requested with no offscreen depth attachment.
+  - Commands: `cargo test --workspace`
 - Integration tests and examples
   - Render-to-texture example:
-    - Pass 1: scene → offscreen.
-    - Pass 2: fullscreen quad sampling offscreen → surface.
-  - Shadow-map-style example:
-    - Depth-only offscreen target feeding a lighting pass.
-  - Commands:
-    - `cargo run -p lambda-rs --example offscreen_post`
+    - Pass 1: scene → offscreen destination.
+    - Pass 2: fullscreen quad sampling `offscreen.color_texture()` → surface.
+  - Commands: `cargo run -p lambda-rs --example offscreen_post`
 - Manual checks
   - Visual confirmation that:
     - Offscreen-only passes do not produce visible output until sampled.
@@ -488,20 +390,24 @@ Per-frame commands:
 
 ## Compatibility and Migration
 
-- The offscreen render target and multipass API is additive:
-  - Existing code that uses only surface-backed passes and pipelines continues
-    to compile and render unchanged.
-  - New APIs are exposed via `RenderTargetBuilder`, `RenderPassBuilder`, and
-    `RenderPipelineBuilder` methods; existing method signatures remain
-    compatible.
-- Consumers MAY adopt offscreen targets incrementally:
-  - Start with post-processing or UI composition that samples a single
-    offscreen color target.
-  - Extend to depth-based passes (for example, shadow maps) when depth
-    attachment support is implemented.
+- Existing surface-only command streams remain valid:
+  - `RenderCommand::BeginRenderPass` continues to target the surface.
+  - Pipelines built against `RenderContext::surface_format()` remain compatible.
+- Migration path
+  - Create and attach one offscreen target.
+  - Render to it using `RenderCommand::BeginRenderPassTo` with
+    `RenderDestination::Offscreen(target_id)`.
+  - Sample `offscreen.color_texture()` in a later surface pass.
+- Naming migration
+  - If `RenderTarget` (offscreen resource) is renamed to `OffscreenTarget`, the
+    rename SHOULD be introduced with a deprecated type alias to preserve source
+    compatibility for consumers.
 
 ## Changelog
 
+- 2025-12-17 (v0.2.0) — Align terminology with `render_target::RenderTarget`,
+  specify destination-based pass targeting, define the offscreen MSAA resolve
+  model, and define feature-gated validation requirements.
 - 2025-11-25 (v0.1.1) — Updated requirements checklist to reflect implemented
   engine texture builder helpers and aligned metadata with current workspace
   revision.
