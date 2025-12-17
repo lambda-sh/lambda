@@ -1,7 +1,5 @@
 //! Matrix math types and functions.
 
-use lambda_platform::rand::get_uniformly_random_floats_between;
-
 use super::{
   turns_to_radians,
   vector::Vector,
@@ -108,7 +106,7 @@ pub fn rotate_matrix<
   let cosine_of_angle = angle_in_radians.cos();
   let sin_of_angle = angle_in_radians.sin();
 
-  let t = 1.0 - cosine_of_angle;
+  let _t = 1.0 - cosine_of_angle;
   let x = axis_to_rotate.at(0);
   let y = axis_to_rotate.at(1);
   let z = axis_to_rotate.at(2);
@@ -322,7 +320,7 @@ where
     todo!()
   }
 
-  fn transform(&self, other: &V) -> V {
+  fn transform(&self, _other: &V) -> V {
     todo!()
   }
 

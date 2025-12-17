@@ -57,7 +57,6 @@ use std::{
   rc::Rc,
 };
 
-use lambda_platform::wgpu as platform;
 use logging;
 
 use self::{
@@ -176,9 +175,8 @@ impl RenderContextBuilder {
       config,
       texture_usage,
       size,
-      depth_texture,
-      depth_format,
       depth_texture: None,
+      depth_format,
       depth_sample_count: 1,
       msaa_color: None,
       msaa_sample_count: 1,
@@ -196,7 +194,7 @@ impl RenderContextBuilder {
       .with_size(size.0.max(1), size.1.max(1))
       .with_format(depth_format)
       .with_label("lambda-depth")
-      .build(&render_context);
+      .build(render_context.gpu());
     render_context.depth_texture = Some(depth_texture);
 
     return Ok(render_context);
@@ -227,8 +225,6 @@ pub struct RenderContext {
   config: surface::SurfaceConfig,
   texture_usage: texture::TextureUsages,
   size: (u32, u32),
-  depth_texture: Option<texture::DepthTexture>,
-  depth_format: texture::DepthFormat,
   depth_texture: Option<texture::DepthTexture>,
   depth_format: texture::DepthFormat,
   depth_sample_count: u32,

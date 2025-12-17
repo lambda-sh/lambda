@@ -740,20 +740,6 @@ impl TextureBuilder {
     return self;
   }
 
-  /// Control copy‑source usage. Defaults to `false` so sampled textures do
-  /// not incur additional usage flags unless explicitly requested.
-  pub fn with_copy_source_usage(mut self, enabled: bool) -> Self {
-    self.usage_copy_source = enabled;
-    return self;
-  }
-
-  /// Control render attachment usage. Defaults to `false` so existing sampled
-  /// textures remain sampled‑only.
-  pub fn with_render_attachment_usage(mut self, enabled: bool) -> Self {
-    self.usage_render_attachment = enabled;
-    return self;
-  }
-
   /// Attach a debug label.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
@@ -1054,25 +1040,5 @@ mod tests {
     assert_eq!(d.mag_filter, wgpu::FilterMode::Linear);
     assert_eq!(d.min_filter, wgpu::FilterMode::Linear);
     assert_eq!(d.mipmap_filter, wgpu::FilterMode::Linear);
-  }
-
-  #[test]
-  fn texture_builder_enables_render_attachment_usage() {
-    let format = TextureFormat::Rgba8Unorm;
-    let builder = TextureBuilder::new_2d(format)
-      .with_size(4, 4)
-      .with_render_attachment_usage(true);
-
-    assert!(builder.usage_render_attachment);
-  }
-
-  #[test]
-  fn texture_builder_enables_copy_source_usage() {
-    let format = TextureFormat::Rgba8Unorm;
-    let builder = TextureBuilder::new_2d(format)
-      .with_size(4, 4)
-      .with_copy_source_usage(true);
-
-    assert!(builder.usage_copy_source);
   }
 }

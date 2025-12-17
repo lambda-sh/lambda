@@ -185,7 +185,7 @@ impl RenderTargetBuilder {
       color_builder = color_builder.with_label(label);
     }
 
-    let color_texture = match color_builder.build(render_context) {
+    let color_texture = match color_builder.build(render_context.gpu()) {
       Ok(texture) => texture,
       Err(message) => {
         return Err(RenderTargetError::DeviceError(message.to_string()));
@@ -201,7 +201,7 @@ impl RenderTargetBuilder {
         depth_builder = depth_builder.with_label(label);
       }
 
-      Some(depth_builder.build(render_context))
+      Some(depth_builder.build(render_context.gpu()))
     } else {
       None
     };

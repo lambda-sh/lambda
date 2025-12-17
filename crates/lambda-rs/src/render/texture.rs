@@ -287,13 +287,23 @@ impl ColorAttachmentTextureBuilder {
 /// operations in render passes.
 #[derive(Debug)]
 pub struct DepthTexture {
-  inner: platform::DepthTexture,
+  inner: Rc<platform::DepthTexture>,
+}
+
+impl Clone for DepthTexture {
+  fn clone(&self) -> Self {
+    return DepthTexture {
+      inner: self.inner.clone(),
+    };
+  }
 }
 
 impl DepthTexture {
   /// Create a high-level depth texture from a platform texture.
   pub(crate) fn from_platform(texture: platform::DepthTexture) -> Self {
-    return DepthTexture { inner: texture };
+    return DepthTexture {
+      inner: Rc::new(texture),
+    };
   }
 
   /// The depth format used by this attachment.
@@ -325,68 +335,6 @@ impl DepthTexture {
   }
 }
 
-/// Builder for creating a depth texture attachment.
-pub struct DepthTextureBuilder {
-  label: Option<String>,
-  format: DepthFormat,
-  width: u32,
-  height: u32,
-  sample_count: u32,
-}
-
-impl DepthTextureBuilder {
-  /// Create a builder with no size and `Depth32Float` format.
-  pub fn new() -> Self {
-    return Self {
-      label: None,
-      format: DepthFormat::Depth32Float,
-      width: 0,
-      height: 0,
-      sample_count: 1,
-    };
-  }
-
-  /// Set the 2D attachment size in pixels.
-  pub fn with_size(mut self, width: u32, height: u32) -> Self {
-    self.width = width;
-    self.height = height;
-    return self;
-  }
-
-  /// Choose a depth format.
-  pub fn with_format(mut self, format: DepthFormat) -> Self {
-    self.format = format;
-    return self;
-  }
-
-  /// Configure multi-sampling.
-  pub fn with_sample_count(mut self, count: u32) -> Self {
-    self.sample_count = count.max(1);
-    return self;
-  }
-
-  /// Attach a debug label for the created texture.
-  pub fn with_label(mut self, label: &str) -> Self {
-    self.label = Some(label.to_string());
-    return self;
-  }
-
-  /// Create the depth texture on the device.
-  pub fn build(self, gpu: &Gpu) -> DepthTexture {
-    let mut builder = platform::DepthTextureBuilder::new()
-      .with_size(self.width, self.height)
-      .with_format(self.format.to_platform())
-      .with_sample_count(self.sample_count);
-
-    if let Some(ref label) = self.label {
-      builder = builder.with_label(label);
-    }
-
-    let texture = builder.build(gpu.platform());
-    return DepthTexture::from_platform(texture);
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Texture (sampled)
 // ---------------------------------------------------------------------------
@@ -401,39 +349,6 @@ impl Texture {
   pub(crate) fn platform_texture(&self) -> Rc<platform::Texture> {
     return self.inner.clone();
   }
-}
-
-#[derive(Debug, Clone)]
-/// High‑level depth texture wrapper that owns a platform depth texture.
-///
-/// This type mirrors `Texture` for depth attachments and keeps the underlying
-/// `wgpu` depth texture internal to the platform crate.
-pub struct DepthTexture {
-  inner: Rc<platform::DepthTexture>,
-  format: DepthFormat,
-}
-
-impl DepthTexture {
-  pub(crate) fn platform_depth_texture(&self) -> Rc<platform::DepthTexture> {
-    return self.inner.clone();
-  }
-
-  pub(crate) fn view_ref(
-    &self,
-  ) -> lambda_platform::wgpu::surface::TextureViewRef<'_> {
-    return self.inner.view_ref();
-  }
-
-  /// Depth format used by this texture.
-  pub fn format(&self) -> DepthFormat {
-    return self.format;
-  }
-
-  /// Explicitly destroy this depth texture.
-  ///
-  /// Dropping the texture will release GPU resources; this method exists to
-  /// mirror other engine resource destruction patterns.
-  pub fn destroy(self, _render_context: &mut RenderContext) {}
 }
 
 #[derive(Debug, Clone)]
@@ -543,9 +458,12 @@ impl TextureBuilder {
       };
 
     if self.is_render_target {
-      builder = builder
-        .with_render_attachment_usage(true)
-        .with_copy_source_usage(true);
+      builder = builder.with_usage(
+        platform::TextureUsages::TEXTURE_BINDING
+          | platform::TextureUsages::RENDER_ATTACHMENT
+          | platform::TextureUsages::COPY_SRC
+          | platform::TextureUsages::COPY_DST,
+      );
     }
 
     if let Some(ref label) = self.label {
@@ -623,7 +541,7 @@ impl DepthTextureBuilder {
   }
 
   /// Create the depth texture on the device.
-  pub fn build(self, render_context: &RenderContext) -> DepthTexture {
+  pub fn build(self, gpu: &Gpu) -> DepthTexture {
     let mut builder = platform::DepthTextureBuilder::new()
       .with_size(self.width.max(1), self.height.max(1))
       .with_format(self.format.to_platform())
@@ -633,11 +551,8 @@ impl DepthTextureBuilder {
       builder = builder.with_label(label);
     }
 
-    let depth = builder.build(render_context.gpu());
-    return DepthTexture {
-      inner: Rc::new(depth),
-      format: self.format,
-    };
+    let texture = builder.build(gpu.platform());
+    return DepthTexture::from_platform(texture);
   }
 }
 
