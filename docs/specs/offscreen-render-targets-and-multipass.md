@@ -3,13 +3,13 @@ title: "Offscreen Render Targets and Multipass Rendering"
 document_id: "offscreen-render-targets-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-12-17T00:00:00Z"
-version: "0.2.0"
+last_updated: "2025-12-17T23:00:02Z"
+version: "0.2.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "9d16168136e560133c937d5202e6e1c80c3b2d28"
+repo_commit: "f1743e5528bc4c8326a46e20123ffac62f717ec9"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "offscreen", "multipass"]
@@ -18,6 +18,7 @@ tags: ["spec", "rendering", "offscreen", "multipass"]
 # Offscreen Render Targets and Multipass Rendering
 
 Summary
+
 - Defines an offscreen render-to-texture resource that produces a sampleable
   color texture.
 - Extends the command-driven renderer so a pass begin selects a render
@@ -41,41 +42,43 @@ Summary
 
 ## Scope
 
-### Goals
-
-- Add a first-class offscreen target resource with one color output and
-  optional depth.
-- Allow a render pass begin command to select a destination: the surface or a
-  specific offscreen target.
-- Enable multipass workflows where later passes sample from textures produced
-  by earlier passes.
-- Provide validation and feature flags for render-target compatibility, sample
-  count and format mismatches, and common configuration pitfalls.
-
-### Non-Goals
-
-- Multiple simultaneous color attachments (MRT) per pass; a single color
-  attachment per pass remains the default in this specification.
-- A full framegraph scheduler; ordering remains the explicit command sequence.
-- Headless contexts without a presentation surface; this specification assumes
-  a window-backed `RenderContext`.
-- Vendor-specific optimizations beyond what `wgpu` exposes via limits and
-  capabilities.
+- Goals
+  - Add a first-class offscreen target resource with one color output and
+    optional depth.
+  - Allow a pass begin command to select a destination: the surface or a
+    specific offscreen target.
+  - Enable multipass workflows where later passes sample from textures
+    produced by earlier passes.
+  - Provide validation and feature flags for render-target compatibility,
+    sample count and format mismatches, and common configuration pitfalls.
+- Non-Goals
+  - Multiple render targets (MRT) per pass; a single color attachment per pass
+    remains the default in this document.
+  - A full framegraph scheduler; ordering remains the explicit command
+    sequence.
+  - Headless contexts without a presentation surface; the current design
+    requires a window-backed `RenderContext`.
+  - Vendor-specific optimizations beyond what `wgpu` exposes via limits and
+    capabilities.
 
 ## Terminology
 
-- Presentation render target: A window-backed render target that acquires and
+- Multi-sample anti-aliasing (MSAA): rasterization technique that stores
+  multiple coverage samples per pixel and resolves them to a single color.
+- Multiple render targets (MRT): rendering to more than one color attachment
+  within a single pass.
+- Presentation render target: window-backed render target that acquires and
   presents swapchain frames (see `render_target::WindowSurface`).
-- Offscreen target: A persistent resource that owns textures for render-to-
+- Offscreen target: persistent resource that owns textures for render-to-
   texture workflows and exposes a sampleable color texture.
-- Render destination: The destination selected when beginning a render pass:
+- Render destination: destination selected when beginning a render pass:
   the presentation surface or a specific offscreen target.
-- Resolve texture: The single-sample color texture produced by resolving an
+- Resolve texture: single-sample color texture produced by resolving an
   MSAA color attachment; this is the texture sampled by later passes.
-- Multipass rendering: A sequence of two or more render passes in a single
+- Multipass rendering: sequence of two or more render passes in a single
   frame where later passes consume the results of earlier passes (for example,
   post-processing or shadow map sampling).
-- Ping-pong target: A pair of offscreen render targets alternated between read
+- Ping-pong target: pair of offscreen render targets alternated between read
   and write roles across passes.
 
 ## Architecture Overview
@@ -85,10 +88,13 @@ Summary
   presenting frames.
 - `lambda::render::target::RenderTarget`: offscreen render-to-texture resource.
 
-This specification treats the trait in `render_target` as the canonical meaning
-of \"render target\". The offscreen resource is specified as `OffscreenTarget`.
-The implementation SHOULD rename `lambda::render::target::RenderTarget` to
-avoid API ambiguity.
+Terminology in this document:
+- "Render target" refers to `lambda::render::render_target::RenderTarget`.
+- The offscreen resource is specified as `OffscreenTarget`.
+
+Implementation note:
+- `lambda::render::target::RenderTarget` SHOULD be renamed to avoid API
+  ambiguity.
 
 Data flow (setup → per-frame multipass):
 ```
@@ -106,7 +112,7 @@ RenderPipelineBuilder::new()
   --> RenderPipeline (built for a specific color format)
 
 Per-frame commands:
-  BeginRenderPassTo { pass_id, viewport, destination } // surface or offscreen
+  BeginRenderPassTo { render_pass, viewport, destination } // surface or offscreen
     SetPipeline / SetBindGroup / Draw...
   EndRenderPass
   (repeat for additional passes)
@@ -269,7 +275,7 @@ Per-frame commands:
 ### Always-on safeguards
 
 - Reject zero-sized offscreen targets at build time.
-- Clamp invalid MSAA sample count inputs to `1` in builder APIs.
+- Treat `sample_count == 0` as `1` in builder APIs.
 
 ### Feature-gated validation
 
@@ -284,7 +290,9 @@ Crate: `lambda-rs`
         count).
     - Checks MUST occur at pass begin and at `SetPipeline` time, not per draw.
     - Logs SHOULD include:
-      - Destination size mismatches versus `RenderContext::surface_size()`.
+      - Destination size mismatches versus `RenderContext::surface_size()` when
+        the offscreen target is surface-sized by default and the surface
+        resizes.
       - Missing depth attachment when depth or stencil ops are requested.
       - Color format mismatches between destination and pipeline.
     - Expected runtime cost is low to moderate.
@@ -294,10 +302,14 @@ Umbrella composition (crate: `lambda-rs`)
 - Umbrella features MUST only compose granular features.
 
 Build-type behavior
-- Debug builds (`debug_assertions`) MAY enable offscreen validation regardless
-  of features.
+- Debug builds (`debug_assertions`) MAY enable offscreen validation.
 - Release builds MUST keep offscreen validation disabled by default and enable
   it only via `render-validation-render-targets` (or umbrellas that include it).
+
+Gating requirements
+- Offscreen validation MUST be gated behind
+  `cfg(any(debug_assertions, feature = "render-validation-render-targets"))`.
+- Offscreen validation MUST NOT be gated behind umbrella feature names.
 
 ## Constraints and Rules
 
@@ -405,6 +417,9 @@ Build-type behavior
 
 ## Changelog
 
+- 2025-12-17 (v0.2.1) — Polish language for style consistency, clarify MSAA
+  terminology and builder safeguards, and specify validation gating
+  requirements.
 - 2025-12-17 (v0.2.0) — Align terminology with `render_target::RenderTarget`,
   specify destination-based pass targeting, define the offscreen MSAA resolve
   model, and define feature-gated validation requirements.
