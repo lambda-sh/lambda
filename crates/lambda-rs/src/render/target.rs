@@ -1,33 +1,36 @@
 //! Offscreen render targets and builders.
 //!
-//! Provides `RenderTarget` and `RenderTargetBuilder` for render‑to‑texture
+//! Provides `OffscreenTarget` and `OffscreenTargetBuilder` for render‑to‑texture
 //! workflows without exposing platform texture types at call sites.
 
 use logging;
 
 use super::{
+  surface,
   texture,
   RenderContext,
 };
 use crate::render::validation;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Offscreen render target with color and optional depth attachments.
 ///
-/// A `RenderTarget` owns a color texture (and optional depth texture) sized
+/// An `OffscreenTarget` owns a color texture (and optional depth texture) sized
 /// independently of the presentation surface. It is intended for render‑to‑
 /// texture workflows such as post‑processing, shadow maps, and UI composition.
-pub struct RenderTarget {
-  color: texture::Texture,
+pub struct OffscreenTarget {
+  resolve_color: texture::Texture,
+  msaa_color: Option<texture::ColorAttachmentTexture>,
   depth: Option<texture::DepthTexture>,
   size: (u32, u32),
   color_format: texture::TextureFormat,
   depth_format: Option<texture::DepthFormat>,
   sample_count: u32,
   label: Option<String>,
+  defaulted_from_surface_size: bool,
 }
 
-impl RenderTarget {
+impl OffscreenTarget {
   /// Texture size in pixels.
   pub fn size(&self) -> (u32, u32) {
     return self.size;
@@ -48,9 +51,9 @@ impl RenderTarget {
     return self.sample_count.max(1);
   }
 
-  /// Access the color attachment texture for sampling.
+  /// Access the resolve color texture for sampling.
   pub fn color_texture(&self) -> &texture::Texture {
-    return &self.color;
+    return &self.resolve_color;
   }
 
   /// Access the optional depth attachment texture.
@@ -58,9 +61,28 @@ impl RenderTarget {
     return self.depth.as_ref();
   }
 
+  /// Access the multi-sampled color attachment used for rendering.
+  pub(crate) fn msaa_color_texture(
+    &self,
+  ) -> Option<&texture::ColorAttachmentTexture> {
+    return self.msaa_color.as_ref();
+  }
+
+  pub(crate) fn resolve_view(&self) -> surface::TextureView<'_> {
+    return self.resolve_color.view_ref();
+  }
+
+  pub(crate) fn msaa_view(&self) -> Option<surface::TextureView<'_>> {
+    return self.msaa_color.as_ref().map(|t| t.view_ref());
+  }
+
   /// Optional debug label assigned at creation time.
   pub(crate) fn label(&self) -> Option<&str> {
     return self.label.as_deref();
+  }
+
+  pub(crate) fn defaulted_from_surface_size(&self) -> bool {
+    return self.defaulted_from_surface_size;
   }
 
   /// Explicitly destroy this render target.
@@ -71,8 +93,8 @@ impl RenderTarget {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-/// Errors returned when building a `RenderTarget`.
-pub enum RenderTargetError {
+/// Errors returned when building an `OffscreenTarget`.
+pub enum OffscreenTargetError {
   /// Color attachment was not configured.
   MissingColorAttachment,
   /// Width or height was zero after resolving defaults.
@@ -85,8 +107,8 @@ pub enum RenderTargetError {
   DeviceError(String),
 }
 
-/// Builder for creating a `RenderTarget`.
-pub struct RenderTargetBuilder {
+/// Builder for creating an `OffscreenTarget`.
+pub struct OffscreenTargetBuilder {
   label: Option<String>,
   color_format: Option<texture::TextureFormat>,
   width: u32,
@@ -95,7 +117,7 @@ pub struct RenderTargetBuilder {
   sample_count: u32,
 }
 
-impl RenderTargetBuilder {
+impl OffscreenTargetBuilder {
   /// Create a new builder with no attachments configured.
   pub fn new() -> Self {
     return Self {
@@ -133,24 +155,8 @@ impl RenderTargetBuilder {
 
   /// Configure multi‑sampling for this target.
   ///
-  /// Values outside the supported set `{1, 2, 4, 8}` fall back to `1` and
-  /// emit validation logs under `render-validation-msaa` or debug assertions.
   pub fn with_multi_sample(mut self, samples: u32) -> Self {
-    let allowed = matches!(samples, 1 | 2 | 4 | 8);
-    if allowed {
-      self.sample_count = samples;
-    } else {
-      #[cfg(any(debug_assertions, feature = "render-validation-msaa",))]
-      {
-        if let Err(message) = validation::validate_sample_count(samples) {
-          logging::error!(
-            "{}; falling back to sample_count=1 for render target",
-            message
-          );
-        }
-      }
-      self.sample_count = 1;
-    }
+    self.sample_count = samples.max(1);
     return self;
   }
 
@@ -164,41 +170,85 @@ impl RenderTargetBuilder {
   pub fn build(
     self,
     render_context: &mut RenderContext,
-  ) -> Result<RenderTarget, RenderTargetError> {
+  ) -> Result<OffscreenTarget, OffscreenTargetError> {
     let format = match self.color_format {
       Some(format) => format,
-      None => return Err(RenderTargetError::MissingColorAttachment),
+      None => return Err(OffscreenTargetError::MissingColorAttachment),
     };
 
     let surface_size = render_context.surface_size();
+    let defaulted_from_surface_size = self.width == 0 || self.height == 0;
     let (width, height) = self.resolve_size(surface_size)?;
 
-    // Clamp to at least one sample; device‑limit checks are added in a
-    // validation milestone.
     let sample_count = self.sample_count.max(1);
+    if let Err(_) = validation::validate_sample_count(sample_count) {
+      return Err(OffscreenTargetError::UnsupportedSampleCount {
+        requested: sample_count,
+      });
+    }
+
+    if sample_count > 1
+      && !render_context
+        .gpu()
+        .supports_sample_count_for_format(format, sample_count)
+    {
+      return Err(OffscreenTargetError::UnsupportedSampleCount {
+        requested: sample_count,
+      });
+    }
+
+    if let Some(depth_format) = self.depth_format {
+      if sample_count > 1
+        && !render_context
+          .gpu()
+          .supports_sample_count_for_depth(depth_format, sample_count)
+      {
+        return Err(OffscreenTargetError::UnsupportedSampleCount {
+          requested: sample_count,
+        });
+      }
+    }
 
     let mut color_builder = texture::TextureBuilder::new_2d(format)
       .with_size(width, height)
       .for_render_target();
 
     if let Some(ref label) = self.label {
-      color_builder = color_builder.with_label(label);
+      if sample_count > 1 {
+        color_builder = color_builder.with_label(&format!("{}-resolve", label));
+      } else {
+        color_builder = color_builder.with_label(label);
+      }
     }
 
-    let color_texture = match color_builder.build(render_context.gpu()) {
+    let resolve_texture = match color_builder.build(render_context.gpu()) {
       Ok(texture) => texture,
       Err(message) => {
-        return Err(RenderTargetError::DeviceError(message.to_string()));
+        return Err(OffscreenTargetError::DeviceError(message.to_string()));
       }
+    };
+
+    let msaa_texture = if sample_count > 1 {
+      let mut msaa_builder =
+        texture::ColorAttachmentTextureBuilder::new(format)
+          .with_size(width, height)
+          .with_sample_count(sample_count);
+      if let Some(ref label) = self.label {
+        msaa_builder = msaa_builder.with_label(&format!("{}-msaa", label));
+      }
+      Some(msaa_builder.build(render_context.gpu()))
+    } else {
+      None
     };
 
     let depth_texture = if let Some(depth_format) = self.depth_format {
       let mut depth_builder = texture::DepthTextureBuilder::new()
         .with_size(width, height)
-        .with_format(depth_format);
+        .with_format(depth_format)
+        .with_sample_count(sample_count);
 
       if let Some(ref label) = self.label {
-        depth_builder = depth_builder.with_label(label);
+        depth_builder = depth_builder.with_label(&format!("{}-depth", label));
       }
 
       Some(depth_builder.build(render_context.gpu()))
@@ -206,14 +256,16 @@ impl RenderTargetBuilder {
       None
     };
 
-    return Ok(RenderTarget {
-      color: color_texture,
+    return Ok(OffscreenTarget {
+      resolve_color: resolve_texture,
+      msaa_color: msaa_texture,
       depth: depth_texture,
       size: (width, height),
       color_format: format,
       depth_format: self.depth_format,
       sample_count,
       label: self.label,
+      defaulted_from_surface_size,
     });
   }
 
@@ -225,7 +277,7 @@ impl RenderTargetBuilder {
   pub(crate) fn resolve_size(
     &self,
     surface_size: (u32, u32),
-  ) -> Result<(u32, u32), RenderTargetError> {
+  ) -> Result<(u32, u32), OffscreenTargetError> {
     let mut width = self.width;
     let mut height = self.height;
     if width == 0 || height == 0 {
@@ -234,12 +286,25 @@ impl RenderTargetBuilder {
     }
 
     if width == 0 || height == 0 {
-      return Err(RenderTargetError::InvalidSize { width, height });
+      return Err(OffscreenTargetError::InvalidSize { width, height });
     }
 
     return Ok((width, height));
   }
 }
+
+#[deprecated(
+  note = "Use `lambda::render::target::OffscreenTarget` to avoid confusion with `lambda::render::render_target::RenderTarget`."
+)]
+pub type RenderTarget = OffscreenTarget;
+
+#[deprecated(
+  note = "Use `lambda::render::target::OffscreenTargetBuilder` to avoid confusion with `lambda::render::render_target::RenderTarget`."
+)]
+pub type RenderTargetBuilder = OffscreenTargetBuilder;
+
+#[deprecated(note = "Use `lambda::render::target::OffscreenTargetError`.")]
+pub type RenderTargetError = OffscreenTargetError;
 
 #[cfg(test)]
 mod tests {
@@ -248,7 +313,7 @@ mod tests {
   /// Defaults size to the surface when no explicit dimensions are provided.
   #[test]
   fn resolve_size_defaults_to_surface_size() {
-    let builder = RenderTargetBuilder::new().with_color(
+    let builder = OffscreenTargetBuilder::new().with_color(
       texture::TextureFormat::Rgba8Unorm,
       0,
       0,
@@ -262,7 +327,7 @@ mod tests {
   /// Fails when the resolved size has a zero dimension.
   #[test]
   fn resolve_size_rejects_zero_dimensions() {
-    let builder = RenderTargetBuilder::new().with_color(
+    let builder = OffscreenTargetBuilder::new().with_color(
       texture::TextureFormat::Rgba8Unorm,
       0,
       0,
@@ -272,7 +337,7 @@ mod tests {
     let resolved = builder.resolve_size(surface_size);
     assert_eq!(
       resolved,
-      Err(RenderTargetError::InvalidSize {
+      Err(OffscreenTargetError::InvalidSize {
         width: 0,
         height: 0
       })
@@ -282,7 +347,7 @@ mod tests {
   /// Clamps sample counts less than one to one.
   #[test]
   fn sample_count_is_clamped_to_one() {
-    let builder = RenderTargetBuilder::new().with_multi_sample(0);
+    let builder = OffscreenTargetBuilder::new().with_multi_sample(0);
     assert_eq!(builder.sample_count, 1);
   }
 }

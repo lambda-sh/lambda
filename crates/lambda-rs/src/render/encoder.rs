@@ -15,7 +15,12 @@
 //!
 //! ```ignore
 //! let mut encoder = CommandEncoder::new(&render_context, "frame-encoder");
-//! encoder.with_render_pass(&pass, &mut attachments, depth, |rp_encoder| {
+//! encoder.with_render_pass(
+//!   &pass,
+//!   RenderPassDestinationInfo { color_format: None, depth_format: None },
+//!   &mut attachments,
+//!   depth,
+//!   |rp_encoder| {
 //!   rp_encoder.set_pipeline(&pipeline)?;
 //!   rp_encoder.draw(0..3, 0..1)?;
 //!   Ok(())
@@ -42,7 +47,11 @@ use super::{
   pipeline,
   pipeline::RenderPipeline,
   render_pass::RenderPass,
-  texture::DepthTexture,
+  texture::{
+    DepthFormat,
+    DepthTexture,
+    TextureFormat,
+  },
   validation,
   viewport::Viewport,
   RenderContext,
@@ -52,6 +61,13 @@ use crate::util;
 // ---------------------------------------------------------------------------
 // CommandEncoder
 // ---------------------------------------------------------------------------
+
+/// Destination metadata needed for render-target compatibility validation.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct RenderPassDestinationInfo {
+  pub(crate) color_format: Option<TextureFormat>,
+  pub(crate) depth_format: Option<DepthFormat>,
+}
 
 /// High-level command encoder for recording GPU work.
 ///
@@ -99,6 +115,7 @@ impl CommandEncoder {
   pub(crate) fn with_render_pass<'pass, PassFn, Output>(
     &'pass mut self,
     pass: &'pass RenderPass,
+    destination_info: RenderPassDestinationInfo,
     color_attachments: &'pass mut RenderColorAttachments<'pass>,
     depth_texture: Option<&'pass DepthTexture>,
     func: PassFn,
@@ -110,6 +127,7 @@ impl CommandEncoder {
     let pass_encoder = RenderPassEncoder::new(
       &mut self.inner,
       pass,
+      destination_info,
       color_attachments,
       depth_texture,
     );
@@ -162,6 +180,10 @@ pub struct RenderPassEncoder<'pass> {
   has_stencil: bool,
   /// Sample count for MSAA validation.
   sample_count: u32,
+  /// Destination color format when the pass has color output.
+  destination_color_format: Option<TextureFormat>,
+  /// Destination depth format when a depth attachment is present.
+  destination_depth_format: Option<DepthFormat>,
 
   // Validation state (compiled out in release without features)
   #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
@@ -206,6 +228,7 @@ impl<'pass> RenderPassEncoder<'pass> {
   fn new(
     encoder: &'pass mut platform::command::CommandEncoder,
     pass: &'pass RenderPass,
+    destination_info: RenderPassDestinationInfo,
     color_attachments: &'pass mut RenderColorAttachments<'pass>,
     depth_texture: Option<&'pass DepthTexture>,
   ) -> Self {
@@ -243,6 +266,8 @@ impl<'pass> RenderPassEncoder<'pass> {
       has_depth_attachment,
       has_stencil,
       sample_count: pass.sample_count(),
+      destination_color_format: destination_info.color_format,
+      destination_depth_format: destination_info.depth_format,
       #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
       current_pipeline: None,
       #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
@@ -301,6 +326,46 @@ impl<'pass> RenderPassEncoder<'pass> {
            current pass has none",
           label
         )));
+      }
+    }
+
+    #[cfg(any(debug_assertions, feature = "render-validation-render-targets",))]
+    {
+      let label = pipeline.pipeline().label().unwrap_or("unnamed");
+
+      if pipeline.sample_count() != self.sample_count {
+        return Err(RenderPassError::PipelineIncompatible(format!(
+          "Render pipeline '{}' has sample_count={} but pass sample_count={}",
+          label,
+          pipeline.sample_count(),
+          self.sample_count
+        )));
+      }
+
+      if self.uses_color {
+        if let Some(dest_format) = self.destination_color_format {
+          if pipeline.color_target_format() != Some(dest_format) {
+            return Err(RenderPassError::PipelineIncompatible(format!(
+              "Render pipeline '{}' color format {:?} does not match destination color format {:?}",
+              label,
+              pipeline.color_target_format(),
+              dest_format
+            )));
+          }
+        }
+      }
+
+      if self.has_depth_attachment && pipeline.expects_depth_stencil() {
+        if let Some(dest_depth_format) = self.destination_depth_format {
+          if pipeline.depth_format() != Some(dest_depth_format) {
+            return Err(RenderPassError::PipelineIncompatible(format!(
+              "Render pipeline '{}' depth format {:?} does not match destination depth format {:?}",
+              label,
+              pipeline.depth_format(),
+              dest_depth_format
+            )));
+          }
+        }
       }
     }
 
