@@ -30,6 +30,15 @@ impl IndexFormat {
   }
 }
 
+/// Render destination selected when beginning a render pass.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RenderDestination {
+  /// Target the presentation surface.
+  Surface,
+  /// Target a previously attached offscreen destination by id.
+  Offscreen(super::ResourceId),
+}
+
 /// Commands recorded and executed by the `RenderContext` to produce a frame.
 ///
 /// Order and validity are enforced by the encoder where possible. Invalid
@@ -55,6 +64,15 @@ pub enum RenderCommand {
   BeginRenderPass {
     render_pass: super::ResourceId,
     viewport: Viewport,
+  },
+  /// Begin a render pass targeting an explicit destination.
+  ///
+  /// `BeginRenderPass` remains valid and is equivalent to beginning a pass
+  /// with `RenderDestination::Surface`.
+  BeginRenderPassTo {
+    render_pass: super::ResourceId,
+    viewport: Viewport,
+    destination: RenderDestination,
   },
   /// End the current render pass.
   EndRenderPass,
