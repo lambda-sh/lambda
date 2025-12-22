@@ -49,10 +49,11 @@ render-validation = [
   "render-validation-msaa",
   "render-validation-depth",
   "render-validation-stencil",
+  "render-validation-pass-compat",
+  "render-validation-render-targets",
 ]
 render-validation-strict = [
   "render-validation",
-  "render-validation-pass-compat",
   "render-validation-encoder",
 ]
 render-validation-all = [
@@ -75,6 +76,7 @@ render-validation-pass-compat = []
 render-validation-device = []
 render-validation-encoder = []
 render-validation-instancing = []
+render-validation-render-targets = []
 
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------
