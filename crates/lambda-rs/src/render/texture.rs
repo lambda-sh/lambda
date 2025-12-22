@@ -349,6 +349,13 @@ impl Texture {
   pub(crate) fn platform_texture(&self) -> Rc<platform::Texture> {
     return self.inner.clone();
   }
+
+  /// Borrow a texture view reference for use in render pass attachments.
+  pub(crate) fn view_ref(&self) -> crate::render::surface::TextureView<'_> {
+    return crate::render::surface::TextureView::from_platform(
+      self.inner.view_ref(),
+    );
+  }
 }
 
 #[derive(Debug, Clone)]
