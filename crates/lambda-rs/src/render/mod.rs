@@ -38,11 +38,10 @@ pub mod instance;
 pub mod mesh;
 pub mod pipeline;
 pub mod render_pass;
-pub mod render_target;
 pub mod scene_math;
 pub mod shader;
 pub mod surface;
-pub mod target;
+pub mod targets;
 pub mod texture;
 pub mod validation;
 pub mod vertex;
@@ -71,7 +70,7 @@ use self::{
   },
   pipeline::RenderPipeline,
   render_pass::RenderPass as RenderPassDesc,
-  render_target::RenderTarget,
+  targets::surface::RenderTarget,
 };
 
 /// Builder for configuring a `RenderContext` tied to one window.
@@ -127,13 +126,13 @@ impl RenderContextBuilder {
       .with_label(&format!("{} Instance", name))
       .build();
 
-    let mut surface = render_target::WindowSurface::new(&instance, window)
+    let mut surface = targets::surface::WindowSurface::new(&instance, window)
       .map_err(|e| {
-        RenderContextError::SurfaceCreate(format!(
-          "Failed to create rendering surface: {:?}",
-          e
-        ))
-      })?;
+      RenderContextError::SurfaceCreate(format!(
+        "Failed to create rendering surface: {:?}",
+        e
+      ))
+    })?;
 
     let gpu = gpu::GpuBuilder::new()
       .with_label(&format!("{} Device", name))
@@ -225,7 +224,7 @@ impl RenderContextBuilder {
 pub struct RenderContext {
   label: String,
   instance: instance::Instance,
-  surface: render_target::WindowSurface,
+  surface: targets::surface::WindowSurface,
   gpu: gpu::Gpu,
   config: surface::SurfaceConfig,
   texture_usage: texture::TextureUsages,
@@ -235,7 +234,7 @@ pub struct RenderContext {
   depth_sample_count: u32,
   msaa_color: Option<texture::ColorAttachmentTexture>,
   msaa_sample_count: u32,
-  offscreen_targets: Vec<target::OffscreenTarget>,
+  offscreen_targets: Vec<targets::offscreen::OffscreenTarget>,
   render_passes: Vec<RenderPassDesc>,
   render_pipelines: Vec<RenderPipeline>,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
@@ -276,7 +275,7 @@ impl RenderContext {
   /// Attach an offscreen target and return a handle for use in destinations.
   pub fn attach_offscreen_target(
     &mut self,
-    target: target::OffscreenTarget,
+    target: targets::offscreen::OffscreenTarget,
   ) -> ResourceId {
     let id = self.offscreen_targets.len();
     self.offscreen_targets.push(target);
@@ -290,7 +289,7 @@ impl RenderContext {
   pub fn replace_offscreen_target(
     &mut self,
     id: ResourceId,
-    target: target::OffscreenTarget,
+    target: targets::offscreen::OffscreenTarget,
   ) -> Result<(), String> {
     let slot = match self.offscreen_targets.get_mut(id) {
       Some(slot) => slot,
@@ -411,7 +410,7 @@ impl RenderContext {
   pub fn get_offscreen_target(
     &self,
     id: ResourceId,
-  ) -> &target::OffscreenTarget {
+  ) -> &targets::offscreen::OffscreenTarget {
     return &self.offscreen_targets[id];
   }
 
@@ -778,17 +777,6 @@ impl RenderContext {
         "Render pass requests stencil operations but the selected offscreen target depth format lacks stencil"
           .to_string(),
       ));
-    }
-
-    #[cfg(any(debug_assertions, feature = "render-validation-render-targets",))]
-    {
-      if target.defaulted_from_surface_size() && target.size() != self.size {
-        logging::warn!(
-          "Offscreen target size {:?} does not match surface size {:?}; rebuild the target to match the new surface size",
-          target.size(),
-          self.size
-        );
-      }
     }
 
     let depth_texture_ref = if want_depth_attachment {

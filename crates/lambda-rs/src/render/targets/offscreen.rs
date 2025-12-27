@@ -3,14 +3,13 @@
 //! Provides `OffscreenTarget` and `OffscreenTargetBuilder` for render‑to‑texture
 //! workflows without exposing platform texture types at call sites.
 
-use logging;
-
-use super::{
+use crate::render::{
+  gpu::Gpu,
   surface,
   texture,
+  validation,
   RenderContext,
 };
-use crate::render::validation;
 
 #[derive(Debug)]
 /// Offscreen render target with color and optional depth attachments.
@@ -27,7 +26,6 @@ pub struct OffscreenTarget {
   depth_format: Option<texture::DepthFormat>,
   sample_count: u32,
   label: Option<String>,
-  defaulted_from_surface_size: bool,
 }
 
 impl OffscreenTarget {
@@ -81,10 +79,6 @@ impl OffscreenTarget {
     return self.label.as_deref();
   }
 
-  pub(crate) fn defaulted_from_surface_size(&self) -> bool {
-    return self.defaulted_from_surface_size;
-  }
-
   /// Explicitly destroy this render target.
   ///
   /// Dropping the value also releases the underlying GPU resources; this
@@ -97,7 +91,7 @@ impl OffscreenTarget {
 pub enum OffscreenTargetError {
   /// Color attachment was not configured.
   MissingColorAttachment,
-  /// Width or height was zero after resolving defaults.
+  /// Width or height was zero.
   InvalidSize { width: u32, height: u32 },
   /// Sample count is not supported for the chosen format or device limits.
   UnsupportedSampleCount { requested: u32 },
@@ -131,10 +125,6 @@ impl OffscreenTargetBuilder {
   }
 
   /// Configure the color attachment format and size.
-  ///
-  /// When `width` or `height` is zero, the builder falls back to the current
-  /// `RenderContext` surface size during `build`. A resolved size of zero in
-  /// either dimension is treated as an error.
   pub fn with_color(
     mut self,
     format: texture::TextureFormat,
@@ -154,7 +144,6 @@ impl OffscreenTargetBuilder {
   }
 
   /// Configure multi‑sampling for this target.
-  ///
   pub fn with_multi_sample(mut self, samples: u32) -> Self {
     self.sample_count = samples.max(1);
     return self;
@@ -169,16 +158,14 @@ impl OffscreenTargetBuilder {
   /// Create the render target color (and optional depth) attachments.
   pub fn build(
     self,
-    render_context: &mut RenderContext,
+    gpu: &Gpu,
   ) -> Result<OffscreenTarget, OffscreenTargetError> {
     let format = match self.color_format {
       Some(format) => format,
       None => return Err(OffscreenTargetError::MissingColorAttachment),
     };
 
-    let surface_size = render_context.surface_size();
-    let defaulted_from_surface_size = self.width == 0 || self.height == 0;
-    let (width, height) = self.resolve_size(surface_size)?;
+    let (width, height) = self.resolve_size()?;
 
     let sample_count = self.sample_count.max(1);
     if let Err(_) = validation::validate_sample_count(sample_count) {
@@ -188,9 +175,7 @@ impl OffscreenTargetBuilder {
     }
 
     if sample_count > 1
-      && !render_context
-        .gpu()
-        .supports_sample_count_for_format(format, sample_count)
+      && !gpu.supports_sample_count_for_format(format, sample_count)
     {
       return Err(OffscreenTargetError::UnsupportedSampleCount {
         requested: sample_count,
@@ -199,9 +184,7 @@ impl OffscreenTargetBuilder {
 
     if let Some(depth_format) = self.depth_format {
       if sample_count > 1
-        && !render_context
-          .gpu()
-          .supports_sample_count_for_depth(depth_format, sample_count)
+        && !gpu.supports_sample_count_for_depth(depth_format, sample_count)
       {
         return Err(OffscreenTargetError::UnsupportedSampleCount {
           requested: sample_count,
@@ -221,7 +204,7 @@ impl OffscreenTargetBuilder {
       }
     }
 
-    let resolve_texture = match color_builder.build(render_context.gpu()) {
+    let resolve_texture = match color_builder.build(gpu) {
       Ok(texture) => texture,
       Err(message) => {
         return Err(OffscreenTargetError::DeviceError(message.to_string()));
@@ -236,7 +219,7 @@ impl OffscreenTargetBuilder {
       if let Some(ref label) = self.label {
         msaa_builder = msaa_builder.with_label(&format!("{}-msaa", label));
       }
-      Some(msaa_builder.build(render_context.gpu()))
+      Some(msaa_builder.build(gpu))
     } else {
       None
     };
@@ -251,7 +234,7 @@ impl OffscreenTargetBuilder {
         depth_builder = depth_builder.with_label(&format!("{}-depth", label));
       }
 
-      Some(depth_builder.build(render_context.gpu()))
+      Some(depth_builder.build(gpu))
     } else {
       None
     };
@@ -265,26 +248,14 @@ impl OffscreenTargetBuilder {
       depth_format: self.depth_format,
       sample_count,
       label: self.label,
-      defaulted_from_surface_size,
     });
   }
 
-  /// Resolve the final size using an optional explicit size and surface default.
-  ///
-  /// When no explicit size was provided, the builder falls back to
-  /// `surface_size`. A resolved size with zero width or height is treated as
-  /// an error.
   pub(crate) fn resolve_size(
     &self,
-    surface_size: (u32, u32),
   ) -> Result<(u32, u32), OffscreenTargetError> {
-    let mut width = self.width;
-    let mut height = self.height;
-    if width == 0 || height == 0 {
-      width = surface_size.0;
-      height = surface_size.1;
-    }
-
+    let width = self.width;
+    let height = self.height;
     if width == 0 || height == 0 {
       return Err(OffscreenTargetError::InvalidSize { width, height });
     }
@@ -294,37 +265,25 @@ impl OffscreenTargetBuilder {
 }
 
 #[deprecated(
-  note = "Use `lambda::render::target::OffscreenTarget` to avoid confusion with `lambda::render::render_target::RenderTarget`."
+  note = "Use `lambda::render::targets::offscreen::OffscreenTarget` to avoid confusion with `lambda::render::targets::surface::RenderTarget`."
 )]
 pub type RenderTarget = OffscreenTarget;
 
 #[deprecated(
-  note = "Use `lambda::render::target::OffscreenTargetBuilder` to avoid confusion with `lambda::render::render_target::RenderTarget`."
+  note = "Use `lambda::render::targets::offscreen::OffscreenTargetBuilder` to avoid confusion with `lambda::render::targets::surface::RenderTarget`."
 )]
 pub type RenderTargetBuilder = OffscreenTargetBuilder;
 
-#[deprecated(note = "Use `lambda::render::target::OffscreenTargetError`.")]
+#[deprecated(
+  note = "Use `lambda::render::targets::offscreen::OffscreenTargetError`."
+)]
 pub type RenderTargetError = OffscreenTargetError;
 
 #[cfg(test)]
 mod tests {
   use super::*;
 
-  /// Defaults size to the surface when no explicit dimensions are provided.
-  #[test]
-  fn resolve_size_defaults_to_surface_size() {
-    let builder = OffscreenTargetBuilder::new().with_color(
-      texture::TextureFormat::Rgba8Unorm,
-      0,
-      0,
-    );
-    let surface_size = (800, 600);
-
-    let resolved = builder.resolve_size(surface_size).unwrap();
-    assert_eq!(resolved, surface_size);
-  }
-
-  /// Fails when the resolved size has a zero dimension.
+  /// Fails when the builder has a zero dimension.
   #[test]
   fn resolve_size_rejects_zero_dimensions() {
     let builder = OffscreenTargetBuilder::new().with_color(
@@ -332,9 +291,8 @@ mod tests {
       0,
       0,
     );
-    let surface_size = (0, 0);
 
-    let resolved = builder.resolve_size(surface_size);
+    let resolved = builder.resolve_size();
     assert_eq!(
       resolved,
       Err(OffscreenTargetError::InvalidSize {

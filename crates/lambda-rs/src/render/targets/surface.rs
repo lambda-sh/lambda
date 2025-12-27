@@ -1,24 +1,11 @@
-//! Render target abstraction for different presentation backends.
+//! Presentation surface render targets.
 //!
-//! The `RenderTarget` trait defines the interface for acquiring frames and
-//! presenting rendered content. Implementations include:
-//!
-//! - `WindowSurface`: Renders to a window's swapchain (the common case)
-//! - Future: `OffscreenTarget` for headless rendering to textures
-//!
-//! # Usage
-//!
-//! Render targets are used by the render context to acquire frames:
-//!
-//! ```ignore
-//! let frame = render_target.acquire_frame()?;
-//! // ... encode and submit commands ...
-//! frame.present();
-//! ```
+//! A surface render target acquires a frame from a swapchain-like surface and
+//! presents it after encoding completes. This is the on-screen rendering path.
 
 use lambda_platform::wgpu as platform;
 
-use super::{
+use crate::render::{
   gpu::Gpu,
   instance::Instance,
   surface::{
@@ -38,23 +25,12 @@ use super::{
 // RenderTarget trait
 // ---------------------------------------------------------------------------
 
-/// Trait for render targets that can acquire and present frames.
-///
-/// This abstraction enables different rendering backends:
-/// - Window surfaces for on-screen rendering
-/// - Offscreen textures for headless/screenshot rendering
-/// - Custom targets for specialized use cases
+/// Presentation render target that can acquire and present frames.
 pub trait RenderTarget {
   /// Acquire the next frame for rendering.
-  ///
-  /// Returns a `Frame` that can be rendered to and then presented. The frame
-  /// owns the texture view for the duration of rendering.
   fn acquire_frame(&mut self) -> Result<Frame, SurfaceError>;
 
   /// Resize the render target to the specified dimensions.
-  ///
-  /// This reconfigures the underlying resources (swapchain, textures) to
-  /// match the new size. Pass the `Gpu` for resource recreation.
   fn resize(&mut self, gpu: &Gpu, size: (u32, u32)) -> Result<(), String>;
 
   /// Get the texture format used by this render target.
@@ -74,7 +50,7 @@ pub trait RenderTarget {
 /// Render target for window-based presentation.
 ///
 /// Wraps a platform surface bound to a window, providing frame acquisition
-/// and presentation through the GPU's swapchain.
+/// and presentation through the GPU's surface configuration.
 pub struct WindowSurface {
   inner: platform::surface::Surface<'static>,
   config: Option<SurfaceConfig>,
@@ -84,7 +60,7 @@ pub struct WindowSurface {
 impl WindowSurface {
   /// Create a new window surface bound to the given window.
   ///
-  /// The surface must be configured before use by calling
+  /// The surface MUST be configured before use by calling
   /// `configure_with_defaults` or `resize`.
   pub fn new(
     instance: &Instance,
@@ -107,10 +83,6 @@ impl WindowSurface {
   }
 
   /// Configure the surface with sensible defaults for the given GPU.
-  ///
-  /// This selects an sRGB format if available, uses the specified present
-  /// mode (falling back to Fifo if unsupported), and enables render
-  /// attachment usage.
   pub fn configure_with_defaults(
     &mut self,
     gpu: &Gpu,
@@ -128,7 +100,6 @@ impl WindowSurface {
       )
       .map_err(|e| e)?;
 
-    // Cache the configuration
     if let Some(platform_config) = self.inner.configuration() {
       self.config = Some(SurfaceConfig::from_platform(platform_config));
     }
@@ -164,7 +135,6 @@ impl RenderTarget for WindowSurface {
   fn resize(&mut self, gpu: &Gpu, size: (u32, u32)) -> Result<(), String> {
     self.inner.resize(gpu.platform(), size)?;
 
-    // Update cached configuration
     if let Some(platform_config) = self.inner.configuration() {
       self.config = Some(SurfaceConfig::from_platform(platform_config));
     }
@@ -214,9 +184,7 @@ pub enum WindowSurfaceError {
 impl std::fmt::Display for WindowSurfaceError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     return match self {
-      WindowSurfaceError::CreationFailed(msg) => write!(f, "{}", msg),
+      WindowSurfaceError::CreationFailed(message) => write!(f, "{}", message),
     };
   }
 }
-
-impl std::error::Error for WindowSurfaceError {}

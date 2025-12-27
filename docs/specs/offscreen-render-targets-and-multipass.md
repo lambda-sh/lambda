@@ -3,13 +3,13 @@ title: "Offscreen Render Targets and Multipass Rendering"
 document_id: "offscreen-render-targets-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-12-17T23:00:02Z"
-version: "0.2.1"
+last_updated: "2025-12-25T00:00:00Z"
+version: "0.2.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "f1743e5528bc4c8326a46e20123ffac62f717ec9"
+repo_commit: "e8bd8e9022567a553714bb488d230682020dcfa4"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "offscreen", "multipass"]
@@ -68,7 +68,8 @@ Summary
 - Multiple render targets (MRT): rendering to more than one color attachment
   within a single pass.
 - Presentation render target: window-backed render target that acquires and
-  presents swapchain frames (see `render_target::WindowSurface`).
+  presents swapchain frames (see
+  `lambda::render::targets::surface::WindowSurface`).
 - Offscreen target: persistent resource that owns textures for render-to-
   texture workflows and exposes a sampleable color texture.
 - Render destination: destination selected when beginning a render pass:
@@ -83,18 +84,24 @@ Summary
 
 ## Architecture Overview
 
-`lambda-rs` currently has two distinct concepts that collide in naming:
-- `lambda::render::render_target::RenderTarget`: trait for acquiring and
-  presenting frames.
-- `lambda::render::target::RenderTarget`: offscreen render-to-texture resource.
+`lambda-rs` exposes two render target concepts:
+- `lambda::render::targets::surface::RenderTarget`: trait for acquiring and
+  presenting frames from a window-backed surface.
+- `lambda::render::targets::offscreen::OffscreenTarget`: persistent render-to-
+  texture resource that owns textures and exposes a sampleable resolve color.
+
+Compatibility shims:
+- `lambda::render::render_target` re-exports `lambda::render::targets::surface`.
+- `lambda::render::target` re-exports `lambda::render::targets::offscreen`.
 
 Terminology in this document:
-- "Render target" refers to `lambda::render::render_target::RenderTarget`.
-- The offscreen resource is specified as `OffscreenTarget`.
+- "Render target" refers to `lambda::render::targets::surface::RenderTarget`.
+- The offscreen resource is `OffscreenTarget`.
 
-Implementation note:
-- `lambda::render::target::RenderTarget` SHOULD be renamed to avoid API
-  ambiguity.
+Implementation notes:
+- `RenderTarget`, `RenderTargetBuilder`, and `RenderTargetError` in the offscreen
+  module are deprecated aliases for `OffscreenTarget`, `OffscreenTargetBuilder`,
+  and `OffscreenTargetError` and MUST NOT be used in new code.
 
 Data flow (setup → per-frame multipass):
 ```
@@ -124,7 +131,7 @@ Per-frame commands:
 
 #### High-level layer (`lambda-rs`)
 
-- Module `lambda::render::target` (offscreen resource)
+- Module `lambda::render::targets::offscreen` (offscreen resource)
   - `pub struct OffscreenTarget`
     - Represents a 2D offscreen destination with a single color output and
       optional depth attachment.
@@ -136,21 +143,19 @@ Per-frame commands:
     - `pub fn with_depth(self, format: texture::DepthFormat) -> Self`
     - `pub fn with_multi_sample(self, samples: u32) -> Self`
     - `pub fn with_label(self, label: &str) -> Self`
-    - `pub fn build(self, render_context: &mut RenderContext) -> Result<OffscreenTarget, OffscreenTargetError>`
+    - `pub fn build(self, gpu: &Gpu) -> Result<OffscreenTarget, OffscreenTargetError>`
     - Defaults:
-      - When width or height is zero, the builder uses
-        `RenderContext::surface_size()` as the size.
-      - When size is defaulted from the surface, the target MUST NOT
-        auto-resize; the application rebuilds it on resize.
+      - Offscreen targets MUST NOT auto-resize; applications rebuild targets
+        when their desired size changes.
   - `pub enum OffscreenTargetError`
     - `MissingColorAttachment`
     - `InvalidSize { width: u32, height: u32 }`
     - `UnsupportedSampleCount { requested: u32 }`
     - `UnsupportedFormat { message: String }`
     - `DeviceError(String)`
-  - Note: The current implementation uses the name `RenderTarget` in
-    `lambda::render::target`. The public API SHOULD be renamed to
-    `OffscreenTarget` to avoid confusion with `render_target::RenderTarget`.
+  - Note: Deprecated aliases (`RenderTarget`, `RenderTargetBuilder`,
+    `RenderTargetError`) exist for short-term source compatibility and are
+    re-exported from `lambda::render::target`.
 
 - Module `lambda::render::command`
   - Add explicit destination selection for pass begins:
@@ -201,12 +206,10 @@ Per-frame commands:
 - Creation
   - `OffscreenTargetBuilder::build` MUST fail when:
     - `with_color` was never called.
-    - Resolved width or height is zero.
+    - Width or height is zero.
     - The requested sample count is unsupported for the chosen color format.
     - The requested sample count is unsupported for the chosen depth format
       when depth is enabled.
-  - When no explicit size is set, the builder MUST use the current
-    `RenderContext::surface_size()` as the default size.
 - MSAA resolve model
   - When `sample_count == 1`, the destination owns a single-sample color
     texture that is both rendered into and sampled by later passes.
@@ -290,9 +293,6 @@ Crate: `lambda-rs`
         count).
     - Checks MUST occur at pass begin and at `SetPipeline` time, not per draw.
     - Logs SHOULD include:
-      - Destination size mismatches versus `RenderContext::surface_size()` when
-        the offscreen target is surface-sized by default and the surface
-        resizes.
       - Missing depth attachment when depth or stencil ops are requested.
       - Color format mismatches between destination and pipeline.
     - Expected runtime cost is low to moderate.
@@ -314,7 +314,7 @@ Gating requirements
 ## Constraints and Rules
 
 - Offscreen target constraints
-  - Width and height MUST be strictly positive after resolving defaults.
+  - Width and height MUST be strictly positive.
   - A destination produces exactly one color output.
   - Color formats MUST be limited to formats supported by `texture::TextureFormat`.
   - Depth formats MUST be limited to `texture::DepthFormat`.
@@ -355,25 +355,26 @@ Gating requirements
 ## Requirements Checklist
 
 - Functionality
-  - [x] Offscreen target resource exists in `crates/lambda-rs/src/render/target.rs`.
-  - [ ] Rename public API to `OffscreenTarget` to avoid collision with
-        `render_target::RenderTarget`.
-  - [ ] Add `RenderDestination` and `RenderCommand::BeginRenderPassTo`.
-  - [ ] Add `RenderContext::{attach,get}_offscreen_target`.
-  - [ ] Support offscreen destinations in `RenderContext::render`.
-  - [ ] Implement offscreen MSAA resolve textures (render to MSAA, resolve to
+  - [x] Offscreen target resource exists in
+        `crates/lambda-rs/src/render/targets/offscreen.rs`.
+  - [x] Rename public API to `OffscreenTarget` to avoid collision with
+        `lambda::render::targets::surface::RenderTarget`.
+  - [x] Add `RenderDestination` and `RenderCommand::BeginRenderPassTo`.
+  - [x] Add `RenderContext::{attach,get}_offscreen_target`.
+  - [x] Support offscreen destinations in `RenderContext::render`.
+  - [x] Implement offscreen MSAA resolve textures (render to MSAA, resolve to
         single-sample, sample resolve).
-  - [ ] Ensure offscreen depth sample count matches destination sample count.
+  - [x] Ensure offscreen depth sample count matches destination sample count.
 - API Surface
   - [x] Platform pipeline supports explicit color targets.
   - [x] Engine `TextureBuilder::for_render_target` sets attachment-capable usage.
 - Validation and Errors
-  - [ ] `render-validation-render-targets` feature implemented and composed
+  - [x] `render-validation-render-targets` feature implemented and composed
         into umbrella validation features.
-  - [ ] Pass/pipeline/destination compatibility checks implemented.
-  - [ ] `docs/features.md` updated to list the feature, default state, and cost.
+  - [x] Pass/pipeline/destination compatibility checks implemented.
+  - [x] `docs/features.md` updated to list the feature, default state, and cost.
 - Documentation and Examples
-  - [ ] Minimal render-to-texture example added under `crates/lambda-rs/examples/`.
+  - [x] Minimal render-to-texture example added under `crates/lambda-rs/examples/`.
   - [ ] Rendering guide updated to include an offscreen multipass walkthrough.
   - [ ] Migration notes added for consumers adopting destination-based passes.
 
@@ -411,16 +412,23 @@ Gating requirements
     `RenderDestination::Offscreen(target_id)`.
   - Sample `offscreen.color_texture()` in a later surface pass.
 - Naming migration
-  - If `RenderTarget` (offscreen resource) is renamed to `OffscreenTarget`, the
-    rename SHOULD be introduced with a deprecated type alias to preserve source
-    compatibility for consumers.
+  - `RenderTarget` (offscreen resource) is a deprecated alias for
+    `OffscreenTarget` and SHOULD remain available until a major version bump.
 
 ## Changelog
 
+- 2025-12-25 (v0.2.4) — Decouple `OffscreenTargetBuilder::build` from
+  `RenderContext` by requiring an explicit size and a `Gpu`.
+- 2025-12-22 (v0.2.3) — Document `lambda::render::targets::{surface,offscreen}`
+  as the canonical module structure and note compatibility shims.
+- 2025-12-22 (v0.2.2) — Update checklist and implementation notes to reflect
+  destination-based offscreen passes, MSAA resolve targets, and validation
+  feature wiring.
 - 2025-12-17 (v0.2.1) — Polish language for style consistency, clarify MSAA
   terminology and builder safeguards, and specify validation gating
   requirements.
-- 2025-12-17 (v0.2.0) — Align terminology with `render_target::RenderTarget`,
+- 2025-12-17 (v0.2.0) — Align terminology with
+  `lambda::render::targets::surface::RenderTarget`,
   specify destination-based pass targeting, define the offscreen MSAA resolve
   model, and define feature-gated validation requirements.
 - 2025-11-25 (v0.1.1) — Updated requirements checklist to reflect implemented

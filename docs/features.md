@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2025-11-25T12:00:00Z"
-version: "0.1.4"
+last_updated: "2025-12-22T00:00:00Z"
+version: "0.1.5"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "1cca6ebdf7cb0b786b3c46561b60fa2e44eecea4"
+repo_commit: "58e7dd9f9b98b05302b8b4cfe4d653e61796c153"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo"]
@@ -86,6 +86,9 @@ Usage examples
   - `cargo test -p lambda-rs --features render-validation-msaa`
 
 ## Changelog
+- 0.1.5 (2025-12-22): Align `lambda-rs` Cargo feature umbrella composition with
+  the documented render-validation feature set, including `render-validation-pass-compat`
+  and `render-validation-render-targets`.
 - 0.1.4 (2025-11-25): Document `render-validation-render-targets`, record its inclusion in the `render-validation` umbrella feature, and update metadata.
 - 0.1.3 (2025-11-25): Rename the instancing validation feature to `render-validation-instancing`, clarify umbrella composition, and update metadata.
 - 0.1.2 (2025-11-25): Clarify umbrella versus granular validation features, record that `render-validation-all` includes `render-instancing-validation`, and update metadata.
