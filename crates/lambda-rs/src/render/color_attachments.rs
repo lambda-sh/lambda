@@ -6,7 +6,7 @@
 
 use lambda_platform::wgpu as platform;
 
-use super::surface::TextureView;
+use super::targets::surface::TextureView;
 
 #[derive(Debug, Default)]
 /// High‑level color attachments collection used when beginning a render pass.

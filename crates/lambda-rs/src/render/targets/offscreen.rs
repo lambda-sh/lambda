@@ -3,9 +3,9 @@
 //! Provides `OffscreenTarget` and `OffscreenTargetBuilder` for render‑to‑texture
 //! workflows without exposing platform texture types at call sites.
 
+use super::surface::TextureView;
 use crate::render::{
   gpu::Gpu,
-  surface,
   texture,
   validation,
   RenderContext,
@@ -66,11 +66,11 @@ impl OffscreenTarget {
     return self.msaa_color.as_ref();
   }
 
-  pub(crate) fn resolve_view(&self) -> surface::TextureView<'_> {
+  pub(crate) fn resolve_view(&self) -> TextureView<'_> {
     return self.resolve_color.view_ref();
   }
 
-  pub(crate) fn msaa_view(&self) -> Option<surface::TextureView<'_>> {
+  pub(crate) fn msaa_view(&self) -> Option<TextureView<'_>> {
     return self.msaa_color.as_ref().map(|t| t.view_ref());
   }
 

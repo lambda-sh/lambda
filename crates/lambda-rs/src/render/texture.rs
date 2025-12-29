@@ -214,8 +214,10 @@ impl ColorAttachmentTexture {
   }
 
   /// Borrow a texture view reference for use in render pass attachments.
-  pub(crate) fn view_ref(&self) -> crate::render::surface::TextureView<'_> {
-    return crate::render::surface::TextureView::from_platform(
+  pub(crate) fn view_ref(
+    &self,
+  ) -> crate::render::targets::surface::TextureView<'_> {
+    return crate::render::targets::surface::TextureView::from_platform(
       self.inner.view_ref(),
     );
   }
@@ -318,8 +320,10 @@ impl DepthTexture {
   }
 
   /// Borrow a texture view reference for use in render pass attachments.
-  pub(crate) fn view_ref(&self) -> crate::render::surface::TextureView<'_> {
-    return crate::render::surface::TextureView::from_platform(
+  pub(crate) fn view_ref(
+    &self,
+  ) -> crate::render::targets::surface::TextureView<'_> {
+    return crate::render::targets::surface::TextureView::from_platform(
       self.inner.view_ref(),
     );
   }
@@ -351,8 +355,10 @@ impl Texture {
   }
 
   /// Borrow a texture view reference for use in render pass attachments.
-  pub(crate) fn view_ref(&self) -> crate::render::surface::TextureView<'_> {
-    return crate::render::surface::TextureView::from_platform(
+  pub(crate) fn view_ref(
+    &self,
+  ) -> crate::render::targets::surface::TextureView<'_> {
+    return crate::render::targets::surface::TextureView::from_platform(
       self.inner.view_ref(),
     );
   }

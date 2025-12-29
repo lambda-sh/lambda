@@ -40,7 +40,6 @@ pub mod pipeline;
 pub mod render_pass;
 pub mod scene_math;
 pub mod shader;
-pub mod surface;
 pub mod targets;
 pub mod texture;
 pub mod validation;
@@ -149,7 +148,7 @@ impl RenderContextBuilder {
       .configure_with_defaults(
         &gpu,
         size,
-        surface::PresentMode::default(),
+        targets::surface::PresentMode::default(),
         texture::TextureUsages::RENDER_ATTACHMENT,
       )
       .map_err(|e| {
@@ -226,7 +225,7 @@ pub struct RenderContext {
   instance: instance::Instance,
   surface: targets::surface::WindowSurface,
   gpu: gpu::Gpu,
-  config: surface::SurfaceConfig,
+  config: targets::surface::SurfaceConfig,
   texture_usage: texture::TextureUsages,
   size: (u32, u32),
   depth_texture: Option<texture::DepthTexture>,
@@ -484,7 +483,7 @@ impl RenderContext {
   fn ensure_msaa_color_texture(
     &mut self,
     sample_count: u32,
-  ) -> surface::TextureView<'_> {
+  ) -> targets::surface::TextureView<'_> {
     let need_recreate = match &self.msaa_color {
       Some(_) => self.msaa_sample_count != sample_count,
       None => true,
@@ -520,7 +519,8 @@ impl RenderContext {
     let frame = match self.surface.acquire_frame() {
       Ok(frame) => frame,
       Err(err) => match err {
-        surface::SurfaceError::Lost | surface::SurfaceError::Outdated => {
+        targets::surface::SurfaceError::Lost
+        | targets::surface::SurfaceError::Outdated => {
           self.reconfigure_surface(self.size)?;
           self
             .surface
@@ -594,7 +594,7 @@ impl RenderContext {
     command_iter: &mut std::vec::IntoIter<RenderCommand>,
     render_pass: ResourceId,
     viewport: viewport::Viewport,
-    surface_view: surface::TextureView<'view>,
+    surface_view: targets::surface::TextureView<'view>,
   ) -> Result<(), RenderError> {
     // Clone the render pass descriptor to avoid borrowing self while we need
     // mutable access for MSAA texture creation.
@@ -978,12 +978,12 @@ impl RenderContext {
 /// acquisition or command encoding. The renderer logs these and continues when
 /// possible; callers SHOULD treat them as warnings unless persistent.
 pub enum RenderError {
-  Surface(surface::SurfaceError),
+  Surface(targets::surface::SurfaceError),
   Configuration(String),
 }
 
-impl From<surface::SurfaceError> for RenderError {
-  fn from(error: surface::SurfaceError) -> Self {
+impl From<targets::surface::SurfaceError> for RenderError {
+  fn from(error: targets::surface::SurfaceError) -> Self {
     return RenderError::Surface(error);
   }
 }
