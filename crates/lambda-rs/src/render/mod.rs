@@ -1,10 +1,7 @@
 //! High‑level rendering API for cross‑platform windowed applications.
 //!
 //! The rendering module provides a small set of stable, engine‑facing types
-//! that assemble a frame using explicit commands. It hides lower‑level
-//! platform details (the `wgpu` device, queue, surfaces, and raw descriptors)
-//! behind builders and handles while keeping configuration visible and
-//! predictable.
+//! that assemble a frame using explicit commands.
 //!
 //! Concepts
 //! - `RenderContext`: owns the graphics instance, presentation surface, and
