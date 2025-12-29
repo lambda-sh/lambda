@@ -101,6 +101,36 @@ pub enum OffscreenTargetError {
   DeviceError(String),
 }
 
+impl std::fmt::Display for OffscreenTargetError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    return match self {
+      OffscreenTargetError::MissingColorAttachment => {
+        write!(f, "Missing color attachment configuration")
+      }
+      OffscreenTargetError::InvalidSize { width, height } => write!(
+        f,
+        "Invalid offscreen target size {}x{} (width and height must be > 0)",
+        width, height
+      ),
+      OffscreenTargetError::UnsupportedSampleCount { requested } => {
+        write!(
+          f,
+          "Unsupported sample count {} (allowed: 1, 2, 4, 8)",
+          requested
+        )
+      }
+      OffscreenTargetError::UnsupportedFormat { message } => {
+        write!(f, "Unsupported format: {}", message)
+      }
+      OffscreenTargetError::DeviceError(message) => {
+        write!(f, "Device error: {}", message)
+      }
+    };
+  }
+}
+
+impl std::error::Error for OffscreenTargetError {}
+
 /// Builder for creating an `OffscreenTarget`.
 pub struct OffscreenTargetBuilder {
   label: Option<String>,
@@ -207,7 +237,20 @@ impl OffscreenTargetBuilder {
     let resolve_texture = match color_builder.build(gpu) {
       Ok(texture) => texture,
       Err(message) => {
-        return Err(OffscreenTargetError::DeviceError(message.to_string()));
+        const UNSUPPORTED_FORMAT_MESSAGE: &str =
+          "Texture format does not support bytes_per_pixel calculation";
+        let error_message = message.to_string();
+        if message == UNSUPPORTED_FORMAT_MESSAGE {
+          return Err(OffscreenTargetError::UnsupportedFormat {
+            message: error_message,
+          });
+        }
+
+        let label = self.label.as_deref().unwrap_or("unnamed offscreen target");
+        return Err(OffscreenTargetError::DeviceError(format!(
+          "Failed to build resolve color texture for '{}': {}",
+          label, error_message
+        )));
       }
     };
 
@@ -264,24 +307,15 @@ impl OffscreenTargetBuilder {
   }
 }
 
-#[deprecated(
-  note = "Use `lambda::render::targets::offscreen::OffscreenTarget` to avoid confusion with `lambda::render::targets::surface::RenderTarget`."
-)]
-pub type RenderTarget = OffscreenTarget;
-
-#[deprecated(
-  note = "Use `lambda::render::targets::offscreen::OffscreenTargetBuilder` to avoid confusion with `lambda::render::targets::surface::RenderTarget`."
-)]
-pub type RenderTargetBuilder = OffscreenTargetBuilder;
-
-#[deprecated(
-  note = "Use `lambda::render::targets::offscreen::OffscreenTargetError`."
-)]
-pub type RenderTargetError = OffscreenTargetError;
-
 #[cfg(test)]
 mod tests {
+  use lambda_platform::wgpu as platform;
+
   use super::*;
+  use crate::render::{
+    gpu::GpuBuilder,
+    instance::InstanceBuilder,
+  };
 
   /// Fails when the builder has a zero dimension.
   #[test]
@@ -307,5 +341,146 @@ mod tests {
   fn sample_count_is_clamped_to_one() {
     let builder = OffscreenTargetBuilder::new().with_multi_sample(0);
     assert_eq!(builder.sample_count, 1);
+  }
+
+  fn create_test_gpu() -> Option<Gpu> {
+    let instance = InstanceBuilder::new()
+      .with_label("lambda-offscreen-target-test-instance")
+      .build();
+    return GpuBuilder::new()
+      .with_label("lambda-offscreen-target-test-gpu")
+      .build(&instance, None)
+      .ok();
+  }
+
+  #[test]
+  fn build_rejects_missing_color_attachment() {
+    let gpu = match create_test_gpu() {
+      Some(gpu) => gpu,
+      None => return,
+    };
+
+    let built = OffscreenTargetBuilder::new().build(&gpu);
+    assert_eq!(
+      built.unwrap_err(),
+      OffscreenTargetError::MissingColorAttachment
+    );
+  }
+
+  #[test]
+  fn build_rejects_unsupported_sample_count() {
+    let gpu = match create_test_gpu() {
+      Some(gpu) => gpu,
+      None => return,
+    };
+
+    let built = OffscreenTargetBuilder::new()
+      .with_color(texture::TextureFormat::Rgba8Unorm, 1, 1)
+      .with_multi_sample(3)
+      .build(&gpu);
+
+    assert_eq!(
+      built.unwrap_err(),
+      OffscreenTargetError::UnsupportedSampleCount { requested: 3 }
+    );
+  }
+
+  #[test]
+  fn resolve_texture_supports_sampling_and_render_attachment() {
+    let gpu = match create_test_gpu() {
+      Some(gpu) => gpu,
+      None => return,
+    };
+
+    let target = OffscreenTargetBuilder::new()
+      .with_color(texture::TextureFormat::Rgba8Unorm, 4, 4)
+      .with_label("offscreen-usage-test")
+      .build(&gpu)
+      .expect("build offscreen target");
+
+    let resolve_platform_texture = target.color_texture().platform_texture();
+
+    let sampler = platform::texture::SamplerBuilder::new()
+      .nearest_clamp()
+      .with_label("offscreen-usage-sampler")
+      .build(gpu.platform());
+
+    let layout = platform::bind::BindGroupLayoutBuilder::new()
+      .with_sampled_texture_2d(1, platform::bind::Visibility::Fragment)
+      .with_sampler(2, platform::bind::Visibility::Fragment)
+      .build(gpu.platform());
+
+    let _group = platform::bind::BindGroupBuilder::new()
+      .with_layout(&layout)
+      .with_texture(1, resolve_platform_texture.as_ref())
+      .with_sampler(2, &sampler)
+      .build(gpu.platform());
+
+    let mut encoder = platform::command::CommandEncoder::new(
+      gpu.platform(),
+      Some("offscreen-usage-encoder"),
+    );
+    {
+      let mut attachments =
+        platform::render_pass::RenderColorAttachments::new();
+      attachments.push_color(target.resolve_view().to_platform());
+      let _pass = platform::render_pass::RenderPassBuilder::new()
+        .with_clear_color([0.0, 0.0, 0.0, 1.0])
+        .build(&mut encoder, &mut attachments, None, None, None, None);
+    }
+
+    let buffer = encoder.finish();
+    gpu.platform().submit(std::iter::once(buffer));
+  }
+
+  #[test]
+  fn msaa_target_depth_attachment_matches_sample_count() {
+    let gpu = match create_test_gpu() {
+      Some(gpu) => gpu,
+      None => return,
+    };
+
+    let target = OffscreenTargetBuilder::new()
+      .with_color(texture::TextureFormat::Rgba8Unorm, 4, 4)
+      .with_depth(texture::DepthFormat::Depth32Float)
+      .with_multi_sample(4)
+      .with_label("offscreen-msaa-depth-test")
+      .build(&gpu)
+      .expect("build offscreen target");
+
+    let msaa_view = target.msaa_view().expect("MSAA view");
+    let resolve_view = target.resolve_view();
+    let depth_view = target
+      .depth_texture()
+      .expect("depth texture")
+      .platform_view_ref();
+
+    let mut encoder = platform::command::CommandEncoder::new(
+      gpu.platform(),
+      Some("offscreen-msaa-depth-encoder"),
+    );
+    {
+      let mut attachments =
+        platform::render_pass::RenderColorAttachments::new();
+      attachments
+        .push_msaa_color(msaa_view.to_platform(), resolve_view.to_platform());
+      let depth_ops = Some(platform::render_pass::DepthOperations {
+        load: platform::render_pass::DepthLoadOp::Clear(1.0),
+        store: platform::render_pass::StoreOp::Store,
+      });
+      let _pass = platform::render_pass::RenderPassBuilder::new()
+        .with_clear_color([0.0, 0.0, 0.0, 1.0])
+        .build(
+          &mut encoder,
+          &mut attachments,
+          Some(depth_view),
+          depth_ops,
+          None,
+          None,
+        );
+    }
+
+    let buffer = encoder.finish();
+    gpu.platform().submit(std::iter::once(buffer));
   }
 }
