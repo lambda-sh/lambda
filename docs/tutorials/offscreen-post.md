@@ -3,8 +3,8 @@ title: "Offscreen Post: Render to a Texture and Sample to the Surface"
 document_id: "offscreen-post-tutorial-2025-12-29"
 status: "draft"
 created: "2025-12-29T00:00:00Z"
-last_updated: "2025-12-29T00:00:00Z"
-version: "0.1.0"
+last_updated: "2025-12-31T00:00:00Z"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
@@ -32,13 +32,14 @@ Reference implementation: `crates/lambda-rs/examples/offscreen_post.rs`.
 - [Requirements and Constraints](#requirements-and-constraints)
 - [Data Flow](#data-flow)
 - [Implementation Steps](#implementation-steps)
-  - [Step 1 — Runtime and Component Skeleton](#step-1)
-  - [Step 2 — Post Shaders: Fullscreen Sample](#step-2)
-  - [Step 3 — Build and Attach an Offscreen Target](#step-3)
-  - [Step 4 — Passes and Pipelines](#step-4)
-  - [Step 5 — Sampling Bind Group](#step-5)
-  - [Step 6 — Fullscreen Quad Mesh and Vertex Buffer](#step-6)
-  - [Step 7 — Render Commands and Resize Replacement](#step-7)
+  - [Step 1 — Imports and Shader Sources](#step-1)
+  - [Step 2 — Component State](#step-2)
+  - [Step 3 — Compile Shaders in `Default`](#step-3)
+  - [Step 4 — Implement `Component` and Build Resources](#step-4)
+  - [Step 5 — Fullscreen Quad Mesh](#step-5)
+  - [Step 6 — Record Commands in `on_render`](#step-6)
+  - [Step 7 — Resize Events and Resource Replacement](#step-7)
+  - [Step 8 — Main Entry Point](#step-8)
 - [Validation](#validation)
 - [Notes](#notes)
 - [Conclusion](#conclusion)
@@ -63,6 +64,8 @@ Reference implementation: `crates/lambda-rs/examples/offscreen_post.rs`.
   and sampled usage. Use `OffscreenTargetBuilder` to ensure correct usage.
 - The offscreen pass/pipeline color format MUST match the offscreen target
   format. This example uses `render_context.surface_format()` for both.
+- The render path MUST handle `0x0` sizes during resize. This example clamps
+  viewport sizes via `width.max(1)` and `height.max(1)`.
 - The bind group layout bindings MUST match the shader declarations:
   `layout (set = 0, binding = 1)` for the texture and `binding = 2` for the
   sampler.
@@ -74,6 +77,9 @@ Reference implementation: `crates/lambda-rs/examples/offscreen_post.rs`.
 ## Data Flow <a name="data-flow"></a>
 
 ```
+Default::default
+  └─ ShaderBuilder → Shader handles
+
 Component::on_attach
   ├─ OffscreenTargetBuilder → OffscreenTarget (attached)
   ├─ RenderPassBuilder → offscreen pass + post pass (attached)
@@ -87,10 +93,100 @@ Component::on_render (each frame)
 
 ## Implementation Steps <a name="implementation-steps"></a>
 
-### Step 1 — Runtime and Component Skeleton <a name="step-1"></a>
+### Step 1 — Imports and Shader Sources <a name="step-1"></a>
 
-Create an `ApplicationRuntime` and register a component that stores shader
-handles and resource IDs for two passes.
+Start with the imports and the embedded post shaders.
+
+```rust
+#![allow(clippy::needless_return)]
+
+//! Example: Render to an offscreen target, then sample it to the surface.
+
+use lambda::{
+  component::Component,
+  events::Events,
+  logging,
+  render::{
+    bind::{
+      BindGroupBuilder,
+      BindGroupLayout,
+      BindGroupLayoutBuilder,
+    },
+    buffer::BufferBuilder,
+    command::{
+      RenderCommand,
+      RenderDestination,
+    },
+    mesh::{
+      Mesh,
+      MeshBuilder,
+    },
+    pipeline::{
+      CullingMode,
+      RenderPipelineBuilder,
+    },
+    render_pass::RenderPassBuilder,
+    shader::{
+      Shader,
+      ShaderBuilder,
+      ShaderKind,
+      VirtualShader,
+    },
+    targets::offscreen::OffscreenTargetBuilder,
+    texture::SamplerBuilder,
+    vertex::{
+      ColorFormat,
+      Vertex,
+      VertexAttribute,
+      VertexBuilder,
+      VertexElement,
+    },
+    viewport::ViewportBuilder,
+    RenderContext,
+    ResourceId,
+  },
+  runtime::start_runtime,
+  runtimes::{
+    application::ComponentResult,
+    ApplicationRuntimeBuilder,
+  },
+};
+
+const POST_VERTEX_SHADER_SOURCE: &str = r#"
+#version 450
+
+layout (location = 0) in vec3 vertex_position;
+layout (location = 2) in vec3 vertex_color; // uv packed into .xy
+
+layout (location = 0) out vec2 v_uv;
+
+void main() {
+  gl_Position = vec4(vertex_position, 1.0);
+  v_uv = vertex_color.xy;
+}
+"#;
+
+const POST_FRAGMENT_SHADER_SOURCE: &str = r#"
+#version 450
+
+layout (location = 0) in vec2 v_uv;
+layout (location = 0) out vec4 fragment_color;
+
+layout (set = 0, binding = 1) uniform texture2D tex;
+layout (set = 0, binding = 2) uniform sampler samp;
+
+void main() {
+  fragment_color = texture(sampler2D(tex, samp), v_uv);
+}
+"#;
+```
+
+The offscreen pass uses `crates/lambda-rs/assets/shaders/triangle.vert` and
+`crates/lambda-rs/assets/shaders/triangle.frag`.
+
+### Step 2 — Component State <a name="step-2"></a>
+
+Define the component state used by the example.
 
 ```rust
 pub struct OffscreenPostExample {
@@ -98,6 +194,7 @@ pub struct OffscreenPostExample {
   triangle_fs: Shader,
   post_vs: Shader,
   post_fs: Shader,
+  quad_mesh: Option<Mesh>,
 
   offscreen_pass: Option<ResourceId>,
   offscreen_pipeline: Option<ResourceId>,
@@ -113,148 +210,465 @@ pub struct OffscreenPostExample {
 }
 ```
 
-The component builds GPU resources in `on_attach`, emits commands in `on_render`,
-and updates the stored dimensions in `on_event`.
+This struct matches the example’s fields and keeps the shader handles alongside
+the IDs returned by `RenderContext::attach_*`.
 
-### Step 2 — Post Shaders: Fullscreen Sample <a name="step-2"></a>
+### Step 3 — Compile Shaders in `Default` <a name="step-3"></a>
 
-Define a post vertex shader that passes UV coordinates and a fragment shader
-that samples a `texture2D` with a `sampler`.
+Compile the triangle and post shaders in `Default`, matching the example.
 
-```glsl
-layout (set = 0, binding = 1) uniform texture2D tex;
-layout (set = 0, binding = 2) uniform sampler samp;
+```rust
+impl Default for OffscreenPostExample {
+  fn default() -> Self {
+    let triangle_vertex = VirtualShader::Source {
+      source: include_str!("../assets/shaders/triangle.vert").to_string(),
+      kind: ShaderKind::Vertex,
+      name: String::from("triangle"),
+      entry_point: String::from("main"),
+    };
 
-void main() {
-  fragment_color = texture(sampler2D(tex, samp), v_uv);
+    let triangle_fragment = VirtualShader::Source {
+      source: include_str!("../assets/shaders/triangle.frag").to_string(),
+      kind: ShaderKind::Fragment,
+      name: String::from("triangle"),
+      entry_point: String::from("main"),
+    };
+
+    let mut builder = ShaderBuilder::new();
+    let triangle_vs = builder.build(triangle_vertex);
+    let triangle_fs = builder.build(triangle_fragment);
+
+    let post_vs = builder.build(VirtualShader::Source {
+      source: POST_VERTEX_SHADER_SOURCE.to_string(),
+      kind: ShaderKind::Vertex,
+      entry_point: "main".to_string(),
+      name: "offscreen-post".to_string(),
+    });
+    let post_fs = builder.build(VirtualShader::Source {
+      source: POST_FRAGMENT_SHADER_SOURCE.to_string(),
+      kind: ShaderKind::Fragment,
+      entry_point: "main".to_string(),
+      name: "offscreen-post".to_string(),
+    });
+
+    return OffscreenPostExample {
+      triangle_vs,
+      triangle_fs,
+      post_vs,
+      post_fs,
+      quad_mesh: None,
+      offscreen_pass: None,
+      offscreen_pipeline: None,
+      offscreen_target: None,
+      post_pass: None,
+      post_pipeline: None,
+      post_bind_group: None,
+      post_layout: None,
+      width: 800,
+      height: 600,
+    };
+  }
 }
 ```
 
-The shader interface defines the bind group layout requirements for Step 5.
+This keeps shader construction out of `on_attach` so the component can build
+pipelines immediately from the stored `Shader` values.
 
-### Step 3 — Build and Attach an Offscreen Target <a name="step-3"></a>
+### Step 4 — Implement `Component` and Build Resources <a name="step-4"></a>
 
-Build an offscreen target sized to the current surface and attach it to the
-`RenderContext`.
-
-```rust
-let (width, height) = render_context.surface_size();
-let offscreen_target = OffscreenTargetBuilder::new()
-  .with_color(render_context.surface_format(), width, height)
-  .with_label("offscreen-post-target")
-  .build(render_context.gpu())
-  .map_err(|e| format!("Failed to build offscreen target: {:?}", e))?;
-
-let offscreen_target_id =
-  render_context.attach_offscreen_target(offscreen_target);
-```
-
-The attached ID is used later with `RenderDestination::Offscreen`.
-
-### Step 4 — Passes and Pipelines <a name="step-4"></a>
-
-Create two passes: one for offscreen rendering and one for the surface. Build
-one pipeline per pass.
+Implement the component lifecycle. This example creates the offscreen target,
+passes, pipelines, and bind group in `on_attach`, and records two render passes
+each frame in `on_render`.
 
 ```rust
-let offscreen_pass =
-  RenderPassBuilder::new().with_label("offscreen-pass").build(
-    render_context.gpu(),
-    render_context.surface_format(),
-    render_context.depth_format(),
-  );
+impl Component<ComponentResult, String> for OffscreenPostExample {
+  fn on_attach(
+    &mut self,
+    render_context: &mut RenderContext,
+  ) -> Result<ComponentResult, String> {
+    logging::info!("Attaching OffscreenPostExample");
 
-let offscreen_pipeline = RenderPipelineBuilder::new()
-  .with_label("offscreen-pipeline")
-  .with_culling(CullingMode::None)
-  .build(
-    render_context.gpu(),
-    render_context.surface_format(),
-    render_context.depth_format(),
-    &offscreen_pass,
-    &self.triangle_vs,
-    Some(&self.triangle_fs),
-  );
-```
+    let surface_size = render_context.surface_size();
+    let offscreen_target = OffscreenTargetBuilder::new()
+      .with_color(
+        render_context.surface_format(),
+        surface_size.0,
+        surface_size.1,
+      )
+      .with_label("offscreen-post-target")
+      .build(render_context.gpu())
+      .map_err(|e| format!("Failed to build offscreen target: {:?}", e))?;
+    let offscreen_target_id =
+      render_context.attach_offscreen_target(offscreen_target);
 
-The post pipeline adds a layout and a vertex buffer in Step 5 and Step 6.
+    let offscreen_pass =
+      RenderPassBuilder::new().with_label("offscreen-pass").build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+      );
 
-### Step 5 — Sampling Bind Group <a name="step-5"></a>
+    let offscreen_pipeline = RenderPipelineBuilder::new()
+      .with_label("offscreen-pipeline")
+      .with_culling(CullingMode::None)
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+        &offscreen_pass,
+        &self.triangle_vs,
+        Some(&self.triangle_fs),
+      );
 
-Build a bind group layout that matches the post fragment shader and create a
-sampler and bind group that reference the offscreen target’s color texture.
+    let post_pass = RenderPassBuilder::new().with_label("post-pass").build(
+      render_context.gpu(),
+      render_context.surface_format(),
+      render_context.depth_format(),
+    );
 
-```rust
-let post_layout = BindGroupLayoutBuilder::new()
-  .with_sampled_texture(1)
-  .with_sampler(2)
-  .build(render_context.gpu());
+    let post_layout = BindGroupLayoutBuilder::new()
+      .with_sampled_texture(1)
+      .with_sampler(2)
+      .build(render_context.gpu());
 
-let sampler = SamplerBuilder::new()
-  .linear_clamp()
-  .with_label("offscreen-post-sampler")
-  .build(render_context.gpu());
+    let sampler = SamplerBuilder::new()
+      .linear_clamp()
+      .with_label("offscreen-post-sampler")
+      .build(render_context.gpu());
 
-let offscreen_ref =
-  render_context.get_offscreen_target(offscreen_target_id);
-let post_bind_group = BindGroupBuilder::new()
-  .with_layout(&post_layout)
-  .with_texture(1, offscreen_ref.color_texture())
-  .with_sampler(2, &sampler)
-  .build(render_context.gpu());
-```
+    let offscreen_ref =
+      render_context.get_offscreen_target(offscreen_target_id);
+    let post_bind_group = BindGroupBuilder::new()
+      .with_layout(&post_layout)
+      .with_texture(1, offscreen_ref.color_texture())
+      .with_sampler(2, &sampler)
+      .build(render_context.gpu());
 
-The post pipeline uses `.with_layouts(&[&post_layout])` so set `0` is defined.
+    let quad_mesh = Self::build_fullscreen_quad_mesh();
+    let quad_vertex_buffer =
+      BufferBuilder::build_from_mesh(&quad_mesh, render_context.gpu())
+        .map_err(|e| format!("Failed to build quad vertex buffer: {:?}", e))?;
 
-### Step 6 — Fullscreen Quad Mesh and Vertex Buffer <a name="step-6"></a>
+    let post_pipeline = RenderPipelineBuilder::new()
+      .with_label("post-pipeline")
+      .with_culling(CullingMode::None)
+      .with_layouts(&[&post_layout])
+      .with_buffer(quad_vertex_buffer, quad_mesh.attributes().to_vec())
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        render_context.depth_format(),
+        &post_pass,
+        &self.post_vs,
+        Some(&self.post_fs),
+      );
 
-Build a fullscreen quad (two triangles) and pack UV coordinates into the
-`Vertex` color attribute at location `2` to match the post vertex shader.
+    self.offscreen_pass =
+      Some(render_context.attach_render_pass(offscreen_pass));
+    self.offscreen_pipeline =
+      Some(render_context.attach_pipeline(offscreen_pipeline));
+    self.offscreen_target = Some(offscreen_target_id);
 
-```rust
-VertexBuilder::new()
-  .with_position([-1.0, -1.0, 0.0])
-  .with_normal([0.0, 0.0, 1.0])
-  .with_color([0.0, 0.0, 0.0])
-  .build();
-```
+    self.post_pass = Some(render_context.attach_render_pass(post_pass));
+    self.post_pipeline = Some(render_context.attach_pipeline(post_pipeline));
+    self.post_bind_group =
+      Some(render_context.attach_bind_group(post_bind_group));
+    self.post_layout = Some(post_layout);
+    self.quad_mesh = Some(quad_mesh);
 
-Upload the mesh to a vertex buffer and attach it to the post pipeline:
-`BufferBuilder::build_from_mesh(&quad_mesh, render_context.gpu())`.
+    let (width, height) = render_context.surface_size();
+    self.width = width;
+    self.height = height;
 
-### Step 7 — Render Commands and Resize Replacement <a name="step-7"></a>
+    return Ok(ComponentResult::Success);
+  }
 
-Emit two passes per frame. Use `BeginRenderPassTo` with an offscreen destination
-for the first pass, then sample the result to the surface in the second pass.
+  fn on_detach(
+    &mut self,
+    _render_context: &mut RenderContext,
+  ) -> Result<ComponentResult, String> {
+    return Ok(ComponentResult::Success);
+  }
 
-```rust
-RenderCommand::BeginRenderPassTo {
-  render_pass: offscreen_pass_id,
-  viewport,
-  destination: RenderDestination::Offscreen(offscreen_target_id),
-},
-// draw triangle ...
-RenderCommand::BeginRenderPass { render_pass: post_pass_id, viewport },
-// set bind group + bind vertex buffer + draw quad ...
-```
+  fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
+    if let Events::Window {
+      event: lambda::events::WindowEvent::Resize { width, height },
+      ..
+    } = event
+    {
+      self.width = width;
+      self.height = height;
+    }
+    return Ok(ComponentResult::Success);
+  }
 
-When the window resizes, rebuild the offscreen target and replace both the
-target and the post bind group.
+  fn on_update(
+    &mut self,
+    _last_frame: &std::time::Duration,
+  ) -> Result<ComponentResult, String> {
+    return Ok(ComponentResult::Success);
+  }
 
-```rust
-if target_size != surface_size {
-  let new_target = OffscreenTargetBuilder::new()
-    .with_color(render_context.surface_format(), surface_size.0, surface_size.1)
-    .with_label("offscreen-post-target")
-    .build(render_context.gpu())?;
+  fn on_render(
+    &mut self,
+    render_context: &mut RenderContext,
+  ) -> Vec<RenderCommand> {
+    self.ensure_offscreen_matches_surface(render_context);
 
-  render_context.replace_offscreen_target(offscreen_id, new_target)?;
-  // Rebuild bind group with the new target’s `color_texture()`.
+    let offscreen_viewport =
+      ViewportBuilder::new().build(self.width.max(1), self.height.max(1));
+    let surface_viewport =
+      ViewportBuilder::new().build(self.width.max(1), self.height.max(1));
+
+    return vec![
+      RenderCommand::BeginRenderPassTo {
+        render_pass: self.offscreen_pass.expect("offscreen pass not set"),
+        viewport: offscreen_viewport.clone(),
+        destination: RenderDestination::Offscreen(
+          self.offscreen_target.expect("offscreen target not set"),
+        ),
+      },
+      RenderCommand::SetPipeline {
+        pipeline: self.offscreen_pipeline.expect("offscreen pipeline not set"),
+      },
+      RenderCommand::SetViewports {
+        start_at: 0,
+        viewports: vec![offscreen_viewport.clone()],
+      },
+      RenderCommand::SetScissors {
+        start_at: 0,
+        viewports: vec![offscreen_viewport.clone()],
+      },
+      RenderCommand::Draw {
+        vertices: 0..3,
+        instances: 0..1,
+      },
+      RenderCommand::EndRenderPass,
+      RenderCommand::BeginRenderPass {
+        render_pass: self.post_pass.expect("post pass not set"),
+        viewport: surface_viewport.clone(),
+      },
+      RenderCommand::SetPipeline {
+        pipeline: self.post_pipeline.expect("post pipeline not set"),
+      },
+      RenderCommand::SetBindGroup {
+        set: 0,
+        group: self.post_bind_group.expect("post bind group not set"),
+        dynamic_offsets: vec![],
+      },
+      RenderCommand::BindVertexBuffer {
+        pipeline: self.post_pipeline.expect("post pipeline not set"),
+        buffer: 0,
+      },
+      RenderCommand::SetViewports {
+        start_at: 0,
+        viewports: vec![surface_viewport.clone()],
+      },
+      RenderCommand::SetScissors {
+        start_at: 0,
+        viewports: vec![surface_viewport.clone()],
+      },
+      RenderCommand::Draw {
+        vertices: 0..6,
+        instances: 0..1,
+      },
+      RenderCommand::EndRenderPass,
+    ];
+  }
 }
 ```
 
-The reference implementation performs this replacement in
-`ensure_offscreen_matches_surface`.
+This produces two render passes: an offscreen triangle render and a post pass
+that samples the offscreen color texture and draws a fullscreen quad.
+
+### Step 5 — Fullscreen Quad Mesh <a name="step-5"></a>
+
+Build the fullscreen quad mesh used by the post pass.
+
+```rust
+impl OffscreenPostExample {
+  fn build_fullscreen_quad_mesh() -> Mesh {
+    let vertices: [Vertex; 6] = [
+      VertexBuilder::new()
+        .with_position([-1.0, -1.0, 0.0])
+        .with_normal([0.0, 0.0, 1.0])
+        .with_color([0.0, 0.0, 0.0])
+        .build(),
+      VertexBuilder::new()
+        .with_position([1.0, -1.0, 0.0])
+        .with_normal([0.0, 0.0, 1.0])
+        .with_color([1.0, 0.0, 0.0])
+        .build(),
+      VertexBuilder::new()
+        .with_position([1.0, 1.0, 0.0])
+        .with_normal([0.0, 0.0, 1.0])
+        .with_color([1.0, 1.0, 0.0])
+        .build(),
+      VertexBuilder::new()
+        .with_position([-1.0, -1.0, 0.0])
+        .with_normal([0.0, 0.0, 1.0])
+        .with_color([0.0, 0.0, 0.0])
+        .build(),
+      VertexBuilder::new()
+        .with_position([1.0, 1.0, 0.0])
+        .with_normal([0.0, 0.0, 1.0])
+        .with_color([1.0, 1.0, 0.0])
+        .build(),
+      VertexBuilder::new()
+        .with_position([-1.0, 1.0, 0.0])
+        .with_normal([0.0, 0.0, 1.0])
+        .with_color([0.0, 1.0, 0.0])
+        .build(),
+    ];
+
+    let mut mesh_builder = MeshBuilder::new();
+    for v in vertices {
+      mesh_builder.with_vertex(v);
+    }
+
+    return mesh_builder
+      .with_attributes(vec![
+        VertexAttribute {
+          location: 0,
+          offset: 0,
+          element: VertexElement {
+            format: ColorFormat::Rgb32Sfloat,
+            offset: 0,
+          },
+        },
+        VertexAttribute {
+          location: 1,
+          offset: 0,
+          element: VertexElement {
+            format: ColorFormat::Rgb32Sfloat,
+            offset: 12,
+          },
+        },
+        VertexAttribute {
+          location: 2,
+          offset: 0,
+          element: VertexElement {
+            format: ColorFormat::Rgb32Sfloat,
+            offset: 24,
+          },
+        },
+      ])
+      .build();
+  }
+}
+```
+
+The post vertex shader reads UV from `vertex_color.xy` at `location = 2`, which
+is why the quad’s `VertexAttribute` for `location = 2` uses `offset: 24`.
+
+### Step 6 — Record Commands in `on_render` <a name="step-6"></a>
+
+`on_render` records two passes each frame. The offscreen pass targets
+`RenderDestination::Offscreen` and draws `0..3` vertices. The post pass targets
+the surface, binds set `0` and vertex buffer slot `0`, and draws `0..6`
+vertices for the fullscreen quad.
+
+### Step 7 — Resize Events and Resource Replacement <a name="step-7"></a>
+
+`on_event` stores the new width/height and `ensure_offscreen_matches_surface`
+rebuilds the offscreen target (and dependent bind group) when the sizes
+diverge.
+
+```rust
+impl OffscreenPostExample {
+  fn ensure_offscreen_matches_surface(
+    &mut self,
+    render_context: &mut RenderContext,
+  ) {
+    let offscreen_id = match self.offscreen_target {
+      Some(id) => id,
+      None => return,
+    };
+    let post_layout = match self.post_layout.as_ref() {
+      Some(layout) => layout,
+      None => return,
+    };
+    let bind_group_id = match self.post_bind_group {
+      Some(id) => id,
+      None => return,
+    };
+
+    let surface_size = render_context.surface_size();
+    let target_size =
+      render_context.get_offscreen_target(offscreen_id).size();
+    if target_size == surface_size {
+      return;
+    }
+
+    let new_target = match OffscreenTargetBuilder::new()
+      .with_color(
+        render_context.surface_format(),
+        surface_size.0,
+        surface_size.1,
+      )
+      .with_label("offscreen-post-target")
+      .build(render_context.gpu())
+    {
+      Ok(target) => target,
+      Err(error) => {
+        logging::error!("Failed to rebuild offscreen target: {:?}", error);
+        return;
+      }
+    };
+
+    if let Err(error) =
+      render_context.replace_offscreen_target(offscreen_id, new_target)
+    {
+      logging::error!("Failed to replace offscreen target: {}", error);
+      return;
+    }
+
+    let offscreen_ref = render_context.get_offscreen_target(offscreen_id);
+    let sampler = SamplerBuilder::new()
+      .linear_clamp()
+      .with_label("offscreen-post-sampler")
+      .build(render_context.gpu());
+    let new_bind_group = BindGroupBuilder::new()
+      .with_layout(post_layout)
+      .with_texture(1, offscreen_ref.color_texture())
+      .with_sampler(2, &sampler)
+      .build(render_context.gpu());
+
+    if let Err(error) =
+      render_context.replace_bind_group(bind_group_id, new_bind_group)
+    {
+      logging::error!("Failed to replace post bind group: {}", error);
+    }
+  }
+}
+```
+
+This replacement path rebuilds both the offscreen target and the bind group so
+the post pass samples the updated texture view after a resize.
+
+### Step 8 — Main Entry Point <a name="step-8"></a>
+
+Start the runtime using the example’s `main`.
+
+```rust
+fn main() {
+  let runtime = ApplicationRuntimeBuilder::new("Offscreen Post Process")
+    .with_window_configured_as(move |window_builder| {
+      return window_builder
+        .with_dimensions(1200, 600)
+        .with_name("Offscreen Post Process");
+    })
+    .with_component(move |runtime, component: OffscreenPostExample| {
+      return (runtime, component);
+    })
+    .build();
+
+  start_runtime(runtime);
+}
+```
+
+The resulting program opens a window, renders into an offscreen texture, and
+presents the sampled result to the surface each frame.
 
 ## Validation <a name="validation"></a>
 
@@ -277,6 +691,8 @@ The reference implementation performs this replacement in
   - Replacing the offscreen target invalidates the previous texture view.
     Rebuild the bind group after calling
     `render_context.replace_offscreen_target`.
+  - Viewports are built from `width.max(1)` and `height.max(1)` to avoid
+    zero-size viewport creation during resize.
 
 ## Conclusion <a name="conclusion"></a>
 
@@ -307,5 +723,7 @@ a fullscreen quad and a bind group.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.2.0 (2025-12-31): Update the tutorial to match the example’s `Default`,
+  `on_attach`, `on_render`, and resize replacement structure.
 - 0.1.0 (2025-12-29): Initial draft aligned with
   `crates/lambda-rs/examples/offscreen_post.rs`.
