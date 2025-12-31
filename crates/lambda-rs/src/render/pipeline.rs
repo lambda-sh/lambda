@@ -61,7 +61,9 @@ pub struct RenderPipeline {
   buffers: Vec<Rc<Buffer>>,
   sample_count: u32,
   color_target_count: u32,
+  color_target_format: Option<texture::TextureFormat>,
   expects_depth_stencil: bool,
+  depth_format: Option<texture::DepthFormat>,
   uses_stencil: bool,
   per_instance_slots: Vec<bool>,
 }
@@ -90,9 +92,17 @@ impl RenderPipeline {
     return self.color_target_count > 0;
   }
 
+  pub(super) fn color_target_format(&self) -> Option<texture::TextureFormat> {
+    return self.color_target_format;
+  }
+
   /// Whether the pipeline expects a depth-stencil attachment.
   pub(super) fn expects_depth_stencil(&self) -> bool {
     return self.expects_depth_stencil;
+  }
+
+  pub(super) fn depth_format(&self) -> Option<texture::DepthFormat> {
+    return self.depth_format;
   }
 
   /// Whether the pipeline configured a stencil test/state.
@@ -563,6 +573,13 @@ impl RenderPipelineBuilder {
       rp_builder = rp_builder.with_color_target(surface_format.to_platform());
     }
 
+    let pipeline_color_target_format = if fragment_module.is_some() {
+      Some(surface_format)
+    } else {
+      None
+    };
+
+    let mut pipeline_depth_format: Option<texture::DepthFormat> = None;
     if self.use_depth {
       // Engine-level depth format with default
       let mut dfmt = self
@@ -589,6 +606,7 @@ impl RenderPipelineBuilder {
       } else {
         depth_format
       };
+      pipeline_depth_format = Some(pass_depth_format);
 
       // Align the pipeline depth format with the pass attachment format to
       // avoid hidden global state on the render context. When formats differ,
@@ -656,8 +674,10 @@ impl RenderPipelineBuilder {
       buffers,
       sample_count: pipeline_samples,
       color_target_count: if fragment_module.is_some() { 1 } else { 0 },
+      color_target_format: pipeline_color_target_format,
       // Depth/stencil is enabled when `with_depth*` was called on the builder.
       expects_depth_stencil: self.use_depth,
+      depth_format: pipeline_depth_format,
       uses_stencil: self.stencil.is_some(),
       per_instance_slots,
     };

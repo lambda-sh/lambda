@@ -214,8 +214,10 @@ impl ColorAttachmentTexture {
   }
 
   /// Borrow a texture view reference for use in render pass attachments.
-  pub(crate) fn view_ref(&self) -> crate::render::surface::TextureView<'_> {
-    return crate::render::surface::TextureView::from_platform(
+  pub(crate) fn view_ref(
+    &self,
+  ) -> crate::render::targets::surface::TextureView<'_> {
+    return crate::render::targets::surface::TextureView::from_platform(
       self.inner.view_ref(),
     );
   }
@@ -308,8 +310,10 @@ impl DepthTexture {
   }
 
   /// Borrow a texture view reference for use in render pass attachments.
-  pub(crate) fn view_ref(&self) -> crate::render::surface::TextureView<'_> {
-    return crate::render::surface::TextureView::from_platform(
+  pub(crate) fn view_ref(
+    &self,
+  ) -> crate::render::targets::surface::TextureView<'_> {
+    return crate::render::targets::surface::TextureView::from_platform(
       self.inner.view_ref(),
     );
   }
@@ -322,68 +326,6 @@ impl DepthTexture {
     &self,
   ) -> lambda_platform::wgpu::surface::TextureViewRef<'_> {
     return self.inner.view_ref();
-  }
-}
-
-/// Builder for creating a depth texture attachment.
-pub struct DepthTextureBuilder {
-  label: Option<String>,
-  format: DepthFormat,
-  width: u32,
-  height: u32,
-  sample_count: u32,
-}
-
-impl DepthTextureBuilder {
-  /// Create a builder with no size and `Depth32Float` format.
-  pub fn new() -> Self {
-    return Self {
-      label: None,
-      format: DepthFormat::Depth32Float,
-      width: 0,
-      height: 0,
-      sample_count: 1,
-    };
-  }
-
-  /// Set the 2D attachment size in pixels.
-  pub fn with_size(mut self, width: u32, height: u32) -> Self {
-    self.width = width;
-    self.height = height;
-    return self;
-  }
-
-  /// Choose a depth format.
-  pub fn with_format(mut self, format: DepthFormat) -> Self {
-    self.format = format;
-    return self;
-  }
-
-  /// Configure multi-sampling.
-  pub fn with_sample_count(mut self, count: u32) -> Self {
-    self.sample_count = count.max(1);
-    return self;
-  }
-
-  /// Attach a debug label for the created texture.
-  pub fn with_label(mut self, label: &str) -> Self {
-    self.label = Some(label.to_string());
-    return self;
-  }
-
-  /// Create the depth texture on the device.
-  pub fn build(self, gpu: &Gpu) -> DepthTexture {
-    let mut builder = platform::DepthTextureBuilder::new()
-      .with_size(self.width, self.height)
-      .with_format(self.format.to_platform())
-      .with_sample_count(self.sample_count);
-
-    if let Some(ref label) = self.label {
-      builder = builder.with_label(label);
-    }
-
-    let texture = builder.build(gpu.platform());
-    return DepthTexture::from_platform(texture);
   }
 }
 
@@ -400,6 +342,15 @@ pub struct Texture {
 impl Texture {
   pub(crate) fn platform_texture(&self) -> Rc<platform::Texture> {
     return self.inner.clone();
+  }
+
+  /// Borrow a texture view reference for use in render pass attachments.
+  pub(crate) fn view_ref(
+    &self,
+  ) -> crate::render::targets::surface::TextureView<'_> {
+    return crate::render::targets::surface::TextureView::from_platform(
+      self.inner.view_ref(),
+    );
   }
 }
 
@@ -423,6 +374,7 @@ pub struct TextureBuilder {
   height: u32,
   depth: u32,
   data: Option<Vec<u8>>, // tightly packed rows
+  is_render_target: bool,
 }
 
 impl TextureBuilder {
@@ -435,6 +387,7 @@ impl TextureBuilder {
       height: 0,
       depth: 1,
       data: None,
+      is_render_target: false,
     };
   }
 
@@ -452,6 +405,7 @@ impl TextureBuilder {
       // Depth > 1 ensures the 3D path is chosen once size is provided.
       depth: 2,
       data: None,
+      is_render_target: false,
     };
   }
 
@@ -483,6 +437,18 @@ impl TextureBuilder {
     return self;
   }
 
+  /// Configure this texture for use as a render target.
+  ///
+  /// Render target textures are created with usage flags suitable for both
+  /// sampling and attachment, and allow copying from the texture for
+  /// readback.
+  pub fn for_render_target(mut self) -> Self {
+    self.is_render_target = true;
+    return self;
+  }
+
+  /// Create the texture and upload initial data if provided.
+
   /// Create the texture and upload initial data if provided.
   pub fn build(self, gpu: &Gpu) -> Result<Texture, &'static str> {
     let mut builder =
@@ -493,6 +459,15 @@ impl TextureBuilder {
         platform::TextureBuilder::new_3d(self.format.to_platform())
           .with_size_3d(self.width, self.height, self.depth)
       };
+
+    if self.is_render_target {
+      builder = builder.with_usage(
+        platform::TextureUsages::TEXTURE_BINDING
+          | platform::TextureUsages::RENDER_ATTACHMENT
+          | platform::TextureUsages::COPY_SRC
+          | platform::TextureUsages::COPY_DST,
+      );
+    }
 
     if let Some(ref label) = self.label {
       builder = builder.with_label(label);
@@ -519,6 +494,68 @@ impl TextureBuilder {
         Err("Texture format does not support bytes_per_pixel calculation")
       }
     };
+  }
+}
+
+/// Builder for creating a depth texture attachment.
+pub struct DepthTextureBuilder {
+  label: Option<String>,
+  width: u32,
+  height: u32,
+  format: DepthFormat,
+  sample_count: u32,
+}
+
+impl DepthTextureBuilder {
+  /// Create a new depth texture builder with no size and `Depth32Float` format.
+  pub fn new() -> Self {
+    return Self {
+      label: None,
+      width: 0,
+      height: 0,
+      format: DepthFormat::Depth32Float,
+      sample_count: 1,
+    };
+  }
+
+  /// Set the 2D depth texture size in pixels.
+  pub fn with_size(mut self, width: u32, height: u32) -> Self {
+    self.width = width;
+    self.height = height;
+    return self;
+  }
+
+  /// Choose a depth format.
+  pub fn with_format(mut self, format: DepthFormat) -> Self {
+    self.format = format;
+    return self;
+  }
+
+  /// Configure multisampling. Count values less than one are clamped to `1`.
+  pub fn with_sample_count(mut self, count: u32) -> Self {
+    self.sample_count = count.max(1);
+    return self;
+  }
+
+  /// Attach a debug label.
+  pub fn with_label(mut self, label: &str) -> Self {
+    self.label = Some(label.to_string());
+    return self;
+  }
+
+  /// Create the depth texture on the device.
+  pub fn build(self, gpu: &Gpu) -> DepthTexture {
+    let mut builder = platform::DepthTextureBuilder::new()
+      .with_size(self.width.max(1), self.height.max(1))
+      .with_format(self.format.to_platform())
+      .with_sample_count(self.sample_count);
+
+    if let Some(ref label) = self.label {
+      builder = builder.with_label(label);
+    }
+
+    let texture = builder.build(gpu.platform());
+    return DepthTexture::from_platform(texture);
   }
 }
 
@@ -601,5 +638,24 @@ impl SamplerBuilder {
     return Sampler {
       inner: Rc::new(sampler),
     };
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn texture_builder_marks_render_target_usage() {
+    let builder =
+      TextureBuilder::new_2d(TextureFormat::Rgba8Unorm).for_render_target();
+
+    assert!(builder.is_render_target);
+  }
+
+  #[test]
+  fn depth_texture_builder_clamps_sample_count() {
+    let builder = DepthTextureBuilder::new().with_sample_count(0);
+    assert_eq!(builder.sample_count, 1);
   }
 }

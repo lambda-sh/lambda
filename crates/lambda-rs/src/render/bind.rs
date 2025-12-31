@@ -64,9 +64,7 @@ impl BindingVisibility {
 }
 
 #[cfg(test)]
-mod tests {
-  use super::*;
-}
+mod tests {}
 
 /// Bind group layout used when creating pipelines and bind groups.
 #[derive(Debug, Clone)]

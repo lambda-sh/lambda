@@ -640,6 +640,11 @@ impl Texture {
     return &self.view;
   }
 
+  /// Convenience: return a `TextureViewRef` for use in render pass attachments.
+  pub fn view_ref(&self) -> crate::wgpu::surface::TextureViewRef<'_> {
+    return crate::wgpu::surface::TextureViewRef { raw: &self.view };
+  }
+
   /// Optional debug label used during creation.
   pub fn label(&self) -> Option<&str> {
     return self.label.as_deref();

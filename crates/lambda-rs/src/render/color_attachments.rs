@@ -6,7 +6,7 @@
 
 use lambda_platform::wgpu as platform;
 
-use super::surface::TextureView;
+use super::targets::surface::TextureView;
 
 #[derive(Debug, Default)]
 /// High‑level color attachments collection used when beginning a render pass.
@@ -87,6 +87,35 @@ impl<'view> RenderColorAttachments<'view> {
       attachments.push_msaa_color(msaa, surface_view);
     } else {
       attachments.push_color(surface_view);
+    }
+
+    return attachments;
+  }
+
+  /// Build color attachments for an offscreen render pass.
+  ///
+  /// This helper configures single-sample or multi-sample color attachments
+  /// targeting an offscreen resolve texture. When MSAA is enabled, the
+  /// `msaa_view` is used as the multi-sampled render target and `resolve_view`
+  /// receives the resolved output.
+  pub(crate) fn for_offscreen_pass(
+    uses_color: bool,
+    sample_count: u32,
+    msaa_view: Option<TextureView<'view>>,
+    resolve_view: TextureView<'view>,
+  ) -> Self {
+    let mut attachments = RenderColorAttachments::new();
+
+    if !uses_color {
+      return attachments;
+    }
+
+    if sample_count > 1 {
+      let msaa =
+        msaa_view.expect("MSAA view must be provided when sample_count > 1");
+      attachments.push_msaa_color(msaa, resolve_view);
+    } else {
+      attachments.push_color(resolve_view);
     }
 
     return attachments;

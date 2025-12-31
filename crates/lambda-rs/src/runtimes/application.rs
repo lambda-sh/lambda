@@ -8,13 +8,10 @@ use lambda_platform::winit::{
   winit_exports::{
     ElementState,
     Event as WinitEvent,
-    KeyCode as WinitKeyCode,
-    KeyEvent as WinitKeyEvent,
     MouseButton,
     PhysicalKey as WinitPhysicalKey,
     WindowEvent as WinitWindowEvent,
   },
-  Loop,
   LoopBuilder,
 };
 use logging;
@@ -23,7 +20,6 @@ use crate::{
   component::Component,
   events::{
     Button,
-    ComponentEvent,
     Events,
     Key,
     Mouse,
@@ -31,11 +27,7 @@ use crate::{
     WindowEvent,
   },
   render::{
-    window::{
-      Window,
-      WindowBuilder,
-    },
-    RenderContext,
+    window::WindowBuilder,
     RenderContextBuilder,
   },
   runtime::Runtime,
@@ -149,7 +141,7 @@ impl Runtime<(), String> for ApplicationRuntime {
     let mut event_loop = LoopBuilder::new().build();
     let window = self.window_builder.build(&mut event_loop);
     let mut component_stack = self.component_stack;
-    let mut render_context = match self.render_context_builder.build(&window) {
+    let render_context = match self.render_context_builder.build(&window) {
       Ok(ctx) => ctx,
       Err(err) => {
         let msg = format!("Failed to initialize render context: {}", err);
@@ -341,9 +333,15 @@ impl Runtime<(), String> for ApplicationRuntime {
         }
         // Redraw requests are handled implicitly when AboutToWait fires; ignore explicit requests
         WinitEvent::NewEvents(_) => None,
-        WinitEvent::DeviceEvent { device_id, event } => None,
+        WinitEvent::DeviceEvent {
+          device_id: _,
+          event: _,
+        } => None,
         WinitEvent::UserEvent(lambda_event) => match lambda_event {
-          Events::Runtime { event, issued_at } => match event {
+          Events::Runtime {
+            event,
+            issued_at: _,
+          } => match event {
             RuntimeEvent::Initialized => {
               logging::debug!(
                 "Initializing all of the components for the runtime: {}",

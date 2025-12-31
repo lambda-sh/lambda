@@ -1,10 +1,7 @@
 //! High‑level rendering API for cross‑platform windowed applications.
 //!
 //! The rendering module provides a small set of stable, engine‑facing types
-//! that assemble a frame using explicit commands. It hides lower‑level
-//! platform details (the `wgpu` device, queue, surfaces, and raw descriptors)
-//! behind builders and handles while keeping configuration visible and
-//! predictable.
+//! that assemble a frame using explicit commands.
 //!
 //! Concepts
 //! - `RenderContext`: owns the graphics instance, presentation surface, and
@@ -38,10 +35,9 @@ pub mod instance;
 pub mod mesh;
 pub mod pipeline;
 pub mod render_pass;
-pub mod render_target;
 pub mod scene_math;
 pub mod shader;
-pub mod surface;
+pub mod targets;
 pub mod texture;
 pub mod validation;
 pub mod vertex;
@@ -56,18 +52,21 @@ use std::{
   rc::Rc,
 };
 
-use lambda_platform::wgpu as platform;
 use logging;
 
 use self::{
-  command::RenderCommand,
+  command::{
+    RenderCommand,
+    RenderDestination,
+  },
   encoder::{
     CommandEncoder,
+    RenderPassDestinationInfo,
     RenderPassError,
   },
   pipeline::RenderPipeline,
   render_pass::RenderPass as RenderPassDesc,
-  render_target::RenderTarget,
+  targets::surface::RenderTarget,
 };
 
 /// Builder for configuring a `RenderContext` tied to one window.
@@ -123,13 +122,13 @@ impl RenderContextBuilder {
       .with_label(&format!("{} Instance", name))
       .build();
 
-    let mut surface = render_target::WindowSurface::new(&instance, window)
+    let mut surface = targets::surface::WindowSurface::new(&instance, window)
       .map_err(|e| {
-        RenderContextError::SurfaceCreate(format!(
-          "Failed to create rendering surface: {:?}",
-          e
-        ))
-      })?;
+      RenderContextError::SurfaceCreate(format!(
+        "Failed to create rendering surface: {:?}",
+        e
+      ))
+    })?;
 
     let gpu = gpu::GpuBuilder::new()
       .with_label(&format!("{} Device", name))
@@ -146,7 +145,7 @@ impl RenderContextBuilder {
       .configure_with_defaults(
         &gpu,
         size,
-        surface::PresentMode::default(),
+        targets::surface::PresentMode::default(),
         texture::TextureUsages::RENDER_ATTACHMENT,
       )
       .map_err(|e| {
@@ -164,10 +163,10 @@ impl RenderContextBuilder {
     let texture_usage = config.usage;
     let config = config.clone();
 
-    // Initialize a depth texture matching the surface size.
+    // Initialize the render context with an engine-level depth format.
     let depth_format = texture::DepthFormat::Depth32Float;
 
-    return Ok(RenderContext {
+    let mut render_context = RenderContext {
       label: name,
       instance,
       surface,
@@ -180,13 +179,25 @@ impl RenderContextBuilder {
       depth_sample_count: 1,
       msaa_color: None,
       msaa_sample_count: 1,
+      offscreen_targets: vec![],
       render_passes: vec![],
       render_pipelines: vec![],
       bind_group_layouts: vec![],
       bind_groups: vec![],
       buffers: vec![],
       seen_error_messages: HashSet::new(),
-    });
+    };
+
+    // Initialize a depth texture matching the surface size using the
+    // high-level depth texture builder.
+    let depth_texture = texture::DepthTextureBuilder::new()
+      .with_size(size.0.max(1), size.1.max(1))
+      .with_format(depth_format)
+      .with_label("lambda-depth")
+      .build(render_context.gpu());
+    render_context.depth_texture = Some(depth_texture);
+
+    return Ok(render_context);
   }
 }
 
@@ -209,9 +220,9 @@ impl RenderContextBuilder {
 pub struct RenderContext {
   label: String,
   instance: instance::Instance,
-  surface: render_target::WindowSurface,
+  surface: targets::surface::WindowSurface,
   gpu: gpu::Gpu,
-  config: surface::SurfaceConfig,
+  config: targets::surface::SurfaceConfig,
   texture_usage: texture::TextureUsages,
   size: (u32, u32),
   depth_texture: Option<texture::DepthTexture>,
@@ -219,6 +230,7 @@ pub struct RenderContext {
   depth_sample_count: u32,
   msaa_color: Option<texture::ColorAttachmentTexture>,
   msaa_sample_count: u32,
+  offscreen_targets: Vec<targets::offscreen::OffscreenTarget>,
   render_passes: Vec<RenderPassDesc>,
   render_pipelines: Vec<RenderPipeline>,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
@@ -231,6 +243,14 @@ pub struct RenderContext {
 pub type ResourceId = usize;
 
 impl RenderContext {
+  /// Current surface size in pixels.
+  ///
+  /// This reflects the most recent configured surface dimensions and is used
+  /// as a default for render‑target creation and viewport setup.
+  pub fn surface_size(&self) -> (u32, u32) {
+    return self.size;
+  }
+
   /// Attach a render pipeline and return a handle for use in commands.
   pub fn attach_pipeline(&mut self, pipeline: RenderPipeline) -> ResourceId {
     let id = self.render_pipelines.len();
@@ -248,6 +268,33 @@ impl RenderContext {
     return id;
   }
 
+  /// Attach an offscreen target and return a handle for use in destinations.
+  pub fn attach_offscreen_target(
+    &mut self,
+    target: targets::offscreen::OffscreenTarget,
+  ) -> ResourceId {
+    let id = self.offscreen_targets.len();
+    self.offscreen_targets.push(target);
+    return id;
+  }
+
+  /// Replace an attached offscreen target in-place.
+  ///
+  /// Returns an error when `id` does not refer to an attached offscreen
+  /// target.
+  pub fn replace_offscreen_target(
+    &mut self,
+    id: ResourceId,
+    target: targets::offscreen::OffscreenTarget,
+  ) -> Result<(), String> {
+    let slot = match self.offscreen_targets.get_mut(id) {
+      Some(slot) => slot,
+      None => return Err(format!("Unknown offscreen target id {}", id)),
+    };
+    *slot = target;
+    return Ok(());
+  }
+
   /// Attach a bind group layout and return a handle for use in pipeline layout composition.
   pub fn attach_bind_group_layout(
     &mut self,
@@ -263,6 +310,20 @@ impl RenderContext {
     let id = self.bind_groups.len();
     self.bind_groups.push(group);
     return id;
+  }
+
+  /// Replace an attached bind group in-place.
+  pub fn replace_bind_group(
+    &mut self,
+    id: ResourceId,
+    group: bind::BindGroup,
+  ) -> Result<(), String> {
+    let slot = match self.bind_groups.get_mut(id) {
+      Some(slot) => slot,
+      None => return Err(format!("Unknown bind group id {}", id)),
+    };
+    *slot = group;
+    return Ok(());
   }
 
   /// Attach a generic GPU buffer and return a handle for render commands.
@@ -339,6 +400,16 @@ impl RenderContext {
     return &self.render_pipelines[id];
   }
 
+  /// Borrow a previously attached offscreen target by id.
+  ///
+  /// Panics if `id` does not refer to an attached offscreen target.
+  pub fn get_offscreen_target(
+    &self,
+    id: ResourceId,
+  ) -> &targets::offscreen::OffscreenTarget {
+    return &self.offscreen_targets[id];
+  }
+
   /// Access the GPU device for resource creation.
   ///
   /// Use this to pass to resource builders (buffers, textures, bind groups,
@@ -409,7 +480,7 @@ impl RenderContext {
   fn ensure_msaa_color_texture(
     &mut self,
     sample_count: u32,
-  ) -> surface::TextureView<'_> {
+  ) -> targets::surface::TextureView<'_> {
     let need_recreate = match &self.msaa_color {
       Some(_) => self.msaa_sample_count != sample_count,
       None => true,
@@ -445,7 +516,8 @@ impl RenderContext {
     let frame = match self.surface.acquire_frame() {
       Ok(frame) => frame,
       Err(err) => match err {
-        surface::SurfaceError::Lost | surface::SurfaceError::Outdated => {
+        targets::surface::SurfaceError::Lost
+        | targets::surface::SurfaceError::Outdated => {
           self.reconfigure_surface(self.size)?;
           self
             .surface
@@ -467,227 +539,38 @@ impl RenderContext {
           render_pass,
           viewport,
         } => {
-          // Clone the render pass descriptor to avoid borrowing self while we
-          // need mutable access for MSAA texture creation.
-          let pass = self
-            .render_passes
-            .get(render_pass)
-            .ok_or_else(|| {
-              RenderError::Configuration(format!(
-                "Unknown render pass {render_pass}"
-              ))
-            })?
-            .clone();
-
-          // Ensure MSAA texture exists if needed.
-          let sample_count = pass.sample_count();
-          let uses_color = pass.uses_color();
-          if uses_color && sample_count > 1 {
-            self.ensure_msaa_color_texture(sample_count);
-          }
-
-          // Create color attachments for the surface pass. The MSAA view is
-          // retrieved here after the mutable borrow for texture creation ends.
-          let msaa_view = if sample_count > 1 {
-            self.msaa_color.as_ref().map(|t| t.view_ref())
-          } else {
-            None
-          };
-          let mut color_attachments =
-            color_attachments::RenderColorAttachments::for_surface_pass(
-              uses_color,
-              sample_count,
-              msaa_view,
-              view,
-            );
-
-          // Depth/stencil attachment when either depth or stencil requested.
-          let want_depth_attachment = Self::has_depth_attachment(
-            pass.depth_operations(),
-            pass.stencil_operations(),
-          );
-
-          // Prepare depth texture if needed.
-          if want_depth_attachment {
-            // Ensure depth texture exists, with proper sample count and format.
-            let desired_samples = sample_count.max(1);
-
-            // If stencil is requested on the pass, ensure we use a
-            // stencil-capable format.
-            if pass.stencil_operations().is_some()
-              && self.depth_format != texture::DepthFormat::Depth24PlusStencil8
-            {
-              #[cfg(any(
-                debug_assertions,
-                feature = "render-validation-stencil",
-              ))]
-              logging::error!(
-                "Render pass has stencil ops but depth format {:?} lacks \
-                 stencil; upgrading to Depth24PlusStencil8",
-                self.depth_format
-              );
-              self.depth_format = texture::DepthFormat::Depth24PlusStencil8;
-            }
-
-            let format_mismatch = self
-              .depth_texture
-              .as_ref()
-              .map(|dt| dt.format() != self.depth_format)
-              .unwrap_or(true);
-
-            if self.depth_texture.is_none()
-              || self.depth_sample_count != desired_samples
-              || format_mismatch
-            {
-              self.depth_texture = Some(
-                texture::DepthTextureBuilder::new()
-                  .with_size(self.size.0.max(1), self.size.1.max(1))
-                  .with_format(self.depth_format)
-                  .with_sample_count(desired_samples)
-                  .with_label("lambda-depth")
-                  .build(&self.gpu),
-              );
-              self.depth_sample_count = desired_samples;
-            }
-          }
-
-          let depth_texture_ref = if want_depth_attachment {
-            self.depth_texture.as_ref()
-          } else {
-            None
-          };
-
-          // Use the high-level encoder's with_render_pass callback API.
-          let min_uniform_buffer_offset_alignment =
-            self.limit_min_uniform_buffer_offset_alignment();
-          let render_pipelines = &self.render_pipelines;
-          let bind_groups = &self.bind_groups;
-          let buffers = &self.buffers;
-
-          encoder.with_render_pass(
-            &pass,
-            &mut color_attachments,
-            depth_texture_ref,
-            |rp_encoder| {
-              rp_encoder.set_viewport(&viewport);
-
-              while let Some(cmd) = command_iter.next() {
-                match cmd {
-                  RenderCommand::EndRenderPass => return Ok(()),
-                  RenderCommand::SetStencilReference { reference } => {
-                    rp_encoder.set_stencil_reference(reference);
-                  }
-                  RenderCommand::SetPipeline { pipeline } => {
-                    let pipeline_ref =
-                      render_pipelines.get(pipeline).ok_or_else(|| {
-                        RenderPassError::Validation(format!(
-                          "Unknown pipeline {pipeline}"
-                        ))
-                      })?;
-                    rp_encoder.set_pipeline(pipeline_ref)?;
-                  }
-                  RenderCommand::SetViewports { viewports, .. } => {
-                    for vp in viewports {
-                      rp_encoder.set_viewport(&vp);
-                    }
-                  }
-                  RenderCommand::SetScissors { viewports, .. } => {
-                    for vp in viewports {
-                      rp_encoder.set_scissor(&vp);
-                    }
-                  }
-                  RenderCommand::SetBindGroup {
-                    set,
-                    group,
-                    dynamic_offsets,
-                  } => {
-                    let group_ref =
-                      bind_groups.get(group).ok_or_else(|| {
-                        RenderPassError::Validation(format!(
-                          "Unknown bind group {group}"
-                        ))
-                      })?;
-                    rp_encoder.set_bind_group(
-                      set,
-                      group_ref,
-                      &dynamic_offsets,
-                      min_uniform_buffer_offset_alignment,
-                    )?;
-                  }
-                  RenderCommand::BindVertexBuffer { pipeline, buffer } => {
-                    let pipeline_ref =
-                      render_pipelines.get(pipeline).ok_or_else(|| {
-                        RenderPassError::Validation(format!(
-                          "Unknown pipeline {pipeline}"
-                        ))
-                      })?;
-                    let buffer_ref = pipeline_ref
-                      .buffers()
-                      .get(buffer as usize)
-                      .ok_or_else(|| {
-                        RenderPassError::Validation(format!(
-                          "Vertex buffer index {buffer} not found for \
-                           pipeline {pipeline}"
-                        ))
-                      })?;
-                    rp_encoder.set_vertex_buffer(buffer as u32, buffer_ref);
-                  }
-                  RenderCommand::BindIndexBuffer { buffer, format } => {
-                    let buffer_ref = buffers.get(buffer).ok_or_else(|| {
-                      RenderPassError::Validation(format!(
-                        "Index buffer id {} not found",
-                        buffer
-                      ))
-                    })?;
-                    rp_encoder.set_index_buffer(buffer_ref, format)?;
-                  }
-                  RenderCommand::PushConstants {
-                    pipeline,
-                    stage,
-                    offset,
-                    bytes,
-                  } => {
-                    let _ =
-                      render_pipelines.get(pipeline).ok_or_else(|| {
-                        RenderPassError::Validation(format!(
-                          "Unknown pipeline {pipeline}"
-                        ))
-                      })?;
-                    let slice = unsafe {
-                      std::slice::from_raw_parts(
-                        bytes.as_ptr() as *const u8,
-                        bytes.len() * std::mem::size_of::<u32>(),
-                      )
-                    };
-                    rp_encoder.set_push_constants(stage, offset, slice);
-                  }
-                  RenderCommand::Draw {
-                    vertices,
-                    instances,
-                  } => {
-                    rp_encoder.draw(vertices, instances)?;
-                  }
-                  RenderCommand::DrawIndexed {
-                    indices,
-                    base_vertex,
-                    instances,
-                  } => {
-                    rp_encoder.draw_indexed(indices, base_vertex, instances)?;
-                  }
-                  RenderCommand::BeginRenderPass { .. } => {
-                    return Err(RenderPassError::Validation(
-                      "Nested render passes are not supported.".to_string(),
-                    ));
-                  }
-                }
-              }
-
-              return Err(RenderPassError::Validation(
-                "Render pass did not terminate with EndRenderPass".to_string(),
-              ));
-            },
+          self.encode_surface_render_pass(
+            &mut encoder,
+            &mut command_iter,
+            render_pass,
+            viewport,
+            view,
           )?;
         }
+        RenderCommand::BeginRenderPassTo {
+          render_pass,
+          viewport,
+          destination,
+        } => match destination {
+          RenderDestination::Surface => {
+            self.encode_surface_render_pass(
+              &mut encoder,
+              &mut command_iter,
+              render_pass,
+              viewport,
+              view,
+            )?;
+          }
+          RenderDestination::Offscreen(target_id) => {
+            self.encode_offscreen_render_pass(
+              &mut encoder,
+              &mut command_iter,
+              render_pass,
+              viewport,
+              target_id,
+            )?;
+          }
+        },
         other => {
           logging::warn!(
             "Ignoring render command outside of a render pass: {:?}",
@@ -700,6 +583,360 @@ impl RenderContext {
     encoder.finish(self);
     frame.present();
     return Ok(());
+  }
+
+  fn encode_surface_render_pass<'view>(
+    &mut self,
+    encoder: &mut CommandEncoder,
+    command_iter: &mut std::vec::IntoIter<RenderCommand>,
+    render_pass: ResourceId,
+    viewport: viewport::Viewport,
+    surface_view: targets::surface::TextureView<'view>,
+  ) -> Result<(), RenderError> {
+    // Clone the render pass descriptor to avoid borrowing self while we need
+    // mutable access for MSAA texture creation.
+    let pass = self
+      .render_passes
+      .get(render_pass)
+      .ok_or_else(|| {
+        RenderError::Configuration(format!("Unknown render pass {render_pass}"))
+      })?
+      .clone();
+
+    // Ensure MSAA texture exists if needed.
+    let sample_count = pass.sample_count();
+    let uses_color = pass.uses_color();
+    if uses_color && sample_count > 1 {
+      self.ensure_msaa_color_texture(sample_count);
+    }
+
+    // Create color attachments for the surface pass. The MSAA view is
+    // retrieved here after the mutable borrow for texture creation ends.
+    let msaa_view = if sample_count > 1 {
+      self.msaa_color.as_ref().map(|t| t.view_ref())
+    } else {
+      None
+    };
+    let mut color_attachments =
+      color_attachments::RenderColorAttachments::for_surface_pass(
+        uses_color,
+        sample_count,
+        msaa_view,
+        surface_view,
+      );
+
+    // Depth/stencil attachment when either depth or stencil requested.
+    let want_depth_attachment = Self::has_depth_attachment(
+      pass.depth_operations(),
+      pass.stencil_operations(),
+    );
+
+    // Prepare depth texture if needed.
+    if want_depth_attachment {
+      // Ensure depth texture exists, with proper sample count and format.
+      let desired_samples = sample_count.max(1);
+
+      // If stencil is requested on the pass, ensure we use a stencil-capable format.
+      if pass.stencil_operations().is_some()
+        && self.depth_format != texture::DepthFormat::Depth24PlusStencil8
+      {
+        #[cfg(any(debug_assertions, feature = "render-validation-stencil",))]
+        logging::error!(
+          "Render pass has stencil ops but depth format {:?} lacks stencil; upgrading to Depth24PlusStencil8",
+          self.depth_format
+        );
+        self.depth_format = texture::DepthFormat::Depth24PlusStencil8;
+      }
+
+      let format_mismatch = self
+        .depth_texture
+        .as_ref()
+        .map(|dt| dt.format() != self.depth_format)
+        .unwrap_or(true);
+
+      if self.depth_texture.is_none()
+        || self.depth_sample_count != desired_samples
+        || format_mismatch
+      {
+        self.depth_texture = Some(
+          texture::DepthTextureBuilder::new()
+            .with_size(self.size.0.max(1), self.size.1.max(1))
+            .with_format(self.depth_format)
+            .with_sample_count(desired_samples)
+            .with_label("lambda-depth")
+            .build(&self.gpu),
+        );
+        self.depth_sample_count = desired_samples;
+      }
+    }
+
+    let depth_texture_ref = if want_depth_attachment {
+      self.depth_texture.as_ref()
+    } else {
+      None
+    };
+
+    let min_uniform_buffer_offset_alignment =
+      self.limit_min_uniform_buffer_offset_alignment();
+    let render_pipelines = &self.render_pipelines;
+    let bind_groups = &self.bind_groups;
+    let buffers = &self.buffers;
+
+    encoder.with_render_pass(
+      &pass,
+      RenderPassDestinationInfo {
+        color_format: if uses_color {
+          Some(self.surface_format())
+        } else {
+          None
+        },
+        depth_format: if want_depth_attachment {
+          Some(self.depth_format())
+        } else {
+          None
+        },
+      },
+      &mut color_attachments,
+      depth_texture_ref,
+      |rp_encoder| {
+        return Self::encode_active_render_pass_commands(
+          command_iter,
+          rp_encoder,
+          &viewport,
+          render_pipelines,
+          bind_groups,
+          buffers,
+          min_uniform_buffer_offset_alignment,
+        );
+      },
+    )?;
+
+    return Ok(());
+  }
+
+  fn encode_offscreen_render_pass(
+    &mut self,
+    encoder: &mut CommandEncoder,
+    command_iter: &mut std::vec::IntoIter<RenderCommand>,
+    render_pass: ResourceId,
+    viewport: viewport::Viewport,
+    target_id: ResourceId,
+  ) -> Result<(), RenderError> {
+    let pass = self
+      .render_passes
+      .get(render_pass)
+      .ok_or_else(|| {
+        RenderError::Configuration(format!("Unknown render pass {render_pass}"))
+      })?
+      .clone();
+
+    let target = self.offscreen_targets.get(target_id).ok_or_else(|| {
+      RenderError::Configuration(format!(
+        "Unknown offscreen target {target_id}"
+      ))
+    })?;
+
+    let pass_samples = pass.sample_count();
+    let target_samples = target.sample_count();
+    if pass_samples != target_samples {
+      return Err(RenderError::Configuration(format!(
+        "Pass sample_count={} does not match offscreen target sample_count={}",
+        pass_samples, target_samples
+      )));
+    }
+
+    let uses_color = pass.uses_color();
+    let mut color_attachments =
+      color_attachments::RenderColorAttachments::for_offscreen_pass(
+        uses_color,
+        target_samples,
+        target.msaa_view(),
+        target.resolve_view(),
+      );
+
+    let want_depth_attachment = Self::has_depth_attachment(
+      pass.depth_operations(),
+      pass.stencil_operations(),
+    );
+
+    if want_depth_attachment && target.depth_texture().is_none() {
+      return Err(RenderError::Configuration(
+        "Render pass requests depth/stencil operations but the selected offscreen target has no depth attachment"
+          .to_string(),
+      ));
+    }
+
+    if pass.stencil_operations().is_some()
+      && target.depth_format()
+        != Some(texture::DepthFormat::Depth24PlusStencil8)
+    {
+      return Err(RenderError::Configuration(
+        "Render pass requests stencil operations but the selected offscreen target depth format lacks stencil"
+          .to_string(),
+      ));
+    }
+
+    let depth_texture_ref = if want_depth_attachment {
+      target.depth_texture()
+    } else {
+      None
+    };
+
+    let min_uniform_buffer_offset_alignment =
+      self.limit_min_uniform_buffer_offset_alignment();
+    let render_pipelines = &self.render_pipelines;
+    let bind_groups = &self.bind_groups;
+    let buffers = &self.buffers;
+
+    encoder.with_render_pass(
+      &pass,
+      RenderPassDestinationInfo {
+        color_format: if uses_color {
+          Some(target.color_format())
+        } else {
+          None
+        },
+        depth_format: if want_depth_attachment {
+          target.depth_format()
+        } else {
+          None
+        },
+      },
+      &mut color_attachments,
+      depth_texture_ref,
+      |rp_encoder| {
+        return Self::encode_active_render_pass_commands(
+          command_iter,
+          rp_encoder,
+          &viewport,
+          render_pipelines,
+          bind_groups,
+          buffers,
+          min_uniform_buffer_offset_alignment,
+        );
+      },
+    )?;
+
+    return Ok(());
+  }
+
+  fn encode_active_render_pass_commands(
+    command_iter: &mut std::vec::IntoIter<RenderCommand>,
+    rp_encoder: &mut encoder::RenderPassEncoder<'_>,
+    initial_viewport: &viewport::Viewport,
+    render_pipelines: &Vec<RenderPipeline>,
+    bind_groups: &Vec<bind::BindGroup>,
+    buffers: &Vec<Rc<buffer::Buffer>>,
+    min_uniform_buffer_offset_alignment: u32,
+  ) -> Result<(), RenderPassError> {
+    rp_encoder.set_viewport(initial_viewport);
+
+    while let Some(cmd) = command_iter.next() {
+      match cmd {
+        RenderCommand::EndRenderPass => return Ok(()),
+        RenderCommand::SetStencilReference { reference } => {
+          rp_encoder.set_stencil_reference(reference);
+        }
+        RenderCommand::SetPipeline { pipeline } => {
+          let pipeline_ref =
+            render_pipelines.get(pipeline).ok_or_else(|| {
+              RenderPassError::Validation(format!(
+                "Unknown pipeline {pipeline}"
+              ))
+            })?;
+          rp_encoder.set_pipeline(pipeline_ref)?;
+        }
+        RenderCommand::SetViewports { viewports, .. } => {
+          for vp in viewports {
+            rp_encoder.set_viewport(&vp);
+          }
+        }
+        RenderCommand::SetScissors { viewports, .. } => {
+          for vp in viewports {
+            rp_encoder.set_scissor(&vp);
+          }
+        }
+        RenderCommand::SetBindGroup {
+          set,
+          group,
+          dynamic_offsets,
+        } => {
+          let group_ref = bind_groups.get(group).ok_or_else(|| {
+            RenderPassError::Validation(format!("Unknown bind group {group}"))
+          })?;
+          rp_encoder.set_bind_group(
+            set,
+            group_ref,
+            &dynamic_offsets,
+            min_uniform_buffer_offset_alignment,
+          )?;
+        }
+        RenderCommand::BindVertexBuffer { pipeline, buffer } => {
+          let pipeline_ref =
+            render_pipelines.get(pipeline).ok_or_else(|| {
+              RenderPassError::Validation(format!(
+                "Unknown pipeline {pipeline}"
+              ))
+            })?;
+          let buffer_ref =
+            pipeline_ref.buffers().get(buffer as usize).ok_or_else(|| {
+              RenderPassError::Validation(format!(
+                "Vertex buffer index {buffer} not found for pipeline {pipeline}"
+              ))
+            })?;
+          rp_encoder.set_vertex_buffer(buffer as u32, buffer_ref);
+        }
+        RenderCommand::BindIndexBuffer { buffer, format } => {
+          let buffer_ref = buffers.get(buffer).ok_or_else(|| {
+            RenderPassError::Validation(format!(
+              "Index buffer id {} not found",
+              buffer
+            ))
+          })?;
+          rp_encoder.set_index_buffer(buffer_ref, format)?;
+        }
+        RenderCommand::PushConstants {
+          pipeline,
+          stage,
+          offset,
+          bytes,
+        } => {
+          let _ = render_pipelines.get(pipeline).ok_or_else(|| {
+            RenderPassError::Validation(format!("Unknown pipeline {pipeline}"))
+          })?;
+          let slice = unsafe {
+            std::slice::from_raw_parts(
+              bytes.as_ptr() as *const u8,
+              bytes.len() * std::mem::size_of::<u32>(),
+            )
+          };
+          rp_encoder.set_push_constants(stage, offset, slice);
+        }
+        RenderCommand::Draw {
+          vertices,
+          instances,
+        } => {
+          rp_encoder.draw(vertices, instances)?;
+        }
+        RenderCommand::DrawIndexed {
+          indices,
+          base_vertex,
+          instances,
+        } => {
+          rp_encoder.draw_indexed(indices, base_vertex, instances)?;
+        }
+        RenderCommand::BeginRenderPass { .. }
+        | RenderCommand::BeginRenderPassTo { .. } => {
+          return Err(RenderPassError::Validation(
+            "Nested render passes are not supported.".to_string(),
+          ));
+        }
+      }
+    }
+
+    return Err(RenderPassError::Validation(
+      "Render pass did not terminate with EndRenderPass".to_string(),
+    ));
   }
 
   /// Reconfigure the presentation surface using current present mode/usage.
@@ -738,12 +975,12 @@ impl RenderContext {
 /// acquisition or command encoding. The renderer logs these and continues when
 /// possible; callers SHOULD treat them as warnings unless persistent.
 pub enum RenderError {
-  Surface(surface::SurfaceError),
+  Surface(targets::surface::SurfaceError),
   Configuration(String),
 }
 
-impl From<surface::SurfaceError> for RenderError {
-  fn from(error: surface::SurfaceError) -> Self {
+impl From<targets::surface::SurfaceError> for RenderError {
+  fn from(error: targets::surface::SurfaceError) -> Self {
     return RenderError::Surface(error);
   }
 }

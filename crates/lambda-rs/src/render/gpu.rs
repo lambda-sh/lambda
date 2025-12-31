@@ -25,7 +25,7 @@ use lambda_platform::wgpu as platform;
 
 use super::{
   instance::Instance,
-  render_target::WindowSurface,
+  targets::surface::WindowSurface,
   texture::{
     DepthFormat,
     TextureFormat,

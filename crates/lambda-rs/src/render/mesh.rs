@@ -151,7 +151,7 @@ impl MeshBuilder {
 mod tests {
   #[test]
   fn mesh_building() {
-    let mut mesh = super::MeshBuilder::new();
+    let mesh = super::MeshBuilder::new();
 
     assert_eq!(mesh.vertices.len(), 0);
   }
