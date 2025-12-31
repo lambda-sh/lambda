@@ -27,6 +27,7 @@ Summary
   single-sample resolve texture.
 
 ## Table of Contents
+
 - [Scope](#scope)
 - [Terminology](#terminology)
 - [Architecture Overview](#architecture-overview)
@@ -85,21 +86,25 @@ Summary
 ## Architecture Overview
 
 `lambda-rs` exposes two render target concepts:
+
 - `lambda::render::targets::surface::RenderTarget`: trait for acquiring and
   presenting frames from a window-backed surface.
 - `lambda::render::targets::offscreen::OffscreenTarget`: persistent render-to-
   texture resource that owns textures and exposes a sampleable resolve color.
 
 Terminology in this document:
+
 - "Render target" refers to `lambda::render::targets::surface::RenderTarget`.
 - The offscreen resource is `OffscreenTarget`.
 
 Implementation notes:
+
 - `RenderTarget`, `RenderTargetBuilder`, and `RenderTargetError` in the offscreen
   module are deprecated aliases for `OffscreenTarget`, `OffscreenTargetBuilder`,
   and `OffscreenTargetError` and MUST NOT be used in new code.
 
 Data flow (setup → per-frame multipass):
+
 ```
 RenderPassBuilder::new()
   .with_multi_sample(1 | 2 | 4 | 8)
@@ -278,6 +283,7 @@ Per-frame commands:
 ### Feature-gated validation
 
 Crate: `lambda-rs`
+
 - Granular feature:
   - `render-validation-render-targets`
     - Validates compatibility between:
@@ -293,15 +299,17 @@ Crate: `lambda-rs`
     - Expected runtime cost is low to moderate.
 
 Umbrella composition (crate: `lambda-rs`)
+
 - `render-validation` MUST include `render-validation-render-targets`.
-- Umbrella features MUST only compose granular features.
 
 Build-type behavior
+
 - Debug builds (`debug_assertions`) MAY enable offscreen validation.
 - Release builds MUST keep offscreen validation disabled by default and enable
   it only via `render-validation-render-targets` (or umbrellas that include it).
 
 Gating requirements
+
 - Offscreen validation MUST be gated behind
   `cfg(any(debug_assertions, feature = "render-validation-render-targets"))`.
 - Offscreen validation MUST NOT be gated behind umbrella feature names.
