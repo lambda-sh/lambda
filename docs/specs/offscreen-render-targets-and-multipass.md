@@ -3,13 +3,13 @@ title: "Offscreen Render Targets and Multipass Rendering"
 document_id: "offscreen-render-targets-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-12-25T00:00:00Z"
-version: "0.2.4"
+last_updated: "2025-12-29T00:00:00Z"
+version: "0.2.5"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "e8bd8e9022567a553714bb488d230682020dcfa4"
+repo_commit: "bc191ae9d47e9339390b9c21e47933a36d737987"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "offscreen", "multipass"]
@@ -90,10 +90,6 @@ Summary
 - `lambda::render::targets::offscreen::OffscreenTarget`: persistent render-to-
   texture resource that owns textures and exposes a sampleable resolve color.
 
-Compatibility shims:
-- `lambda::render::render_target` re-exports `lambda::render::targets::surface`.
-- `lambda::render::target` re-exports `lambda::render::targets::offscreen`.
-
 Terminology in this document:
 - "Render target" refers to `lambda::render::targets::surface::RenderTarget`.
 - The offscreen resource is `OffscreenTarget`.
@@ -154,8 +150,7 @@ Per-frame commands:
     - `UnsupportedFormat { message: String }`
     - `DeviceError(String)`
   - Note: Deprecated aliases (`RenderTarget`, `RenderTargetBuilder`,
-    `RenderTargetError`) exist for short-term source compatibility and are
-    re-exported from `lambda::render::target`.
+    `RenderTargetError`) exist for short-term source compatibility.
 
 - Module `lambda::render::command`
   - Add explicit destination selection for pass begins:
@@ -417,6 +412,10 @@ Gating requirements
 
 ## Changelog
 
+- 2025-12-29 (v0.2.5) — Remove references to `lambda::render::target` and
+  `lambda::render::render_target` compatibility shims; document
+  `lambda::render::targets::{surface,offscreen}` as the canonical module
+  layout.
 - 2025-12-25 (v0.2.4) — Decouple `OffscreenTargetBuilder::build` from
   `RenderContext` by requiring an explicit size and a `Gpu`.
 - 2025-12-22 (v0.2.3) — Document `lambda::render::targets::{surface,offscreen}`
