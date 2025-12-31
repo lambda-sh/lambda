@@ -289,23 +289,13 @@ impl ColorAttachmentTextureBuilder {
 /// operations in render passes.
 #[derive(Debug)]
 pub struct DepthTexture {
-  inner: Rc<platform::DepthTexture>,
-}
-
-impl Clone for DepthTexture {
-  fn clone(&self) -> Self {
-    return DepthTexture {
-      inner: self.inner.clone(),
-    };
-  }
+  inner: platform::DepthTexture,
 }
 
 impl DepthTexture {
   /// Create a high-level depth texture from a platform texture.
   pub(crate) fn from_platform(texture: platform::DepthTexture) -> Self {
-    return DepthTexture {
-      inner: Rc::new(texture),
-    };
+    return DepthTexture { inner: texture };
   }
 
   /// The depth format used by this attachment.
