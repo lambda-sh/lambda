@@ -536,16 +536,6 @@ impl<'pass> RenderPassEncoder<'pass> {
     return Ok(());
   }
 
-  /// Set push constants for a pipeline stage.
-  pub fn set_push_constants(
-    &mut self,
-    stage: pipeline::PipelineStage,
-    offset: u32,
-    data: &[u8],
-  ) {
-    self.pass.set_push_constants(stage, offset, data);
-  }
-
   /// Issue a non-indexed draw call.
   pub fn draw(
     &mut self,
@@ -655,6 +645,16 @@ impl<'pass> RenderPassEncoder<'pass> {
 
     self.pass.draw_indexed(indices, base_vertex, instances);
     return Ok(());
+  }
+
+  /// Set immediate data for subsequent draw calls.
+  ///
+  /// This is the wgpu v28 replacement for push constants. The `offset` and
+  /// `data` length MUST be multiples of 4 bytes (IMMEDIATE_DATA_ALIGNMENT).
+  /// The data bytes are passed directly to the GPU for use by shaders that
+  /// declare `push_constant` uniform blocks.
+  pub fn set_immediates(&mut self, offset: u32, data: &[u8]) {
+    self.pass.set_immediates(offset, data);
   }
 }
 

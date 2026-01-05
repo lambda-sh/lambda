@@ -895,22 +895,27 @@ impl RenderContext {
           })?;
           rp_encoder.set_index_buffer(buffer_ref, format)?;
         }
+        #[allow(deprecated)]
         RenderCommand::PushConstants {
-          pipeline,
-          stage,
+          pipeline: _,
+          stage: _,
+          offset,
+          bytes,
+        }
+        | RenderCommand::Immediates {
+          pipeline: _,
+          stage: _,
           offset,
           bytes,
         } => {
-          let _ = render_pipelines.get(pipeline).ok_or_else(|| {
-            RenderPassError::Validation(format!("Unknown pipeline {pipeline}"))
-          })?;
-          let slice = unsafe {
+          // Convert the u32 words to a byte slice for set_immediates.
+          let byte_slice = unsafe {
             std::slice::from_raw_parts(
               bytes.as_ptr() as *const u8,
               bytes.len() * std::mem::size_of::<u32>(),
             )
           };
-          rp_encoder.set_push_constants(stage, offset, slice);
+          rp_encoder.set_immediates(offset, byte_slice);
         }
         RenderCommand::Draw {
           vertices,

@@ -252,7 +252,7 @@ impl<'a> PipelineLayoutBuilder<'a> {
     return self;
   }
 
-  /// Provide push constant ranges.
+  /// Provide push constant ranges (now called immediates in wgpu v28).
   pub fn with_push_constants(mut self, ranges: Vec<PushConstantRange>) -> Self {
     self.push_constant_ranges = ranges;
     return self;
@@ -262,14 +262,15 @@ impl<'a> PipelineLayoutBuilder<'a> {
   pub fn build(self, gpu: &Gpu) -> PipelineLayout {
     let layouts_raw: Vec<&wgpu::BindGroupLayout> =
       self.layouts.iter().map(|l| l.raw()).collect();
-    let push_constants_raw: Vec<wgpu::PushConstantRange> = self
+
+    // Calculate the total immediate size from push constant ranges.
+    // The immediate_size is the maximum end offset across all ranges.
+    let immediate_size = self
       .push_constant_ranges
       .iter()
-      .map(|pcr| wgpu::PushConstantRange {
-        stages: pcr.stages.to_wgpu(),
-        range: pcr.range.clone(),
-      })
-      .collect();
+      .map(|r| r.range.end)
+      .max()
+      .unwrap_or(0);
 
     let raw =
       gpu
@@ -277,7 +278,7 @@ impl<'a> PipelineLayoutBuilder<'a> {
         .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
           label: self.label.as_deref(),
           bind_group_layouts: &layouts_raw,
-          push_constant_ranges: &push_constants_raw,
+          immediate_size,
         });
     return PipelineLayout {
       raw,
@@ -533,7 +534,7 @@ impl<'a> RenderPipelineBuilder<'a> {
             ..wgpu::MultisampleState::default()
           },
           fragment,
-          multiview: None,
+          multiview_mask: None,
           cache: None,
         });
 
