@@ -427,8 +427,8 @@ multiple objects and passes.
   - Extend shaders to compute diffuse lighting.
   - Provide a lighting UBO at binding 2 with light position and color.
 
-- Exercise 5: Push constants comparison
-  - Port to push constants (see `crates/lambda-rs/examples/push_constants.rs`)
+- Exercise 5: Immediates comparison
+  - Port to immediates (see `crates/lambda-rs/examples/immediates.rs`)
   and compare trade‑offs.
 
 - Exercise 6: Per‑material uniforms

@@ -649,10 +649,10 @@ impl<'pass> RenderPassEncoder<'pass> {
 
   /// Set immediate data for subsequent draw calls.
   ///
-  /// This is the wgpu v28 replacement for push constants. The `offset` and
-  /// `data` length MUST be multiples of 4 bytes (IMMEDIATE_DATA_ALIGNMENT).
-  /// The data bytes are passed directly to the GPU for use by shaders that
-  /// declare `push_constant` uniform blocks.
+  /// The `offset` and `data` length MUST be multiples of 4 bytes
+  /// (IMMEDIATE_DATA_ALIGNMENT). The data bytes are passed directly to the
+  /// GPU for use by shaders that declare `push_constant` uniform blocks
+  /// (the GLSL syntax remains unchanged).
   pub fn set_immediates(&mut self, offset: u32, data: &[u8]) {
     self.pass.set_immediates(offset, data);
   }

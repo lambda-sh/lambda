@@ -80,21 +80,13 @@ pub enum RenderCommand {
   /// Set the stencil reference value for the active pass.
   SetStencilReference { reference: u32 },
 
-  /// Upload immediate data (formerly push constants) at `offset`.
+  /// Upload immediate data at `offset`.
   ///
-  /// In wgpu v28, push constants were renamed to "immediates". The byte vector
-  /// is interpreted as tightly packed `u32` words; the encoder turns it into
-  /// raw bytes when encoding. Both offset and data length must be multiples
-  /// of 4 bytes.
+  /// The byte vector is interpreted as tightly packed `u32` words; the
+  /// encoder turns it into raw bytes when encoding. Both offset and data
+  /// length must be multiples of 4 bytes. The GLSL syntax for declaring
+  /// immediate data blocks remains `layout(push_constant)`.
   Immediates {
-    pipeline: super::ResourceId,
-    stage: PipelineStage,
-    offset: u32,
-    bytes: Vec<u32>,
-  },
-  /// Legacy alias for `Immediates`. Use `Immediates` for new code.
-  #[deprecated(since = "2023.1.30", note = "Use Immediates instead")]
-  PushConstants {
     pipeline: super::ResourceId,
     stage: PipelineStage,
     offset: u32,

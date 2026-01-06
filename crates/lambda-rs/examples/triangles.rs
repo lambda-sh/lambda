@@ -52,10 +52,10 @@ impl Component<ComponentResult, String> for TrianglesComponent {
       render_context.depth_format(),
     );
 
-    let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
+    let immediate_data_size = std::mem::size_of::<ImmediateData>() as u32;
     let pipeline = pipeline::RenderPipelineBuilder::new()
       .with_culling(pipeline::CullingMode::None)
-      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+      .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
       .build(
         render_context.gpu(),
         render_context.surface_format(),
@@ -89,7 +89,7 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     let (x, y) = self.position;
 
     let triangle_data = &[
-      PushConstant {
+      ImmediateData {
         color: [
           1.0,
           1.0 * self.animation_scalar,
@@ -99,17 +99,17 @@ impl Component<ComponentResult, String> for TrianglesComponent {
         pos: [x, y],
         scale: [0.3, 0.3],
       },
-      PushConstant {
+      ImmediateData {
         color: [0.0, 1.0, 0.0, 1.0],
         pos: [0.5, 0.0],
         scale: [0.4, 0.4],
       },
-      PushConstant {
+      ImmediateData {
         color: [0.0, 0.0, 1.0, 1.0],
         pos: [0.25, 0.5],
         scale: [0.5, 0.5],
       },
-      PushConstant {
+      ImmediateData {
         color: [1.0, 1.0, 1.0, 1.0],
         pos: [0.0, 0.0],
         scale: [0.5, 0.5],
@@ -144,11 +144,11 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     // Upload triangle data into the the GPU at the vertex stage of the pipeline
     // before requesting to draw each triangle.
     for triangle in triangle_data {
-      commands.push(RenderCommand::PushConstants {
+      commands.push(RenderCommand::Immediates {
         pipeline: render_pipeline.clone(),
         stage: PipelineStage::VERTEX,
         offset: 0,
-        bytes: Vec::from(push_constants_to_bytes(triangle)),
+        bytes: Vec::from(immediate_data_to_bytes(triangle)),
       });
       commands.push(RenderCommand::Draw {
         vertices: 0..3,
@@ -222,17 +222,17 @@ impl Component<ComponentResult, String> for TrianglesComponent {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct PushConstant {
+pub struct ImmediateData {
   color: [f32; 4],
   pos: [f32; 2],
   scale: [f32; 2],
 }
 
-pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
+pub fn immediate_data_to_bytes(immediate_data: &ImmediateData) -> &[u32] {
   let bytes = unsafe {
-    let size_in_bytes = std::mem::size_of::<PushConstant>();
+    let size_in_bytes = std::mem::size_of::<ImmediateData>();
     let size_in_u32 = size_in_bytes / std::mem::size_of::<u32>();
-    let ptr = push_constants as *const PushConstant as *const u32;
+    let ptr = immediate_data as *const ImmediateData as *const u32;
     std::slice::from_raw_parts(ptr, size_in_u32)
   };
 

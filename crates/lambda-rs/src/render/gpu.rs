@@ -206,7 +206,7 @@ impl GpuBuilder {
   ///
   /// Defaults:
   /// - High performance power preference
-  /// - Push constants enabled
+  /// - Immediates enabled
   /// - Performance-oriented memory hints
   pub fn new() -> Self {
     return GpuBuilder {

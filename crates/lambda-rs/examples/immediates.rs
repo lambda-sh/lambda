@@ -192,7 +192,7 @@ impl Component<ComponentResult, String> for ImmediatesExample {
 
     let pipeline = RenderPipelineBuilder::new()
       .with_culling(lambda::render::pipeline::CullingMode::None)
-      .with_push_constant(PipelineStage::VERTEX, immediate_data_size)
+      .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
       .with_buffer(
         BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
           .expect("Failed to create buffer"),

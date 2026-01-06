@@ -21,7 +21,7 @@ This index lists tutorials that teach specific `lambda-rs` tasks through complet
 - Immediates: Draw Multiple 2D Triangles — [immediates-multiple-triangles.md](immediates-multiple-triangles.md)
 - Uniform Buffers: Build a Spinning Triangle — [uniform-buffers.md](uniform-buffers.md)
 - Textured Quad: Sample a 2D Texture — [textured-quad.md](textured-quad.md)
-- Textured Cube: 3D Push Constants + 2D Sampling — [textured-cube.md](textured-cube.md)
+- Textured Cube: 3D Immediates + 2D Sampling — [textured-cube.md](textured-cube.md)
 - Offscreen Post: Render to a Texture and Sample to the Surface — [offscreen-post.md](offscreen-post.md)
 - Reflective Room: Stencil Masked Reflections with MSAA — [reflective-room.md](reflective-room.md)
 - Instanced Rendering: Grid of Colored Quads — [instanced-quads.md](instanced-quads.md)
@@ -29,6 +29,7 @@ This index lists tutorials that teach specific `lambda-rs` tasks through complet
 Browse all tutorials in this directory.
 
 Changelog
+
 - 0.7.0 (2026-01-05): Rename push constants tutorial to immediates for wgpu v28; update metadata.
 - 0.6.0 (2025-12-29): Add offscreen post tutorial; update metadata and commit.
 - 0.5.0 (2025-12-16): Add basic triangle and multi-triangle push constants tutorials; update metadata and commit.

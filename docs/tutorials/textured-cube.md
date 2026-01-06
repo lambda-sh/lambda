@@ -1,23 +1,23 @@
 ---
-title: "Textured Cube: 3D Push Constants + 2D Sampling"
+title: "Textured Cube: 3D Immediates + 2D Sampling"
 document_id: "textured-cube-tutorial-2025-11-10"
 status: "draft"
 created: "2025-11-10T00:00:00Z"
-last_updated: "2025-12-15T00:00:00Z"
-version: "0.2.0"
+last_updated: "2026-01-05T00:00:00Z"
+version: "0.3.0"
 engine_workspace_version: "2023.1.30"
-wgpu_version: "26.0.1"
+wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
 repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
-tags: ["tutorial", "graphics", "3d", "push-constants", "textures", "samplers", "rust", "wgpu"]
+tags: ["tutorial", "graphics", "3d", "immediates", "textures", "samplers", "rust", "wgpu"]
 ---
 
 ## Overview <a name="overview"></a>
 
-This tutorial builds a spinning 3D cube that uses push constants to provide model‑view‑projection (MVP) and model matrices to the vertex shader, and samples a 2D checkerboard texture in the fragment shader. Depth testing and back‑face culling are enabled so hidden faces do not render.
+This tutorial builds a spinning 3D cube that uses immediates to provide model‑view‑projection (MVP) and model matrices to the vertex shader, and samples a 2D checkerboard texture in the fragment shader. Depth testing and back‑face culling are enabled so hidden faces do not render.
 
 Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
 
@@ -30,14 +30,14 @@ Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
 - [Data Flow](#data-flow)
 - [Implementation Steps](#implementation-steps)
   - [Step 1 — Runtime and Component Skeleton](#step-1)
-  - [Step 2 — Shaders with Push Constants](#step-2)
+  - [Step 2 — Shaders with Immediates](#step-2)
   - [Step 3 — Cube Mesh and Vertex Layout](#step-3)
   - [Step 4 — Build a 2D Checkerboard Texture](#step-4)
   - [Step 5 — Create a Sampler](#step-5)
   - [Step 6 — Bind Group Layout and Bind Group](#step-6)
   - [Step 7 — Render Pipeline with Depth and Culling](#step-7)
   - [Step 8 — Per‑Frame Camera and Transforms](#step-8)
-  - [Step 9 — Record Draw Commands with Push Constants](#step-9)
+  - [Step 9 — Record Draw Commands with Immediates](#step-9)
   - [Step 10 — Handle Window Resize](#step-10)
 - [Validation](#validation)
 - [Notes](#notes)
@@ -49,7 +49,7 @@ Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
 ## Goals <a name="goals"></a>
 
 - Render a rotating cube with correct occlusion using depth testing and back‑face culling.
-- Pass model‑view‑projection (MVP) and model matrices via push constants to the vertex stage.
+- Pass model‑view‑projection (MVP) and model matrices via immediates to the vertex stage.
 - Sample a 2D texture in the fragment stage using a separate sampler, and apply simple Lambert lighting to emphasize shape.
 
 ## Prerequisites <a name="prerequisites"></a>
@@ -59,8 +59,8 @@ Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
-- Push constant size and stage visibility MUST match the shader declaration. This example sends 128 bytes (two `mat4`), at vertex stage only.
-- The push constant byte order MUST match the shader’s expected matrix layout. This example transposes matrices before upload to match column‑major multiplication in GLSL.
+- Immediate data size and stage visibility MUST match the shader declaration. This example sends 128 bytes (two `mat4`), at vertex stage only.
+- The immediate data byte order MUST match the shader's expected matrix layout. This example transposes matrices before upload to match column‑major multiplication in GLSL.
 - Face winding MUST be counter‑clockwise (CCW) for back‑face culling to work with `CullingMode::Back`.
 - The model matrix MUST NOT include non‑uniform scale if normals are transformed with `mat3(model)`. Rationale: non‑uniform scale skews normals; either avoid it or compute a proper normal matrix.
 - Binding indices MUST match between Rust and shaders: set 0, binding 1 is the 2D texture; set 0, binding 2 is the sampler.
@@ -78,8 +78,8 @@ TextureBuilder (2D sRGB) + SamplerBuilder (linear clamp)
 BindGroup(set0): binding1=texture2D, binding2=sampler
    │                                 ▲
    ▼                                 │
-Render Pipeline (vertex: push constants, fragment: sampling)
-   │  MVP + model (push constants)   │
+Render Pipeline (vertex: immediates, fragment: sampling)
+   │  MVP + model (immediates)       │
    ▼                                 │
 Render Pass (depth enabled, back‑face culling) → Draw 36 vertices
 ```
@@ -155,9 +155,11 @@ fn main() {
 
 This scaffold establishes the runtime and stores component state required to create resources and animate the cube.
 
-### Step 2 — Shaders with Push Constants <a name="step-2"></a>
+### Step 2 — Shaders with Immediates <a name="step-2"></a>
 
-Define GLSL 450 shaders. The vertex shader declares a push constant block with two `mat4` values: `mvp` and `model`. The fragment shader samples a 2D texture using a separate sampler and applies simple Lambert lighting for shape definition.
+Define GLSL 450 shaders. The vertex shader declares an immediate data block (using `push_constant` syntax) with two `mat4` values: `mvp` and `model`. The fragment shader samples a 2D texture using a separate sampler and applies simple Lambert lighting for shape definition.
+
+> **Note:** In wgpu v28, push constants were renamed to "immediates" and require the `Features::IMMEDIATES` feature. The GLSL syntax remains `push_constant`.
 
 ```glsl
 // Vertex (GLSL 450)
@@ -351,7 +353,7 @@ let bind_group = BindGroupBuilder::new()
 
 ### Step 7 — Render Pipeline with Depth and Culling <a name="step-7"></a>
 
-Enable depth, back‑face culling, and declare a vertex buffer built from the mesh. Add a push constant range for the vertex stage.
+Enable depth, back‑face culling, and declare a vertex buffer built from the mesh. Add an immediate data range for the vertex stage.
 
 ```rust
 use lambda::render::{
@@ -369,12 +371,12 @@ let render_pass = RenderPassBuilder::new()
     render_context.depth_format(),
   );
 
-let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
+let immediate_data_size = std::mem::size_of::<ImmediateData>() as u32;
 
 let pipeline = RenderPipelineBuilder::new()
   .with_culling(CullingMode::Back)
   .with_depth()
-  .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+  .with_push_constant(PipelineStage::VERTEX, immediate_data_size)
   .with_buffer(
     BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
       .expect("Failed to create vertex buffer"),
@@ -434,23 +436,23 @@ let mvp = projection.multiply(&view).multiply(&model);
 
 This multiplication order produces clip‑space positions as `mvp * vec4(position, 1)`. The final upload transposes matrices to match GLSL column‑major layout.
 
-### Step 9 — Record Draw Commands with Push Constants <a name="step-9"></a>
+### Step 9 — Record Draw Commands with Immediates <a name="step-9"></a>
 
-Define a push constant struct and a helper to reinterpret it as `[u32]`. Record commands to begin the pass, set pipeline state, bind the texture and sampler, push constants, and draw 36 vertices.
+Define an immediate data struct and a helper to reinterpret it as `[u32]`. Record commands to begin the pass, set pipeline state, bind the texture and sampler, set immediates, and draw 36 vertices.
 
 ```rust
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct PushConstant {
+pub struct ImmediateData {
   mvp: [[f32; 4]; 4],
   model: [[f32; 4]; 4],
 }
 
-pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
+pub fn immediate_data_to_bytes(immediate_data: &ImmediateData) -> &[u32] {
   unsafe {
-    let size_in_bytes = std::mem::size_of::<PushConstant>();
+    let size_in_bytes = std::mem::size_of::<ImmediateData>();
     let size_in_u32 = size_in_bytes / std::mem::size_of::<u32>();
-    let ptr = push_constants as *const PushConstant as *const u32;
+    let ptr = immediate_data as *const ImmediateData as *const u32;
     return std::slice::from_raw_parts(ptr, size_in_u32);
   }
 }
@@ -472,11 +474,11 @@ let commands = vec![
   RenderCommand::SetScissors { start_at: 0, viewports: vec![viewport.clone()] },
   RenderCommand::SetBindGroup { set: 0, group, dynamic_offsets: vec![] },
   RenderCommand::BindVertexBuffer { pipeline, buffer: 0 },
-  RenderCommand::PushConstants {
+  RenderCommand::Immediates {
     pipeline,
     stage: PipelineStage::VERTEX,
     offset: 0,
-    bytes: Vec::from(push_constants_to_bytes(&PushConstant {
+    bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
       mvp: mvp.transpose(),
       model: model.transpose(),
     })),
@@ -510,7 +512,7 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 
 ## Notes <a name="notes"></a>
 
-- Push constant limits: total size MUST be within the device’s push constant limit. This example uses 128 bytes, which fits common defaults.
+- Immediate data limits: total size MUST be within the device's immediate data limit. This example uses 128 bytes, which fits common defaults. wgpu v28 requires `Features::IMMEDIATES` to be enabled.
 - Matrix layout: GLSL multiplies column‑major by default; transposing on upload aligns memory layout and multiplication order.
 - Normal transform: `mat3(model)` is correct when the model matrix contains only rotations and uniform scale. For non‑uniform scale, compute the normal matrix as the inverse‑transpose of the upper‑left 3×3.
 - Texture color space: use `Rgba8UnormSrgb` for color images so sampling returns linear values.
@@ -520,12 +522,12 @@ fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
 ## Conclusion <a name="conclusion"></a>
 
 This tutorial delivered a rotating, textured cube with depth testing and
-back‑face culling. It compiled shaders that use a vertex push‑constant block
+back‑face culling. It compiled shaders that use a vertex immediate data block
 for model‑view‑projection and model matrices, built a cube mesh and vertex
 layout, created an sRGB texture and sampler, and constructed a pipeline with
-depth and culling. Per‑frame transforms were computed and uploaded via push
-constants, and draw commands were recorded. The result demonstrates push
-constants for per‑draw transforms alongside 2D sampling in a 3D render path.
+depth and culling. Per‑frame transforms were computed and uploaded via immediates,
+and draw commands were recorded. The result demonstrates immediates for per‑draw
+transforms alongside 2D sampling in a 3D render path.
 
 ## Putting It Together <a name="putting-it-together"></a>
 
@@ -551,6 +553,7 @@ constants for per‑draw transforms alongside 2D sampling in a 3D render path.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.3.0 (2026-01-05): Migrate from push constants to immediates for wgpu v28; update all code examples and terminology.
 - 0.2.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.1.1 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
-- 0.1.0 (2025-11-10): Initial draft aligned with `crates/lambda-rs/examples/textured_cube.rs` including push constants, depth, culling, and projected UV sampling.
+- 0.1.0 (2025-11-10): Initial draft aligned with `crates/lambda-rs/examples/textured_cube.rs` including immediates, depth, culling, and projected UV sampling.

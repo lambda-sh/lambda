@@ -15,7 +15,7 @@ use crate::wgpu::{
   vertex::ColorFormat,
 };
 
-/// Shader stage flags for push constants and visibility.
+/// Shader stage flags for immediate data and visibility.
 #[derive(Clone, Copy, Debug)]
 ///
 /// This wrapper avoids exposing `wgpu` directly to higher layers while still
@@ -51,9 +51,9 @@ impl std::ops::BitOrAssign for PipelineStage {
   }
 }
 
-/// Push constant declaration for a stage and byte range.
+/// Immediate data declaration for a stage and byte range.
 #[derive(Clone, Debug)]
-pub struct PushConstantRange {
+pub struct ImmediateDataRange {
   pub stages: PipelineStage,
   pub range: Range<u32>,
 }
@@ -227,16 +227,16 @@ impl PipelineLayout {
 pub struct PipelineLayoutBuilder<'a> {
   label: Option<String>,
   layouts: Vec<&'a bind::BindGroupLayout>,
-  push_constant_ranges: Vec<PushConstantRange>,
+  immediate_data_ranges: Vec<ImmediateDataRange>,
 }
 
 impl<'a> PipelineLayoutBuilder<'a> {
-  /// New builder with no layouts or push constants.
+  /// New builder with no layouts or immediate data.
   pub fn new() -> Self {
     return Self {
       label: None,
       layouts: Vec::new(),
-      push_constant_ranges: Vec::new(),
+      immediate_data_ranges: Vec::new(),
     };
   }
 
@@ -252,9 +252,12 @@ impl<'a> PipelineLayoutBuilder<'a> {
     return self;
   }
 
-  /// Provide push constant ranges (now called immediates in wgpu v28).
-  pub fn with_push_constants(mut self, ranges: Vec<PushConstantRange>) -> Self {
-    self.push_constant_ranges = ranges;
+  /// Provide immediate data ranges for shader stages.
+  pub fn with_immediate_data_ranges(
+    mut self,
+    ranges: Vec<ImmediateDataRange>,
+  ) -> Self {
+    self.immediate_data_ranges = ranges;
     return self;
   }
 
@@ -263,10 +266,10 @@ impl<'a> PipelineLayoutBuilder<'a> {
     let layouts_raw: Vec<&wgpu::BindGroupLayout> =
       self.layouts.iter().map(|l| l.raw()).collect();
 
-    // Calculate the total immediate size from push constant ranges.
+    // Calculate the total immediate size from immediate data ranges.
     // The immediate_size is the maximum end offset across all ranges.
     let immediate_size = self
-      .push_constant_ranges
+      .immediate_data_ranges
       .iter()
       .map(|r| r.range.end)
       .max()

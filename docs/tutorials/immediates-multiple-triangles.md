@@ -115,6 +115,7 @@ The vertex shader uses `gl_VertexIndex` to select base positions, then applies
 `scale` and `pos`. The fragment shader outputs the interpolated color.
 
 Reference shader sources:
+
 - `crates/lambda-rs/assets/shaders/triangles.vert`
 - `crates/lambda-rs/assets/shaders/triangles.frag`
 
@@ -166,6 +167,7 @@ This produces multiple triangles without creating any GPU buffers.
 ### Step 5 — Input and Resize Handling <a name="step-5"></a>
 
 Update component state from events:
+
 - `WindowEvent::Resize` updates the stored width/height for viewport creation.
 - `KeyW`, `KeyA`, `KeyS`, `KeyD` update the translation for one triangle.
 

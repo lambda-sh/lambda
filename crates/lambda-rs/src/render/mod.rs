@@ -9,7 +9,7 @@
 //!   command encoding.
 //! - `RenderPass` and `RenderPipeline`: immutable descriptions used when
 //!   beginning a pass and binding a pipeline. Pipelines declare their vertex
-//!   inputs, push constants, and layout (bind group layouts).
+//!   inputs, immediate data, and layout (bind group layouts).
 //! - `Buffer`, `BindGroupLayout`, and `BindGroup`: GPU resources created via
 //!   builders and attached to the context, then referenced by small integer
 //!   handles when encoding commands.
@@ -895,14 +895,7 @@ impl RenderContext {
           })?;
           rp_encoder.set_index_buffer(buffer_ref, format)?;
         }
-        #[allow(deprecated)]
-        RenderCommand::PushConstants {
-          pipeline: _,
-          stage: _,
-          offset,
-          bytes,
-        }
-        | RenderCommand::Immediates {
+        RenderCommand::Immediates {
           pipeline: _,
           stage: _,
           offset,

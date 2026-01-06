@@ -3,16 +3,16 @@ title: "Reflective Floor: Stencil‑Masked Planar Reflections"
 document_id: "reflective-room-tutorial-2025-11-17"
 status: "draft"
 created: "2025-11-17T00:00:00Z"
-last_updated: "2025-12-15T00:00:00Z"
-version: "0.3.0"
+last_updated: "2026-01-05T00:00:00Z"
+version: "0.4.0"
 engine_workspace_version: "2023.1.30"
-wgpu_version: "26.0.1"
+wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
 repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
-tags: ["tutorial", "graphics", "stencil", "depth", "msaa", "mirror", "3d", "push-constants", "wgpu", "rust"]
+tags: ["tutorial", "graphics", "stencil", "depth", "msaa", "mirror", "3d", "immediates", "wgpu", "rust"]
 ---
 
 ## Overview <a name="overview"></a>
@@ -30,7 +30,7 @@ Reference implementation: `crates/lambda-rs/examples/reflective_room.rs`.
 - [Data Flow](#data-flow)
 - [Implementation Steps](#implementation-steps)
   - [Step 1 — Runtime and Component Skeleton](#step-1)
-  - [Step 2 — Shaders and Push Constants](#step-2)
+  - [Step 2 — Shaders and Immediates](#step-2)
   - [Step 3 — Meshes: Cube and Floor](#step-3)
   - [Step 4 — Render Passes: Mask and Color](#step-4)
   - [Step 5 — Pipeline: Floor Mask (Stencil Write)](#step-5)
@@ -51,7 +51,7 @@ Reference implementation: `crates/lambda-rs/examples/reflective_room.rs`.
 
 - Use the stencil buffer to restrict rendering to the floor area and show a mirrored reflection of a cube.
 - Support depth testing and 4× MSAA to improve geometric correctness and edge quality.
-- Drive transforms via push constants for model‑view‑projection (MVP) and model matrices.
+- Drive transforms via immediates for model‑view‑projection (MVP) and model matrices.
 - Provide runtime toggles for MSAA, stencil, and depth testing, plus camera pitch and visibility helpers.
 
 ## Prerequisites <a name="prerequisites"></a>
@@ -65,7 +65,9 @@ Reference implementation: `crates/lambda-rs/examples/reflective_room.rs`.
 - The mask pass MUST disable depth writes and write stencil with `Replace` so the floor area becomes `1`.
 - The reflected cube pipeline MUST test stencil `Equal` against reference `1` and SHOULD set stencil write mask to `0x00`.
 - Mirroring across the floor plane flips face winding. Culling MUST be disabled for the reflected draw or the front‑face definition MUST be adjusted. This example culls front faces for the reflected cube.
-- Push constant size and stage visibility MUST match the shader declaration. Two `mat4` values are sent to the vertex stage only (128 bytes total).
+- Immediate data size and stage visibility MUST match the shader declaration. Two `mat4` values are sent to the vertex stage only (128 bytes total).
+
+> **Note:** In wgpu v28, push constants were renamed to "immediates" and require the `Features::IMMEDIATES` feature. The GLSL syntax remains `push_constant`.
 - Matrix order MUST match the shader’s expectation. The example transposes matrices before upload to match GLSL column‑major multiplication.
 - The render pass and pipelines MUST use the same sample count when MSAA is enabled.
 - Acronyms: graphics processing unit (GPU), central processing unit (CPU), multi‑sample anti‑aliasing (MSAA), model‑view‑projection (MVP).
@@ -128,9 +130,11 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample { /* lifecycle
 
 Narrative: The component stores GPU handles and toggles. When settings change, mark `needs_rebuild = true` and rebuild pipelines/passes on the next frame.
 
-### Step 2 — Shaders and Push Constants <a name="step-2"></a>
+### Step 2 — Shaders and Immediates <a name="step-2"></a>
 
-Use one vertex shader and two fragment shaders. The vertex shader expects push constants with two `mat4` values: the MVP and the model matrix, used to transform positions and rotate normals to world space. The floor fragment shader is lit and translucent so the reflection reads beneath it.
+Use one vertex shader and two fragment shaders. The vertex shader expects immediates with two `mat4` values: the MVP and the model matrix, used to transform positions and rotate normals to world space. The floor fragment shader is lit and translucent so the reflection reads beneath it.
+
+> **Note:** In wgpu v28, push constants were renamed to "immediates" and gated behind `Features::IMMEDIATES`. The GLSL syntax remains `layout(push_constant)`.
 
 ```glsl
 // Vertex (GLSL 450)
@@ -174,16 +178,16 @@ void main() {
 }
 ```
 
-In Rust, pack push constants as 32‑bit words and transpose matrices before upload.
+In Rust, pack immediate data as 32‑bit words and transpose matrices before upload.
 
 ```rust
 #[repr(C)]
-pub struct PushConstant { pub mvp: [[f32; 4]; 4], pub model: [[f32; 4]; 4] }
+pub struct ImmediateData { pub mvp: [[f32; 4]; 4], pub model: [[f32; 4]; 4] }
 
-pub fn push_constants_to_words(pc: &PushConstant) -> &[u32] {
+pub fn immediate_data_to_words(data: &ImmediateData) -> &[u32] {
   unsafe {
-    let size = std::mem::size_of::<PushConstant>() / std::mem::size_of::<u32>();
-    let ptr = pc as *const PushConstant as *const u32;
+    let size = std::mem::size_of::<ImmediateData>() / std::mem::size_of::<u32>();
+    let ptr = data as *const ImmediateData as *const u32;
     return std::slice::from_raw_parts(ptr, size);
   }
 }
@@ -240,7 +244,7 @@ let pipe_floor_mask = RenderPipelineBuilder::new()
   .with_depth_format(lambda::render::texture::DepthFormat::Depth24PlusStencil8)
   .with_depth_write(false)
   .with_depth_compare(CompareFunction::Always)
-  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<PushConstant>() as u32)
+  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
   .with_buffer(floor_vertex_buffer, floor_attributes)
   .with_stencil(StencilState {
     front: StencilFaceState { compare: CompareFunction::Always, fail_op: StencilOperation::Keep, depth_fail_op: StencilOperation::Keep, pass_op: StencilOperation::Replace },
@@ -267,7 +271,7 @@ let mut builder = RenderPipelineBuilder::new()
   .with_label("reflected-cube")
   .with_culling(lambda::render::pipeline::CullingMode::Front)
   .with_depth_format(lambda::render::texture::DepthFormat::Depth24PlusStencil8)
-  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<PushConstant>() as u32)
+  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
   .with_buffer(cube_vertex_buffer, cube_attributes)
   .with_stencil(StencilState {
     front: StencilFaceState { compare: CompareFunction::Equal, fail_op: StencilOperation::Keep, depth_fail_op: StencilOperation::Keep, pass_op: StencilOperation::Keep },
@@ -295,7 +299,7 @@ Draw the floor surface with a translucent tint so the reflection remains visible
 ```rust
 let mut floor_vis = RenderPipelineBuilder::new()
   .with_label("floor-visual")
-  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<PushConstant>() as u32)
+  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
   .with_buffer(floor_vertex_buffer, floor_attributes)
   .with_multi_sample(msaa_samples);
 
@@ -323,7 +327,7 @@ Draw the unreflected cube above the floor using the lit fragment shader. Enable 
 ```rust
 let mut normal = RenderPipelineBuilder::new()
   .with_label("cube-normal")
-  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<PushConstant>() as u32)
+  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
   .with_buffer(cube_vertex_buffer, cube_attributes)
   .with_multi_sample(msaa_samples);
 
@@ -391,7 +395,7 @@ cmds.push(RenderCommand::BeginRenderPass { render_pass: pass_id_mask, viewport }
 cmds.push(RenderCommand::SetPipeline { pipeline: pipe_floor_mask });
 cmds.push(RenderCommand::SetStencilReference { reference: 1 });
 cmds.push(RenderCommand::BindVertexBuffer { pipeline: pipe_floor_mask, buffer: 0 });
-cmds.push(RenderCommand::PushConstants { pipeline: pipe_floor_mask, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(push_constants_to_words(&PushConstant { mvp: mvp_floor.transpose(), model: model_floor.transpose() })) });
+cmds.push(RenderCommand::Immediates { pipeline: pipe_floor_mask, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(immediate_data_to_words(&ImmediateData { mvp: mvp_floor.transpose(), model: model_floor.transpose() })) });
 cmds.push(RenderCommand::Draw { vertices: 0..floor_vertex_count, instances: 0..1 });
 cmds.push(RenderCommand::EndRenderPass);
 
@@ -400,19 +404,19 @@ cmds.push(RenderCommand::BeginRenderPass { render_pass: pass_id_color, viewport 
 cmds.push(RenderCommand::SetPipeline { pipeline: pipe_reflected });
 cmds.push(RenderCommand::SetStencilReference { reference: 1 });
 cmds.push(RenderCommand::BindVertexBuffer { pipeline: pipe_reflected, buffer: 0 });
-cmds.push(RenderCommand::PushConstants { pipeline: pipe_reflected, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(push_constants_to_words(&PushConstant { mvp: mvp_reflect.transpose(), model: model_reflect.transpose() })) });
+cmds.push(RenderCommand::Immediates { pipeline: pipe_reflected, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(immediate_data_to_words(&ImmediateData { mvp: mvp_reflect.transpose(), model: model_reflect.transpose() })) });
 cmds.push(RenderCommand::Draw { vertices: 0..cube_vertex_count, instances: 0..1 });
 
 // Pass 3: floor visual (tinted)
 cmds.push(RenderCommand::SetPipeline { pipeline: pipe_floor_visual });
 cmds.push(RenderCommand::BindVertexBuffer { pipeline: pipe_floor_visual, buffer: 0 });
-cmds.push(RenderCommand::PushConstants { pipeline: pipe_floor_visual, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(push_constants_to_words(&PushConstant { mvp: mvp_floor.transpose(), model: model_floor.transpose() })) });
+cmds.push(RenderCommand::Immediates { pipeline: pipe_floor_visual, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(immediate_data_to_words(&ImmediateData { mvp: mvp_floor.transpose(), model: model_floor.transpose() })) });
 cmds.push(RenderCommand::Draw { vertices: 0..floor_vertex_count, instances: 0..1 });
 
 // Pass 4: normal cube
 cmds.push(RenderCommand::SetPipeline { pipeline: pipe_normal });
 cmds.push(RenderCommand::BindVertexBuffer { pipeline: pipe_normal, buffer: 0 });
-cmds.push(RenderCommand::PushConstants { pipeline: pipe_normal, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(push_constants_to_words(&PushConstant { mvp: mvp.transpose(), model: model.transpose() })) });
+cmds.push(RenderCommand::Immediates { pipeline: pipe_normal, stage: PipelineStage::VERTEX, offset: 0, bytes: Vec::from(immediate_data_to_words(&ImmediateData { mvp: mvp.transpose(), model: model.transpose() })) });
 cmds.push(RenderCommand::Draw { vertices: 0..cube_vertex_count, instances: 0..1 });
 cmds.push(RenderCommand::EndRenderPass);
 ```
@@ -473,6 +477,7 @@ The reflective floor combines a simple stencil mask with an optional depth test 
 
 ## Changelog <a name="changelog"></a>
 
+- 2026-01-05, 0.4.0: Update for wgpu v28; rename push constants to immediates; update struct references to `ImmediateData`.
 - 2025-12-15, 0.3.0: Update builder API calls to use `ctx.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-21, 0.2.2: Align tutorial with removal of the unmasked reflection debug toggle in the example and update metadata to the current engine workspace commit.
 - 0.2.0 (2025‑11‑19): Updated for camera pitch, front‑face culling on reflection, lit translucent floor, unmasked reflection debug toggle, floor overlay toggle, and Metal portability note.

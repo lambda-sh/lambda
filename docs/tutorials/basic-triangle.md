@@ -3,10 +3,10 @@ title: "Basic Triangle: Vertex‑Only Draw"
 document_id: "basic-triangle-tutorial-2025-12-16"
 status: "draft"
 created: "2025-12-16T00:00:00Z"
-last_updated: "2025-12-16T00:00:00Z"
-version: "0.1.0"
+last_updated: "2026-01-05T00:00:00Z"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
-wgpu_version: "26.0.1"
+wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
 repo_commit: "797047468a927f1e4ba111b43381a607ac53c0d1"
@@ -223,8 +223,8 @@ shaders, build a render pass and pipeline, and issue a draw using
 - Exercise 3: Add a second triangle
   - Issue a second `Draw` and offset positions in the shader for one of the
     triangles.
-- Exercise 4: Introduce push constants
-  - Add a push constant color and position and port the shader interface to
+- Exercise 4: Introduce immediates
+  - Add an immediate data block for color and position and port the shader interface to
     match `crates/lambda-rs/examples/triangles.rs`.
 - Exercise 5: Replace `gl_VertexIndex` with a vertex buffer
   - Create a vertex buffer for positions and update the pipeline and shader
@@ -232,5 +232,6 @@ shaders, build a render pass and pipeline, and issue a draw using
 
 ## Changelog <a name="changelog"></a>
 
+- 0.2.0 (2026-01-05): Update for wgpu v28; rename push constants to immediates in exercises.
 - 0.1.0 (2025-12-16): Initial draft aligned with
   `crates/lambda-rs/examples/triangle.rs`.
