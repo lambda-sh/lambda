@@ -68,6 +68,7 @@ Reference implementation: `crates/lambda-rs/examples/reflective_room.rs`.
 - Immediate data size and stage visibility MUST match the shader declaration. Two `mat4` values are sent to the vertex stage only (128 bytes total).
 
 > **Note:** In wgpu v28, push constants were renamed to "immediates" and require the `Features::IMMEDIATES` feature. The GLSL syntax remains `push_constant`.
+
 - Matrix order MUST match the shader’s expectation. The example transposes matrices before upload to match GLSL column‑major multiplication.
 - The render pass and pipelines MUST use the same sample count when MSAA is enabled.
 - Acronyms: graphics processing unit (GPU), central processing unit (CPU), multi‑sample anti‑aliasing (MSAA), model‑view‑projection (MVP).
@@ -244,7 +245,7 @@ let pipe_floor_mask = RenderPipelineBuilder::new()
   .with_depth_format(lambda::render::texture::DepthFormat::Depth24PlusStencil8)
   .with_depth_write(false)
   .with_depth_compare(CompareFunction::Always)
-  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
+  .with_immediate_data(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
   .with_buffer(floor_vertex_buffer, floor_attributes)
   .with_stencil(StencilState {
     front: StencilFaceState { compare: CompareFunction::Always, fail_op: StencilOperation::Keep, depth_fail_op: StencilOperation::Keep, pass_op: StencilOperation::Replace },
@@ -271,7 +272,7 @@ let mut builder = RenderPipelineBuilder::new()
   .with_label("reflected-cube")
   .with_culling(lambda::render::pipeline::CullingMode::Front)
   .with_depth_format(lambda::render::texture::DepthFormat::Depth24PlusStencil8)
-  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
+  .with_immediate_data(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
   .with_buffer(cube_vertex_buffer, cube_attributes)
   .with_stencil(StencilState {
     front: StencilFaceState { compare: CompareFunction::Equal, fail_op: StencilOperation::Keep, depth_fail_op: StencilOperation::Keep, pass_op: StencilOperation::Keep },
@@ -299,7 +300,7 @@ Draw the floor surface with a translucent tint so the reflection remains visible
 ```rust
 let mut floor_vis = RenderPipelineBuilder::new()
   .with_label("floor-visual")
-  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
+  .with_immediate_data(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
   .with_buffer(floor_vertex_buffer, floor_attributes)
   .with_multi_sample(msaa_samples);
 
@@ -327,7 +328,7 @@ Draw the unreflected cube above the floor using the lit fragment shader. Enable 
 ```rust
 let mut normal = RenderPipelineBuilder::new()
   .with_label("cube-normal")
-  .with_push_constant(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
+  .with_immediate_data(PipelineStage::VERTEX, std::mem::size_of::<ImmediateData>() as u32)
   .with_buffer(cube_vertex_buffer, cube_attributes)
   .with_multi_sample(msaa_samples);
 

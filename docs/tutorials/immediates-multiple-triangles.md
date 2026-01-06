@@ -36,10 +36,10 @@ Reference implementation: `crates/lambda-rs/examples/triangles.rs`.
 - [Requirements and Constraints](#requirements-and-constraints)
 - [Data Flow](#data-flow)
 - [Implementation Steps](#implementation-steps)
-  - [Step 1 — Define the Push Constant Layout](#step-1)
+  - [Step 1 — Define the Immediate Data Layout](#step-1)
   - [Step 2 — Shaders for Position, Scale, and Color](#step-2)
-  - [Step 3 — Build a Pipeline with Push Constants](#step-3)
-  - [Step 4 — Push Constants per Draw](#step-4)
+  - [Step 3 — Build a Pipeline with Immediates](#step-3)
+  - [Step 4 — Immediates per Draw](#step-4)
   - [Step 5 — Input and Resize Handling](#step-5)
 - [Validation](#validation)
 - [Notes](#notes)
@@ -129,7 +129,7 @@ let immediate_size = std::mem::size_of::<ImmediateData>() as u32;
 
 let pipeline = pipeline::RenderPipelineBuilder::new()
   .with_culling(pipeline::CullingMode::None)
-  .with_push_constant(PipelineStage::VERTEX, immediate_size)
+  .with_immediate_data(PipelineStage::VERTEX, immediate_size)
   .build(
     render_context.gpu(),
     render_context.surface_format(),

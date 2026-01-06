@@ -184,12 +184,12 @@ cargo run --example triangles
 
 * ### Architecture support
 
- 	* [x] x86
+  * [x] x86
   * [x] arm64
 
 * ### Operating system support
 
- 	* [x] MacOS
+  * [x] MacOS
   * [x] Linux
   * [x] Windows 10/11
   * [ ] Xbox Series S|X (Long term goal)
@@ -198,7 +198,7 @@ cargo run --example triangles
 
 * ### Rendering API support
 
- 	* [x] OpenGL
+  * [x] OpenGL
   * [x] Vulkan
   * [x] Metal
   * [x] DirectX11

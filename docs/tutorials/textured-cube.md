@@ -376,7 +376,7 @@ let immediate_data_size = std::mem::size_of::<ImmediateData>() as u32;
 let pipeline = RenderPipelineBuilder::new()
   .with_culling(CullingMode::Back)
   .with_depth()
-  .with_push_constant(PipelineStage::VERTEX, immediate_data_size)
+  .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
   .with_buffer(
     BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
       .expect("Failed to create vertex buffer"),
