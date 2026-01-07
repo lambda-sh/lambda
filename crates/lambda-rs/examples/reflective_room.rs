@@ -31,7 +31,6 @@ use lambda::{
     pipeline::{
       CompareFunction,
       CullingMode,
-      PipelineStage,
       RenderPipelineBuilder,
       StencilFaceState,
       StencilOperation,
@@ -408,7 +407,6 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
         });
         cmds.push(RenderCommand::Immediates {
           pipeline: pipe_floor_mask,
-          stage: PipelineStage::VERTEX,
           offset: 0,
           bytes: Vec::from(immediate_data_to_words(&ImmediateData {
             mvp: mvp_floor.transpose(),
@@ -442,7 +440,6 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
         });
         cmds.push(RenderCommand::Immediates {
           pipeline: pipe_reflected,
-          stage: PipelineStage::VERTEX,
           offset: 0,
           bytes: Vec::from(immediate_data_to_words(&ImmediateData {
             mvp: mvp_reflect.transpose(),
@@ -469,7 +466,6 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       });
       cmds.push(RenderCommand::Immediates {
         pipeline: pipe_floor_visual,
-        stage: PipelineStage::VERTEX,
         offset: 0,
         bytes: Vec::from(immediate_data_to_words(&ImmediateData {
           mvp: mvp_floor.transpose(),
@@ -493,7 +489,6 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
     });
     cmds.push(RenderCommand::Immediates {
       pipeline: pipe_normal,
-      stage: PipelineStage::VERTEX,
       offset: 0,
       bytes: Vec::from(immediate_data_to_words(&ImmediateData {
         mvp: mvp.transpose(),
@@ -625,7 +620,7 @@ impl ReflectiveRoomExample {
         .with_depth_format(DepthFormat::Depth24PlusStencil8)
         .with_depth_write(false)
         .with_depth_compare(CompareFunction::Always)
-        .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
+        .with_immediate_data(immediate_data_size)
         .with_buffer(
           BufferBuilder::new()
             .with_length(
@@ -677,7 +672,7 @@ impl ReflectiveRoomExample {
         // Mirrored transform reverses winding; cull front to keep visible faces.
         .with_culling(CullingMode::Front)
         .with_depth_format(DepthFormat::Depth24PlusStencil8)
-        .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
+        .with_immediate_data(immediate_data_size)
         .with_buffer(
           BufferBuilder::new()
             .with_length(
@@ -730,7 +725,7 @@ impl ReflectiveRoomExample {
     let mut floor_builder = RenderPipelineBuilder::new()
       .with_label("floor-visual")
       .with_culling(CullingMode::Back)
-      .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::new()
           .with_length(
@@ -768,7 +763,7 @@ impl ReflectiveRoomExample {
     let mut normal_builder = RenderPipelineBuilder::new()
       .with_label("cube-normal")
       .with_culling(CullingMode::Back)
-      .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::new()
           .with_length(

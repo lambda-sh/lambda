@@ -11,7 +11,6 @@ use lambda::{
     command::RenderCommand,
     pipeline::{
       self,
-      PipelineStage,
     },
     render_pass,
     shader::{
@@ -55,7 +54,7 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     let immediate_data_size = std::mem::size_of::<ImmediateData>() as u32;
     let pipeline = pipeline::RenderPipelineBuilder::new()
       .with_culling(pipeline::CullingMode::None)
-      .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
+      .with_immediate_data(immediate_data_size)
       .build(
         render_context.gpu(),
         render_context.surface_format(),
@@ -146,7 +145,6 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     for triangle in triangle_data {
       commands.push(RenderCommand::Immediates {
         pipeline: render_pipeline.clone(),
-        stage: PipelineStage::VERTEX,
         offset: 0,
         bytes: Vec::from(immediate_data_to_bytes(triangle)),
       });

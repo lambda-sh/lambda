@@ -16,10 +16,7 @@ use lambda::{
       Mesh,
       MeshBuilder,
     },
-    pipeline::{
-      PipelineStage,
-      RenderPipelineBuilder,
-    },
+    pipeline::RenderPipelineBuilder,
     render_pass::RenderPassBuilder,
     scene_math::{
       compute_model_view_projection_matrix_about_pivot,
@@ -192,7 +189,7 @@ impl Component<ComponentResult, String> for ImmediatesExample {
 
     let pipeline = RenderPipelineBuilder::new()
       .with_culling(lambda::render::pipeline::CullingMode::None)
-      .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
           .expect("Failed to create buffer"),
@@ -305,7 +302,6 @@ impl Component<ComponentResult, String> for ImmediatesExample {
       },
       RenderCommand::Immediates {
         pipeline: render_pipeline.clone(),
-        stage: PipelineStage::VERTEX,
         offset: 0,
         bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
           data: [0.0, 0.0, 0.0, 0.0],

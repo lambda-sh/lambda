@@ -20,10 +20,7 @@ use lambda::{
       Mesh,
       MeshBuilder,
     },
-    pipeline::{
-      PipelineStage,
-      RenderPipelineBuilder,
-    },
+    pipeline::RenderPipelineBuilder,
     render_pass::RenderPassBuilder,
     scene_math::{
       compute_perspective_projection,
@@ -334,7 +331,7 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
     let pipeline = RenderPipelineBuilder::new()
       .with_culling(lambda::render::pipeline::CullingMode::Back)
       .with_depth()
-      .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
           .expect("Failed to create vertex buffer"),
@@ -462,7 +459,6 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       },
       RenderCommand::Immediates {
         pipeline,
-        stage: PipelineStage::VERTEX,
         offset: 0,
         bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
           mvp: mvp.transpose(),

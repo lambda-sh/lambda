@@ -15,7 +15,7 @@ use crate::wgpu::{
   vertex::ColorFormat,
 };
 
-/// Shader stage flags for immediate data and visibility.
+/// Shader stage flags for visibility.
 #[derive(Clone, Copy, Debug)]
 ///
 /// This wrapper avoids exposing `wgpu` directly to higher layers while still
@@ -51,10 +51,9 @@ impl std::ops::BitOrAssign for PipelineStage {
   }
 }
 
-/// Immediate data declaration for a stage and byte range.
+/// Immediate data declaration for a byte range.
 #[derive(Clone, Debug)]
 pub struct ImmediateDataRange {
-  pub stages: PipelineStage,
   pub range: Range<u32>,
 }
 
@@ -336,7 +335,7 @@ impl<'a> PipelineLayoutBuilder<'a> {
     return self;
   }
 
-  /// Provide immediate data ranges for shader stages.
+  /// Provide immediate data byte ranges.
   pub fn with_immediate_data_ranges(
     mut self,
     ranges: Vec<ImmediateDataRange>,
@@ -402,7 +401,6 @@ mod immediate_size_tests {
   use super::{
     validate_and_calculate_immediate_size,
     ImmediateDataRange,
-    PipelineStage,
   };
 
   #[test]
@@ -414,14 +412,8 @@ mod immediate_size_tests {
   #[test]
   fn immediate_size_overlapping_ranges_ok() {
     let ranges = vec![
-      ImmediateDataRange {
-        stages: PipelineStage::VERTEX,
-        range: 0..64,
-      },
-      ImmediateDataRange {
-        stages: PipelineStage::FRAGMENT,
-        range: 0..32,
-      },
+      ImmediateDataRange { range: 0..64 },
+      ImmediateDataRange { range: 0..32 },
     ];
     let size = validate_and_calculate_immediate_size(&ranges).unwrap();
     assert_eq!(size, 64);
@@ -430,14 +422,8 @@ mod immediate_size_tests {
   #[test]
   fn immediate_size_contiguous_ranges_ok() {
     let ranges = vec![
-      ImmediateDataRange {
-        stages: PipelineStage::VERTEX,
-        range: 0..16,
-      },
-      ImmediateDataRange {
-        stages: PipelineStage::FRAGMENT,
-        range: 16..32,
-      },
+      ImmediateDataRange { range: 0..16 },
+      ImmediateDataRange { range: 16..32 },
     ];
     let size = validate_and_calculate_immediate_size(&ranges).unwrap();
     assert_eq!(size, 32);
@@ -446,14 +432,8 @@ mod immediate_size_tests {
   #[test]
   fn immediate_size_gap_is_error() {
     let ranges = vec![
-      ImmediateDataRange {
-        stages: PipelineStage::VERTEX,
-        range: 0..16,
-      },
-      ImmediateDataRange {
-        stages: PipelineStage::FRAGMENT,
-        range: 32..48,
-      },
+      ImmediateDataRange { range: 0..16 },
+      ImmediateDataRange { range: 32..48 },
     ];
     let err = validate_and_calculate_immediate_size(&ranges).unwrap_err();
     assert!(err.contains("gap"));
@@ -461,10 +441,7 @@ mod immediate_size_tests {
 
   #[test]
   fn immediate_size_non_zero_start_is_error() {
-    let ranges = vec![ImmediateDataRange {
-      stages: PipelineStage::VERTEX,
-      range: 16..32,
-    }];
+    let ranges = vec![ImmediateDataRange { range: 16..32 }];
     let err = validate_and_calculate_immediate_size(&ranges).unwrap_err();
     assert!(err.contains("gap"));
   }

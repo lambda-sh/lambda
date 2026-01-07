@@ -16,19 +16,16 @@
 //! Example
 //! ```rust,ignore
 //! // Single vertex buffer with position/color; one immediate data range for the vertex stage
-//! use lambda::render::pipeline::{RenderPipelineBuilder, PipelineStage, CullingMode};
+//! use lambda::render::pipeline::{RenderPipelineBuilder, CullingMode};
 //! let pipeline = RenderPipelineBuilder::new()
 //!   .with_buffer(vertex_buffer, attributes)
-//!   .with_immediate_data(PipelineStage::VERTEX, 64)
+//!   .with_immediate_data(64)
 //!   .with_layouts(&[&globals_bgl])
 //!   .with_culling(CullingMode::Back)
 //!   .build(&mut render_context, &render_pass, &vs, Some(&fs));
 //! ```
 
-use std::{
-  ops::Range,
-  rc::Rc,
-};
+use std::rc::Rc;
 
 use lambda_platform::wgpu::pipeline as platform_pipeline;
 use logging;
@@ -116,11 +113,11 @@ impl RenderPipeline {
   }
 }
 
-/// Public alias for platform shader stage flags used by immediate data.
+/// Public alias for platform shader stage flags.
+///
+/// Stage flags remain useful for APIs such as bind group visibility, even
+/// though wgpu v28 immediates no longer use stage-scoped updates.
 pub use platform_pipeline::PipelineStage;
-
-/// Convenience alias for uploading immediate data: stage and byte range.
-pub type ImmediateDataUpload = (PipelineStage, Range<u32>);
 
 struct BufferBinding {
   buffer: Rc<Buffer>,
@@ -260,7 +257,7 @@ pub struct StencilState {
 /// - If a fragment shader is omitted, no color target is attached and the
 ///   pipeline can still be used for vertex‑only workloads.
 pub struct RenderPipelineBuilder {
-  immediate_data: Vec<ImmediateDataUpload>,
+  immediate_data: Vec<std::ops::Range<u32>>,
   bindings: Vec<BufferBinding>,
   culling: CullingMode,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
@@ -346,13 +343,14 @@ impl RenderPipelineBuilder {
     );
   }
 
-  /// Declare an immediate data range for a shader stage in bytes.
-  pub fn with_immediate_data(
-    mut self,
-    stage: PipelineStage,
-    bytes: u32,
-  ) -> Self {
-    self.immediate_data.push((stage, 0..bytes));
+  /// Declare an immediate data byte range size.
+  ///
+  /// wgpu v28 uses a single immediate data region sized by the pipeline
+  /// layout. This method records a range starting at 0 whose end defines the
+  /// required allocation size. Multiple calls are allowed; the final
+  /// allocation is derived from the union of ranges.
+  pub fn with_immediate_data(mut self, bytes: u32) -> Self {
+    self.immediate_data.push(0..bytes);
     return self;
   }
 
@@ -469,8 +467,7 @@ impl RenderPipelineBuilder {
       self
         .immediate_data
         .iter()
-        .map(|(stage, range)| platform_pipeline::ImmediateDataRange {
-          stages: *stage,
+        .map(|range| platform_pipeline::ImmediateDataRange {
           range: range.clone(),
         })
         .collect();

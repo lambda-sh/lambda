@@ -3,13 +3,13 @@ title: "Textured Cube: 3D Immediates + 2D Sampling"
 document_id: "textured-cube-tutorial-2025-11-10"
 status: "draft"
 created: "2025-11-10T00:00:00Z"
-last_updated: "2026-01-05T00:00:00Z"
-version: "0.3.0"
+last_updated: "2026-01-07T00:00:00Z"
+version: "0.3.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
+repo_commit: "183a0499250a2c16e0a09b22107201720016fc48"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "3d", "immediates", "textures", "samplers", "rust", "wgpu"]
@@ -59,7 +59,7 @@ Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
-- Immediate data size and stage visibility MUST match the shader declaration. This example sends 128 bytes (two `mat4`), at vertex stage only.
+- Immediate data size MUST match the shader declaration. This example sends 128 bytes (two `mat4`).
 - The immediate data byte order MUST match the shader's expected matrix layout. This example transposes matrices before upload to match column‑major multiplication in GLSL.
 - Face winding MUST be counter‑clockwise (CCW) for back‑face culling to work with `CullingMode::Back`.
 - The model matrix MUST NOT include non‑uniform scale if normals are transformed with `mat3(model)`. Rationale: non‑uniform scale skews normals; either avoid it or compute a proper normal matrix.
@@ -353,12 +353,12 @@ let bind_group = BindGroupBuilder::new()
 
 ### Step 7 — Render Pipeline with Depth and Culling <a name="step-7"></a>
 
-Enable depth, back‑face culling, and declare a vertex buffer built from the mesh. Add an immediate data range for the vertex stage.
+Enable depth, back‑face culling, and declare a vertex buffer built from the mesh. Add an immediate data range for the shaders.
 
 ```rust
 use lambda::render::{
   buffer::BufferBuilder,
-  pipeline::{PipelineStage, RenderPipelineBuilder, CullingMode},
+  pipeline::{RenderPipelineBuilder, CullingMode},
   render_pass::RenderPassBuilder,
 };
 
@@ -376,7 +376,7 @@ let immediate_data_size = std::mem::size_of::<ImmediateData>() as u32;
 let pipeline = RenderPipelineBuilder::new()
   .with_culling(CullingMode::Back)
   .with_depth()
-  .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
+  .with_immediate_data(immediate_data_size)
   .with_buffer(
     BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
       .expect("Failed to create vertex buffer"),
@@ -457,7 +457,7 @@ pub fn immediate_data_to_bytes(immediate_data: &ImmediateData) -> &[u32] {
   }
 }
 
-use lambda::render::{command::RenderCommand, pipeline::PipelineStage, viewport::ViewportBuilder};
+use lambda::render::{command::RenderCommand, viewport::ViewportBuilder};
 
 let viewport = ViewportBuilder::new().build(self.width, self.height);
 let pipeline = self.render_pipeline.expect("pipeline not set");
@@ -476,7 +476,6 @@ let commands = vec![
   RenderCommand::BindVertexBuffer { pipeline, buffer: 0 },
   RenderCommand::Immediates {
     pipeline,
-    stage: PipelineStage::VERTEX,
     offset: 0,
     bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
       mvp: mvp.transpose(),
@@ -553,6 +552,7 @@ transforms alongside 2D sampling in a 3D render path.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.3.1 (2026-01-07): Remove stage usage from immediates API examples.
 - 0.3.0 (2026-01-05): Migrate from push constants to immediates for wgpu v28; update all code examples and terminology.
 - 0.2.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.1.1 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.

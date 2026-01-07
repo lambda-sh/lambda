@@ -3,13 +3,13 @@ title: "Immediates: Draw Multiple 2D Triangles"
 document_id: "immediates-multiple-triangles-tutorial-2025-12-16"
 status: "draft"
 created: "2025-12-16T00:00:00Z"
-last_updated: "2026-01-05T00:00:00Z"
-version: "0.2.0"
+last_updated: "2026-01-07T00:00:00Z"
+version: "0.2.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "797047468a927f1e4ba111b43381a607ac53c0d1"
+repo_commit: "183a0499250a2c16e0a09b22107201720016fc48"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "immediates", "triangle", "rust", "wgpu"]
@@ -50,7 +50,7 @@ Reference implementation: `crates/lambda-rs/examples/triangles.rs`.
 ## Goals <a name="goals"></a>
 
 - Define an immediate data block in GLSL (using `push_constant`) and mirror it in Rust.
-- Build a pipeline that declares a vertex-stage immediate data range.
+- Build a pipeline that declares an immediate data range.
 - Draw multiple triangles by setting per-draw immediates and issuing draws.
 
 ## Prerequisites <a name="prerequisites"></a>
@@ -62,8 +62,8 @@ Reference implementation: `crates/lambda-rs/examples/triangles.rs`.
 
 - Immediate data layout MUST match between shader and Rust in size, alignment,
   and field order (`#[repr(C)]` is required on the Rust struct).
-- The pipeline MUST declare an immediate data range for the stage that reads it
-  (`PipelineStage::VERTEX` in this example).
+- The pipeline MUST declare an immediate data range that matches the shader
+  immediate block size.
 - The immediate byte slice length MUST match the pipeline's declared size.
 - Back-face culling MUST be disabled or the triangle winding MUST be adjusted.
   Rationale: the example’s vertex positions are defined in clockwise order.
@@ -121,15 +121,15 @@ Reference shader sources:
 
 ### Step 3 — Build a Pipeline with Immediates <a name="step-3"></a>
 
-Compute the immediate data size and configure the pipeline to accept vertex-stage
-immediate data. Disable culling for consistent visibility.
+Compute the immediate data size and configure the pipeline to accept immediate
+data. Disable culling for consistent visibility.
 
 ```rust
 let immediate_size = std::mem::size_of::<ImmediateData>() as u32;
 
 let pipeline = pipeline::RenderPipelineBuilder::new()
   .with_culling(pipeline::CullingMode::None)
-  .with_immediate_data(PipelineStage::VERTEX, immediate_size)
+  .with_immediate_data(immediate_size)
   .build(
     render_context.gpu(),
     render_context.surface_format(),
@@ -140,7 +140,7 @@ let pipeline = pipeline::RenderPipelineBuilder::new()
   );
 ```
 
-The pipeline definition controls which stages can read the immediate bytes.
+The pipeline definition declares the byte range available as immediates.
 
 ### Step 4 — Set Immediates per Draw <a name="step-4"></a>
 
@@ -151,7 +151,6 @@ bytes and issues a draw for each triangle.
 for triangle in triangle_data {
   commands.push(RenderCommand::Immediates {
     pipeline: render_pipeline.clone(),
-    stage: PipelineStage::VERTEX,
     offset: 0,
     bytes: Vec::from(immediate_data_to_bytes(triangle)),
   });
@@ -220,6 +219,7 @@ issuing repeated draws within one render pass.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.2.1 (2026-01-07): Remove stage usage from immediates API examples.
 - 0.2.0 (2026-01-05): Updated to use wgpu v28 immediates terminology.
 - 0.1.0 (2025-12-16): Initial draft aligned with
   `crates/lambda-rs/examples/triangles.rs`.

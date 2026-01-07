@@ -909,7 +909,6 @@ impl RenderContext {
         }
         RenderCommand::Immediates {
           pipeline,
-          stage: _,
           offset,
           bytes,
         } => {

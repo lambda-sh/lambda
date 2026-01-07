@@ -7,10 +7,7 @@
 
 use std::ops::Range;
 
-use super::{
-  pipeline::PipelineStage,
-  viewport::Viewport,
-};
+use super::viewport::Viewport;
 
 /// Engine-level index format for indexed drawing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -88,7 +85,6 @@ pub enum RenderCommand {
   /// immediate data blocks remains `layout(push_constant)`.
   Immediates {
     pipeline: super::ResourceId,
-    stage: PipelineStage,
     offset: u32,
     bytes: Vec<u32>,
   },
