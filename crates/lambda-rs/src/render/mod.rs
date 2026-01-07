@@ -820,6 +820,18 @@ impl RenderContext {
     return Ok(());
   }
 
+  fn validate_pipeline_exists(
+    render_pipelines: &[RenderPipeline],
+    pipeline: usize,
+  ) -> Result<(), RenderPassError> {
+    if render_pipelines.get(pipeline).is_none() {
+      return Err(RenderPassError::Validation(format!(
+        "Unknown pipeline {pipeline}"
+      )));
+    }
+    return Ok(());
+  }
+
   fn encode_active_render_pass_commands(
     command_iter: &mut std::vec::IntoIter<RenderCommand>,
     rp_encoder: &mut encoder::RenderPassEncoder<'_>,
@@ -896,11 +908,13 @@ impl RenderContext {
           rp_encoder.set_index_buffer(buffer_ref, format)?;
         }
         RenderCommand::Immediates {
-          pipeline: _,
+          pipeline,
           stage: _,
           offset,
           bytes,
         } => {
+          Self::validate_pipeline_exists(render_pipelines, pipeline)?;
+
           // Convert the u32 words to a byte slice for set_immediates.
           let byte_slice = unsafe {
             std::slice::from_raw_parts(
@@ -1038,5 +1052,14 @@ mod tests {
     let stencil_ops = Some(render_pass::StencilOperations::default());
     let has_attachment = RenderContext::has_depth_attachment(None, stencil_ops);
     assert!(has_attachment);
+  }
+
+  #[test]
+  fn immediates_validate_pipeline_exists_rejects_unknown_pipeline() {
+    let pipelines: Vec<RenderPipeline> = vec![];
+    let err = RenderContext::validate_pipeline_exists(&pipelines, 7)
+      .err()
+      .expect("must error");
+    assert!(err.to_string().contains("Unknown pipeline 7"));
   }
 }
