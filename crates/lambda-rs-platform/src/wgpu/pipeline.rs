@@ -230,6 +230,90 @@ pub struct PipelineLayoutBuilder<'a> {
   immediate_data_ranges: Vec<ImmediateDataRange>,
 }
 
+/// Align a `u32` value up to the provided power-of-two alignment.
+fn align_up_u32(value: u32, alignment: u32) -> u32 {
+  if alignment == 0 {
+    return value;
+  }
+  let remainder = value % alignment;
+  if remainder == 0 {
+    return value;
+  }
+  return value + (alignment - remainder);
+}
+
+/// Validate immediate ranges and calculate the minimum allocation size.
+///
+/// wgpu v28 uses a single byte region of size `immediate_size`, addressed by
+/// `set_immediates(offset, data)`. This function enforces that the provided
+/// ranges:
+/// - Start at byte offset 0 (as a union)
+/// - Cover a contiguous span with no gaps (as a union)
+/// - Are aligned to `wgpu::IMMEDIATE_DATA_ALIGNMENT`
+fn validate_and_calculate_immediate_size(
+  immediate_data_ranges: &[ImmediateDataRange],
+) -> Result<u32, String> {
+  if immediate_data_ranges.is_empty() {
+    return Ok(0);
+  }
+
+  let alignment = wgpu::IMMEDIATE_DATA_ALIGNMENT;
+
+  let mut sorted_ranges: Vec<Range<u32>> = immediate_data_ranges
+    .iter()
+    .map(|r| r.range.clone())
+    .collect();
+  sorted_ranges.sort_by_key(|range| (range.start, range.end));
+
+  for range in &sorted_ranges {
+    if range.start > range.end {
+      return Err(format!(
+        "Immediate data range start {} exceeds end {}.",
+        range.start, range.end
+      ));
+    }
+    if range.start == range.end {
+      return Err(format!(
+        "Immediate data range {}..{} is empty.",
+        range.start, range.end
+      ));
+    }
+    if range.start % alignment != 0 {
+      return Err(format!(
+        "Immediate data range start {} is not aligned to {} bytes.",
+        range.start, alignment
+      ));
+    }
+    if range.end % alignment != 0 {
+      return Err(format!(
+        "Immediate data range end {} is not aligned to {} bytes.",
+        range.end, alignment
+      ));
+    }
+  }
+
+  let mut current_end = 0;
+  for range in &sorted_ranges {
+    if range.start > current_end {
+      return Err(format!(
+        "Immediate data ranges must be contiguous starting at 0; found gap \
+{}..{}.",
+        current_end, range.start
+      ));
+    }
+    current_end = current_end.max(range.end);
+  }
+
+  if current_end % alignment != 0 {
+    return Err(format!(
+      "Immediate data size {} is not aligned to {} bytes.",
+      current_end, alignment
+    ));
+  }
+
+  return Ok(current_end);
+}
+
 impl<'a> PipelineLayoutBuilder<'a> {
   /// New builder with no layouts or immediate data.
   pub fn new() -> Self {
@@ -266,14 +350,31 @@ impl<'a> PipelineLayoutBuilder<'a> {
     let layouts_raw: Vec<&wgpu::BindGroupLayout> =
       self.layouts.iter().map(|l| l.raw()).collect();
 
-    // Calculate the total immediate size from immediate data ranges.
-    // The immediate_size is the maximum end offset across all ranges.
-    let immediate_size = self
-      .immediate_data_ranges
-      .iter()
-      .map(|r| r.range.end)
-      .max()
-      .unwrap_or(0);
+    // wgpu v28 allocates a single immediate byte region sized by
+    // `PipelineLayoutDescriptor::immediate_size`. If callers provide multiple
+    // ranges, they are treated as sub-ranges of the same contiguous allocation.
+    //
+    // Validate that the union of ranges starts at 0 and has no gaps so that the
+    // required allocation size is well-defined.
+    let (immediate_size, fallback_used) =
+      match validate_and_calculate_immediate_size(&self.immediate_data_ranges) {
+        Ok(size) => (size, false),
+        Err(message) => {
+          logging::error!(
+            "Invalid immediate data ranges for pipeline layout: {}",
+            message
+          );
+          debug_assert!(false, "{}", message);
+
+          let max_end = self
+            .immediate_data_ranges
+            .iter()
+            .map(|r| r.range.end)
+            .max()
+            .unwrap_or(0);
+          (align_up_u32(max_end, wgpu::IMMEDIATE_DATA_ALIGNMENT), true)
+        }
+      };
 
     let raw =
       gpu
@@ -283,10 +384,89 @@ impl<'a> PipelineLayoutBuilder<'a> {
           bind_group_layouts: &layouts_raw,
           immediate_size,
         });
+    if fallback_used {
+      logging::warn!(
+        "Pipeline layout immediate size computed using fallback; consider \
+declaring immediate ranges as a single contiguous span starting at 0."
+      );
+    }
     return PipelineLayout {
       raw,
       label: self.label,
     };
+  }
+}
+
+#[cfg(test)]
+mod immediate_size_tests {
+  use super::{
+    validate_and_calculate_immediate_size,
+    ImmediateDataRange,
+    PipelineStage,
+  };
+
+  #[test]
+  fn immediate_size_empty_ok() {
+    let size = validate_and_calculate_immediate_size(&[]).unwrap();
+    assert_eq!(size, 0);
+  }
+
+  #[test]
+  fn immediate_size_overlapping_ranges_ok() {
+    let ranges = vec![
+      ImmediateDataRange {
+        stages: PipelineStage::VERTEX,
+        range: 0..64,
+      },
+      ImmediateDataRange {
+        stages: PipelineStage::FRAGMENT,
+        range: 0..32,
+      },
+    ];
+    let size = validate_and_calculate_immediate_size(&ranges).unwrap();
+    assert_eq!(size, 64);
+  }
+
+  #[test]
+  fn immediate_size_contiguous_ranges_ok() {
+    let ranges = vec![
+      ImmediateDataRange {
+        stages: PipelineStage::VERTEX,
+        range: 0..16,
+      },
+      ImmediateDataRange {
+        stages: PipelineStage::FRAGMENT,
+        range: 16..32,
+      },
+    ];
+    let size = validate_and_calculate_immediate_size(&ranges).unwrap();
+    assert_eq!(size, 32);
+  }
+
+  #[test]
+  fn immediate_size_gap_is_error() {
+    let ranges = vec![
+      ImmediateDataRange {
+        stages: PipelineStage::VERTEX,
+        range: 0..16,
+      },
+      ImmediateDataRange {
+        stages: PipelineStage::FRAGMENT,
+        range: 32..48,
+      },
+    ];
+    let err = validate_and_calculate_immediate_size(&ranges).unwrap_err();
+    assert!(err.contains("gap"));
+  }
+
+  #[test]
+  fn immediate_size_non_zero_start_is_error() {
+    let ranges = vec![ImmediateDataRange {
+      stages: PipelineStage::VERTEX,
+      range: 16..32,
+    }];
+    let err = validate_and_calculate_immediate_size(&ranges).unwrap_err();
+    assert!(err.contains("gap"));
   }
 }
 
