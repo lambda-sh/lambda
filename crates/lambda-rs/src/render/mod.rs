@@ -9,7 +9,7 @@
 //!   command encoding.
 //! - `RenderPass` and `RenderPipeline`: immutable descriptions used when
 //!   beginning a pass and binding a pipeline. Pipelines declare their vertex
-//!   inputs, push constants, and layout (bind group layouts).
+//!   inputs, immediate data, and layout (bind group layouts).
 //! - `Buffer`, `BindGroupLayout`, and `BindGroup`: GPU resources created via
 //!   builders and attached to the context, then referenced by small integer
 //!   handles when encoding commands.
@@ -820,6 +820,18 @@ impl RenderContext {
     return Ok(());
   }
 
+  fn validate_pipeline_exists(
+    render_pipelines: &[RenderPipeline],
+    pipeline: usize,
+  ) -> Result<(), RenderPassError> {
+    if render_pipelines.get(pipeline).is_none() {
+      return Err(RenderPassError::Validation(format!(
+        "Unknown pipeline {pipeline}"
+      )));
+    }
+    return Ok(());
+  }
+
   fn encode_active_render_pass_commands(
     command_iter: &mut std::vec::IntoIter<RenderCommand>,
     rp_encoder: &mut encoder::RenderPassEncoder<'_>,
@@ -895,22 +907,21 @@ impl RenderContext {
           })?;
           rp_encoder.set_index_buffer(buffer_ref, format)?;
         }
-        RenderCommand::PushConstants {
+        RenderCommand::Immediates {
           pipeline,
-          stage,
           offset,
           bytes,
         } => {
-          let _ = render_pipelines.get(pipeline).ok_or_else(|| {
-            RenderPassError::Validation(format!("Unknown pipeline {pipeline}"))
-          })?;
-          let slice = unsafe {
+          Self::validate_pipeline_exists(render_pipelines, pipeline)?;
+
+          // Convert the u32 words to a byte slice for set_immediates.
+          let byte_slice = unsafe {
             std::slice::from_raw_parts(
               bytes.as_ptr() as *const u8,
               bytes.len() * std::mem::size_of::<u32>(),
             )
           };
-          rp_encoder.set_push_constants(stage, offset, slice);
+          rp_encoder.set_immediates(offset, byte_slice);
         }
         RenderCommand::Draw {
           vertices,
@@ -1040,5 +1051,14 @@ mod tests {
     let stencil_ops = Some(render_pass::StencilOperations::default());
     let has_attachment = RenderContext::has_depth_attachment(None, stencil_ops);
     assert!(has_attachment);
+  }
+
+  #[test]
+  fn immediates_validate_pipeline_exists_rejects_unknown_pipeline() {
+    let pipelines: Vec<RenderPipeline> = vec![];
+    let err = RenderContext::validate_pipeline_exists(&pipelines, 7)
+      .err()
+      .expect("must error");
+    assert!(err.to_string().contains("Unknown pipeline 7"));
   }
 }

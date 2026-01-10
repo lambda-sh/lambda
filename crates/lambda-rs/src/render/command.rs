@@ -7,10 +7,7 @@
 
 use std::ops::Range;
 
-use super::{
-  pipeline::PipelineStage,
-  viewport::Viewport,
-};
+use super::viewport::Viewport;
 
 /// Engine-level index format for indexed drawing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,13 +77,14 @@ pub enum RenderCommand {
   /// Set the stencil reference value for the active pass.
   SetStencilReference { reference: u32 },
 
-  /// Upload push constants for the active pipeline/stage at `offset`.
+  /// Upload immediate data at `offset`.
   ///
   /// The byte vector is interpreted as tightly packed `u32` words; the
-  /// builder turns it into raw bytes when encoding.
-  PushConstants {
+  /// encoder turns it into raw bytes when encoding. Both offset and data
+  /// length must be multiples of 4 bytes. The GLSL syntax for declaring
+  /// immediate data blocks remains `layout(push_constant)`.
+  Immediates {
     pipeline: super::ResourceId,
-    stage: PipelineStage,
     offset: u32,
     bytes: Vec<u32>,
   },

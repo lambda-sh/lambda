@@ -1,7 +1,7 @@
 #![allow(clippy::needless_return)]
 
 //! Example: Spinning 3D cube sampled with a 3D texture.
-//! - Uses MVP push constants (vertex stage) for classic camera + rotation.
+//! - Uses MVP immediates (vertex stage) for classic camera + rotation.
 //! - Colors come from a 2D checkerboard texture sampled in the fragment
 //!   shader. Each face projects model-space coordinates to UVs.
 
@@ -20,10 +20,7 @@ use lambda::{
       Mesh,
       MeshBuilder,
     },
-    pipeline::{
-      PipelineStage,
-      RenderPipelineBuilder,
-    },
+    pipeline::RenderPipelineBuilder,
     render_pass::RenderPassBuilder,
     scene_math::{
       compute_perspective_projection,
@@ -130,20 +127,20 @@ void main() {
 
 "#;
 
-// ------------------------------ PUSH CONSTANTS -------------------------------
+// -------------------------------- IMMEDIATES ---------------------------------
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct PushConstant {
+pub struct ImmediateData {
   mvp: [[f32; 4]; 4],
   model: [[f32; 4]; 4],
 }
 
-pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
+pub fn immediate_data_to_bytes(immediate_data: &ImmediateData) -> &[u32] {
   unsafe {
-    let size_in_bytes = std::mem::size_of::<PushConstant>();
+    let size_in_bytes = std::mem::size_of::<ImmediateData>();
     let size_in_u32 = size_in_bytes / std::mem::size_of::<u32>();
-    let ptr = push_constants as *const PushConstant as *const u32;
+    let ptr = immediate_data as *const ImmediateData as *const u32;
     std::slice::from_raw_parts(ptr, size_in_u32)
   }
 }
@@ -330,11 +327,11 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       .with_sampler(2, &sampler)
       .build(render_context.gpu());
 
-    let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
+    let immediate_data_size = std::mem::size_of::<ImmediateData>() as u32;
     let pipeline = RenderPipelineBuilder::new()
       .with_culling(lambda::render::pipeline::CullingMode::Back)
       .with_depth()
-      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
           .expect("Failed to create vertex buffer"),
@@ -460,11 +457,10 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
         pipeline,
         buffer: 0,
       },
-      RenderCommand::PushConstants {
+      RenderCommand::Immediates {
         pipeline,
-        stage: PipelineStage::VERTEX,
         offset: 0,
-        bytes: Vec::from(push_constants_to_bytes(&PushConstant {
+        bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
           mvp: mvp.transpose(),
           model: model.transpose(),
         })),

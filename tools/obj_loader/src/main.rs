@@ -14,10 +14,6 @@ use lambda::{
     WindowEvent,
   },
   logging,
-  math::matrix::{
-    self,
-    Matrix,
-  },
   render::{
     buffer::BufferBuilder,
     command::RenderCommand,
@@ -25,10 +21,7 @@ use lambda::{
       Mesh,
       MeshBuilder,
     },
-    pipeline::{
-      PipelineStage,
-      RenderPipelineBuilder,
-    },
+    pipeline::RenderPipelineBuilder,
     render_pass::RenderPassBuilder,
     shader::{
       Shader,
@@ -86,20 +79,20 @@ void main() {
 
 "#;
 
-// ------------------------------ PUSH CONSTANTS -------------------------------
+// -------------------------------- IMMEDIATES ---------------------------------
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct PushConstant {
+pub struct ImmediateData {
   data: [f32; 4],
   render_matrix: [[f32; 4]; 4],
 }
 
-pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
+pub fn immediate_data_to_bytes(immediate_data: &ImmediateData) -> &[u32] {
   let bytes = unsafe {
-    let size_in_bytes = std::mem::size_of::<PushConstant>();
+    let size_in_bytes = std::mem::size_of::<ImmediateData>();
     let size_in_u32 = size_in_bytes / std::mem::size_of::<u32>();
-    let ptr = push_constants as *const PushConstant as *const u32;
+    let ptr = immediate_data as *const ImmediateData as *const u32;
     std::slice::from_raw_parts(ptr, size_in_u32)
   };
 
@@ -174,7 +167,10 @@ struct ObjLoader {
 impl Component<ComponentResult, String> for ObjLoader {
   fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
     match event {
-      lambda::events::Events::Window { event, issued_at } => match event {
+      lambda::events::Events::Window {
+        event,
+        issued_at: _,
+      } => match event {
         WindowEvent::Resize { width, height } => {
           self.width = width;
           self.height = height;
@@ -197,7 +193,7 @@ impl Component<ComponentResult, String> for ObjLoader {
 
     let render_pass =
       RenderPassBuilder::new().build(gpu, surface_format, depth_format);
-    let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
+    let immediate_data_size = std::mem::size_of::<ImmediateData>() as u32;
 
     let mesh = MeshBuilder::new().build_from_obj(&self.obj_path);
 
@@ -208,7 +204,7 @@ impl Component<ComponentResult, String> for ObjLoader {
     );
 
     let pipeline = RenderPipelineBuilder::new()
-      .with_push_constant(PipelineStage::VERTEX, push_constant_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::build_from_mesh(&mesh, gpu)
           .expect("Failed to create buffer"),
@@ -231,14 +227,14 @@ impl Component<ComponentResult, String> for ObjLoader {
 
   fn on_detach(
     &mut self,
-    render_context: &mut lambda::render::RenderContext,
+    _render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
     return Ok(ComponentResult::Success);
   }
 
   fn on_update(
     &mut self,
-    last_frame: &std::time::Duration,
+    _last_frame: &std::time::Duration,
   ) -> Result<ComponentResult, String> {
     self.frame_number += 1;
     return Ok(ComponentResult::Success);
@@ -246,24 +242,8 @@ impl Component<ComponentResult, String> for ObjLoader {
 
   fn on_render(
     &mut self,
-    render_context: &mut lambda::render::RenderContext,
+    _render_context: &mut lambda::render::RenderContext,
   ) -> Vec<lambda::render::command::RenderCommand> {
-    let camera = [0.0, 0.0, -2.0];
-    let view: [[f32; 4]; 4] = matrix::translation_matrix(camera);
-
-    // Create a projection matrix.
-    let projection: [[f32; 4]; 4] =
-      matrix::perspective_matrix(0.12, (4 / 3) as f32, 0.1, 200.0);
-
-    // Rotate model.
-    let model: [[f32; 4]; 4] = matrix::rotate_matrix(
-      matrix::identity_matrix(4, 4),
-      [0.0, 1.0, 0.0],
-      0.001 * self.frame_number as f32,
-    );
-
-    // Create render matrix.
-    let mesh_matrix = projection.multiply(&view).multiply(&model);
     let mesh_matrix =
       make_transform([0.0, 0.0, 0.5], self.frame_number as f32 * 0.01, 0.5);
 
@@ -298,11 +278,10 @@ impl Component<ComponentResult, String> for ObjLoader {
         pipeline: render_pipeline.clone(),
         buffer: 0,
       },
-      RenderCommand::PushConstants {
+      RenderCommand::Immediates {
         pipeline: render_pipeline.clone(),
-        stage: PipelineStage::VERTEX,
         offset: 0,
-        bytes: Vec::from(push_constants_to_bytes(&PushConstant {
+        bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
           data: [0.0, 0.0, 0.0, 0.0],
           render_matrix: mesh_matrix,
         })),

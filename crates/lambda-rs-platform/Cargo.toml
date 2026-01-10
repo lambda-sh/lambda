@@ -13,28 +13,47 @@ path = "src/lib.rs"
 [dependencies]
 winit = "=0.29.15"
 shaderc = { version = "=0.7", optional = true, default-features = false }
-naga = { version = "=26.0.0", optional = true, default-features = false, features = ["spv-out", "glsl-in", "wgsl-in"] }
+naga = { version = "=28.0.0", optional = true, default-features = false, features = [
+  "spv-out",
+  "glsl-in",
+  "wgsl-in",
+] }
 rand = "=0.8.5"
 obj-rs = "=0.7.0"
-wgpu = { version = "=26.0.1", optional = true, features = ["wgsl", "spirv"] }
+wgpu = { version = "=28.0.0", optional = true, features = ["wgsl", "spirv"] }
 pollster = { version = "=0.4.0", optional = true }
 lambda-rs-logging = { path = "../lambda-rs-logging", version = "2023.1.30" }
+
+# Force windows crate to 0.62 to unify wgpu-hal and gpu-allocator dependencies.
+# Both crates support this version range, but Cargo may resolve to different
+# versions without this explicit constraint.
+[target.'cfg(windows)'.dependencies]
+windows = "0.62"
 
 [dev-dependencies]
 mockall = "=0.11.3"
 
 [features]
-default=["wgpu", "shader-backend-naga"]
+default = ["wgpu", "shader-backend-naga"]
 
-shader-backend-naga=["dep:naga"]
-shader-backend-shaderc=["dep:shaderc"]
-shader-backend-shaderc-build-from-source=["shader-backend-shaderc", "shaderc/build-from-source"]
+shader-backend-naga = ["dep:naga"]
+shader-backend-shaderc = ["dep:shaderc"]
+shader-backend-shaderc-build-from-source = [
+  "shader-backend-shaderc",
+  "shaderc/build-from-source",
+]
 
-wgpu=["dep:wgpu", "dep:pollster", "wgpu/wgsl", "wgpu/spirv", "shader-backend-naga"]
-wgpu-with-vulkan=["wgpu"]
-wgpu-with-metal=["wgpu", "wgpu/metal"]
-wgpu-with-dx12=["wgpu", "wgpu/dx12"]
-wgpu-with-gl=["wgpu", "wgpu/webgl"]
+wgpu = [
+  "dep:wgpu",
+  "dep:pollster",
+  "wgpu/wgsl",
+  "wgpu/spirv",
+  "shader-backend-naga",
+]
+wgpu-with-vulkan = ["wgpu"]
+wgpu-with-metal = ["wgpu", "wgpu/metal"]
+wgpu-with-dx12 = ["wgpu", "wgpu/dx12"]
+wgpu-with-gl = ["wgpu", "wgpu/webgl"]
 
 [profile.dev]
 crate-type = ["cdylib", "rlib"]

@@ -15,7 +15,7 @@ use crate::wgpu::{
   vertex::ColorFormat,
 };
 
-/// Shader stage flags for push constants and visibility.
+/// Shader stage flags for visibility.
 #[derive(Clone, Copy, Debug)]
 ///
 /// This wrapper avoids exposing `wgpu` directly to higher layers while still
@@ -51,10 +51,9 @@ impl std::ops::BitOrAssign for PipelineStage {
   }
 }
 
-/// Push constant declaration for a stage and byte range.
+/// Immediate data declaration for a byte range.
 #[derive(Clone, Debug)]
-pub struct PushConstantRange {
-  pub stages: PipelineStage,
+pub struct ImmediateDataRange {
   pub range: Range<u32>,
 }
 
@@ -227,16 +226,100 @@ impl PipelineLayout {
 pub struct PipelineLayoutBuilder<'a> {
   label: Option<String>,
   layouts: Vec<&'a bind::BindGroupLayout>,
-  push_constant_ranges: Vec<PushConstantRange>,
+  immediate_data_ranges: Vec<ImmediateDataRange>,
+}
+
+/// Align a `u32` value up to the provided power-of-two alignment.
+fn align_up_u32(value: u32, alignment: u32) -> u32 {
+  if alignment == 0 {
+    return value;
+  }
+  let remainder = value % alignment;
+  if remainder == 0 {
+    return value;
+  }
+  return value + (alignment - remainder);
+}
+
+/// Validate immediate ranges and calculate the minimum allocation size.
+///
+/// wgpu v28 uses a single byte region of size `immediate_size`, addressed by
+/// `set_immediates(offset, data)`. This function enforces that the provided
+/// ranges:
+/// - Start at byte offset 0 (as a union)
+/// - Cover a contiguous span with no gaps (as a union)
+/// - Are aligned to `wgpu::IMMEDIATE_DATA_ALIGNMENT`
+fn validate_and_calculate_immediate_size(
+  immediate_data_ranges: &[ImmediateDataRange],
+) -> Result<u32, String> {
+  if immediate_data_ranges.is_empty() {
+    return Ok(0);
+  }
+
+  let alignment = wgpu::IMMEDIATE_DATA_ALIGNMENT;
+
+  let mut sorted_ranges: Vec<Range<u32>> = immediate_data_ranges
+    .iter()
+    .map(|r| r.range.clone())
+    .collect();
+  sorted_ranges.sort_by_key(|range| (range.start, range.end));
+
+  for range in &sorted_ranges {
+    if range.start > range.end {
+      return Err(format!(
+        "Immediate data range start {} exceeds end {}.",
+        range.start, range.end
+      ));
+    }
+    if range.start == range.end {
+      return Err(format!(
+        "Immediate data range {}..{} is empty.",
+        range.start, range.end
+      ));
+    }
+    if range.start % alignment != 0 {
+      return Err(format!(
+        "Immediate data range start {} is not aligned to {} bytes.",
+        range.start, alignment
+      ));
+    }
+    if range.end % alignment != 0 {
+      return Err(format!(
+        "Immediate data range end {} is not aligned to {} bytes.",
+        range.end, alignment
+      ));
+    }
+  }
+
+  let mut current_end = 0;
+  for range in &sorted_ranges {
+    if range.start > current_end {
+      return Err(format!(
+        "Immediate data ranges must be contiguous starting at 0; found gap \
+{}..{}.",
+        current_end, range.start
+      ));
+    }
+    current_end = current_end.max(range.end);
+  }
+
+  if current_end % alignment != 0 {
+    return Err(format!(
+      "Immediate data size {} is not aligned to {} bytes.",
+      current_end, alignment
+    ));
+  }
+
+  return Ok(current_end);
 }
 
 impl<'a> PipelineLayoutBuilder<'a> {
-  /// New builder with no layouts or push constants.
+  /// New builder with no layouts or immediate data.
   pub fn new() -> Self {
     return Self {
       label: None,
       layouts: Vec::new(),
-      push_constant_ranges: Vec::new(),
+      immediate_data_ranges: Vec::new(),
     };
   }
 
@@ -252,9 +335,12 @@ impl<'a> PipelineLayoutBuilder<'a> {
     return self;
   }
 
-  /// Provide push constant ranges.
-  pub fn with_push_constants(mut self, ranges: Vec<PushConstantRange>) -> Self {
-    self.push_constant_ranges = ranges;
+  /// Provide immediate data byte ranges.
+  pub fn with_immediate_data_ranges(
+    mut self,
+    ranges: Vec<ImmediateDataRange>,
+  ) -> Self {
+    self.immediate_data_ranges = ranges;
     return self;
   }
 
@@ -262,14 +348,32 @@ impl<'a> PipelineLayoutBuilder<'a> {
   pub fn build(self, gpu: &Gpu) -> PipelineLayout {
     let layouts_raw: Vec<&wgpu::BindGroupLayout> =
       self.layouts.iter().map(|l| l.raw()).collect();
-    let push_constants_raw: Vec<wgpu::PushConstantRange> = self
-      .push_constant_ranges
-      .iter()
-      .map(|pcr| wgpu::PushConstantRange {
-        stages: pcr.stages.to_wgpu(),
-        range: pcr.range.clone(),
-      })
-      .collect();
+
+    // wgpu v28 allocates a single immediate byte region sized by
+    // `PipelineLayoutDescriptor::immediate_size`. If callers provide multiple
+    // ranges, they are treated as sub-ranges of the same contiguous allocation.
+    //
+    // Validate that the union of ranges starts at 0 and has no gaps so that the
+    // required allocation size is well-defined.
+    let (immediate_size, fallback_used) =
+      match validate_and_calculate_immediate_size(&self.immediate_data_ranges) {
+        Ok(size) => (size, false),
+        Err(message) => {
+          logging::error!(
+            "Invalid immediate data ranges for pipeline layout: {}",
+            message
+          );
+          debug_assert!(false, "{}", message);
+
+          let max_end = self
+            .immediate_data_ranges
+            .iter()
+            .map(|r| r.range.end)
+            .max()
+            .unwrap_or(0);
+          (align_up_u32(max_end, wgpu::IMMEDIATE_DATA_ALIGNMENT), true)
+        }
+      };
 
     let raw =
       gpu
@@ -277,12 +381,69 @@ impl<'a> PipelineLayoutBuilder<'a> {
         .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
           label: self.label.as_deref(),
           bind_group_layouts: &layouts_raw,
-          push_constant_ranges: &push_constants_raw,
+          immediate_size,
         });
+    if fallback_used {
+      logging::warn!(
+        "Pipeline layout immediate size computed using fallback; consider \
+declaring immediate ranges as a single contiguous span starting at 0."
+      );
+    }
     return PipelineLayout {
       raw,
       label: self.label,
     };
+  }
+}
+
+#[cfg(test)]
+mod immediate_size_tests {
+  use super::{
+    validate_and_calculate_immediate_size,
+    ImmediateDataRange,
+  };
+
+  #[test]
+  fn immediate_size_empty_ok() {
+    let size = validate_and_calculate_immediate_size(&[]).unwrap();
+    assert_eq!(size, 0);
+  }
+
+  #[test]
+  fn immediate_size_overlapping_ranges_ok() {
+    let ranges = vec![
+      ImmediateDataRange { range: 0..64 },
+      ImmediateDataRange { range: 0..32 },
+    ];
+    let size = validate_and_calculate_immediate_size(&ranges).unwrap();
+    assert_eq!(size, 64);
+  }
+
+  #[test]
+  fn immediate_size_contiguous_ranges_ok() {
+    let ranges = vec![
+      ImmediateDataRange { range: 0..16 },
+      ImmediateDataRange { range: 16..32 },
+    ];
+    let size = validate_and_calculate_immediate_size(&ranges).unwrap();
+    assert_eq!(size, 32);
+  }
+
+  #[test]
+  fn immediate_size_gap_is_error() {
+    let ranges = vec![
+      ImmediateDataRange { range: 0..16 },
+      ImmediateDataRange { range: 32..48 },
+    ];
+    let err = validate_and_calculate_immediate_size(&ranges).unwrap_err();
+    assert!(err.contains("gap"));
+  }
+
+  #[test]
+  fn immediate_size_non_zero_start_is_error() {
+    let ranges = vec![ImmediateDataRange { range: 16..32 }];
+    let err = validate_and_calculate_immediate_size(&ranges).unwrap_err();
+    assert!(err.contains("gap"));
   }
 }
 
@@ -533,7 +694,7 @@ impl<'a> RenderPipelineBuilder<'a> {
             ..wgpu::MultisampleState::default()
           },
           fragment,
-          multiview: None,
+          multiview_mask: None,
           cache: None,
         });
 

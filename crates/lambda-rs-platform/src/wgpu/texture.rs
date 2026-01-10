@@ -98,6 +98,13 @@ impl FilterMode {
       FilterMode::Linear => wgpu::FilterMode::Linear,
     };
   }
+
+  pub(crate) fn to_wgpu_mipmap(self) -> wgpu::MipmapFilterMode {
+    return match self {
+      FilterMode::Nearest => wgpu::MipmapFilterMode::Nearest,
+      FilterMode::Linear => wgpu::MipmapFilterMode::Linear,
+    };
+  }
 }
 
 /// Texture addressing mode when sampling outside the [0,1] range.
@@ -600,7 +607,7 @@ impl SamplerBuilder {
       address_mode_w: self.address_w.to_wgpu(),
       mag_filter: self.mag_filter.to_wgpu(),
       min_filter: self.min_filter.to_wgpu(),
-      mipmap_filter: self.mipmap_filter.to_wgpu(),
+      mipmap_filter: self.mipmap_filter.to_wgpu_mipmap(),
       lod_min_clamp: self.lod_min,
       lod_max_clamp: self.lod_max,
       ..Default::default()
@@ -1028,7 +1035,7 @@ mod tests {
     assert_eq!(d.address_mode_w, wgpu::AddressMode::ClampToEdge);
     assert_eq!(d.mag_filter, wgpu::FilterMode::Nearest);
     assert_eq!(d.min_filter, wgpu::FilterMode::Nearest);
-    assert_eq!(d.mipmap_filter, wgpu::FilterMode::Nearest);
+    assert_eq!(d.mipmap_filter, wgpu::MipmapFilterMode::Nearest);
     assert_eq!(d.lod_min_clamp, 0.0);
     assert_eq!(d.lod_max_clamp, 32.0);
   }
@@ -1044,6 +1051,6 @@ mod tests {
     assert_eq!(d.address_mode_w, wgpu::AddressMode::ClampToEdge);
     assert_eq!(d.mag_filter, wgpu::FilterMode::Linear);
     assert_eq!(d.min_filter, wgpu::FilterMode::Linear);
-    assert_eq!(d.mipmap_filter, wgpu::FilterMode::Linear);
+    assert_eq!(d.mipmap_filter, wgpu::MipmapFilterMode::Linear);
   }
 }

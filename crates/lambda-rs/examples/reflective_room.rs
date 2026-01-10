@@ -31,7 +31,6 @@ use lambda::{
     pipeline::{
       CompareFunction,
       CullingMode,
-      PipelineStage,
       RenderPipelineBuilder,
       StencilFaceState,
       StencilOperation,
@@ -129,20 +128,20 @@ void main() {
 
 // (No extra fragment shaders needed; the floor mask uses a vertex-only pipeline.)
 
-// ------------------------------ PUSH CONSTANTS -------------------------------
+// -------------------------------- IMMEDIATES ---------------------------------
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct PushConstant {
+pub struct ImmediateData {
   mvp: [[f32; 4]; 4],
   model: [[f32; 4]; 4],
 }
 
-pub fn push_constants_to_words(push_constants: &PushConstant) -> &[u32] {
+pub fn immediate_data_to_words(immediate_data: &ImmediateData) -> &[u32] {
   unsafe {
-    let size_in_bytes = std::mem::size_of::<PushConstant>();
+    let size_in_bytes = std::mem::size_of::<ImmediateData>();
     let size_in_u32 = size_in_bytes / std::mem::size_of::<u32>();
-    let ptr = push_constants as *const PushConstant as *const u32;
+    let ptr = immediate_data as *const ImmediateData as *const u32;
     return std::slice::from_raw_parts(ptr, size_in_u32);
   }
 }
@@ -406,11 +405,10 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
           pipeline: pipe_floor_mask,
           buffer: 0,
         });
-        cmds.push(RenderCommand::PushConstants {
+        cmds.push(RenderCommand::Immediates {
           pipeline: pipe_floor_mask,
-          stage: PipelineStage::VERTEX,
           offset: 0,
-          bytes: Vec::from(push_constants_to_words(&PushConstant {
+          bytes: Vec::from(immediate_data_to_words(&ImmediateData {
             mvp: mvp_floor.transpose(),
             model: model_floor.transpose(),
           })),
@@ -440,11 +438,10 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
           pipeline: pipe_reflected,
           buffer: 0,
         });
-        cmds.push(RenderCommand::PushConstants {
+        cmds.push(RenderCommand::Immediates {
           pipeline: pipe_reflected,
-          stage: PipelineStage::VERTEX,
           offset: 0,
-          bytes: Vec::from(push_constants_to_words(&PushConstant {
+          bytes: Vec::from(immediate_data_to_words(&ImmediateData {
             mvp: mvp_reflect.transpose(),
             model: model_reflect.transpose(),
           })),
@@ -467,11 +464,10 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
         pipeline: pipe_floor_visual,
         buffer: 0,
       });
-      cmds.push(RenderCommand::PushConstants {
+      cmds.push(RenderCommand::Immediates {
         pipeline: pipe_floor_visual,
-        stage: PipelineStage::VERTEX,
         offset: 0,
-        bytes: Vec::from(push_constants_to_words(&PushConstant {
+        bytes: Vec::from(immediate_data_to_words(&ImmediateData {
           mvp: mvp_floor.transpose(),
           model: model_floor.transpose(),
         })),
@@ -491,11 +487,10 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       pipeline: pipe_normal,
       buffer: 0,
     });
-    cmds.push(RenderCommand::PushConstants {
+    cmds.push(RenderCommand::Immediates {
       pipeline: pipe_normal,
-      stage: PipelineStage::VERTEX,
       offset: 0,
-      bytes: Vec::from(push_constants_to_words(&PushConstant {
+      bytes: Vec::from(immediate_data_to_words(&ImmediateData {
         mvp: mvp.transpose(),
         model: model.transpose(),
       })),
@@ -576,7 +571,7 @@ impl ReflectiveRoomExample {
     }
     let cube_mesh = self.cube_mesh.as_ref().unwrap();
     let floor_mesh = self.floor_mesh.as_ref().unwrap();
-    let push_constants_size = std::mem::size_of::<PushConstant>() as u32;
+    let immediate_data_size = std::mem::size_of::<ImmediateData>() as u32;
 
     // Build pass descriptions locally first
     let rp_mask_desc = if self.stencil_enabled {
@@ -625,7 +620,7 @@ impl ReflectiveRoomExample {
         .with_depth_format(DepthFormat::Depth24PlusStencil8)
         .with_depth_write(false)
         .with_depth_compare(CompareFunction::Always)
-        .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+        .with_immediate_data(immediate_data_size)
         .with_buffer(
           BufferBuilder::new()
             .with_length(
@@ -677,7 +672,7 @@ impl ReflectiveRoomExample {
         // Mirrored transform reverses winding; cull front to keep visible faces.
         .with_culling(CullingMode::Front)
         .with_depth_format(DepthFormat::Depth24PlusStencil8)
-        .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+        .with_immediate_data(immediate_data_size)
         .with_buffer(
           BufferBuilder::new()
             .with_length(
@@ -730,7 +725,7 @@ impl ReflectiveRoomExample {
     let mut floor_builder = RenderPipelineBuilder::new()
       .with_label("floor-visual")
       .with_culling(CullingMode::Back)
-      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::new()
           .with_length(
@@ -768,7 +763,7 @@ impl ReflectiveRoomExample {
     let mut normal_builder = RenderPipelineBuilder::new()
       .with_label("cube-normal")
       .with_culling(CullingMode::Back)
-      .with_push_constant(PipelineStage::VERTEX, push_constants_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::new()
           .with_length(

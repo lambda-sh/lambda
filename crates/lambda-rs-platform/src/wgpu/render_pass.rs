@@ -173,16 +173,6 @@ impl<'a> RenderPass<'a> {
       .set_index_buffer(buffer.raw().slice(..), format.to_wgpu());
   }
 
-  /// Upload push constants.
-  pub fn set_push_constants(
-    &mut self,
-    stages: pipeline::PipelineStage,
-    offset: u32,
-    data: &[u8],
-  ) {
-    self.raw.set_push_constants(stages.to_wgpu(), offset, data);
-  }
-
   /// Issue a non-indexed draw over a vertex range.
   pub fn draw(
     &mut self,
@@ -433,6 +423,7 @@ impl RenderPassBuilder {
       depth_stencil_attachment,
       timestamp_writes: None,
       occlusion_query_set: None,
+      multiview_mask: None,
     };
 
     let pass = encoder.begin_render_pass_raw(&desc);
@@ -444,5 +435,13 @@ impl<'a> RenderPass<'a> {
   /// Set the stencil reference value used by the active pipeline's stencil test.
   pub fn set_stencil_reference(&mut self, reference: u32) {
     self.raw.set_stencil_reference(reference);
+  }
+
+  /// Set immediate data for subsequent draw calls.
+  ///
+  /// This is the wgpu v28 replacement for push constants. The `offset` and
+  /// `data` length MUST be multiples of 4 bytes (IMMEDIATE_DATA_ALIGNMENT).
+  pub fn set_immediates(&mut self, offset: u32, data: &[u8]) {
+    self.raw.set_immediates(offset, data);
   }
 }

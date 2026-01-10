@@ -3,17 +3,17 @@ resolver = "2"
 
 # Sub packages provided by lambda.
 members = [
-    "crates/lambda-rs",
-    "crates/lambda-rs-args",
-    "crates/lambda-rs-logging",
-    "crates/lambda-rs-platform",
-    "tools/obj_loader"
+  "crates/lambda-rs",
+  "crates/lambda-rs-args",
+  "crates/lambda-rs-logging",
+  "crates/lambda-rs-platform",
+  "tools/obj_loader",
 ]
 
 default-members = [
-    "crates/lambda-rs",
-    "crates/lambda-rs-args",
-    "crates/lambda-rs-logging",
-    "crates/lambda-rs-platform",
-    "tools/obj_loader"
+  "crates/lambda-rs",
+  "crates/lambda-rs-args",
+  "crates/lambda-rs-logging",
+  "crates/lambda-rs-platform",
+  "tools/obj_loader",
 ]

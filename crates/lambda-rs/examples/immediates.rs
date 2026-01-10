@@ -16,10 +16,7 @@ use lambda::{
       Mesh,
       MeshBuilder,
     },
-    pipeline::{
-      PipelineStage,
-      RenderPipelineBuilder,
-    },
+    pipeline::RenderPipelineBuilder,
     render_pass::RenderPassBuilder,
     scene_math::{
       compute_model_view_projection_matrix_about_pivot,
@@ -84,20 +81,22 @@ void main() {
 
 "#;
 
-// ------------------------------ PUSH CONSTANTS -------------------------------
+// ------------------------------ IMMEDIATES ----------------------------------
 
+/// Immediate data structure passed to shaders via wgpu's immediates feature.
+/// In GLSL shaders, this is still declared as `push_constant` uniform block.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct PushConstant {
+pub struct ImmediateData {
   data: [f32; 4],
   render_matrix: [[f32; 4]; 4],
 }
 
-pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
+pub fn immediate_data_to_bytes(immediate: &ImmediateData) -> &[u32] {
   let bytes = unsafe {
-    let size_in_bytes = std::mem::size_of::<PushConstant>();
+    let size_in_bytes = std::mem::size_of::<ImmediateData>();
     let size_in_u32 = size_in_bytes / std::mem::size_of::<u32>();
-    let ptr = push_constants as *const PushConstant as *const u32;
+    let ptr = immediate as *const ImmediateData as *const u32;
     std::slice::from_raw_parts(ptr, size_in_u32)
   };
 
@@ -110,7 +109,7 @@ pub fn push_constants_to_bytes(push_constants: &PushConstant) -> &[u32] {
 
 const ROTATION_TURNS_PER_SECOND: f32 = 0.12;
 
-pub struct PushConstantsExample {
+pub struct ImmediatesExample {
   elapsed_seconds: f32,
   shader: Shader,
   fs: Shader,
@@ -121,7 +120,7 @@ pub struct PushConstantsExample {
   height: u32,
 }
 
-impl Component<ComponentResult, String> for PushConstantsExample {
+impl Component<ComponentResult, String> for ImmediatesExample {
   fn on_attach(
     &mut self,
     render_context: &mut lambda::render::RenderContext,
@@ -131,7 +130,7 @@ impl Component<ComponentResult, String> for PushConstantsExample {
       render_context.surface_format(),
       render_context.depth_format(),
     );
-    let push_constant_size = std::mem::size_of::<PushConstant>() as u32;
+    let immediate_data_size = std::mem::size_of::<ImmediateData>() as u32;
 
     // Create triangle mesh.
     let vertices = [
@@ -190,7 +189,7 @@ impl Component<ComponentResult, String> for PushConstantsExample {
 
     let pipeline = RenderPipelineBuilder::new()
       .with_culling(lambda::render::pipeline::CullingMode::None)
-      .with_push_constant(PipelineStage::VERTEX, push_constant_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::build_from_mesh(&mesh, render_context.gpu())
           .expect("Failed to create buffer"),
@@ -301,11 +300,10 @@ impl Component<ComponentResult, String> for PushConstantsExample {
         pipeline: render_pipeline.clone(),
         buffer: 0,
       },
-      RenderCommand::PushConstants {
+      RenderCommand::Immediates {
         pipeline: render_pipeline.clone(),
-        stage: PipelineStage::VERTEX,
         offset: 0,
-        bytes: Vec::from(push_constants_to_bytes(&PushConstant {
+        bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
           data: [0.0, 0.0, 0.0, 0.0],
           // Transpose to match GPU's column‑major expectation.
           render_matrix: mesh_matrix.transpose(),
@@ -320,20 +318,20 @@ impl Component<ComponentResult, String> for PushConstantsExample {
   }
 }
 
-impl Default for PushConstantsExample {
+impl Default for ImmediatesExample {
   fn default() -> Self {
     let triangle_in_3d = VirtualShader::Source {
       source: VERTEX_SHADER_SOURCE.to_string(),
       kind: ShaderKind::Vertex,
       entry_point: "main".to_string(),
-      name: "push_constants".to_string(),
+      name: "immediates".to_string(),
     };
 
     let triangle_fragment_shader = VirtualShader::Source {
       source: FRAGMENT_SHADER_SOURCE.to_string(),
       kind: ShaderKind::Fragment,
       entry_point: "main".to_string(),
-      name: "push_constants".to_string(),
+      name: "immediates".to_string(),
     };
 
     let mut builder = ShaderBuilder::new();
@@ -354,16 +352,16 @@ impl Default for PushConstantsExample {
 }
 
 fn main() {
-  let runtime = ApplicationRuntimeBuilder::new("3D Push Constants Example")
+  let runtime = ApplicationRuntimeBuilder::new("3D Immediates Example")
     .with_window_configured_as(move |window_builder| {
       return window_builder
         .with_dimensions(800, 600)
-        .with_name("3D Push Constants Example");
+        .with_name("3D Immediates Example");
     })
     .with_renderer_configured_as(|renderer_builder| {
       return renderer_builder.with_render_timeout(1_000_000_000);
     })
-    .with_component(move |runtime, triangles: PushConstantsExample| {
+    .with_component(move |runtime, triangles: ImmediatesExample| {
       return (runtime, triangles);
     })
     .build();

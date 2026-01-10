@@ -46,9 +46,6 @@ impl MemoryHints {
 pub struct Features(wgpu::Features);
 
 impl Features {
-  /// Enable push constants support.
-  pub const PUSH_CONSTANTS: Features = Features(wgpu::Features::PUSH_CONSTANTS);
-
   pub(crate) fn to_wgpu(self) -> wgpu::Features {
     self.0
   }
@@ -82,13 +79,13 @@ pub struct GpuBuilder {
 }
 
 impl GpuBuilder {
-  /// Create a builder with defaults favoring performance and push constants.
+  /// Create a builder with defaults favoring performance.
   pub fn new() -> Self {
     Self {
       label: Some("Lambda GPU".to_string()),
       power_preference: PowerPreference::HighPerformance,
       force_fallback_adapter: false,
-      required_features: Features::PUSH_CONSTANTS,
+      required_features: Features(wgpu::Features::IMMEDIATES),
       memory_hints: MemoryHints::Performance,
     }
   }
@@ -152,6 +149,7 @@ impl GpuBuilder {
       label: self.label.as_deref(),
       required_features: self.required_features.to_wgpu(),
       required_limits: adapter.limits(),
+      experimental_features: wgpu::ExperimentalFeatures::default(),
       memory_hints: self.memory_hints.to_wgpu(),
       trace: wgpu::Trace::Off,
     };

@@ -53,7 +53,6 @@ impl PresentMode {
       wgpu::PresentMode::Mailbox => PresentMode::Mailbox,
       wgpu::PresentMode::AutoVsync => PresentMode::AutoVsync,
       wgpu::PresentMode::AutoNoVsync => PresentMode::AutoNoVsync,
-      _ => PresentMode::Fifo,
     };
   }
 }

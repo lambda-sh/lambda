@@ -15,20 +15,17 @@
 //!
 //! Example
 //! ```rust,ignore
-//! // Single vertex buffer with position/color; one push constant range for the vertex stage
-//! use lambda::render::pipeline::{RenderPipelineBuilder, PipelineStage, CullingMode};
+//! // Single vertex buffer with position/color; one immediate data range for the vertex stage
+//! use lambda::render::pipeline::{RenderPipelineBuilder, CullingMode};
 //! let pipeline = RenderPipelineBuilder::new()
 //!   .with_buffer(vertex_buffer, attributes)
-//!   .with_push_constant(PipelineStage::VERTEX, 64)
+//!   .with_immediate_data(64)
 //!   .with_layouts(&[&globals_bgl])
 //!   .with_culling(CullingMode::Back)
 //!   .build(&mut render_context, &render_pass, &vs, Some(&fs));
 //! ```
 
-use std::{
-  ops::Range,
-  rc::Rc,
-};
+use std::rc::Rc;
 
 use lambda_platform::wgpu::pipeline as platform_pipeline;
 use logging;
@@ -116,11 +113,11 @@ impl RenderPipeline {
   }
 }
 
-/// Public alias for platform shader stage flags used by push constants.
+/// Public alias for platform shader stage flags.
+///
+/// Stage flags remain useful for APIs such as bind group visibility, even
+/// though wgpu v28 immediates no longer use stage-scoped updates.
 pub use platform_pipeline::PipelineStage;
-
-/// Convenience alias for uploading push constants: stage and byte range.
-pub type PushConstantUpload = (PipelineStage, Range<u32>);
 
 struct BufferBinding {
   buffer: Rc<Buffer>,
@@ -260,7 +257,7 @@ pub struct StencilState {
 /// - If a fragment shader is omitted, no color target is attached and the
 ///   pipeline can still be used for vertex‑only workloads.
 pub struct RenderPipelineBuilder {
-  push_constants: Vec<PushConstantUpload>,
+  immediate_data: Vec<std::ops::Range<u32>>,
   bindings: Vec<BufferBinding>,
   culling: CullingMode,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
@@ -277,7 +274,7 @@ impl RenderPipelineBuilder {
   /// Creates a new render pipeline builder.
   pub fn new() -> Self {
     Self {
-      push_constants: Vec::new(),
+      immediate_data: Vec::new(),
       bindings: Vec::new(),
       culling: CullingMode::Back,
       bind_group_layouts: Vec::new(),
@@ -346,13 +343,14 @@ impl RenderPipelineBuilder {
     );
   }
 
-  /// Declare a push constant range for a shader stage in bytes.
-  pub fn with_push_constant(
-    mut self,
-    stage: PipelineStage,
-    bytes: u32,
-  ) -> Self {
-    self.push_constants.push((stage, 0..bytes));
+  /// Declare an immediate data byte range size.
+  ///
+  /// wgpu v28 uses a single immediate data region sized by the pipeline
+  /// layout. This method records a range starting at 0 whose end defines the
+  /// required allocation size. Multiple calls are allowed; the final
+  /// allocation is derived from the union of ranges.
+  pub fn with_immediate_data(mut self, bytes: u32) -> Self {
+    self.immediate_data.push(0..bytes);
     return self;
   }
 
@@ -432,7 +430,7 @@ impl RenderPipelineBuilder {
   }
 
   /// Build a graphics pipeline using the provided shader modules and
-  /// previously registered vertex inputs and push constants.
+  /// previously registered vertex inputs and immediate data.
   ///
   /// # Arguments
   /// * `gpu` - The GPU device to create the pipeline on.
@@ -464,15 +462,15 @@ impl RenderPipelineBuilder {
       )
     });
 
-    // Push constant ranges
-    let push_constant_ranges: Vec<platform_pipeline::PushConstantRange> = self
-      .push_constants
-      .iter()
-      .map(|(stage, range)| platform_pipeline::PushConstantRange {
-        stages: *stage,
-        range: range.clone(),
-      })
-      .collect();
+    // Immediate data ranges
+    let immediate_data_ranges: Vec<platform_pipeline::ImmediateDataRange> =
+      self
+        .immediate_data
+        .iter()
+        .map(|range| platform_pipeline::ImmediateDataRange {
+          range: range.clone(),
+        })
+        .collect();
 
     // Bind group layouts limit check
     let max_bind_groups = gpu.limit_max_bind_groups() as usize;
@@ -535,7 +533,7 @@ impl RenderPipelineBuilder {
     let pipeline_layout = platform_pipeline::PipelineLayoutBuilder::new()
       .with_label("lambda-pipeline-layout")
       .with_layouts(&bgl_platform)
-      .with_push_constants(push_constant_ranges)
+      .with_immediate_data_ranges(immediate_data_ranges)
       .build(gpu.platform());
 
     // Vertex buffers and attributes
