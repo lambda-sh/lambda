@@ -14,10 +14,6 @@ use lambda::{
     WindowEvent,
   },
   logging,
-  math::matrix::{
-    self,
-    Matrix,
-  },
   render::{
     buffer::BufferBuilder,
     command::RenderCommand,
@@ -25,10 +21,7 @@ use lambda::{
       Mesh,
       MeshBuilder,
     },
-    pipeline::{
-      PipelineStage,
-      RenderPipelineBuilder,
-    },
+    pipeline::RenderPipelineBuilder,
     render_pass::RenderPassBuilder,
     shader::{
       Shader,
@@ -174,7 +167,10 @@ struct ObjLoader {
 impl Component<ComponentResult, String> for ObjLoader {
   fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
     match event {
-      lambda::events::Events::Window { event, issued_at } => match event {
+      lambda::events::Events::Window {
+        event,
+        issued_at: _,
+      } => match event {
         WindowEvent::Resize { width, height } => {
           self.width = width;
           self.height = height;
@@ -208,7 +204,7 @@ impl Component<ComponentResult, String> for ObjLoader {
     );
 
     let pipeline = RenderPipelineBuilder::new()
-      .with_immediate_data(PipelineStage::VERTEX, immediate_data_size)
+      .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::build_from_mesh(&mesh, gpu)
           .expect("Failed to create buffer"),
@@ -231,14 +227,14 @@ impl Component<ComponentResult, String> for ObjLoader {
 
   fn on_detach(
     &mut self,
-    render_context: &mut lambda::render::RenderContext,
+    _render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
     return Ok(ComponentResult::Success);
   }
 
   fn on_update(
     &mut self,
-    last_frame: &std::time::Duration,
+    _last_frame: &std::time::Duration,
   ) -> Result<ComponentResult, String> {
     self.frame_number += 1;
     return Ok(ComponentResult::Success);
@@ -246,24 +242,8 @@ impl Component<ComponentResult, String> for ObjLoader {
 
   fn on_render(
     &mut self,
-    render_context: &mut lambda::render::RenderContext,
+    _render_context: &mut lambda::render::RenderContext,
   ) -> Vec<lambda::render::command::RenderCommand> {
-    let camera = [0.0, 0.0, -2.0];
-    let view: [[f32; 4]; 4] = matrix::translation_matrix(camera);
-
-    // Create a projection matrix.
-    let projection: [[f32; 4]; 4] =
-      matrix::perspective_matrix(0.12, (4 / 3) as f32, 0.1, 200.0);
-
-    // Rotate model.
-    let model: [[f32; 4]; 4] = matrix::rotate_matrix(
-      matrix::identity_matrix(4, 4),
-      [0.0, 1.0, 0.0],
-      0.001 * self.frame_number as f32,
-    );
-
-    // Create render matrix.
-    let mesh_matrix = projection.multiply(&view).multiply(&model);
     let mesh_matrix =
       make_transform([0.0, 0.0, 0.5], self.frame_number as f32 * 0.01, 0.5);
 
@@ -300,7 +280,6 @@ impl Component<ComponentResult, String> for ObjLoader {
       },
       RenderCommand::Immediates {
         pipeline: render_pipeline.clone(),
-        stage: PipelineStage::VERTEX,
         offset: 0,
         bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
           data: [0.0, 0.0, 0.0, 0.0],
