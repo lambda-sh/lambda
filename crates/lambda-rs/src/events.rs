@@ -36,12 +36,6 @@ impl EventMask {
   /// Component lifecycle events (`Events::Component { .. }`).
   pub const COMPONENT: Self = EventMask(1 << 4);
 
-  /// Custom user events (`Events::Custom { .. }`).
-  ///
-  /// This constant is reserved for the custom event variant defined in
-  /// `docs/specs/component-event-handling.md`.
-  pub const CUSTOM: Self = EventMask(1 << 5);
-
   /// Returns `true` when `self` contains every bit set in `other`.
   #[inline]
   pub const fn contains(self, other: Self) -> bool {
