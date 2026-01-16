@@ -3,13 +3,13 @@ title: "Uniform Buffers: Build a Spinning Triangle"
 document_id: "uniform-buffers-tutorial-2025-10-17"
 status: "draft"
 created: "2025-10-17T00:00:00Z"
-last_updated: "2025-12-15T00:00:00Z"
-version: "0.5.0"
+last_updated: "2026-01-16T00:00:00Z"
+version: "0.5.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
+repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "uniform-buffers", "rust", "wgpu"]
@@ -371,16 +371,18 @@ let commands = vec![
 Track window dimensions and update the per‑frame matrix using the new aspect ratio. Forwarding resize events into stored `width` and `height` maintains consistent camera projection across resizes.
 
 ```rust
-use lambda::events::{Events, WindowEvent};
+use lambda::events::{EventMask, WindowEvent};
 
-fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
-  if let Events::Window { event, .. } = event {
-    if let WindowEvent::Resize { width, height } = event {
-      self.width = width;
-      self.height = height;
-    }
+fn event_mask(&self) -> EventMask {
+  return EventMask::WINDOW;
+}
+
+fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
+  if let WindowEvent::Resize { width, height } = event {
+    self.width = *width;
+    self.height = *height;
   }
-  return Ok(ComponentResult::Success);
+  return Ok(());
 }
 ```
 
@@ -441,6 +443,7 @@ multiple objects and passes.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.5.1 (2026-01-16): Replace `on_event` resize handling with `event_mask()` and `on_window_event`.
 - 0.5.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.4.1 (2025‑11‑10): Add Conclusion section summarizing accomplishments; update
 metadata and commit.

@@ -3,13 +3,13 @@ title: "Textured Cube: 3D Immediates + 2D Sampling"
 document_id: "textured-cube-tutorial-2025-11-10"
 status: "draft"
 created: "2025-11-10T00:00:00Z"
-last_updated: "2026-01-07T00:00:00Z"
-version: "0.3.1"
+last_updated: "2026-01-16T00:00:00Z"
+version: "0.3.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "183a0499250a2c16e0a09b22107201720016fc48"
+repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "3d", "immediates", "textures", "samplers", "rust", "wgpu"]
@@ -492,14 +492,18 @@ let commands = vec![
 Track window size from events so the projection and viewport use current dimensions.
 
 ```rust
-use lambda::events::{Events, WindowEvent};
+use lambda::events::{EventMask, WindowEvent};
 
-fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
-  if let Events::Window { event: WindowEvent::Resize { width, height }, .. } = event {
-    self.width = width;
-    self.height = height;
+fn event_mask(&self) -> EventMask {
+  return EventMask::WINDOW;
+}
+
+fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
+  if let WindowEvent::Resize { width, height } = event {
+    self.width = *width;
+    self.height = *height;
   }
-  return Ok(ComponentResult::Success);
+  return Ok(());
 }
 ```
 
@@ -552,6 +556,7 @@ transforms alongside 2D sampling in a 3D render path.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.3.2 (2026-01-16): Replace `on_event` resize handling with `event_mask()` and `on_window_event`.
 - 0.3.1 (2026-01-07): Remove stage usage from immediates API examples.
 - 0.3.0 (2026-01-05): Migrate from push constants to immediates for wgpu v28; update all code examples and terminology.
 - 0.2.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.

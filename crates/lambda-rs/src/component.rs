@@ -4,7 +4,14 @@ use std::{
 };
 
 use crate::{
-  events::Events,
+  events::{
+    ComponentEvent,
+    EventMask,
+    Key,
+    Mouse,
+    RuntimeEvent,
+    WindowEvent,
+  },
   render::{
     command::RenderCommand,
     RenderContext,
@@ -27,9 +34,38 @@ where
   /// component data storage a runtime is using.
   fn on_detach(&mut self, render_context: &mut RenderContext) -> Result<R, E>;
 
-  /// The event function is called every time an event is received from
-  /// the windowing system/event loop.
-  fn on_event(&mut self, event: Events) -> Result<R, E>;
+  /// Declares which event categories this component wants to receive.
+  ///
+  /// Runtimes MAY use this to skip dispatch for components that are not
+  /// interested in a given event category.
+  fn event_mask(&self) -> EventMask {
+    return EventMask::NONE;
+  }
+
+  /// Called when a window event is received.
+  fn on_window_event(&mut self, _event: &WindowEvent) -> Result<(), E> {
+    return Ok(());
+  }
+
+  /// Called when a keyboard event is received.
+  fn on_keyboard_event(&mut self, _event: &Key) -> Result<(), E> {
+    return Ok(());
+  }
+
+  /// Called when a mouse event is received.
+  fn on_mouse_event(&mut self, _event: &Mouse) -> Result<(), E> {
+    return Ok(());
+  }
+
+  /// Called when a runtime event is received.
+  fn on_runtime_event(&mut self, _event: &RuntimeEvent) -> Result<(), E> {
+    return Ok(());
+  }
+
+  /// Called when a component event is received.
+  fn on_component_event(&mut self, _event: &ComponentEvent) -> Result<(), E> {
+    return Ok(());
+  }
 
   /// The update function is called every frame and is used to update
   /// the state of the component.

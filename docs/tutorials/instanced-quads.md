@@ -3,13 +3,13 @@ title: "Instanced Rendering: Grid of Colored Quads"
 document_id: "instanced-quads-tutorial-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-12-15T00:00:00Z"
-version: "0.2.0"
+last_updated: "2026-01-16T00:00:00Z"
+version: "0.2.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
+repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "instancing", "vertex-buffers", "rust", "wgpu"]
@@ -368,22 +368,23 @@ fn on_detach(
   return Ok(ComponentResult::Success);
 }
 
-fn on_event(
+fn event_mask(&self) -> lambda::events::EventMask {
+  return lambda::events::EventMask::WINDOW;
+}
+
+fn on_window_event(
   &mut self,
-  event: lambda::events::Events,
-) -> Result<ComponentResult, String> {
+  event: &lambda::events::WindowEvent,
+) -> Result<(), String> {
   match event {
-    lambda::events::Events::Window { event, .. } => match event {
-      WindowEvent::Resize { width, height } => {
-        self.width = width;
-        self.height = height;
-        logging::info!("Window resized to {}x{}", width, height);
-      }
-      _ => {}
-    },
+    lambda::events::WindowEvent::Resize { width, height } => {
+      self.width = *width;
+      self.height = *height;
+      logging::info!("Window resized to {}x{}", width, height);
+    }
     _ => {}
   }
-  return Ok(ComponentResult::Success);
+  return Ok(());
 }
 
 fn on_update(
@@ -476,7 +477,7 @@ fn main() {
 }
 ```
 
-The commands bind both vertex buffers and the index buffer before issuing `DrawIndexed`. The `instances: 0..self.instance_count` range enables instanced rendering, and the runtime builder configures the window and renderer and installs the component so that `lambda-rs` drives `on_attach`, `on_event`, `on_update`, and `on_render` each frame.
+The commands bind both vertex buffers and the index buffer before issuing `DrawIndexed`. The `instances: 0..self.instance_count` range enables instanced rendering, and the runtime builder configures the window and renderer and installs the component so that `lambda-rs` drives `on_attach`, routes window events through `on_window_event`, and calls `on_update` and `on_render` each frame.
 
 ## Validation <a name="validation"></a>
 
@@ -509,6 +510,7 @@ This tutorial demonstrates how the `lambda-rs` crate uses per-vertex and per-ins
 
 ## Changelog <a name="changelog"></a>
 
+- 2026-01-16 (v0.2.1) — Update resize handling examples to use `event_mask()` and `on_window_event`.
 - 2025-12-15 (v0.2.0) — Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-25 (v0.1.1) — Align feature naming with `render-validation-instancing` and update metadata.
 - 2025-11-25 (v0.1.0) — Initial instanced quads tutorial describing per-vertex and per-instance buffers and the `instanced_quads` example.

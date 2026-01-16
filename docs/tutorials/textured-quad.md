@@ -3,13 +3,13 @@ title: "Textured Quad: Sample a 2D Texture"
 document_id: "textured-quad-tutorial-2025-11-01"
 status: "draft"
 created: "2025-11-01T00:00:00Z"
-last_updated: "2025-12-15T00:00:00Z"
-version: "0.4.0"
+last_updated: "2026-01-16T00:00:00Z"
+version: "0.4.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
+repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "textures", "samplers", "rust", "wgpu"]
@@ -95,7 +95,7 @@ use lambda::{
 
 // Placement guidance
 // - Resource creation (shaders, mesh, textures, pipeline): on_attach
-// - Window resize handling: on_event
+// - Window resize handling: on_window_event
 // - Rendering (record commands): on_render
 
 pub struct TexturedQuadExample {
@@ -151,7 +151,17 @@ impl Component<ComponentResult, String> for TexturedQuadExample {
     return Ok(ComponentResult::Success);
   }
 
-  fn on_event(&mut self, _event: lambda::events::Events) -> Result<ComponentResult, String> {
+  fn on_detach(
+    &mut self,
+    _render_context: &mut lambda::render::RenderContext,
+  ) -> Result<ComponentResult, String> {
+    return Ok(ComponentResult::Success);
+  }
+
+  fn on_update(
+    &mut self,
+    _last_frame: &std::time::Duration,
+  ) -> Result<ComponentResult, String> {
     return Ok(ComponentResult::Success);
   }
 
@@ -445,18 +455,22 @@ These commands open a render pass with a centered square viewport, select the pi
 Track window size from events and recompute the centered square viewport.
 
 ```rust
-use lambda::events::{Events, WindowEvent};
+use lambda::events::{EventMask, WindowEvent};
 
-fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
-  if let Events::Window { event: WindowEvent::Resize { width, height }, .. } = event {
-    self.width = width;
-    self.height = height;
+fn event_mask(&self) -> EventMask {
+  return EventMask::WINDOW;
+}
+
+fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
+  if let WindowEvent::Resize { width, height } = event {
+    self.width = *width;
+    self.height = *height;
   }
-  return Ok(ComponentResult::Success);
+  return Ok(());
 }
 ```
 
-This event handler updates the stored window dimensions when a resize occurs. The render path uses these values to recompute the centered square viewport so the quad remains square and centered as the window changes size.
+This window event handler updates the stored window dimensions when a resize occurs. The render path uses these values to recompute the centered square viewport so the quad remains square and centered as the window changes size.
 
 ## Validation <a name="validation"></a>
 
@@ -504,6 +518,7 @@ with correct color space handling and filtering.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.4.1 (2026-01-16): Replace `on_event` resize handling with `event_mask()` and `on_window_event`.
 - 0.4.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.3.3 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
 - 0.3.2 (2025-11-10): Add narrative explanations after each code block; clarify lifecycle and binding flow.

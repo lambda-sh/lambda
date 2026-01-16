@@ -2,7 +2,10 @@
 
 use lambda::{
   component::Component,
-  events::WindowEvent,
+  events::{
+    EventMask,
+    WindowEvent,
+  },
   logging,
   math::{
     matrix,
@@ -219,23 +222,20 @@ impl Component<ComponentResult, String> for ImmediatesExample {
     return Ok(ComponentResult::Success);
   }
 
-  fn on_event(
-    &mut self,
-    event: lambda::events::Events,
-  ) -> Result<ComponentResult, String> {
-    // Only handle resizes.
+  fn event_mask(&self) -> EventMask {
+    return EventMask::WINDOW;
+  }
+
+  fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
     match event {
-      lambda::events::Events::Window { event, issued_at } => match event {
-        WindowEvent::Resize { width, height } => {
-          self.width = width;
-          self.height = height;
-          logging::info!("Window resized to {}x{}", width, height);
-        }
-        _ => {}
-      },
+      WindowEvent::Resize { width, height } => {
+        self.width = *width;
+        self.height = *height;
+        logging::info!("Window resized to {}x{}", width, height);
+      }
       _ => {}
-    };
-    return Ok(ComponentResult::Success);
+    }
+    return Ok(());
   }
 
   /// Update elapsed time every frame.

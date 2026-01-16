@@ -7,6 +7,10 @@
 
 use lambda::{
   component::Component,
+  events::{
+    EventMask,
+    WindowEvent,
+  },
   logging,
   math::matrix::Matrix,
   render::{
@@ -364,21 +368,19 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
     return Ok(ComponentResult::Success);
   }
 
-  fn on_event(
-    &mut self,
-    event: lambda::events::Events,
-  ) -> Result<ComponentResult, String> {
+  fn event_mask(&self) -> EventMask {
+    return EventMask::WINDOW;
+  }
+
+  fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
     match event {
-      lambda::events::Events::Window { event, .. } => match event {
-        lambda::events::WindowEvent::Resize { width, height } => {
-          self.width = width;
-          self.height = height;
-        }
-        _ => {}
-      },
+      WindowEvent::Resize { width, height } => {
+        self.width = *width;
+        self.height = *height;
+      }
       _ => {}
     }
-    return Ok(ComponentResult::Success);
+    return Ok(());
   }
 
   fn on_update(

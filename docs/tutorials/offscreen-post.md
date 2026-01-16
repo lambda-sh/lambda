@@ -3,13 +3,13 @@ title: "Offscreen Post: Render to a Texture and Sample to the Surface"
 document_id: "offscreen-post-tutorial-2025-12-29"
 status: "draft"
 created: "2025-12-29T00:00:00Z"
-last_updated: "2025-12-31T00:00:00Z"
-version: "0.2.0"
+last_updated: "2026-01-16T00:00:00Z"
+version: "0.2.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "bc2ca687922db601998e7e5a0c0b2e870c857be1"
+repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "offscreen", "render-targets", "multipass", "post-processing", "texture", "sampler", "wgpu", "rust"]
@@ -390,16 +390,19 @@ impl Component<ComponentResult, String> for OffscreenPostExample {
     return Ok(ComponentResult::Success);
   }
 
-  fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
-    if let Events::Window {
-      event: lambda::events::WindowEvent::Resize { width, height },
-      ..
-    } = event
-    {
-      self.width = width;
-      self.height = height;
+  fn event_mask(&self) -> lambda::events::EventMask {
+    return lambda::events::EventMask::WINDOW;
+  }
+
+  fn on_window_event(
+    &mut self,
+    event: &lambda::events::WindowEvent,
+  ) -> Result<(), String> {
+    if let lambda::events::WindowEvent::Resize { width, height } = event {
+      self.width = *width;
+      self.height = *height;
     }
-    return Ok(ComponentResult::Success);
+    return Ok(());
   }
 
   fn on_update(
@@ -570,7 +573,7 @@ vertices for the fullscreen quad.
 
 ### Step 7 — Resize Events and Resource Replacement <a name="step-7"></a>
 
-`on_event` stores the new width/height and `ensure_offscreen_matches_surface`
+`on_window_event` stores the new width/height and `ensure_offscreen_matches_surface`
 rebuilds the offscreen target (and dependent bind group) when the sizes
 diverge.
 
@@ -723,6 +726,7 @@ a fullscreen quad and a bind group.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.2.1 (2026-01-16): Replace `on_event` resize handling with `event_mask()` and `on_window_event`.
 - 0.2.0 (2025-12-31): Update the tutorial to match the example’s `Default`,
   `on_attach`, `on_render`, and resize replacement structure.
 - 0.1.0 (2025-12-29): Initial draft aligned with

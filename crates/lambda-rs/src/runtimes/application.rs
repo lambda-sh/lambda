@@ -20,6 +20,7 @@ use crate::{
   component::Component,
   events::{
     Button,
+    EventMask,
     Events,
     Key,
     Mouse,
@@ -130,6 +131,42 @@ pub struct ApplicationRuntime {
 }
 
 impl ApplicationRuntime {}
+
+fn format_component_handler_failure(error: &String) -> String {
+  return format!(
+    "A component has panicked while handling an event. {:?}",
+    error
+  );
+}
+
+fn dispatch_event_to_component(
+  event: &Events,
+  event_mask: EventMask,
+  component: &mut dyn Component<ComponentResult, String>,
+) -> Result<(), String> {
+  let component_mask = component.event_mask();
+
+  if !component_mask.contains(event_mask) {
+    return Ok(());
+  }
+
+  let result = match event {
+    Events::Window { event, .. } => component.on_window_event(event),
+    Events::Keyboard { event, .. } => component.on_keyboard_event(event),
+    Events::Mouse { event, .. } => component.on_mouse_event(event),
+    Events::Runtime { event, .. } => component.on_runtime_event(event),
+    Events::Component { event, .. } => component.on_component_event(event),
+  };
+
+  match result {
+    Ok(()) => {
+      return Ok(());
+    }
+    Err(err) => {
+      return Err(format_component_handler_failure(&err));
+    }
+  }
+}
 
 impl Runtime<(), String> for ApplicationRuntime {
   type Component = Box<dyn Component<ComponentResult, String>>;
@@ -385,24 +422,20 @@ impl Runtime<(), String> for ApplicationRuntime {
         Some(event) => {
           logging::trace!("Sending event: {:?} to all components", event);
 
+          let event_mask = event.mask();
           for component in &mut component_stack {
-            let event_result = component.on_event(event.clone());
-            match event_result {
-              Ok(_) => {}
-              Err(e) => {
-                let error = format!(
-                  "A component has panicked while handling an event. {:?}",
-                  e
-                );
-                logging::error!(
-                  "A component has panicked while handling an event. {:?}",
-                  e
-                );
-                publisher.publish_event(Events::Runtime {
-                  event: RuntimeEvent::ComponentPanic { message: error },
-                  issued_at: Instant::now(),
-                });
-              }
+            let event_result = dispatch_event_to_component(
+              &event,
+              event_mask,
+              component.as_mut(),
+            );
+
+            if let Err(error) = event_result {
+              logging::error!("{}", error);
+              publisher.publish_event(Events::Runtime {
+                event: RuntimeEvent::ComponentPanic { message: error },
+                issued_at: Instant::now(),
+              });
             }
           }
         }
@@ -420,5 +453,197 @@ impl Runtime<(), String> for ApplicationRuntime {
 
   fn on_stop(&mut self) {
     logging::info!("Stopping the runtime: {}", self.name);
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::{
+    events::{
+      ComponentEvent,
+      Key,
+      RuntimeEvent,
+      WindowEvent,
+    },
+    render::RenderContext,
+  };
+
+  #[derive(Default)]
+  struct RecordingComponent {
+    mask: EventMask,
+    window_event_count: u32,
+    keyboard_event_count: u32,
+    mouse_event_count: u32,
+    runtime_event_count: u32,
+    component_event_count: u32,
+    fail_window: bool,
+  }
+
+  impl Component<ComponentResult, String> for RecordingComponent {
+    fn on_attach(
+      &mut self,
+      _render_context: &mut RenderContext,
+    ) -> Result<ComponentResult, String> {
+      return Ok(ComponentResult::Success);
+    }
+
+    fn on_detach(
+      &mut self,
+      _render_context: &mut RenderContext,
+    ) -> Result<ComponentResult, String> {
+      return Ok(ComponentResult::Success);
+    }
+
+    fn event_mask(&self) -> EventMask {
+      return self.mask;
+    }
+
+    fn on_window_event(&mut self, _event: &WindowEvent) -> Result<(), String> {
+      self.window_event_count += 1;
+      if self.fail_window {
+        return Err("window failure".to_string());
+      }
+      return Ok(());
+    }
+
+    fn on_keyboard_event(&mut self, _event: &Key) -> Result<(), String> {
+      self.keyboard_event_count += 1;
+      return Ok(());
+    }
+
+    fn on_mouse_event(
+      &mut self,
+      _event: &crate::events::Mouse,
+    ) -> Result<(), String> {
+      self.mouse_event_count += 1;
+      return Ok(());
+    }
+
+    fn on_runtime_event(
+      &mut self,
+      _event: &RuntimeEvent,
+    ) -> Result<(), String> {
+      self.runtime_event_count += 1;
+      return Ok(());
+    }
+
+    fn on_component_event(
+      &mut self,
+      _event: &ComponentEvent,
+    ) -> Result<(), String> {
+      self.component_event_count += 1;
+      return Ok(());
+    }
+
+    fn on_update(
+      &mut self,
+      _last_frame: &std::time::Duration,
+    ) -> Result<ComponentResult, String> {
+      return Ok(ComponentResult::Success);
+    }
+
+    fn on_render(
+      &mut self,
+      _render_context: &mut RenderContext,
+    ) -> Vec<crate::render::command::RenderCommand> {
+      return Vec::new();
+    }
+  }
+
+  #[test]
+  fn dispatch_skips_component_when_mask_is_none() {
+    let mut component = RecordingComponent::default();
+    component.mask = EventMask::NONE;
+
+    let event = Events::Window {
+      event: WindowEvent::Close,
+      issued_at: Instant::now(),
+    };
+    let event_mask = event.mask();
+
+    dispatch_event_to_component(&event, event_mask, &mut component).unwrap();
+
+    assert_eq!(component.window_event_count, 0);
+  }
+
+  #[test]
+  fn dispatch_skips_component_when_mask_does_not_contain_event() {
+    let mut component = RecordingComponent::default();
+    component.mask = EventMask::KEYBOARD;
+
+    let event = Events::Window {
+      event: WindowEvent::Close,
+      issued_at: Instant::now(),
+    };
+    let event_mask = event.mask();
+
+    dispatch_event_to_component(&event, event_mask, &mut component).unwrap();
+
+    assert_eq!(component.window_event_count, 0);
+    assert_eq!(component.keyboard_event_count, 0);
+  }
+
+  #[test]
+  fn dispatch_calls_exact_handler_when_mask_contains_event() {
+    let mut component = RecordingComponent::default();
+    component.mask = EventMask::WINDOW | EventMask::KEYBOARD;
+
+    let window_event = Events::Window {
+      event: WindowEvent::Resize {
+        width: 1,
+        height: 2,
+      },
+      issued_at: Instant::now(),
+    };
+    let window_event_mask = window_event.mask();
+
+    dispatch_event_to_component(
+      &window_event,
+      window_event_mask,
+      &mut component,
+    )
+    .unwrap();
+
+    assert_eq!(component.window_event_count, 1);
+    assert_eq!(component.keyboard_event_count, 0);
+
+    let keyboard_event = Events::Keyboard {
+      event: Key::Pressed {
+        scan_code: 0,
+        virtual_key: None,
+      },
+      issued_at: Instant::now(),
+    };
+    let keyboard_event_mask = keyboard_event.mask();
+
+    dispatch_event_to_component(
+      &keyboard_event,
+      keyboard_event_mask,
+      &mut component,
+    )
+    .unwrap();
+
+    assert_eq!(component.window_event_count, 1);
+    assert_eq!(component.keyboard_event_count, 1);
+  }
+
+  #[test]
+  fn dispatch_returns_fatal_error_message_on_handler_failure() {
+    let mut component = RecordingComponent::default();
+    component.mask = EventMask::WINDOW;
+    component.fail_window = true;
+
+    let event = Events::Window {
+      event: WindowEvent::Close,
+      issued_at: Instant::now(),
+    };
+    let event_mask = event.mask();
+
+    let error = dispatch_event_to_component(&event, event_mask, &mut component)
+      .unwrap_err();
+
+    assert!(error.contains("A component has panicked while handling an event."));
+    assert!(error.contains("window failure"));
   }
 }

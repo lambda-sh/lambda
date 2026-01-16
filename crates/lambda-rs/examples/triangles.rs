@@ -2,7 +2,7 @@
 use lambda::{
   component::Component,
   events::{
-    Events,
+    EventMask,
     Key,
     VirtualKey,
     WindowEvent,
@@ -159,49 +159,47 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     return commands;
   }
 
-  fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
+  fn event_mask(&self) -> EventMask {
+    return EventMask::WINDOW | EventMask::KEYBOARD;
+  }
+
+  fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
     match event {
-      Events::Runtime { event, issued_at } => match event {
-        lambda::events::RuntimeEvent::Shutdown => {
-          logging::info!("Shutting down the runtime");
+      WindowEvent::Resize { width, height } => {
+        logging::info!("Window resized to {}x{}", width, height);
+        self.width = *width;
+        self.height = *height;
+      }
+      WindowEvent::Close => {
+        logging::info!("Window closed");
+      }
+    }
+    return Ok(());
+  }
+
+  fn on_keyboard_event(&mut self, event: &Key) -> Result<(), String> {
+    match event {
+      Key::Pressed {
+        scan_code: _,
+        virtual_key,
+      } => match virtual_key {
+        Some(VirtualKey::KeyW) => {
+          self.position.1 -= 0.01;
         }
-        _ => {}
-      },
-      Events::Window { event, issued_at } => match event {
-        WindowEvent::Resize { width, height } => {
-          logging::info!("Window resized to {}x{}", width, height);
-          self.width = width;
-          self.height = height;
+        Some(VirtualKey::KeyS) => {
+          self.position.1 += 0.01;
         }
-        WindowEvent::Close => {
-          logging::info!("Window closed");
+        Some(VirtualKey::KeyA) => {
+          self.position.0 -= 0.01;
         }
-      },
-      Events::Component { event, issued_at } => todo!(),
-      Events::Keyboard { event, issued_at } => match event {
-        Key::Pressed {
-          scan_code,
-          virtual_key,
-        } => match virtual_key {
-          Some(VirtualKey::KeyW) => {
-            self.position.1 -= 0.01;
-          }
-          Some(VirtualKey::KeyS) => {
-            self.position.1 += 0.01;
-          }
-          Some(VirtualKey::KeyA) => {
-            self.position.0 -= 0.01;
-          }
-          Some(VirtualKey::KeyD) => {
-            self.position.0 += 0.01;
-          }
-          _ => {}
-        },
+        Some(VirtualKey::KeyD) => {
+          self.position.0 += 0.01;
+        }
         _ => {}
       },
       _ => {}
-    };
-    return Ok(ComponentResult::Success);
+    }
+    return Ok(());
   }
 
   fn on_update(
