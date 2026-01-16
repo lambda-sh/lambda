@@ -4,7 +4,10 @@
 
 use lambda::{
   component::Component,
-  events::Events,
+  events::{
+    EventMask,
+    WindowEvent,
+  },
   logging,
   render::{
     bind::{
@@ -213,16 +216,19 @@ impl Component<ComponentResult, String> for OffscreenPostExample {
     return Ok(ComponentResult::Success);
   }
 
-  fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
-    if let Events::Window {
-      event: lambda::events::WindowEvent::Resize { width, height },
-      ..
-    } = event
-    {
-      self.width = width;
-      self.height = height;
+  fn event_mask(&self) -> EventMask {
+    return EventMask::WINDOW;
+  }
+
+  fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
+    match event {
+      WindowEvent::Resize { width, height } => {
+        self.width = *width;
+        self.height = *height;
+      }
+      _ => {}
     }
-    return Ok(ComponentResult::Success);
+    return Ok(());
   }
 
   fn on_update(

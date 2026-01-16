@@ -9,7 +9,10 @@
 
 use lambda::{
   component::Component,
-  events::WindowEvent,
+  events::{
+    EventMask,
+    WindowEvent,
+  },
   logging,
   render::{
     buffer::{
@@ -255,22 +258,20 @@ impl Component<ComponentResult, String> for InstancedQuadsExample {
     return Ok(ComponentResult::Success);
   }
 
-  fn on_event(
-    &mut self,
-    event: lambda::events::Events,
-  ) -> Result<ComponentResult, String> {
+  fn event_mask(&self) -> EventMask {
+    return EventMask::WINDOW;
+  }
+
+  fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
     match event {
-      lambda::events::Events::Window { event, .. } => match event {
-        WindowEvent::Resize { width, height } => {
-          self.width = width;
-          self.height = height;
-          logging::info!("Window resized to {}x{}", width, height);
-        }
-        _ => {}
-      },
+      WindowEvent::Resize { width, height } => {
+        self.width = *width;
+        self.height = *height;
+        logging::info!("Window resized to {}x{}", width, height);
+      }
       _ => {}
     }
-    return Ok(ComponentResult::Success);
+    return Ok(());
   }
 
   fn on_update(

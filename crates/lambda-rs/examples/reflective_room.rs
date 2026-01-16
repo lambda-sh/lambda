@@ -14,6 +14,12 @@
 
 use lambda::{
   component::Component,
+  events::{
+    EventMask,
+    Key,
+    VirtualKey,
+    WindowEvent,
+  },
   logging,
   math::matrix::Matrix,
   render::{
@@ -203,77 +209,73 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
     return Ok(ComponentResult::Success);
   }
 
-  fn on_event(
-    &mut self,
-    event: lambda::events::Events,
-  ) -> Result<ComponentResult, String> {
+  fn event_mask(&self) -> EventMask {
+    return EventMask::WINDOW | EventMask::KEYBOARD;
+  }
+
+  fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
     match event {
-      lambda::events::Events::Window { event, .. } => match event {
-        lambda::events::WindowEvent::Resize { width, height } => {
-          self.width = width;
-          self.height = height;
+      WindowEvent::Resize { width, height } => {
+        self.width = *width;
+        self.height = *height;
+      }
+      _ => {}
+    }
+    return Ok(());
+  }
+
+  fn on_keyboard_event(&mut self, event: &Key) -> Result<(), String> {
+    match event {
+      Key::Pressed {
+        scan_code: _,
+        virtual_key,
+      } => match virtual_key {
+        Some(VirtualKey::KeyM) => {
+          self.msaa_samples = if self.msaa_samples > 1 { 1 } else { 4 };
+          self.needs_rebuild = true;
+          logging::info!("Toggled MSAA → {}x (key: M)", self.msaa_samples);
         }
-        _ => {}
-      },
-      lambda::events::Events::Keyboard { event, .. } => match event {
-        lambda::events::Key::Pressed {
-          scan_code: _,
-          virtual_key,
-        } => match virtual_key {
-          Some(lambda::events::VirtualKey::KeyM) => {
-            self.msaa_samples = if self.msaa_samples > 1 { 1 } else { 4 };
-            self.needs_rebuild = true;
-            logging::info!("Toggled MSAA → {}x (key: M)", self.msaa_samples);
-          }
-          Some(lambda::events::VirtualKey::KeyS) => {
-            self.stencil_enabled = !self.stencil_enabled;
-            self.needs_rebuild = true;
-            logging::info!(
-              "Toggled Stencil → {} (key: S)",
-              self.stencil_enabled
-            );
-          }
-          Some(lambda::events::VirtualKey::KeyD) => {
-            self.depth_test_enabled = !self.depth_test_enabled;
-            self.needs_rebuild = true;
-            logging::info!(
-              "Toggled Depth Test → {} (key: D)",
-              self.depth_test_enabled
-            );
-          }
-          Some(lambda::events::VirtualKey::KeyF) => {
-            self.mirror_mode = !self.mirror_mode;
-            logging::info!(
-              "Toggled Mirror Mode (hide floor overlay) → {} (key: F)",
-              self.mirror_mode
-            );
-          }
-          // 'R' previously forced an unmasked reflection; now disabled.
-          Some(lambda::events::VirtualKey::KeyI) => {
-            // Pitch camera up (reduce downward angle)
-            self.camera_pitch_turns =
-              (self.camera_pitch_turns - 0.01).clamp(0.0, 0.25);
-            logging::info!(
-              "Camera pitch (turns) → {:.3}",
-              self.camera_pitch_turns
-            );
-          }
-          Some(lambda::events::VirtualKey::KeyK) => {
-            // Pitch camera down (increase downward angle)
-            self.camera_pitch_turns =
-              (self.camera_pitch_turns + 0.01).clamp(0.0, 0.25);
-            logging::info!(
-              "Camera pitch (turns) → {:.3}",
-              self.camera_pitch_turns
-            );
-          }
-          _ => {}
-        },
+        Some(VirtualKey::KeyS) => {
+          self.stencil_enabled = !self.stencil_enabled;
+          self.needs_rebuild = true;
+          logging::info!("Toggled Stencil → {} (key: S)", self.stencil_enabled);
+        }
+        Some(VirtualKey::KeyD) => {
+          self.depth_test_enabled = !self.depth_test_enabled;
+          self.needs_rebuild = true;
+          logging::info!(
+            "Toggled Depth Test → {} (key: D)",
+            self.depth_test_enabled
+          );
+        }
+        Some(VirtualKey::KeyF) => {
+          self.mirror_mode = !self.mirror_mode;
+          logging::info!(
+            "Toggled Mirror Mode (hide floor overlay) → {} (key: F)",
+            self.mirror_mode
+          );
+        }
+        Some(VirtualKey::KeyI) => {
+          self.camera_pitch_turns =
+            (self.camera_pitch_turns - 0.01).clamp(0.0, 0.25);
+          logging::info!(
+            "Camera pitch (turns) → {:.3}",
+            self.camera_pitch_turns
+          );
+        }
+        Some(VirtualKey::KeyK) => {
+          self.camera_pitch_turns =
+            (self.camera_pitch_turns + 0.01).clamp(0.0, 0.25);
+          logging::info!(
+            "Camera pitch (turns) → {:.3}",
+            self.camera_pitch_turns
+          );
+        }
         _ => {}
       },
       _ => {}
     }
-    return Ok(ComponentResult::Success);
+    return Ok(());
   }
 
   fn on_update(

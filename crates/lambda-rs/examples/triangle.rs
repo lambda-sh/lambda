@@ -2,8 +2,7 @@
 use lambda::{
   component::Component,
   events::{
-    ComponentEvent,
-    Events,
+    EventMask,
     Key,
     WindowEvent,
   },
@@ -74,58 +73,46 @@ impl Component<ComponentResult, String> for DemoComponent {
     return Ok(ComponentResult::Success);
   }
 
-  fn on_event(
-    self: &mut DemoComponent,
-    event: Events,
-  ) -> Result<ComponentResult, String> {
+  fn event_mask(&self) -> EventMask {
+    return EventMask::WINDOW | EventMask::KEYBOARD;
+  }
+
+  fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
     match event {
-      Events::Runtime { event, issued_at } => match event {
-        lambda::events::RuntimeEvent::Shutdown => {
-          logging::info!("Shutting down the runtime");
-        }
-        _ => {}
-      },
-      Events::Window { event, issued_at } => match event {
-        WindowEvent::Resize { width, height } => {
-          logging::info!("Window resized to {}x{}", width, height);
-          self.width = width;
-          self.height = height;
-        }
-        WindowEvent::Close => {
-          logging::info!("Window closed");
-        }
-      },
-      Events::Keyboard { event, issued_at } => match event {
-        Key::Pressed {
-          scan_code,
-          virtual_key,
-        } => {
-          logging::debug!("Key pressed: {:?}", virtual_key);
-        }
-        Key::Released {
-          scan_code,
-          virtual_key,
-        } => {
-          logging::debug!("Key released: {:?}", virtual_key);
-        }
-        Key::ModifierPressed {
-          modifier,
-          virtual_key,
-        } => {
-          logging::debug!("Modifier pressed: {:?}", virtual_key);
-        }
-      },
-      Events::Component { event, issued_at } => match event {
-        ComponentEvent::Attached { name } => {
-          logging::debug!("Component attached: {:?}", name);
-        }
-        ComponentEvent::Detached { name } => {
-          logging::debug!("Component detached: {:?}", name);
-        }
-      },
-      _ => {}
-    };
-    return Ok(ComponentResult::Success);
+      WindowEvent::Resize { width, height } => {
+        logging::info!("Window resized to {}x{}", width, height);
+        self.width = *width;
+        self.height = *height;
+      }
+      WindowEvent::Close => {
+        logging::info!("Window closed");
+      }
+    }
+    return Ok(());
+  }
+
+  fn on_keyboard_event(&mut self, event: &Key) -> Result<(), String> {
+    match event {
+      Key::Pressed {
+        scan_code: _,
+        virtual_key,
+      } => {
+        logging::debug!("Key pressed: {:?}", virtual_key);
+      }
+      Key::Released {
+        scan_code: _,
+        virtual_key,
+      } => {
+        logging::debug!("Key released: {:?}", virtual_key);
+      }
+      Key::ModifierPressed {
+        modifier: _,
+        virtual_key,
+      } => {
+        logging::debug!("Modifier pressed: {:?}", virtual_key);
+      }
+    }
+    return Ok(());
   }
 
   fn on_update(
