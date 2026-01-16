@@ -3,13 +3,13 @@ title: "Component Event Handling"
 document_id: "component-event-handling-2026-01-10"
 status: "draft"
 created: "2026-01-10T00:00:00Z"
-last_updated: "2026-01-10T00:00:00Z"
-version: "0.1.0"
+last_updated: "2026-01-16T00:00:00Z"
+version: "0.1.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "45ae58a8f66208f4dcfeb0a08e2963f5248f9016"
+repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "events", "components", "runtime"]
@@ -198,25 +198,40 @@ winit event loop
 ## Requirements Checklist
 
 - Functionality
-  - [ ] `EventMask` defined in `crates/lambda-rs/src/events.rs`
-  - [ ] `Events::mask()` implemented for all `Events` variants
-  - [ ] `Component` updated with `event_mask` and `on_*_event` handlers
-  - [ ] `Component::on_event` removed from the public API
-  - [ ] `ApplicationRuntime` dispatch filters components by `EventMask`
+  - [x] `EventMask` defined in `crates/lambda-rs/src/events.rs` (Ref:
+    `crates/lambda-rs/src/events.rs`)
+  - [x] `Events::mask()` implemented for all `Events` variants (Ref:
+    `crates/lambda-rs/src/events.rs`)
+  - [x] `Component` updated with `event_mask` and `on_*_event` handlers (Ref:
+    `crates/lambda-rs/src/component.rs`)
+  - [x] `Component::on_event` removed from the public API (Ref:
+    `crates/lambda-rs/src/component.rs`)
+  - [x] `ApplicationRuntime` dispatch filters components by `EventMask` (Ref:
+    `crates/lambda-rs/src/runtimes/application.rs`)
 - API Surface
-  - [ ] Public `EventMask` constants documented
-  - [ ] `Component` trait documentation updated
-  - [ ] Backwards compatibility assessed and migration documented
+  - [x] Public `EventMask` constants documented (Ref:
+    `crates/lambda-rs/src/events.rs`)
+  - [x] `Component` trait documentation updated (Ref:
+    `docs/rendering.md`)
+  - [x] Backwards compatibility assessed and migration documented (Ref:
+    `docs/specs/component-event-handling.md`)
 - Validation and Errors
-  - [ ] Error behavior specified for handler failures
-  - [ ] Runtime publishes `RuntimeEvent::ComponentPanic` on handler errors
+  - [x] Error behavior specified for handler failures (Ref:
+    `docs/specs/component-event-handling.md`)
+  - [x] Runtime publishes `RuntimeEvent::ComponentPanic` on handler errors
+    (Ref: `crates/lambda-rs/src/runtimes/application.rs`)
 - Performance
-  - [ ] Per-event dispatch avoids per-component `Events` clones
-  - [ ] Filtering implemented before dispatch match
+  - [x] Per-event dispatch avoids per-component `Events` clones (Ref:
+    `crates/lambda-rs/src/runtimes/application.rs`)
+  - [x] Filtering implemented before dispatch match (Ref:
+    `crates/lambda-rs/src/runtimes/application.rs`)
 - Documentation and Examples
-  - [ ] Examples updated to implement `event_mask` and granular handlers
-  - [ ] `docs/features.md` checked for relevance (no new features expected)
-  - [ ] Migration notes added to component documentation
+  - [x] Examples updated to implement `event_mask` and granular handlers (Ref:
+    `crates/lambda-rs/examples/`)
+  - [x] `docs/features.md` checked for relevance (no new features expected)
+    (Ref: `docs/features.md`)
+  - [x] Migration notes added to component documentation (Ref:
+    `docs/specs/component-event-handling.md`)
 
 For each checked item, include a reference to a commit, pull request, or file
 path that demonstrates the implementation.
@@ -253,4 +268,5 @@ path that demonstrates the implementation.
 
 ## Changelog
 
+- 2026-01-16 (v0.1.1) — Update checklist references and align docs.
 - 2026-01-10 (v0.1.0) — Initial draft.
