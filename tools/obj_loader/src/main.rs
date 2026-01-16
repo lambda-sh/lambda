@@ -10,7 +10,7 @@ use args::{
 use lambda::{
   component::Component,
   events::{
-    Events,
+    EventMask,
     WindowEvent,
   },
   logging,
@@ -165,22 +165,20 @@ struct ObjLoader {
 }
 
 impl Component<ComponentResult, String> for ObjLoader {
-  fn on_event(&mut self, event: Events) -> Result<ComponentResult, String> {
+  fn event_mask(&self) -> EventMask {
+    return EventMask::WINDOW;
+  }
+
+  fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
     match event {
-      lambda::events::Events::Window {
-        event,
-        issued_at: _,
-      } => match event {
-        WindowEvent::Resize { width, height } => {
-          self.width = width;
-          self.height = height;
-          logging::info!("Window resized to {}x{}", width, height);
-        }
-        _ => {}
-      },
+      WindowEvent::Resize { width, height } => {
+        self.width = *width;
+        self.height = *height;
+        logging::info!("Window resized to {}x{}", width, height);
+      }
       _ => {}
-    };
-    return Ok(ComponentResult::Success);
+    }
+    return Ok(());
   }
 
   fn on_attach(
