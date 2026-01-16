@@ -60,6 +60,12 @@ impl LoopBuilder {
   }
 }
 
+impl Default for LoopBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 /// Loop wrapping for the winit event loop.
 pub struct Loop<E: 'static + std::fmt::Debug> {
   event_loop: EventLoop<E>,
@@ -171,6 +177,12 @@ impl WindowHandleBuilder {
   }
 }
 
+impl Default for WindowHandleBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 /// Event loop publisher wrapper for pushing events into a winit event loop.
 pub struct LoopPublisher<E: 'static> {
   winit_proxy: EventLoopProxy<E>,
@@ -197,7 +209,7 @@ impl<E: 'static + std::fmt::Debug> LoopPublisher<E> {
 impl<E: 'static + std::fmt::Debug> Loop<E> {
   /// Create an event publisher for this Loop.
   pub fn create_event_publisher(&mut self) -> LoopPublisher<E> {
-    return LoopPublisher::new(&self);
+    return LoopPublisher::new(self);
   }
 
   /// Returns the primary monitor for the current OS if detectable.

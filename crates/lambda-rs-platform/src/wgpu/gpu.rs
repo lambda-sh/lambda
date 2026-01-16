@@ -124,7 +124,7 @@ impl GpuBuilder {
   ///
   /// Returns an error if no adapter is available, required features are
   /// missing, or device creation fails.
-  pub fn build<'surface, 'window>(
+  pub fn build<'surface>(
     self,
     instance: &Instance,
     surface: Option<&Surface<'surface>>,
@@ -160,9 +160,14 @@ impl GpuBuilder {
       adapter,
       device,
       queue,
-      features: descriptor.required_features,
       limits: descriptor.required_limits,
     });
+  }
+}
+
+impl Default for GpuBuilder {
+  fn default() -> Self {
+    return Self::new();
   }
 }
 
@@ -187,13 +192,12 @@ impl From<wgpu::RequestDeviceError> for GpuBuildError {
 }
 
 /// Holds the chosen adapter along with its logical device and submission queue
-/// plus immutable copies of features and limits used to create the device.
+/// plus an immutable copy of the limits used to create the device.
 #[derive(Debug)]
 pub struct Gpu {
   adapter: wgpu::Adapter,
   device: wgpu::Device,
   queue: wgpu::Queue,
-  features: wgpu::Features,
   limits: wgpu::Limits,
 }
 
@@ -235,11 +239,6 @@ impl Gpu {
   /// Crate-visible to avoid exposing raw `wgpu` to higher layers.
   pub(crate) fn queue(&self) -> &wgpu::Queue {
     &self.queue
-  }
-
-  /// Features that were required and enabled during device creation.
-  pub(crate) fn features(&self) -> wgpu::Features {
-    self.features
   }
 
   /// Limits captured at device creation time.
@@ -307,7 +306,6 @@ mod tests {
   use super::*;
   use crate::wgpu::{
     instance,
-    surface,
     texture,
   };
 

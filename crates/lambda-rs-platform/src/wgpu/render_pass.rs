@@ -115,12 +115,6 @@ pub struct RenderPass<'a> {
   pub(super) raw: wgpu::RenderPass<'a>,
 }
 
-#[derive(Debug)]
-struct RenderPassKeepAlive<'a> {
-  color_attachments: [Option<wgpu::RenderPassColorAttachment<'a>>; 1],
-  label: Option<String>,
-}
-
 impl<'a> RenderPass<'a> {
   /// Set the active render pipeline.
   pub fn set_pipeline(&mut self, pipeline: &pipeline::RenderPipeline) {
@@ -254,10 +248,8 @@ impl<'a> RenderColorAttachments<'a> {
     &mut self,
     operations: wgpu::Operations<wgpu::Color>,
   ) {
-    for attachment in &mut self.attachments {
-      if let Some(ref mut a) = attachment {
-        a.ops = operations;
-      }
+    for a in self.attachments.iter_mut().flatten() {
+      a.ops = operations;
     }
   }
 

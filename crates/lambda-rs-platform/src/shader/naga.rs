@@ -29,6 +29,12 @@ impl ShaderCompilerBuilder {
   }
 }
 
+impl Default for ShaderCompilerBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 /// A shader compiler that uses naga to translate shader sources into SPIR-V.
 pub struct ShaderCompiler {}
 
@@ -90,9 +96,11 @@ impl ShaderCompiler {
       .validate(&module)
       .expect("Failed to validate shader module.");
 
-    let mut options = spv::Options::default();
-    options.lang_version = (1, 5);
-    options.flags = spv::WriterFlags::empty();
+    let options = spv::Options {
+      lang_version: (1, 5),
+      flags: spv::WriterFlags::empty(),
+      ..Default::default()
+    };
 
     let pipeline_options = spv::PipelineOptions {
       shader_stage: stage,

@@ -12,13 +12,6 @@ pub enum ColorFormat {
 }
 
 impl ColorFormat {
-  pub(crate) fn to_texture_format(self) -> wgpu::TextureFormat {
-    return match self {
-      ColorFormat::Rgb32Sfloat => wgpu::TextureFormat::Rgba32Float,
-      ColorFormat::Rgba8Srgb => wgpu::TextureFormat::Rgba8UnormSrgb,
-    };
-  }
-
   pub(crate) fn to_vertex_format(self) -> wgpu::VertexFormat {
     return match self {
       ColorFormat::Rgb32Sfloat => wgpu::VertexFormat::Float32x3,

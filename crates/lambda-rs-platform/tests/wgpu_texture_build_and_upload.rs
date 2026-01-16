@@ -22,7 +22,7 @@ fn wgpu_texture_build_and_upload_succeeds() {
     for x in 0..w {
       let idx = ((y * w + x) * 4) as usize;
       let c = if ((x + y) % 2) == 0 { 255 } else { 0 };
-      pixels[idx + 0] = c;
+      pixels[idx] = c;
       pixels[idx + 1] = c;
       pixels[idx + 2] = c;
       pixels[idx + 3] = 255;

@@ -176,6 +176,12 @@ impl InstanceBuilder {
   }
 }
 
+impl Default for InstanceBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 #[derive(Debug)]
 /// Thin wrapper over `wgpu::Instance` that preserves a user label and exposes
 /// a blocking `request_adapter` convenience.

@@ -206,6 +206,11 @@ impl ShaderModule {
   pub fn raw(&self) -> &wgpu::ShaderModule {
     &self.raw
   }
+
+  /// Optional debug label used during creation.
+  pub fn label(&self) -> Option<&str> {
+    return self.label.as_deref();
+  }
 }
 
 /// Wrapper around `wgpu::PipelineLayout`.
@@ -220,6 +225,11 @@ impl PipelineLayout {
   pub fn raw(&self) -> &wgpu::PipelineLayout {
     return &self.raw;
   }
+
+  /// Optional debug label used during creation.
+  pub fn label(&self) -> Option<&str> {
+    return self.label.as_deref();
+  }
 }
 
 /// Builder for creating a `PipelineLayout`.
@@ -227,6 +237,12 @@ pub struct PipelineLayoutBuilder<'a> {
   label: Option<String>,
   layouts: Vec<&'a bind::BindGroupLayout>,
   immediate_data_ranges: Vec<ImmediateDataRange>,
+}
+
+impl<'a> Default for PipelineLayoutBuilder<'a> {
+  fn default() -> Self {
+    return Self::new();
+  }
 }
 
 /// Align a `u32` value up to the provided power-of-two alignment.
@@ -459,10 +475,6 @@ impl RenderPipeline {
   pub(crate) fn raw(&self) -> &wgpu::RenderPipeline {
     return &self.raw;
   }
-  /// Consume and return the raw pipeline.
-  pub(crate) fn into_raw(self) -> wgpu::RenderPipeline {
-    return self.raw;
-  }
   /// Pipeline label if provided.
   pub fn label(&self) -> Option<&str> {
     return self.label.as_deref();
@@ -478,6 +490,12 @@ pub struct RenderPipelineBuilder<'a> {
   color_target_format: Option<wgpu::TextureFormat>,
   depth_stencil: Option<wgpu::DepthStencilState>,
   sample_count: u32,
+}
+
+impl<'a> Default for RenderPipelineBuilder<'a> {
+  fn default() -> Self {
+    return Self::new();
+  }
 }
 
 impl<'a> RenderPipelineBuilder<'a> {
