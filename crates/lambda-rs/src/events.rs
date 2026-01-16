@@ -13,7 +13,7 @@ use std::{
 /// The category bits are stable within a major version of `lambda-rs`. Bits
 /// outside the defined set are reserved for future expansion and MUST NOT be
 /// relied upon.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[repr(transparent)]
 pub struct EventMask(u8);
 
