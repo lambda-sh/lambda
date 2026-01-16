@@ -3,13 +3,13 @@ title: "Basic Triangle: Vertex‑Only Draw"
 document_id: "basic-triangle-tutorial-2025-12-16"
 status: "draft"
 created: "2025-12-16T00:00:00Z"
-last_updated: "2026-01-05T00:00:00Z"
-version: "0.2.0"
+last_updated: "2026-01-16T00:00:00Z"
+version: "0.2.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "797047468a927f1e4ba111b43381a607ac53c0d1"
+repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "triangle", "rust", "wgpu"]
@@ -88,7 +88,7 @@ Component::on_render (each frame)
 ### Step 1 — Runtime and Component Skeleton <a name="step-1"></a>
 
 Create an `ApplicationRuntime` and register a `Component` that receives
-`on_attach`, `on_render`, and `on_event` callbacks.
+`on_attach`, `on_render`, and optional `on_*_event` callbacks.
 
 ```rust
 fn main() {
@@ -232,6 +232,7 @@ shaders, build a render pass and pipeline, and issue a draw using
 
 ## Changelog <a name="changelog"></a>
 
+- 0.2.1 (2026-01-16): Replace deprecated `on_event` references with granular handlers.
 - 0.2.0 (2026-01-05): Update for wgpu v28; rename push constants to immediates in exercises.
 - 0.1.0 (2025-12-16): Initial draft aligned with
   `crates/lambda-rs/examples/triangle.rs`.
