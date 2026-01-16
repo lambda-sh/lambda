@@ -553,8 +553,10 @@ mod tests {
 
   #[test]
   fn dispatch_skips_component_when_mask_is_none() {
-    let mut component = RecordingComponent::default();
-    component.mask = EventMask::NONE;
+    let mut component = RecordingComponent {
+      mask: EventMask::NONE,
+      ..Default::default()
+    };
 
     let event = Events::Window {
       event: WindowEvent::Close,
@@ -569,8 +571,10 @@ mod tests {
 
   #[test]
   fn dispatch_skips_component_when_mask_does_not_contain_event() {
-    let mut component = RecordingComponent::default();
-    component.mask = EventMask::KEYBOARD;
+    let mut component = RecordingComponent {
+      mask: EventMask::KEYBOARD,
+      ..Default::default()
+    };
 
     let event = Events::Window {
       event: WindowEvent::Close,
@@ -586,8 +590,10 @@ mod tests {
 
   #[test]
   fn dispatch_calls_exact_handler_when_mask_contains_event() {
-    let mut component = RecordingComponent::default();
-    component.mask = EventMask::WINDOW | EventMask::KEYBOARD;
+    let mut component = RecordingComponent {
+      mask: EventMask::WINDOW | EventMask::KEYBOARD,
+      ..Default::default()
+    };
 
     let window_event = Events::Window {
       event: WindowEvent::Resize {
@@ -630,9 +636,11 @@ mod tests {
 
   #[test]
   fn dispatch_returns_fatal_error_message_on_handler_failure() {
-    let mut component = RecordingComponent::default();
-    component.mask = EventMask::WINDOW;
-    component.fail_window = true;
+    let mut component = RecordingComponent {
+      mask: EventMask::WINDOW,
+      fail_window: true,
+      ..Default::default()
+    };
 
     let event = Events::Window {
       event: WindowEvent::Close,

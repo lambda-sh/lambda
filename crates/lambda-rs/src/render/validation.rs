@@ -144,9 +144,10 @@ mod tests {
 
   #[test]
   fn validate_instance_range_rejects_negative_length() {
-    let err = validate_instance_range("Draw", &(5..1))
-      .err()
-      .expect("must error");
+    let start = 5_u32;
+    let end = 1_u32;
+    let err =
+      validate_instance_range("Draw", &(start..end)).expect_err("must error");
     assert!(err.contains("Draw instance range start 5 is greater than end 1"));
   }
 

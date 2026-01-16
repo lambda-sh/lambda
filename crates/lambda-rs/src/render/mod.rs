@@ -1057,8 +1057,7 @@ mod tests {
   fn immediates_validate_pipeline_exists_rejects_unknown_pipeline() {
     let pipelines: Vec<RenderPipeline> = vec![];
     let err = RenderContext::validate_pipeline_exists(&pipelines, 7)
-      .err()
-      .expect("must error");
+      .expect_err("must error");
     assert!(err.to_string().contains("Unknown pipeline 7"));
   }
 }
