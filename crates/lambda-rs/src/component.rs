@@ -7,7 +7,6 @@ use crate::{
   events::{
     ComponentEvent,
     EventMask,
-    Events,
     Key,
     Mouse,
     RuntimeEvent,
@@ -67,10 +66,6 @@ where
   fn on_component_event(&mut self, _event: &ComponentEvent) -> Result<(), E> {
     return Ok(());
   }
-
-  /// The event function is called every time an event is received from
-  /// the windowing system/event loop.
-  fn on_event(&mut self, event: Events) -> Result<R, E>;
 
   /// The update function is called every frame and is used to update
   /// the state of the component.
