@@ -3,13 +3,13 @@ title: "Reflective Floor: Stencil‑Masked Planar Reflections"
 document_id: "reflective-room-tutorial-2025-11-17"
 status: "draft"
 created: "2025-11-17T00:00:00Z"
-last_updated: "2026-01-07T00:00:00Z"
-version: "0.4.1"
+last_updated: "2026-01-16T00:00:00Z"
+version: "0.4.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "183a0499250a2c16e0a09b22107201720016fc48"
+repo_commit: "87aa423aca541823f271101e5bac390f5ca54c42"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "stencil", "depth", "msaa", "mirror", "3d", "immediates", "wgpu", "rust"]
@@ -434,6 +434,56 @@ Support runtime toggles to observe the impact of each setting:
 
 Reference: `crates/lambda-rs/examples/reflective_room.rs:164`.
 
+Implement resize and toggles using `event_mask()` and `on_*_event` handlers.
+
+```rust
+use lambda::events::{EventMask, Key, VirtualKey, WindowEvent};
+
+// Inside `impl Component<ComponentResult, String> for ReflectiveRoomExample`.
+fn event_mask(&self) -> EventMask {
+  return EventMask::WINDOW | EventMask::KEYBOARD;
+}
+
+fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
+  if let WindowEvent::Resize { width, height } = event {
+    self.width = *width;
+    self.height = *height;
+  }
+  return Ok(());
+}
+
+fn on_keyboard_event(&mut self, event: &Key) -> Result<(), String> {
+  match event {
+    Key::Pressed {
+      scan_code: _,
+      virtual_key: Some(VirtualKey::KeyM),
+    } => {
+      self.msaa_samples = if self.msaa_samples > 1 { 1 } else { 4 };
+      self.needs_rebuild = true;
+    }
+    Key::Pressed {
+      scan_code: _,
+      virtual_key: Some(VirtualKey::KeyS),
+    } => {
+      self.stencil_enabled = !self.stencil_enabled;
+      self.needs_rebuild = true;
+    }
+    Key::Pressed {
+      scan_code: _,
+      virtual_key: Some(VirtualKey::KeyD),
+    } => {
+      self.depth_test_enabled = !self.depth_test_enabled;
+      self.needs_rebuild = true;
+    }
+    _ => {}
+  }
+  return Ok(());
+}
+```
+
+When a toggle flips, set `needs_rebuild = true` so pipelines and passes are
+rebuilt on the next frame with the updated MSAA/depth/stencil settings.
+
 ## Validation <a name="validation"></a>
 
 - Build and run: `cargo run --example reflective_room`.
@@ -477,6 +527,8 @@ The reflective floor combines a simple stencil mask with an optional depth test 
 
 ## Changelog <a name="changelog"></a>
 
+- 2026-01-16, 0.4.3: Normalize event handler terminology.
+- 2026-01-16, 0.4.2: Add `event_mask()` and `on_*_event` handler examples.
 - 2026-01-07, 0.4.1: Remove stage usage from immediates API examples.
 - 2026-01-05, 0.4.0: Update for wgpu v28; rename push constants to immediates; update struct references to `ImmediateData`.
 - 2025-12-15, 0.3.0: Update builder API calls to use `ctx.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.

@@ -3,13 +3,13 @@ title: "Immediates: Draw Multiple 2D Triangles"
 document_id: "immediates-multiple-triangles-tutorial-2025-12-16"
 status: "draft"
 created: "2025-12-16T00:00:00Z"
-last_updated: "2026-01-07T00:00:00Z"
-version: "0.2.1"
+last_updated: "2026-01-16T00:00:00Z"
+version: "0.2.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "183a0499250a2c16e0a09b22107201720016fc48"
+repo_commit: "87aa423aca541823f271101e5bac390f5ca54c42"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "immediates", "triangle", "rust", "wgpu"]
@@ -172,6 +172,60 @@ Update component state from events:
 
 These updates are reflected on the next `on_render` call.
 
+Implement input and resize handling using `event_mask()` and `on_*_event`
+handlers.
+
+```rust
+use lambda::events::{EventMask, Key, VirtualKey, WindowEvent};
+
+// Inside `impl Component<ComponentResult, String> for TrianglesExample`.
+fn event_mask(&self) -> EventMask {
+  return EventMask::WINDOW | EventMask::KEYBOARD;
+}
+
+fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
+  if let WindowEvent::Resize { width, height } = event {
+    self.width = *width;
+    self.height = *height;
+  }
+  return Ok(());
+}
+
+fn on_keyboard_event(&mut self, event: &Key) -> Result<(), String> {
+  match event {
+    Key::Pressed {
+      scan_code: _,
+      virtual_key: Some(VirtualKey::KeyW),
+    } => {
+      self.position.1 -= 0.01;
+    }
+    Key::Pressed {
+      scan_code: _,
+      virtual_key: Some(VirtualKey::KeyS),
+    } => {
+      self.position.1 += 0.01;
+    }
+    Key::Pressed {
+      scan_code: _,
+      virtual_key: Some(VirtualKey::KeyA),
+    } => {
+      self.position.0 -= 0.01;
+    }
+    Key::Pressed {
+      scan_code: _,
+      virtual_key: Some(VirtualKey::KeyD),
+    } => {
+      self.position.0 += 0.01;
+    }
+    _ => {}
+  }
+  return Ok(());
+}
+```
+
+This setup declares interest in window and keyboard categories and avoids
+per-component pattern matching over the full `Events` enum.
+
 ## Validation <a name="validation"></a>
 
 - Build: `cargo build --workspace`
@@ -219,6 +273,8 @@ issuing repeated draws within one render pass.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.2.3 (2026-01-16): Normalize event handler terminology.
+- 0.2.2 (2026-01-16): Add `event_mask()` and `on_*_event` handler examples.
 - 0.2.1 (2026-01-07): Remove stage usage from immediates API examples.
 - 0.2.0 (2026-01-05): Updated to use wgpu v28 immediates terminology.
 - 0.1.0 (2025-12-16): Initial draft aligned with

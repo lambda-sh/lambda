@@ -4,12 +4,12 @@ document_id: "basic-triangle-tutorial-2025-12-16"
 status: "draft"
 created: "2025-12-16T00:00:00Z"
 last_updated: "2026-01-16T00:00:00Z"
-version: "0.2.1"
+version: "0.2.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
+repo_commit: "87aa423aca541823f271101e5bac390f5ca54c42"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "triangle", "rust", "wgpu"]
@@ -189,6 +189,28 @@ stored dimensions.
 The viewport and scissor MUST match the surface dimensions to avoid clipping or
 undefined behavior when the window resizes.
 
+Implement resize handling using `event_mask()` and `on_window_event`.
+
+```rust
+use lambda::events::{EventMask, WindowEvent};
+
+// Inside `impl Component<ComponentResult, String> for DemoComponent`.
+fn event_mask(&self) -> EventMask {
+  return EventMask::WINDOW;
+}
+
+fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
+  if let WindowEvent::Resize { width, height } = event {
+    self.width = *width;
+    self.height = *height;
+  }
+  return Ok(());
+}
+```
+
+This setup ensures the runtime only dispatches window events to the component,
+and the component keeps a current width/height for viewport creation.
+
 ## Validation <a name="validation"></a>
 
 - Build: `cargo build --workspace`
@@ -232,7 +254,9 @@ shaders, build a render pass and pipeline, and issue a draw using
 
 ## Changelog <a name="changelog"></a>
 
-- 0.2.1 (2026-01-16): Replace deprecated `on_event` references with granular handlers.
+- 0.2.3 (2026-01-16): Normalize event handler terminology.
+- 0.2.2 (2026-01-16): Add `event_mask()` and `on_window_event` resize example.
+- 0.2.1 (2026-01-16): Replace deprecated `on_event` references with per-category handlers.
 - 0.2.0 (2026-01-05): Update for wgpu v28; rename push constants to immediates in exercises.
 - 0.1.0 (2025-12-16): Initial draft aligned with
   `crates/lambda-rs/examples/triangle.rs`.
