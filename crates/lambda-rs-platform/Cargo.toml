@@ -31,7 +31,7 @@ lambda-rs-logging = { path = "../lambda-rs-logging", version = "2023.1.30" }
 windows = "0.62"
 
 [dev-dependencies]
-mockall = "=0.11.3"
+mockall = "=0.14.0"
 
 [features]
 default = ["wgpu", "shader-backend-naga"]

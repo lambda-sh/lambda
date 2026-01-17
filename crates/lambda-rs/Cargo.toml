@@ -17,7 +17,7 @@ lambda-rs-logging = { path = "../lambda-rs-logging", version = "2023.1.30" }
 
 [dev-dependencies]
 cargo-audit = "0.16.0"
-mockall = "0.11.3"
+mockall = "0.14.0"
 
 [features]
 default=["with-wgpu"]
