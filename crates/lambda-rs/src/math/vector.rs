@@ -200,13 +200,13 @@ mod tests {
   #[test]
   fn length() {
     let a = [1.0, 2.0, 3.0];
-    let b = 3.7416573867739413;
+    let b = 3.741_657_5;
 
     let result = a.length();
     assert_eq!(result, b);
 
     let c = [1.0, 2.0, 3.0, 4.0];
-    let d = 5.477225575051661;
+    let d = 5.477_226;
     let result = c.length();
     assert_eq!(result, d);
   }
