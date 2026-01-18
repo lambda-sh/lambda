@@ -2,19 +2,28 @@
 
 // Integration tests for `lambda-rs-platform::wgpu::texture`
 
-fn create_test_device() -> lambda_platform::wgpu::gpu::Gpu {
+fn create_test_device() -> Option<lambda_platform::wgpu::gpu::Gpu> {
   let instance = lambda_platform::wgpu::instance::InstanceBuilder::new()
     .with_label("platform-itest")
     .build();
-  return lambda_platform::wgpu::gpu::GpuBuilder::new()
+  let result = lambda_platform::wgpu::gpu::GpuBuilder::new()
     .with_label("platform-itest-device")
-    .build(&instance, None)
-    .expect("create offscreen device");
+    .build(&instance, None);
+
+  match result {
+    Ok(gpu) => return Some(gpu),
+    Err(lambda_platform::wgpu::gpu::GpuBuildError::AdapterUnavailable) => {
+      return None;
+    }
+    Err(err) => panic!("create offscreen device: {:?}", err),
+  }
 }
 
 #[test]
 fn wgpu_texture_build_and_upload_succeeds() {
-  let gpu = create_test_device();
+  let Some(gpu) = create_test_device() else {
+    return;
+  };
 
   let (w, h) = (8u32, 8u32);
   let mut pixels = vec![0u8; (w * h * 4) as usize];
@@ -41,7 +50,9 @@ fn wgpu_texture_build_and_upload_succeeds() {
 
 #[test]
 fn wgpu_texture_upload_with_padding_bytes_per_row() {
-  let gpu = create_test_device();
+  let Some(gpu) = create_test_device() else {
+    return;
+  };
 
   let (w, h) = (13u32, 7u32);
   let pixels = vec![128u8; (w * h * 4) as usize];

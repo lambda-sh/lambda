@@ -2,19 +2,28 @@
 
 // Integration tests for `lambda-rs-platform::wgpu::bind` with textures/samplers
 
-fn create_test_device() -> lambda_platform::wgpu::gpu::Gpu {
+fn create_test_device() -> Option<lambda_platform::wgpu::gpu::Gpu> {
   let instance = lambda_platform::wgpu::instance::InstanceBuilder::new()
     .with_label("platform-bind-itest")
     .build();
-  return lambda_platform::wgpu::gpu::GpuBuilder::new()
+  let result = lambda_platform::wgpu::gpu::GpuBuilder::new()
     .with_label("platform-bind-itest-device")
-    .build(&instance, None)
-    .expect("create offscreen device");
+    .build(&instance, None);
+
+  match result {
+    Ok(gpu) => return Some(gpu),
+    Err(lambda_platform::wgpu::gpu::GpuBuildError::AdapterUnavailable) => {
+      return None;
+    }
+    Err(err) => panic!("create offscreen device: {:?}", err),
+  }
 }
 
 #[test]
 fn wgpu_bind_layout_and_group_texture_sampler() {
-  let gpu = create_test_device();
+  let Some(gpu) = create_test_device() else {
+    return;
+  };
 
   let (w, h) = (4u32, 4u32);
   let pixels = vec![255u8; (w * h * 4) as usize];
