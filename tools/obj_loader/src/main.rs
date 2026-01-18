@@ -1,3 +1,5 @@
+#![allow(clippy::needless_return)]
+
 use std::env;
 
 use args::{
@@ -121,16 +123,17 @@ struct Args {
   obj_path: String,
 }
 
-impl Into<Args> for Vec<ParsedArgument> {
-  fn into(self) -> Args {
+impl From<Vec<ParsedArgument>> for Args {
+  fn from(arguments: Vec<ParsedArgument>) -> Args {
     let mut args = Args {
       obj_path: String::new(),
     };
 
-    for arg in self {
-      match (arg.name().as_str(), arg.value()) {
-        ("--obj-path", ArgumentValue::String(path)) => args.obj_path = path,
-        (_, _) => {}
+    for arg in arguments {
+      if let ("--obj-path", ArgumentValue::String(path)) =
+        (arg.name().as_str(), arg.value())
+      {
+        args.obj_path = path;
       }
     }
 
@@ -149,7 +152,7 @@ fn parse_arguments() -> Args {
     .with_argument(obj_file)
     .compile(&env::args().collect::<Vec<_>>());
 
-  return args.into();
+  return Args::from(args);
 }
 
 struct ObjLoader {
@@ -170,13 +173,10 @@ impl Component<ComponentResult, String> for ObjLoader {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    match event {
-      WindowEvent::Resize { width, height } => {
-        self.width = *width;
-        self.height = *height;
-        logging::info!("Window resized to {}x{}", width, height);
-      }
-      _ => {}
+    if let WindowEvent::Resize { width, height } = event {
+      self.width = *width;
+      self.height = *height;
+      logging::info!("Window resized to {}x{}", width, height);
     }
     return Ok(());
   }
@@ -263,21 +263,20 @@ impl Component<ComponentResult, String> for ObjLoader {
         viewports: vec![viewport.clone()],
       },
       RenderCommand::SetPipeline {
-        pipeline: render_pipeline.clone(),
+        pipeline: render_pipeline,
       },
       RenderCommand::BeginRenderPass {
         render_pass: self
           .render_pass
-          .expect("Cannot begin the render pass when it doesn't exist.")
-          .clone(),
+          .expect("Cannot begin the render pass when it doesn't exist."),
         viewport: viewport.clone(),
       },
       RenderCommand::BindVertexBuffer {
-        pipeline: render_pipeline.clone(),
+        pipeline: render_pipeline,
         buffer: 0,
       },
       RenderCommand::Immediates {
-        pipeline: render_pipeline.clone(),
+        pipeline: render_pipeline,
         offset: 0,
         bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
           data: [0.0, 0.0, 0.0, 0.0],
