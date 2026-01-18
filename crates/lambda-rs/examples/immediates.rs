@@ -7,11 +7,7 @@ use lambda::{
     WindowEvent,
   },
   logging,
-  math::{
-    matrix,
-    matrix::Matrix,
-    vector::Vector,
-  },
+  math::matrix::Matrix,
   render::{
     buffer::BufferBuilder,
     command::RenderCommand,
@@ -43,7 +39,6 @@ use lambda::{
   runtime::start_runtime,
   runtimes::{
     application::ComponentResult,
-    ApplicationRuntime,
     ApplicationRuntimeBuilder,
   },
 };
@@ -156,7 +151,7 @@ impl Component<ComponentResult, String> for ImmediatesExample {
 
     let mut mesh_builder = MeshBuilder::new();
     vertices.iter().for_each(|vertex| {
-      mesh_builder.with_vertex(vertex.clone());
+      mesh_builder.with_vertex(*vertex);
     });
 
     let mesh = mesh_builder
@@ -216,7 +211,7 @@ impl Component<ComponentResult, String> for ImmediatesExample {
 
   fn on_detach(
     &mut self,
-    render_context: &mut lambda::render::RenderContext,
+    _render_context: &mut lambda::render::RenderContext,
   ) -> Result<ComponentResult, String> {
     logging::info!("Detaching component");
     return Ok(ComponentResult::Success);
@@ -227,13 +222,10 @@ impl Component<ComponentResult, String> for ImmediatesExample {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    match event {
-      WindowEvent::Resize { width, height } => {
-        self.width = *width;
-        self.height = *height;
-        logging::info!("Window resized to {}x{}", width, height);
-      }
-      _ => {}
+    if let WindowEvent::Resize { width, height } = event {
+      self.width = *width;
+      self.height = *height;
+      logging::info!("Window resized to {}x{}", width, height);
     }
     return Ok(());
   }
@@ -249,7 +241,7 @@ impl Component<ComponentResult, String> for ImmediatesExample {
 
   fn on_render(
     &mut self,
-    render_context: &mut lambda::render::RenderContext,
+    _render_context: &mut lambda::render::RenderContext,
   ) -> Vec<lambda::render::command::RenderCommand> {
     let camera = SimpleCamera {
       position: [0.0, 0.0, 3.0],
@@ -281,12 +273,11 @@ impl Component<ComponentResult, String> for ImmediatesExample {
       RenderCommand::BeginRenderPass {
         render_pass: self
           .render_pass
-          .expect("Cannot begin the render pass when it doesn't exist.")
-          .clone(),
+          .expect("Cannot begin the render pass when it doesn't exist."),
         viewport: viewport.clone(),
       },
       RenderCommand::SetPipeline {
-        pipeline: render_pipeline.clone(),
+        pipeline: render_pipeline,
       },
       RenderCommand::SetViewports {
         start_at: 0,
@@ -297,11 +288,11 @@ impl Component<ComponentResult, String> for ImmediatesExample {
         viewports: vec![viewport.clone()],
       },
       RenderCommand::BindVertexBuffer {
-        pipeline: render_pipeline.clone(),
+        pipeline: render_pipeline,
         buffer: 0,
       },
       RenderCommand::Immediates {
-        pipeline: render_pipeline.clone(),
+        pipeline: render_pipeline,
         offset: 0,
         bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
           data: [0.0, 0.0, 0.0, 0.0],

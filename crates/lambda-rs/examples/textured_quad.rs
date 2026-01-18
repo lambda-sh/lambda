@@ -205,7 +205,7 @@ impl Component<ComponentResult, String> for TexturedQuadExample {
         let i = ((y * tex_w + x) * 4) as usize;
         let checker = ((x / 8) % 2) ^ ((y / 8) % 2);
         let c = if checker == 0 { 40 } else { 220 };
-        pixels[i + 0] = c; // R
+        pixels[i] = c; // R
         pixels[i + 1] = c; // G
         pixels[i + 2] = c; // B
         pixels[i + 3] = 255; // A
@@ -275,12 +275,9 @@ impl Component<ComponentResult, String> for TexturedQuadExample {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    match event {
-      WindowEvent::Resize { width, height } => {
-        self.width = *width;
-        self.height = *height;
-      }
-      _ => {}
+    if let WindowEvent::Resize { width, height } = event {
+      self.width = *width;
+      self.height = *height;
     }
     return Ok(());
   }

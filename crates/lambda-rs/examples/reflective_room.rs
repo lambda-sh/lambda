@@ -664,7 +664,7 @@ impl ReflectiveRoomExample {
 
     // Reflected cube pipeline
     self.pipe_reflected = if self.stencil_enabled {
-      let mut builder = RenderPipelineBuilder::new()
+      let builder = RenderPipelineBuilder::new()
         .with_label("reflected-cube")
         // Mirrored transform reverses winding; cull front to keep visible faces.
         .with_culling(CullingMode::Front)

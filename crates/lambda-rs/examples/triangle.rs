@@ -68,7 +68,7 @@ impl Component<ComponentResult, String> for DemoComponent {
 
   fn on_detach(
     self: &mut DemoComponent,
-    render_context: &mut RenderContext,
+    _render_context: &mut RenderContext,
   ) -> Result<ComponentResult, String> {
     return Ok(ComponentResult::Success);
   }
@@ -119,12 +119,9 @@ impl Component<ComponentResult, String> for DemoComponent {
     self: &mut DemoComponent,
     last_frame: &std::time::Duration,
   ) -> Result<ComponentResult, String> {
-    match last_frame.as_millis() > 20 {
-      true => {
-        logging::warn!("Last frame took {}ms", last_frame.as_millis());
-      }
-      false => {}
-    };
+    if last_frame.as_millis() > 20 {
+      logging::warn!("Last frame took {}ms", last_frame.as_millis());
+    }
     return Ok(ComponentResult::Success);
   }
   fn on_render(
@@ -168,7 +165,6 @@ impl DemoComponent {}
 
 impl Default for DemoComponent {
   /// Load in shaders upon creation.
-
   fn default() -> Self {
     // Specify virtual shaders to use for rendering
     let triangle_vertex = VirtualShader::Source {

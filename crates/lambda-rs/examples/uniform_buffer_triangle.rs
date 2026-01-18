@@ -55,7 +55,6 @@ use lambda::{
   runtime::start_runtime,
   runtimes::{
     application::ComponentResult,
-    ApplicationRuntime,
     ApplicationRuntimeBuilder,
   },
 };
@@ -149,7 +148,7 @@ impl Component<ComponentResult, String> for UniformBufferExample {
 
     let mut mesh_builder = MeshBuilder::new();
     vertices.iter().for_each(|vertex| {
-      mesh_builder.with_vertex(vertex.clone());
+      mesh_builder.with_vertex(*vertex);
     });
 
     let mesh = mesh_builder
@@ -264,13 +263,10 @@ impl Component<ComponentResult, String> for UniformBufferExample {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    match event {
-      WindowEvent::Resize { width, height } => {
-        self.width = *width;
-        self.height = *height;
-        logging::info!("Window resized to {}x{}", width, height);
-      }
-      _ => {}
+    if let WindowEvent::Resize { width, height } = event {
+      self.width = *width;
+      self.height = *height;
+      logging::info!("Window resized to {}x{}", width, height);
     }
     return Ok(());
   }
@@ -330,12 +326,11 @@ impl Component<ComponentResult, String> for UniformBufferExample {
       RenderCommand::BeginRenderPass {
         render_pass: self
           .render_pass
-          .expect("Cannot begin the render pass when it does not exist.")
-          .clone(),
+          .expect("Cannot begin the render pass when it does not exist."),
         viewport: viewport.clone(),
       },
       RenderCommand::SetPipeline {
-        pipeline: render_pipeline.clone(),
+        pipeline: render_pipeline,
       },
       RenderCommand::SetViewports {
         start_at: 0,
@@ -346,7 +341,7 @@ impl Component<ComponentResult, String> for UniformBufferExample {
         viewports: vec![viewport.clone()],
       },
       RenderCommand::BindVertexBuffer {
-        pipeline: render_pipeline.clone(),
+        pipeline: render_pipeline,
         buffer: 0,
       },
       RenderCommand::SetBindGroup {

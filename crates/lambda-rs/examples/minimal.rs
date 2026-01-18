@@ -4,7 +4,6 @@
 //! applications or to verify that your system is configured to run lambda
 //! applications correctly.
 
-#[macro_use]
 use lambda::{
   runtime::start_runtime,
   runtimes::ApplicationRuntimeBuilder,

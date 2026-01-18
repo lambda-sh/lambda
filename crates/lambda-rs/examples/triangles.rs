@@ -123,13 +123,12 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     let mut commands = vec![RenderCommand::BeginRenderPass {
       render_pass: self
         .render_pass
-        .expect("Cannot begin the render pass when it doesn't exist.")
-        .clone(),
+        .expect("Cannot begin the render pass when it doesn't exist."),
       viewport: viewport.clone(),
     }];
 
     commands.push(RenderCommand::SetPipeline {
-      pipeline: render_pipeline.clone(),
+      pipeline: render_pipeline,
     });
     commands.push(RenderCommand::SetViewports {
       start_at: 0,
@@ -144,7 +143,7 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     // before requesting to draw each triangle.
     for triangle in triangle_data {
       commands.push(RenderCommand::Immediates {
-        pipeline: render_pipeline.clone(),
+        pipeline: render_pipeline,
         offset: 0,
         bytes: Vec::from(immediate_data_to_bytes(triangle)),
       });
@@ -178,11 +177,12 @@ impl Component<ComponentResult, String> for TrianglesComponent {
   }
 
   fn on_keyboard_event(&mut self, event: &Key) -> Result<(), String> {
-    match event {
-      Key::Pressed {
-        scan_code: _,
-        virtual_key,
-      } => match virtual_key {
+    if let Key::Pressed {
+      scan_code: _,
+      virtual_key,
+    } = event
+    {
+      match virtual_key {
         Some(VirtualKey::KeyW) => {
           self.position.1 -= 0.01;
         }
@@ -196,8 +196,7 @@ impl Component<ComponentResult, String> for TrianglesComponent {
           self.position.0 += 0.01;
         }
         _ => {}
-      },
-      _ => {}
+      }
     }
     return Ok(());
   }
@@ -206,12 +205,9 @@ impl Component<ComponentResult, String> for TrianglesComponent {
     &mut self,
     last_frame: &std::time::Duration,
   ) -> Result<ComponentResult, String> {
-    match last_frame.as_millis() > 20 {
-      true => {
-        logging::warn!("Last frame took {}ms", last_frame.as_millis());
-      }
-      false => {}
-    };
+    if last_frame.as_millis() > 20 {
+      logging::warn!("Last frame took {}ms", last_frame.as_millis());
+    }
     return Ok(ComponentResult::Success);
   }
 }
@@ -237,7 +233,6 @@ pub fn immediate_data_to_bytes(immediate_data: &ImmediateData) -> &[u32] {
 
 impl Default for TrianglesComponent {
   /// Load in shaders upon creation.
-
   fn default() -> Self {
     // Specify virtual shaders to use for rendering
     let triangle_vertex = VirtualShader::Source {
