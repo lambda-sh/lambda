@@ -44,7 +44,6 @@ use super::{
   },
   color_attachments::RenderColorAttachments,
   command::IndexFormat,
-  pipeline,
   pipeline::RenderPipeline,
   render_pass::RenderPass,
   texture::{
@@ -211,9 +210,6 @@ pub struct RenderPassEncoder<'pass> {
 #[derive(Clone)]
 struct CurrentPipeline {
   label: String,
-  has_color_targets: bool,
-  expects_depth_stencil: bool,
-  uses_stencil: bool,
   per_instance_slots: Vec<bool>,
 }
 
@@ -374,10 +370,7 @@ impl<'pass> RenderPassEncoder<'pass> {
     {
       let label = pipeline.pipeline().label().unwrap_or("unnamed").to_string();
       self.current_pipeline = Some(CurrentPipeline {
-        label: label.clone(),
-        has_color_targets: pipeline.has_color_targets(),
-        expects_depth_stencil: pipeline.expects_depth_stencil(),
-        uses_stencil: pipeline.uses_stencil(),
+        label,
         per_instance_slots: pipeline.per_instance_slots().clone(),
       });
     }
@@ -517,7 +510,7 @@ impl<'pass> RenderPassEncoder<'pass> {
       }
 
       let buffer_size = buffer.raw().size();
-      if buffer_size % element_size != 0 {
+      if !buffer_size.is_multiple_of(element_size) {
         return Err(RenderPassError::Validation(format!(
           "Index buffer size {} bytes is not a multiple of element size {} \
            for format {:?}",

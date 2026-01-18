@@ -135,6 +135,12 @@ pub struct BindGroupLayoutBuilder {
   samplers: Vec<(u32, BindingVisibility)>,
 }
 
+impl Default for BindGroupLayoutBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 impl BindGroupLayoutBuilder {
   /// Create a new builder with no bindings.
   pub fn new() -> Self {
@@ -298,6 +304,12 @@ pub struct BindGroupBuilder<'a> {
   entries: Vec<(u32, &'a Buffer, u64, Option<std::num::NonZeroU64>)>,
   textures: Vec<(u32, Rc<lambda_platform::wgpu::texture::Texture>)>,
   samplers: Vec<(u32, Rc<lambda_platform::wgpu::texture::Sampler>)>,
+}
+
+impl<'a> Default for BindGroupBuilder<'a> {
+  fn default() -> Self {
+    return Self::new();
+  }
 }
 
 impl<'a> BindGroupBuilder<'a> {

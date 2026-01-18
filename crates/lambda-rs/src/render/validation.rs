@@ -174,8 +174,7 @@ mod tests {
 
     let err =
       validate_instance_bindings("instanced", &per_instance_slots, &bound)
-        .err()
-        .expect("must error");
+        .expect_err("must error");
     assert!(err.contains("instanced"));
     assert!(err.contains("slot 2"));
   }

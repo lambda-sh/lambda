@@ -86,6 +86,12 @@ pub struct VertexBuilder {
   pub color: [f32; 3],
 }
 
+impl Default for VertexBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 impl VertexBuilder {
   /// Creates a new vertex builder.
   pub fn new() -> Self {

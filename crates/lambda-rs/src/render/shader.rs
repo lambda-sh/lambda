@@ -35,6 +35,12 @@ pub struct ShaderBuilder {
   compiler: ShaderCompiler,
 }
 
+impl Default for ShaderBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 impl ShaderBuilder {
   /// Creates a new shader builder that can be reused for compiling shaders.
   pub fn new() -> Self {
@@ -77,5 +83,10 @@ impl Shader {
   /// `Vec<u32>`. Prefer `binary()` for zero‑copy borrowing.
   pub fn as_binary(&self) -> Vec<u32> {
     return self.binary.clone();
+  }
+
+  /// Borrow the `VirtualShader` used to compile this shader.
+  pub fn virtual_shader(&self) -> &VirtualShader {
+    return &self.virtual_shader;
   }
 }

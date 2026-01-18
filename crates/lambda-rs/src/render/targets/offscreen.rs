@@ -60,9 +60,7 @@ impl OffscreenTarget {
   }
 
   /// Access the multi-sampled color attachment used for rendering.
-  pub(crate) fn msaa_color_texture(
-    &self,
-  ) -> Option<&texture::ColorAttachmentTexture> {
+  pub fn msaa_color_texture(&self) -> Option<&texture::ColorAttachmentTexture> {
     return self.msaa_color.as_ref();
   }
 
@@ -75,7 +73,7 @@ impl OffscreenTarget {
   }
 
   /// Optional debug label assigned at creation time.
-  pub(crate) fn label(&self) -> Option<&str> {
+  pub fn label(&self) -> Option<&str> {
     return self.label.as_deref();
   }
 
@@ -141,6 +139,12 @@ pub struct OffscreenTargetBuilder {
   sample_count: u32,
 }
 
+impl Default for OffscreenTargetBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 impl OffscreenTargetBuilder {
   /// Create a new builder with no attachments configured.
   pub fn new() -> Self {
@@ -198,7 +202,7 @@ impl OffscreenTargetBuilder {
     let (width, height) = self.resolve_size()?;
 
     let sample_count = self.sample_count.max(1);
-    if let Err(_) = validation::validate_sample_count(sample_count) {
+    if validation::validate_sample_count(sample_count).is_err() {
       return Err(OffscreenTargetError::UnsupportedSampleCount {
         requested: sample_count,
       });

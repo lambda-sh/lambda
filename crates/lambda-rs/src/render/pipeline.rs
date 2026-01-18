@@ -270,6 +270,12 @@ pub struct RenderPipelineBuilder {
   depth_write_enabled: Option<bool>,
 }
 
+impl Default for RenderPipelineBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 impl RenderPipelineBuilder {
   /// Creates a new render pipeline builder.
   pub fn new() -> Self {
