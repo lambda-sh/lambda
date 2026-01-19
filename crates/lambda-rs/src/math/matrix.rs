@@ -3,6 +3,7 @@
 use super::{
   turns_to_radians,
   vector::Vector,
+  MathError,
 };
 
 // -------------------------------- MATRIX -------------------------------------
@@ -17,7 +18,10 @@ pub trait Matrix<V: Vector> {
   fn transpose(&self) -> Self;
   fn inverse(&self) -> Self;
   fn transform(&self, other: &V) -> V;
-  fn determinant(&self) -> f32;
+  /// Compute the determinant of the matrix.
+  ///
+  /// Returns an error when the matrix is empty or not square.
+  fn determinant(&self) -> Result<f32, MathError>;
   fn size(&self) -> (usize, usize);
   fn row(&self, row: usize) -> &V;
   fn at(&self, row: usize, column: usize) -> V::Scalar;
@@ -84,70 +88,67 @@ pub fn translation_matrix<
 /// Rotates the input matrix by the given number of turns around the given axis.
 /// The axis must be a unit vector and the turns must be in the range [0, 1).
 /// The rotation is counter-clockwise when looking down the axis.
+///
+/// Returns an error when the matrix is not 4x4, or when `axis_to_rotate` is not
+/// a unit axis vector (`[1,0,0]`, `[0,1,0]`, `[0,0,1]`). A zero axis (`[0,0,0]`)
+/// is treated as "no rotation".
 pub fn rotate_matrix<
-  InputVector: Vector<Scalar = f32>,
-  ResultingVector: Vector<Scalar = f32>,
-  OutputMatrix: Matrix<ResultingVector> + Default + Clone,
+  V: Vector<Scalar = f32>,
+  MatrixLike: Matrix<V> + Default + Clone,
 >(
-  matrix_to_rotate: OutputMatrix,
-  axis_to_rotate: InputVector,
+  matrix_to_rotate: MatrixLike,
+  axis_to_rotate: [f32; 3],
   angle_in_turns: f32,
-) -> OutputMatrix {
+) -> Result<MatrixLike, MathError> {
   let (rows, columns) = matrix_to_rotate.size();
-  assert_eq!(rows, columns, "Matrix must be square");
-  assert_eq!(rows, 4, "Matrix must be 4x4");
-  assert_eq!(
-    axis_to_rotate.size(),
-    3,
-    "Axis vector must have 3 elements (x, y, z)"
-  );
+  if rows != columns {
+    return Err(MathError::NonSquareMatrix {
+      rows,
+      cols: columns,
+    });
+  }
+  if rows != 4 {
+    return Err(MathError::InvalidRotationMatrixSize {
+      rows,
+      cols: columns,
+    });
+  }
 
   let angle_in_radians = turns_to_radians(angle_in_turns);
   let cosine_of_angle = angle_in_radians.cos();
   let sin_of_angle = angle_in_radians.sin();
 
-  let _t = 1.0 - cosine_of_angle;
-  let x = axis_to_rotate.at(0);
-  let y = axis_to_rotate.at(1);
-  let z = axis_to_rotate.at(2);
+  let mut rotation_matrix = MatrixLike::default();
+  let [x, y, z] = axis_to_rotate;
 
-  let mut rotation_matrix = OutputMatrix::default();
-
-  let rotation = match (x as u8, y as u8, z as u8) {
-    (0, 0, 0) => {
-      // No rotation
-      return matrix_to_rotate;
-    }
-    (0, 0, 1) => {
-      // Rotate around z-axis
-      [
-        [cosine_of_angle, sin_of_angle, 0.0, 0.0],
-        [-sin_of_angle, cosine_of_angle, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-      ]
-    }
-    (0, 1, 0) => {
-      // Rotate around y-axis
-      [
-        [cosine_of_angle, 0.0, -sin_of_angle, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [sin_of_angle, 0.0, cosine_of_angle, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-      ]
-    }
-    (1, 0, 0) => {
-      // Rotate around x-axis
-      [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, cosine_of_angle, sin_of_angle, 0.0],
-        [0.0, -sin_of_angle, cosine_of_angle, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-      ]
-    }
-    _ => {
-      panic!("Axis must be a unit vector")
-    }
+  let rotation = if axis_to_rotate == [0.0, 0.0, 0.0] {
+    return Ok(matrix_to_rotate);
+  } else if axis_to_rotate == [0.0, 0.0, 1.0] {
+    // Rotate around z-axis
+    [
+      [cosine_of_angle, sin_of_angle, 0.0, 0.0],
+      [-sin_of_angle, cosine_of_angle, 0.0, 0.0],
+      [0.0, 0.0, 1.0, 0.0],
+      [0.0, 0.0, 0.0, 1.0],
+    ]
+  } else if axis_to_rotate == [0.0, 1.0, 0.0] {
+    // Rotate around y-axis
+    [
+      [cosine_of_angle, 0.0, -sin_of_angle, 0.0],
+      [0.0, 1.0, 0.0, 0.0],
+      [sin_of_angle, 0.0, cosine_of_angle, 0.0],
+      [0.0, 0.0, 0.0, 1.0],
+    ]
+  } else if axis_to_rotate == [1.0, 0.0, 0.0] {
+    // Rotate around x-axis
+    [
+      [1.0, 0.0, 0.0, 0.0],
+      [0.0, cosine_of_angle, sin_of_angle, 0.0],
+      [0.0, -sin_of_angle, cosine_of_angle, 0.0],
+      [0.0, 0.0, 0.0, 1.0],
+    ]
+  } else {
+    return Err(MathError::InvalidRotationAxis { axis: [x, y, z] });
   };
 
   for (i, row) in rotation.iter().enumerate().take(rows) {
@@ -156,7 +157,7 @@ pub fn rotate_matrix<
     }
   }
 
-  return matrix_to_rotate.multiply(&rotation_matrix);
+  return Ok(matrix_to_rotate.multiply(&rotation_matrix));
 }
 
 /// Creates a 4x4 perspective matrix given the fov in turns (unit between
@@ -325,40 +326,47 @@ where
   }
 
   /// Computes the determinant of any square matrix using Laplace expansion.
-  fn determinant(&self) -> f32 {
-    let (width, height) =
-      (self.as_ref()[0].as_ref().len(), self.as_ref().len());
-
-    if width != height {
-      panic!("Cannot compute determinant of non-square matrix");
+  fn determinant(&self) -> Result<f32, MathError> {
+    let rows = self.as_ref().len();
+    if rows == 0 {
+      return Err(MathError::EmptyMatrix);
     }
 
-    return match height {
-      1 => self.as_ref()[0].as_ref()[0],
+    let cols = self.as_ref()[0].as_ref().len();
+    if cols == 0 {
+      return Err(MathError::EmptyMatrix);
+    }
+
+    if cols != rows {
+      return Err(MathError::NonSquareMatrix { rows, cols });
+    }
+
+    return match rows {
+      1 => Ok(self.as_ref()[0].as_ref()[0]),
       2 => {
         let a = self.at(0, 0);
         let b = self.at(0, 1);
         let c = self.at(1, 0);
         let d = self.at(1, 1);
-        a * d - b * c
+        return Ok(a * d - b * c);
       }
       _ => {
         let mut result = 0.0;
-        for i in 0..height {
-          let mut submatrix: Vec<Vec<f32>> = Vec::with_capacity(height - 1);
-          for j in 1..height {
+        for i in 0..rows {
+          let mut submatrix: Vec<Vec<f32>> = Vec::with_capacity(rows - 1);
+          for j in 1..rows {
             let mut row = Vec::new();
-            for k in 0..height {
+            for k in 0..rows {
               if k != i {
                 row.push(self.at(j, k));
               }
             }
             submatrix.push(row);
           }
-          result +=
-            self.at(0, i) * submatrix.determinant() * (-1.0_f32).powi(i as i32);
+          let sub_determinant = submatrix.determinant()?;
+          result += self.at(0, i) * sub_determinant * (-1.0_f32).powi(i as i32);
         }
-        result
+        return Ok(result);
       }
     };
   }
@@ -397,6 +405,7 @@ mod tests {
   use crate::math::{
     matrix::translation_matrix,
     turns_to_radians,
+    MathError,
   };
 
   #[test]
@@ -438,17 +447,17 @@ mod tests {
   #[test]
   fn square_matrix_determinant() {
     let m = [[3.0, 8.0], [4.0, 6.0]];
-    assert_eq!(m.determinant(), -14.0);
+    assert_eq!(m.determinant(), Ok(-14.0));
 
     let m2 = [[6.0, 1.0, 1.0], [4.0, -2.0, 5.0], [2.0, 8.0, 7.0]];
-    assert_eq!(m2.determinant(), -306.0);
+    assert_eq!(m2.determinant(), Ok(-306.0));
   }
 
   #[test]
   fn non_square_matrix_determinant() {
     let m = [[3.0, 8.0], [4.0, 6.0], [0.0, 1.0]];
-    let result = std::panic::catch_unwind(|| m.determinant());
-    assert!(result.is_err());
+    let result = m.determinant();
+    assert_eq!(result, Err(MathError::NonSquareMatrix { rows: 3, cols: 2 }));
   }
 
   #[test]
@@ -503,7 +512,8 @@ mod tests {
   fn rotate_matrices() {
     // Test a zero turn rotation.
     let matrix: [[f32; 4]; 4] = filled_matrix(4, 4, 1.0);
-    let rotated_matrix = rotate_matrix(matrix, [0.0, 0.0, 1.0], 0.0);
+    let rotated_matrix =
+      rotate_matrix(matrix, [0.0, 0.0, 1.0], 0.0).expect("valid axis");
     assert_eq!(rotated_matrix, matrix);
 
     // Test a 90 degree rotation.
@@ -513,7 +523,8 @@ mod tests {
       [9.0, 10.0, 11.0, 12.0],
       [13.0, 14.0, 15.0, 16.0],
     ];
-    let rotated = rotate_matrix(matrix, [0.0, 1.0, 0.0], 0.25);
+    let rotated =
+      rotate_matrix(matrix, [0.0, 1.0, 0.0], 0.25).expect("valid axis");
     let expected = [
       [3.0, 1.9999999, -1.0000001, 4.0],
       [7.0, 5.9999995, -5.0000005, 8.0],
