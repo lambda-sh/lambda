@@ -111,7 +111,7 @@ mod tests {
         multisampled,
       } => {
         assert_eq!(view_dimension, wgpu::TextureViewDimension::D2);
-        assert_eq!(multisampled, false);
+        assert!(!multisampled);
         match sample_type {
           wgpu::TextureSampleType::Float { filterable } => assert!(filterable),
           _ => panic!("expected float sample type"),

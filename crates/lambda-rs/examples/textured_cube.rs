@@ -304,7 +304,7 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
         let i = ((y * tex_w + x) * 4) as usize;
         let checker = ((x / 8) % 2) ^ ((y / 8) % 2);
         let c: u8 = if checker == 0 { 40 } else { 220 };
-        pixels[i + 0] = c;
+        pixels[i] = c;
         pixels[i + 1] = c;
         pixels[i + 2] = c;
         pixels[i + 3] = 255;
@@ -373,12 +373,9 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    match event {
-      WindowEvent::Resize { width, height } => {
-        self.width = *width;
-        self.height = *height;
-      }
-      _ => {}
+    if let WindowEvent::Resize { width, height } = event {
+      self.width = *width;
+      self.height = *height;
     }
     return Ok(());
   }

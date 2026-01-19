@@ -150,9 +150,9 @@ pub fn rotate_matrix<
     }
   };
 
-  for i in 0..rows {
-    for j in 0..columns {
-      rotation_matrix.update(i, j, rotation[i][j]);
+  for (i, row) in rotation.iter().enumerate().take(rows) {
+    for (j, value) in row.iter().enumerate().take(columns) {
+      rotation_matrix.update(i, j, *value);
     }
   }
 
@@ -355,9 +355,8 @@ where
             }
             submatrix.push(row);
           }
-          result += self.at(0, i)
-            * submatrix.determinant()
-            * (-1.0 as f32).powi(i as i32);
+          result +=
+            self.at(0, i) * submatrix.determinant() * (-1.0_f32).powi(i as i32);
         }
         result
       }
@@ -374,7 +373,6 @@ where
     return &self.as_ref()[row];
   }
 
-  ///
   fn at(&self, row: usize, column: usize) -> <V as Vector>::Scalar {
     return self.as_ref()[row].as_ref()[column];
   }
@@ -450,7 +448,7 @@ mod tests {
   fn non_square_matrix_determinant() {
     let m = [[3.0, 8.0], [4.0, 6.0], [0.0, 1.0]];
     let result = std::panic::catch_unwind(|| m.determinant());
-    assert_eq!(false, result.is_ok());
+    assert!(result.is_err());
   }
 
   #[test]

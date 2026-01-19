@@ -48,7 +48,6 @@ use lambda::{
   runtime::start_runtime,
   runtimes::{
     application::ComponentResult,
-    ApplicationRuntime,
     ApplicationRuntimeBuilder,
   },
 };
@@ -235,13 +234,10 @@ impl Component<ComponentResult, String> for IndexedMultiBufferExample {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    match event {
-      WindowEvent::Resize { width, height } => {
-        self.width = *width;
-        self.height = *height;
-        logging::info!("Window resized to {}x{}", width, height);
-      }
-      _ => {}
+    if let WindowEvent::Resize { width, height } = event {
+      self.width = *width;
+      self.height = *height;
+      logging::info!("Window resized to {}x{}", width, height);
     }
     return Ok(());
   }

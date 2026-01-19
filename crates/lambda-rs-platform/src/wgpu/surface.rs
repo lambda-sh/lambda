@@ -84,23 +84,6 @@ impl SurfaceConfig {
         .collect(),
     };
   }
-
-  pub(crate) fn to_wgpu(&self) -> wgpu::SurfaceConfiguration {
-    let mut view_formats: Vec<wgpu::TextureFormat> = Vec::new();
-    for vf in &self.view_formats {
-      view_formats.push(vf.to_wgpu());
-    }
-    return wgpu::SurfaceConfiguration {
-      usage: self.usage.to_wgpu(),
-      format: self.format.to_wgpu(),
-      width: self.width,
-      height: self.height,
-      present_mode: self.present_mode.to_wgpu(),
-      desired_maximum_frame_latency: 2,
-      alpha_mode: wgpu::CompositeAlphaMode::Opaque,
-      view_formats,
-    };
-  }
 }
 
 /// Error wrapper for surface acquisition and presentation errors.
@@ -154,10 +137,10 @@ impl SurfaceBuilder {
   /// Safety: we use `create_surface_unsafe` by forwarding raw window/display
   /// handles from `winit`. Lambda guarantees the window outlives the surface
   /// for the duration of the runtime.
-  pub fn build<'window>(
+  pub fn build(
     self,
     instance: &Instance,
-    window: &'window WindowHandle,
+    window: &WindowHandle,
   ) -> Result<Surface<'static>, CreateSurfaceError> {
     // SAFETY: We ensure the raw window/display handles outlive the surface by
     // keeping the window alive for the duration of the application runtime.
@@ -189,6 +172,12 @@ impl SurfaceBuilder {
       configuration: None,
       format: None,
     })
+  }
+}
+
+impl Default for SurfaceBuilder {
+  fn default() -> Self {
+    return Self::new();
   }
 }
 
@@ -349,11 +338,6 @@ impl Frame {
   /// Borrow the default view for rendering.
   pub fn texture_view(&self) -> TextureViewRef<'_> {
     return TextureViewRef { raw: &self.view };
-  }
-
-  /// Consume and return the underlying parts.
-  pub(crate) fn into_parts(self) -> (wgpu::SurfaceTexture, wgpu::TextureView) {
-    return (self.texture, self.view);
   }
 
   /// Present the frame to the swapchain.

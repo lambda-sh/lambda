@@ -253,6 +253,11 @@ impl DepthTexture {
     return self.format;
   }
 
+  /// Optional debug label used during creation.
+  pub fn label(&self) -> Option<&str> {
+    return self.label.as_deref();
+  }
+
   /// Convenience: return a `TextureViewRef` for use in render pass attachments.
   pub fn view_ref(&self) -> crate::wgpu::surface::TextureViewRef<'_> {
     return crate::wgpu::surface::TextureViewRef { raw: &self.view };
@@ -276,6 +281,11 @@ impl ColorAttachmentTexture {
   /// Borrow the full-range `wgpu::TextureView` suitable as a color attachment.
   pub fn view(&self) -> &wgpu::TextureView {
     return &self.view;
+  }
+
+  /// Optional debug label used during creation.
+  pub fn label(&self) -> Option<&str> {
+    return self.label.as_deref();
   }
 
   /// Convenience: return a `TextureViewRef` for use in render pass attachments.
@@ -369,6 +379,12 @@ pub struct DepthTextureBuilder {
   height: u32,
   format: DepthFormat,
   sample_count: u32,
+}
+
+impl Default for DepthTextureBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
 }
 
 impl DepthTextureBuilder {
@@ -512,6 +528,12 @@ pub struct SamplerBuilder {
   address_w: AddressMode,
   lod_min: f32,
   lod_max: f32,
+}
+
+impl Default for SamplerBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
 }
 
 impl SamplerBuilder {

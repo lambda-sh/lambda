@@ -47,6 +47,12 @@ pub struct MeshBuilder {
   attributes: Vec<VertexAttribute>,
 }
 
+impl Default for MeshBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 impl MeshBuilder {
   /// Creates a new mesh builder.
   pub fn new() -> Self {

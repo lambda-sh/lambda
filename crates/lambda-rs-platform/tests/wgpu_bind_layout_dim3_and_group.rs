@@ -2,15 +2,28 @@
 
 // Bind group layout and group test for 3D texture dimension
 
-#[test]
-fn wgpu_bind_layout_dim3_and_group() {
+fn create_test_device() -> Option<lambda_platform::wgpu::gpu::Gpu> {
   let instance = lambda_platform::wgpu::instance::InstanceBuilder::new()
     .with_label("p-itest-3d-bind")
     .build();
-  let gpu = lambda_platform::wgpu::gpu::GpuBuilder::new()
+  let result = lambda_platform::wgpu::gpu::GpuBuilder::new()
     .with_label("p-itest-3d-bind-device")
-    .build(&instance, None)
-    .expect("create device");
+    .build(&instance, None);
+
+  match result {
+    Ok(gpu) => return Some(gpu),
+    Err(lambda_platform::wgpu::gpu::GpuBuildError::AdapterUnavailable) => {
+      return None;
+    }
+    Err(err) => panic!("create device: {:?}", err),
+  }
+}
+
+#[test]
+fn wgpu_bind_layout_dim3_and_group() {
+  let Some(gpu) = create_test_device() else {
+    return;
+  };
 
   let (w, h, d) = (2u32, 2u32, 2u32);
   let pixels = vec![255u8; (w * h * d * 4) as usize];

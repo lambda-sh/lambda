@@ -1,4 +1,5 @@
 #![allow(clippy::needless_return)]
+#![allow(clippy::items_after_test_module)]
 //! # Lambda Args
 //! Lambda Args is a simple argument parser for Rust. It is designed to be
 //! simple to use and primarily for use in lambda command line applications.
@@ -72,42 +73,42 @@ pub enum ArgumentValue {
   String(String),
 }
 
-impl Into<String> for ArgumentValue {
-  fn into(self) -> String {
-    return match self {
+impl From<ArgumentValue> for String {
+  fn from(value: ArgumentValue) -> Self {
+    return match value {
       ArgumentValue::String(val) => val,
-      _ => panic!("Cannot convert {:?} into a String.", self),
+      other => panic!("Cannot convert {:?} into a String.", other),
     };
   }
 }
 
-impl Into<i64> for ArgumentValue {
-  fn into(self) -> i64 {
-    return match self {
+impl From<ArgumentValue> for i64 {
+  fn from(value: ArgumentValue) -> Self {
+    return match value {
       ArgumentValue::Integer(val) => val,
       ArgumentValue::Float(val) => val as i64,
       ArgumentValue::Double(val) => val as i64,
-      _ => panic!("Cannot convert {:?} into an i64", self),
+      other => panic!("Cannot convert {:?} into an i64", other),
     };
   }
 }
 
-impl Into<f32> for ArgumentValue {
-  fn into(self) -> f32 {
-    return match self {
+impl From<ArgumentValue> for f32 {
+  fn from(value: ArgumentValue) -> Self {
+    return match value {
       ArgumentValue::Float(val) => val,
-      _ => panic!("Cannot convert {:?} into a f32", self),
+      other => panic!("Cannot convert {:?} into a f32", other),
     };
   }
 }
 
-impl Into<f64> for ArgumentValue {
-  fn into(self) -> f64 {
-    return match self {
+impl From<ArgumentValue> for f64 {
+  fn from(value: ArgumentValue) -> Self {
+    return match value {
       ArgumentValue::Double(val) => val,
       ArgumentValue::Float(val) => val as f64,
       ArgumentValue::Integer(val) => val as f64,
-      _ => panic!("Cannot convert {:?} into a f64", self),
+      other => panic!("Cannot convert {:?} into a f64", other),
     };
   }
 }
@@ -194,7 +195,7 @@ impl Argument {
   }
 
   pub fn arg_type(&self) -> ArgumentType {
-    return self.arg_type.clone();
+    return self.arg_type;
   }
 
   /// Canonical name used for matching and display (e.g., `--output`).
@@ -406,11 +407,12 @@ impl ArgumentParser {
         format!(" (aliases: {})", arg.aliases().join(", "))
       };
       out.push_str(&format!(
-        "  {}{}\n      {}{}{}\n",
+        "  {}{}\n      {}{}{}{}\n",
         arg.name(),
         sep,
         desc,
-        format!("{}{}", req, def),
+        req,
+        def,
         aliases
       ));
     }
@@ -583,13 +585,13 @@ impl ArgumentParser {
           if matches!(pre.0.arg_type(), ArgumentType::Count) {
             let index = pre.2;
             let current = match &parsed_arguments[index].value {
-              ArgumentValue::Integer(v) => *v as i64,
+              ArgumentValue::Integer(v) => *v,
               _ => 0,
             };
             let found = self.args.get_mut(&canon).unwrap();
             parsed_arguments[index] = ParsedArgument::new(
               found.0.name.as_str(),
-              ArgumentValue::Integer((current + 1) as i64),
+              ArgumentValue::Integer(current + 1),
             );
             found.1 = true;
           } else if matches!(pre.0.arg_type(), ArgumentType::Boolean) {
@@ -619,7 +621,7 @@ impl ArgumentParser {
         return Err(ArgsError::UnknownArgument(msg));
       };
       let pre = self.args.get(&canon_name).unwrap();
-      if pre.1 == true {
+      if pre.1 {
         return Err(ArgsError::DuplicateArgument(pre.0.name.clone()));
       }
       // Boolean flags can be set by presence alone
@@ -636,12 +638,12 @@ impl ArgumentParser {
         let index = pre.2;
         let found = self.args.get_mut(&canon_name).unwrap();
         let current = match &parsed_arguments[index].value {
-          ArgumentValue::Integer(v) => *v as i64,
+          ArgumentValue::Integer(v) => *v,
           _ => 0,
         };
         parsed_arguments[index] = ParsedArgument::new(
           found.0.name.as_str(),
-          ArgumentValue::Integer((current + 1) as i64),
+          ArgumentValue::Integer(current + 1),
         );
         found.1 = true;
         continue;
@@ -1022,12 +1024,12 @@ mod tests {
       Argument::new("--verbose").with_type(ArgumentType::Boolean),
     );
     let p = parser.parse(&argv(&["--verbose"])).unwrap();
-    assert_eq!(p.get_bool("--verbose").unwrap(), true);
+    assert!(p.get_bool("--verbose").unwrap());
     let parser2 = ArgumentParser::new("app").with_argument(
       Argument::new("--verbose").with_type(ArgumentType::Boolean),
     );
     let p2 = parser2.parse(&argv(&["--no-verbose"])).unwrap();
-    assert_eq!(p2.get_bool("--verbose").unwrap(), false);
+    assert!(!p2.get_bool("--verbose").unwrap());
   }
 
   #[test]
@@ -1279,12 +1281,12 @@ impl ArgumentParser {
 
   fn assign_next_positional(
     &mut self,
-    out: &mut Vec<ParsedArgument>,
+    out: &mut [ParsedArgument],
     value: &str,
   ) -> Result<(), ArgsError> {
     for pname in self.positionals.clone() {
       if let Some(entry) = self.args.get_mut(&pname) {
-        if entry.1 == false {
+        if !entry.1 {
           let parsed = parse_value(&entry.0, value)?;
           let idx = entry.2;
           out[idx] = ParsedArgument::new(entry.0.name.as_str(), parsed);
@@ -1300,7 +1302,7 @@ impl ArgumentParser {
     })
   }
 
-  fn get_present(&self, out: &Vec<ParsedArgument>, name: &str) -> bool {
+  fn get_present(&self, out: &[ParsedArgument], name: &str) -> bool {
     let canon = if self.args.contains_key(name) {
       name.to_string()
     } else if let Some(n) = self.aliases.get(name) {

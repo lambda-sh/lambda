@@ -339,7 +339,7 @@ impl Runtime<(), String> for ApplicationRuntime {
           _ => None,
         },
         WinitEvent::AboutToWait => {
-          let last_frame = current_frame.clone();
+          let last_frame = current_frame;
           current_frame = Instant::now();
           let duration = &current_frame.duration_since(last_frame);
 
@@ -347,7 +347,15 @@ impl Runtime<(), String> for ApplicationRuntime {
             .as_mut()
             .expect("Couldn't get the active render context. ");
           for component in &mut component_stack {
-            component.on_update(duration);
+            let update_result = component.on_update(duration);
+            if let Err(error) = update_result {
+              logging::error!("{}", error);
+              publisher.publish_event(Events::Runtime {
+                event: RuntimeEvent::ComponentPanic { message: error },
+                issued_at: Instant::now(),
+              });
+              continue;
+            }
             let commands = component.on_render(active_render_context);
             active_render_context.render(commands);
           }
@@ -385,13 +393,29 @@ impl Runtime<(), String> for ApplicationRuntime {
                 name
               );
               for component in &mut component_stack {
-                component.on_attach(active_render_context.as_mut().unwrap());
+                let attach_result =
+                  component.on_attach(active_render_context.as_mut().unwrap());
+                if let Err(error) = attach_result {
+                  logging::error!("{}", error);
+                  publisher.publish_event(Events::Runtime {
+                    event: RuntimeEvent::ComponentPanic { message: error },
+                    issued_at: Instant::now(),
+                  });
+                }
               }
               None
             }
             RuntimeEvent::Shutdown => {
               for component in &mut component_stack {
-                component.on_detach(active_render_context.as_mut().unwrap());
+                let detach_result =
+                  component.on_detach(active_render_context.as_mut().unwrap());
+                if let Err(error) = detach_result {
+                  logging::error!("{}", error);
+                  publisher.publish_event(Events::Runtime {
+                    event: RuntimeEvent::ComponentPanic { message: error },
+                    issued_at: Instant::now(),
+                  });
+                }
               }
               *runtime_result = Ok(());
               None
@@ -418,28 +442,22 @@ impl Runtime<(), String> for ApplicationRuntime {
         }
       };
 
-      match mapped_event {
-        Some(event) => {
-          logging::trace!("Sending event: {:?} to all components", event);
+      if let Some(event) = mapped_event {
+        logging::trace!("Sending event: {:?} to all components", event);
 
-          let event_mask = event.mask();
-          for component in &mut component_stack {
-            let event_result = dispatch_event_to_component(
-              &event,
-              event_mask,
-              component.as_mut(),
-            );
+        let event_mask = event.mask();
+        for component in &mut component_stack {
+          let event_result =
+            dispatch_event_to_component(&event, event_mask, component.as_mut());
 
-            if let Err(error) = event_result {
-              logging::error!("{}", error);
-              publisher.publish_event(Events::Runtime {
-                event: RuntimeEvent::ComponentPanic { message: error },
-                issued_at: Instant::now(),
-              });
-            }
+          if let Err(error) = event_result {
+            logging::error!("{}", error);
+            publisher.publish_event(Events::Runtime {
+              event: RuntimeEvent::ComponentPanic { message: error },
+              issued_at: Instant::now(),
+            });
           }
         }
-        None => {}
       }
     });
     return Ok(());
@@ -553,8 +571,10 @@ mod tests {
 
   #[test]
   fn dispatch_skips_component_when_mask_is_none() {
-    let mut component = RecordingComponent::default();
-    component.mask = EventMask::NONE;
+    let mut component = RecordingComponent {
+      mask: EventMask::NONE,
+      ..Default::default()
+    };
 
     let event = Events::Window {
       event: WindowEvent::Close,
@@ -569,8 +589,10 @@ mod tests {
 
   #[test]
   fn dispatch_skips_component_when_mask_does_not_contain_event() {
-    let mut component = RecordingComponent::default();
-    component.mask = EventMask::KEYBOARD;
+    let mut component = RecordingComponent {
+      mask: EventMask::KEYBOARD,
+      ..Default::default()
+    };
 
     let event = Events::Window {
       event: WindowEvent::Close,
@@ -586,8 +608,10 @@ mod tests {
 
   #[test]
   fn dispatch_calls_exact_handler_when_mask_contains_event() {
-    let mut component = RecordingComponent::default();
-    component.mask = EventMask::WINDOW | EventMask::KEYBOARD;
+    let mut component = RecordingComponent {
+      mask: EventMask::WINDOW | EventMask::KEYBOARD,
+      ..Default::default()
+    };
 
     let window_event = Events::Window {
       event: WindowEvent::Resize {
@@ -630,9 +654,11 @@ mod tests {
 
   #[test]
   fn dispatch_returns_fatal_error_message_on_handler_failure() {
-    let mut component = RecordingComponent::default();
-    component.mask = EventMask::WINDOW;
-    component.fail_window = true;
+    let mut component = RecordingComponent {
+      mask: EventMask::WINDOW,
+      fail_window: true,
+      ..Default::default()
+    };
 
     let event = Events::Window {
       event: WindowEvent::Close,

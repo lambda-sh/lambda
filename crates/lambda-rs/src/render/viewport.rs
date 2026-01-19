@@ -40,6 +40,12 @@ pub struct ViewportBuilder {
   max_depth: f32,
 }
 
+impl Default for ViewportBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 impl ViewportBuilder {
   /// Creates a new viewport builder.
   pub fn new() -> Self {

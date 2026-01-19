@@ -40,7 +40,7 @@ impl<'a> TextureView<'a> {
 
   /// Convert to the platform texture view reference for internal use.
   #[inline]
-  pub(crate) fn to_platform(&self) -> platform::surface::TextureViewRef<'a> {
+  pub(crate) fn to_platform(self) -> platform::surface::TextureViewRef<'a> {
     return self.inner;
   }
 }
@@ -115,7 +115,7 @@ pub enum PresentMode {
 
 impl PresentMode {
   #[inline]
-  pub(crate) fn to_platform(&self) -> platform::surface::PresentMode {
+  pub(crate) fn to_platform(self) -> platform::surface::PresentMode {
     return match self {
       PresentMode::Fifo => platform::surface::PresentMode::Fifo,
       PresentMode::FifoRelaxed => platform::surface::PresentMode::FifoRelaxed,
@@ -284,15 +284,12 @@ impl WindowSurface {
     present_mode: PresentMode,
     usage: TextureUsages,
   ) -> Result<(), String> {
-    self
-      .inner
-      .configure_with_defaults(
-        gpu.platform(),
-        size,
-        present_mode.to_platform(),
-        usage.to_platform(),
-      )
-      .map_err(|e| e)?;
+    self.inner.configure_with_defaults(
+      gpu.platform(),
+      size,
+      present_mode.to_platform(),
+      usage.to_platform(),
+    )?;
 
     if let Some(platform_config) = self.inner.configuration() {
       self.config = Some(SurfaceConfig::from_platform(platform_config));
@@ -306,14 +303,6 @@ impl WindowSurface {
   #[inline]
   pub(crate) fn platform(&self) -> &platform::surface::Surface<'static> {
     return &self.inner;
-  }
-
-  /// Mutably borrow the underlying platform surface for internal use.
-  #[inline]
-  pub(crate) fn platform_mut(
-    &mut self,
-  ) -> &mut platform::surface::Surface<'static> {
-    return &mut self.inner;
   }
 }
 

@@ -309,15 +309,6 @@ impl DepthTexture {
     };
   }
 
-  /// Borrow a texture view reference for use in render pass attachments.
-  pub(crate) fn view_ref(
-    &self,
-  ) -> crate::render::targets::surface::TextureView<'_> {
-    return crate::render::targets::surface::TextureView::from_platform(
-      self.inner.view_ref(),
-    );
-  }
-
   /// Access the underlying platform texture view reference directly.
   ///
   /// This is needed for the render pass builder which expects the platform
@@ -448,8 +439,6 @@ impl TextureBuilder {
   }
 
   /// Create the texture and upload initial data if provided.
-
-  /// Create the texture and upload initial data if provided.
   pub fn build(self, gpu: &Gpu) -> Result<Texture, &'static str> {
     let mut builder =
       if self.depth <= 1 {
@@ -504,6 +493,12 @@ pub struct DepthTextureBuilder {
   height: u32,
   format: DepthFormat,
   sample_count: u32,
+}
+
+impl Default for DepthTextureBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
 }
 
 impl DepthTextureBuilder {
@@ -562,6 +557,12 @@ impl DepthTextureBuilder {
 /// Builder for creating a sampler.
 pub struct SamplerBuilder {
   inner: platform::SamplerBuilder,
+}
+
+impl Default for SamplerBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
 }
 
 impl SamplerBuilder {

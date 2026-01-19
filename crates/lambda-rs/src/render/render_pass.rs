@@ -135,7 +135,6 @@ impl DepthOperations {
 /// The pass defines the initial clear for the color attachment and an optional
 /// label. Depth/stencil may be added in a future iteration.
 pub struct RenderPass {
-  clear_color: [f64; 4],
   label: Option<String>,
   color_operations: ColorOperations,
   depth_operations: Option<DepthOperations>,
@@ -147,10 +146,6 @@ pub struct RenderPass {
 impl RenderPass {
   /// Destroy the pass. Kept for symmetry with other resources.
   pub fn destroy(self, _gpu: &Gpu) {}
-
-  pub(crate) fn clear_color(&self) -> [f64; 4] {
-    return self.clear_color;
-  }
 
   pub(crate) fn label(&self) -> Option<&str> {
     self.label.as_deref()
@@ -191,6 +186,12 @@ pub struct RenderPassBuilder {
   stencil_operations: Option<StencilOperations>,
   sample_count: u32,
   use_color: bool,
+}
+
+impl Default for RenderPassBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
 }
 
 impl RenderPassBuilder {
@@ -356,7 +357,6 @@ impl RenderPassBuilder {
     );
 
     return RenderPass {
-      clear_color: self.clear_color,
       label: self.label,
       color_operations: self.color_operations,
       depth_operations: self.depth_operations,

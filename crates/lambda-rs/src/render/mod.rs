@@ -219,6 +219,7 @@ impl RenderContextBuilder {
 ///   reconfiguration with preserved present mode and usage.
 pub struct RenderContext {
   label: String,
+  #[allow(dead_code)]
   instance: instance::Instance,
   surface: targets::surface::WindowSurface,
   gpu: gpu::Gpu,
@@ -243,6 +244,11 @@ pub struct RenderContext {
 pub type ResourceId = usize;
 
 impl RenderContext {
+  /// Optional label assigned when constructing the context.
+  pub fn label(&self) -> &str {
+    return self.label.as_str();
+  }
+
   /// Current surface size in pixels.
   ///
   /// This reflects the most recent configured surface dimensions and is used
@@ -428,25 +434,6 @@ impl RenderContext {
     return self.depth_format;
   }
 
-  pub(crate) fn supports_surface_sample_count(
-    &self,
-    sample_count: u32,
-  ) -> bool {
-    return self
-      .gpu
-      .supports_sample_count_for_format(self.config.format, sample_count);
-  }
-
-  pub(crate) fn supports_depth_sample_count(
-    &self,
-    format: texture::DepthFormat,
-    sample_count: u32,
-  ) -> bool {
-    return self
-      .gpu
-      .supports_sample_count_for_depth(format, sample_count);
-  }
-
   /// Device limit: maximum bytes that can be bound for a single uniform buffer binding.
   pub fn limit_max_uniform_buffer_binding_size(&self) -> u64 {
     return self.gpu.limit_max_uniform_buffer_binding_size();
@@ -519,10 +506,7 @@ impl RenderContext {
         targets::surface::SurfaceError::Lost
         | targets::surface::SurfaceError::Outdated => {
           self.reconfigure_surface(self.size)?;
-          self
-            .surface
-            .acquire_frame()
-            .map_err(|e| RenderError::Surface(e))?
+          self.surface.acquire_frame().map_err(RenderError::Surface)?
         }
         _ => return Err(RenderError::Surface(err)),
       },
@@ -836,14 +820,14 @@ impl RenderContext {
     command_iter: &mut std::vec::IntoIter<RenderCommand>,
     rp_encoder: &mut encoder::RenderPassEncoder<'_>,
     initial_viewport: &viewport::Viewport,
-    render_pipelines: &Vec<RenderPipeline>,
-    bind_groups: &Vec<bind::BindGroup>,
-    buffers: &Vec<Rc<buffer::Buffer>>,
+    render_pipelines: &[RenderPipeline],
+    bind_groups: &[bind::BindGroup],
+    buffers: &[Rc<buffer::Buffer>],
     min_uniform_buffer_offset_alignment: u32,
   ) -> Result<(), RenderPassError> {
     rp_encoder.set_viewport(initial_viewport);
 
-    while let Some(cmd) = command_iter.next() {
+    for cmd in command_iter.by_ref() {
       match cmd {
         RenderCommand::EndRenderPass => return Ok(()),
         RenderCommand::SetStencilReference { reference } => {
@@ -896,7 +880,7 @@ impl RenderContext {
                 "Vertex buffer index {buffer} not found for pipeline {pipeline}"
               ))
             })?;
-          rp_encoder.set_vertex_buffer(buffer as u32, buffer_ref);
+          rp_encoder.set_vertex_buffer(buffer, buffer_ref);
         }
         RenderCommand::BindIndexBuffer { buffer, format } => {
           let buffer_ref = buffers.get(buffer).ok_or_else(|| {
@@ -1057,8 +1041,7 @@ mod tests {
   fn immediates_validate_pipeline_exists_rejects_unknown_pipeline() {
     let pipelines: Vec<RenderPipeline> = vec![];
     let err = RenderContext::validate_pipeline_exists(&pipelines, 7)
-      .err()
-      .expect("must error");
+      .expect_err("must error");
     assert!(err.to_string().contains("Unknown pipeline 7"));
   }
 }

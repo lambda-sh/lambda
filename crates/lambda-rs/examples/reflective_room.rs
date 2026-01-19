@@ -214,22 +214,20 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    match event {
-      WindowEvent::Resize { width, height } => {
-        self.width = *width;
-        self.height = *height;
-      }
-      _ => {}
+    if let WindowEvent::Resize { width, height } = event {
+      self.width = *width;
+      self.height = *height;
     }
     return Ok(());
   }
 
   fn on_keyboard_event(&mut self, event: &Key) -> Result<(), String> {
-    match event {
-      Key::Pressed {
-        scan_code: _,
-        virtual_key,
-      } => match virtual_key {
+    if let Key::Pressed {
+      scan_code: _,
+      virtual_key,
+    } = event
+    {
+      match virtual_key {
         Some(VirtualKey::KeyM) => {
           self.msaa_samples = if self.msaa_samples > 1 { 1 } else { 4 };
           self.needs_rebuild = true;
@@ -272,8 +270,7 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
           );
         }
         _ => {}
-      },
-      _ => {}
+      }
     }
     return Ok(());
   }
@@ -625,9 +622,7 @@ impl ReflectiveRoomExample {
         .with_immediate_data(immediate_data_size)
         .with_buffer(
           BufferBuilder::new()
-            .with_length(
-              floor_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
-            )
+            .with_length(std::mem::size_of_val(floor_mesh.vertices()))
             .with_usage(Usage::VERTEX)
             .with_properties(Properties::DEVICE_LOCAL)
             .with_buffer_type(BufferType::Vertex)
@@ -669,7 +664,7 @@ impl ReflectiveRoomExample {
 
     // Reflected cube pipeline
     self.pipe_reflected = if self.stencil_enabled {
-      let mut builder = RenderPipelineBuilder::new()
+      let builder = RenderPipelineBuilder::new()
         .with_label("reflected-cube")
         // Mirrored transform reverses winding; cull front to keep visible faces.
         .with_culling(CullingMode::Front)
@@ -677,9 +672,7 @@ impl ReflectiveRoomExample {
         .with_immediate_data(immediate_data_size)
         .with_buffer(
           BufferBuilder::new()
-            .with_length(
-              cube_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
-            )
+            .with_length(std::mem::size_of_val(cube_mesh.vertices()))
             .with_usage(Usage::VERTEX)
             .with_properties(Properties::DEVICE_LOCAL)
             .with_buffer_type(BufferType::Vertex)
@@ -730,9 +723,7 @@ impl ReflectiveRoomExample {
       .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::new()
-          .with_length(
-            floor_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
-          )
+          .with_length(std::mem::size_of_val(floor_mesh.vertices()))
           .with_usage(Usage::VERTEX)
           .with_properties(Properties::DEVICE_LOCAL)
           .with_buffer_type(BufferType::Vertex)
@@ -768,9 +759,7 @@ impl ReflectiveRoomExample {
       .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::new()
-          .with_length(
-            cube_mesh.vertices().len() * std::mem::size_of::<Vertex>(),
-          )
+          .with_length(std::mem::size_of_val(cube_mesh.vertices()))
           .with_usage(Usage::VERTEX)
           .with_properties(Properties::DEVICE_LOCAL)
           .with_buffer_type(BufferType::Vertex)

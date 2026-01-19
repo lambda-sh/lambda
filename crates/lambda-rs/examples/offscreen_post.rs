@@ -221,12 +221,9 @@ impl Component<ComponentResult, String> for OffscreenPostExample {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    match event {
-      WindowEvent::Resize { width, height } => {
-        self.width = *width;
-        self.height = *height;
-      }
-      _ => {}
+    if let WindowEvent::Resize { width, height } = event {
+      self.width = *width;
+      self.height = *height;
     }
     return Ok(());
   }

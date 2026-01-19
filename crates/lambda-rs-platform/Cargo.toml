@@ -54,7 +54,3 @@ wgpu-with-vulkan = ["wgpu"]
 wgpu-with-metal = ["wgpu", "wgpu/metal"]
 wgpu-with-dx12 = ["wgpu", "wgpu/dx12"]
 wgpu-with-gl = ["wgpu", "wgpu/webgl"]
-
-[profile.dev]
-crate-type = ["cdylib", "rlib"]
-incremental = true

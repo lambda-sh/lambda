@@ -192,6 +192,7 @@ pub fn compute_model_view_projection_matrix(
 
 /// Compute a full model-view-projection matrix for a rotation around a specific
 /// local-space pivot point.
+#[allow(clippy::too_many_arguments)]
 pub fn compute_model_view_projection_matrix_about_pivot(
   camera: &SimpleCamera,
   viewport_width: u32,
@@ -246,20 +247,12 @@ mod tests {
     let mut expected: [[f32; 4]; 4] = m::identity_matrix(4, 4);
     expected = m::rotate_matrix(expected, axis, angle_in_turns);
 
-    let mut s: [[f32; 4]; 4] = [[0.0; 4]; 4];
-    for i in 0..4 {
-      for j in 0..4 {
-        s[i][j] = if i == j {
-          if i == 3 {
-            1.0
-          } else {
-            scale
-          }
-        } else {
-          0.0
-        };
-      }
-    }
+    let s: [[f32; 4]; 4] = [
+      [scale, 0.0, 0.0, 0.0],
+      [0.0, scale, 0.0, 0.0],
+      [0.0, 0.0, scale, 0.0],
+      [0.0, 0.0, 0.0, 1.0],
+    ];
     expected = expected.multiply(&s);
 
     let t: [[f32; 4]; 4] = m::translation_matrix(translation);

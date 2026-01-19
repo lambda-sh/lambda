@@ -21,6 +21,12 @@ pub struct WindowBuilder {
   vsync: bool,
 }
 
+impl Default for WindowBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 impl WindowBuilder {
   /// A new window builder will be 480x360 by default and have the name
   /// "Window". After customizing the window with whatever properties your

@@ -25,7 +25,6 @@ use lambda_platform::wgpu::buffer as platform_buffer;
 use super::{
   gpu::Gpu,
   mesh::Mesh,
-  vertex::Vertex,
   RenderContext,
 };
 
@@ -237,6 +236,12 @@ pub struct BufferBuilder {
   label: Option<String>,
 }
 
+impl Default for BufferBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 impl BufferBuilder {
   /// Creates a new buffer builder of type vertex.
   pub fn new() -> Self {
@@ -324,7 +329,7 @@ impl BufferBuilder {
   ) -> Result<Buffer, &'static str> {
     let builder = Self::new();
     return builder
-      .with_length(mesh.vertices().len() * std::mem::size_of::<Vertex>())
+      .with_length(std::mem::size_of_val(mesh.vertices()))
       .with_usage(Usage::VERTEX)
       .with_properties(Properties::CPU_VISIBLE)
       .with_buffer_type(BufferType::Vertex)
