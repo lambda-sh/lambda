@@ -215,6 +215,20 @@ mod tests {
     assert_eq!(result, Err(MathError::CrossProductDimension { actual: 2 }));
   }
 
+  /// Verify that `cross` returns `MismatchedVectorDimensions` when vectors of
+  /// different dimensions are provided.
+  #[test]
+  fn cross_product_fails_for_mismatched_dimensions() {
+    let a: Vec<f32> = vec![1.0, 2.0];
+    let b: Vec<f32> = vec![4.0, 5.0, 6.0];
+
+    let result = a.cross(&b);
+    assert_eq!(
+      result,
+      Err(MathError::MismatchedVectorDimensions { left: 2, right: 3 })
+    );
+  }
+
   #[test]
   fn length() {
     let a = [1.0, 2.0, 3.0];

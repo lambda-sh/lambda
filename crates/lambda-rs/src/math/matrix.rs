@@ -397,6 +397,7 @@ mod tests {
 
   use super::{
     filled_matrix,
+    identity_matrix,
     perspective_matrix,
     rotate_matrix,
     submatrix,
@@ -541,5 +542,31 @@ mod tests {
         );
       }
     }
+  }
+
+  /// Verify that `rotate_matrix` returns `InvalidRotationAxis` when a non-unit
+  /// axis vector is provided.
+  #[test]
+  fn rotate_matrix_fails_for_invalid_axis() {
+    let matrix: [[f32; 4]; 4] = identity_matrix(4, 4);
+    let result = rotate_matrix(matrix, [1.0, 1.0, 0.0], 0.25);
+    assert_eq!(
+      result,
+      Err(MathError::InvalidRotationAxis {
+        axis: [1.0, 1.0, 0.0]
+      })
+    );
+  }
+
+  /// Verify that `rotate_matrix` returns `InvalidRotationMatrixSize` when a
+  /// non-4x4 matrix is provided.
+  #[test]
+  fn rotate_matrix_fails_for_non_4x4_matrix() {
+    let matrix: [[f32; 3]; 3] = identity_matrix(3, 3);
+    let result = rotate_matrix(matrix, [0.0, 1.0, 0.0], 0.25);
+    assert_eq!(
+      result,
+      Err(MathError::InvalidRotationMatrixSize { rows: 3, cols: 3 })
+    );
   }
 }
