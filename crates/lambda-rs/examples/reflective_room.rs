@@ -317,7 +317,8 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       lambda::math::matrix::identity_matrix(4, 4),
       [1.0, 0.0, 0.0],
       -self.camera_pitch_turns,
-    );
+    )
+    .expect("rotation axis must be a unit axis vector");
     let view = rot_x.multiply(&compute_view_matrix(camera.position));
     let projection = compute_perspective_projection(
       camera.field_of_view_in_turns,
@@ -360,7 +361,8 @@ impl Component<ComponentResult, String> for ReflectiveRoomExample {
       model_floor,
       [1.0, 0.0, 0.0],
       self.floor_tilt_turns,
-    );
+    )
+    .expect("rotation axis must be a unit axis vector");
     let mvp_floor = projection.multiply(&view).multiply(&model_floor);
 
     let viewport = ViewportBuilder::new().build(self.width, self.height);

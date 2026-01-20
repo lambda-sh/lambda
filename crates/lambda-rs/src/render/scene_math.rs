@@ -58,7 +58,8 @@ pub fn compute_model_matrix(
 ) -> [[f32; 4]; 4] {
   let mut model: [[f32; 4]; 4] = matrix::identity_matrix(4, 4);
   // Apply rotation first, then scaling via a diagonal matrix, and finally translation.
-  model = matrix::rotate_matrix(model, rotation_axis, angle_in_turns);
+  model = matrix::rotate_matrix(model, rotation_axis, angle_in_turns)
+    .expect("rotation axis must be a unit axis vector");
   let scaled = scaling_matrix(uniform_scale);
   model = model.multiply(&scaled);
 
@@ -245,7 +246,8 @@ mod tests {
 
     // Build the expected matrix explicitly: R, then S, then T.
     let mut expected: [[f32; 4]; 4] = m::identity_matrix(4, 4);
-    expected = m::rotate_matrix(expected, axis, angle_in_turns);
+    expected = m::rotate_matrix(expected, axis, angle_in_turns)
+      .expect("rotation axis must be a unit axis vector");
 
     let s: [[f32; 4]; 4] = [
       [scale, 0.0, 0.0, 0.0],

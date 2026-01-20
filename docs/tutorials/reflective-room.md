@@ -3,13 +3,13 @@ title: "Reflective Floor: Stencil‑Masked Planar Reflections"
 document_id: "reflective-room-tutorial-2025-11-17"
 status: "draft"
 created: "2025-11-17T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.4.3"
+last_updated: "2026-01-19T00:00:00Z"
+version: "0.4.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "87aa423aca541823f271101e5bac390f5ca54c42"
+repo_commit: "d0abc736e9d7308fdae80b2d0b568c4614f5a642"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "stencil", "depth", "msaa", "mirror", "3d", "immediates", "wgpu", "rust"]
@@ -359,13 +359,15 @@ use lambda::render::scene_math::{compute_perspective_projection, compute_view_ma
 let camera = SimpleCamera { position: [0.0, 3.0, 4.0], field_of_view_in_turns: 0.24, near_clipping_plane: 0.1, far_clipping_plane: 100.0 };
 // View = R_x(-pitch) * T(-position)
 let pitch_turns = 0.10; // ~36 degrees downward
-let rot_x = lambda::math::matrix::rotate_matrix(lambda::math::matrix::identity_matrix(4,4), [1.0,0.0,0.0], -pitch_turns);
+let rot_x = lambda::math::matrix::rotate_matrix(lambda::math::matrix::identity_matrix(4,4), [1.0,0.0,0.0], -pitch_turns)
+  .expect("rotation axis must be a unit axis vector");
 let view = rot_x.multiply(&compute_view_matrix(camera.position));
 let projection = compute_perspective_projection(camera.field_of_view_in_turns, width.max(1), height.max(1), camera.near_clipping_plane, camera.far_clipping_plane);
 
 let angle_y = 0.12 * elapsed;
 let mut model = lambda::math::matrix::identity_matrix(4, 4);
-model = lambda::math::matrix::rotate_matrix(model, [0.0, 1.0, 0.0], angle_y);
+model = lambda::math::matrix::rotate_matrix(model, [0.0, 1.0, 0.0], angle_y)
+  .expect("rotation axis must be a unit axis vector");
 model = model.multiply(&lambda::math::matrix::translation_matrix([0.0, 0.5, 0.0]));
 let mvp = projection.multiply(&view).multiply(&model);
 

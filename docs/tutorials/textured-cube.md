@@ -3,13 +3,13 @@ title: "Textured Cube: 3D Immediates + 2D Sampling"
 document_id: "textured-cube-tutorial-2025-11-10"
 status: "draft"
 created: "2025-11-10T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.3.2"
+last_updated: "2026-01-19T00:00:00Z"
+version: "0.3.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
+repo_commit: "d0abc736e9d7308fdae80b2d0b568c4614f5a642"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "3d", "immediates", "textures", "samplers", "rust", "wgpu"]
@@ -420,8 +420,10 @@ let angle_y_turns = 0.15 * self.elapsed; // yaw
 let angle_x_turns = 0.10 * self.elapsed; // pitch
 
 let mut model = lambda::math::matrix::identity_matrix(4, 4);
-model = lambda::math::matrix::rotate_matrix(model, [0.0, 1.0, 0.0], angle_y_turns);
-model = lambda::math::matrix::rotate_matrix(model, [1.0, 0.0, 0.0], angle_x_turns);
+model = lambda::math::matrix::rotate_matrix(model, [0.0, 1.0, 0.0], angle_y_turns)
+  .expect("rotation axis must be a unit axis vector");
+model = lambda::math::matrix::rotate_matrix(model, [1.0, 0.0, 0.0], angle_x_turns)
+  .expect("rotation axis must be a unit axis vector");
 
 let view = compute_view_matrix(camera.position);
 let projection = compute_perspective_projection(

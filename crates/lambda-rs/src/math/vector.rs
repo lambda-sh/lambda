@@ -1,5 +1,7 @@
 //! Vector math types and functions.
 
+use super::MathError;
+
 /// Generalized Vector operations that can be implemented by any vector like
 /// type.
 pub trait Vector {
@@ -8,9 +10,20 @@ pub trait Vector {
   fn subtract(&self, other: &Self) -> Self;
   fn scale(&self, scalar: Self::Scalar) -> Self;
   fn dot(&self, other: &Self) -> Self::Scalar;
-  fn cross(&self, other: &Self) -> Self;
+  /// Cross product of two vectors.
+  ///
+  /// Returns an error when the vectors are not 3D, or when the vectors have
+  /// mismatched dimensions.
+  fn cross(&self, other: &Self) -> Result<Self, MathError>
+  where
+    Self: Sized;
   fn length(&self) -> Self::Scalar;
-  fn normalize(&self) -> Self;
+  /// Normalize the vector to unit length.
+  ///
+  /// Returns an error when the vector has zero length.
+  fn normalize(&self) -> Result<Self, MathError>
+  where
+    Self: Sized;
   fn size(&self) -> usize;
   fn at(&self, index: usize) -> Self::Scalar;
   fn update(&mut self, index: usize, value: Self::Scalar);
@@ -64,30 +77,32 @@ where
     return result;
   }
 
-  /// Cross product of two 3D vectors. Panics if the vectors are not 3D.
-  fn cross(&self, other: &Self) -> Self {
-    assert_eq!(
-      self.as_ref().len(),
-      other.as_ref().len(),
-      "Vectors must be the same length"
-    );
+  /// Cross product of two 3D vectors.
+  ///
+  /// Returns an error when either vector is not 3D, or when the vectors have
+  /// mismatched dimensions.
+  fn cross(&self, other: &Self) -> Result<Self, MathError> {
+    let left_size = self.as_ref().len();
+    let right_size = other.as_ref().len();
+    if left_size != right_size {
+      return Err(MathError::MismatchedVectorDimensions {
+        left: left_size,
+        right: right_size,
+      });
+    }
 
     let mut result = Self::default();
     let a = self.as_ref();
     let b = other.as_ref();
 
-    // TODO: This is only for 3D vectors
-    match a.len() {
-      3 => {
-        result.as_mut()[0] = a[1] * b[2] - a[2] * b[1];
-        result.as_mut()[1] = a[2] * b[0] - a[0] * b[2];
-        result.as_mut()[2] = a[0] * b[1] - a[1] * b[0];
-      }
-      _ => {
-        panic!("Cross product is only defined for 3 dimensional vectors.")
-      }
+    if a.len() != 3 {
+      return Err(MathError::CrossProductDimension { actual: a.len() });
     }
-    return result;
+
+    result.as_mut()[0] = a[1] * b[2] - a[2] * b[1];
+    result.as_mut()[1] = a[2] * b[0] - a[0] * b[2];
+    result.as_mut()[2] = a[0] * b[1] - a[1] * b[0];
+    return Ok(result);
   }
 
   fn length(&self) -> Self::Scalar {
@@ -98,16 +113,18 @@ where
     result.sqrt()
   }
 
-  fn normalize(&self) -> Self {
-    assert_ne!(self.length(), 0.0, "Cannot normalize a zero length vector");
+  fn normalize(&self) -> Result<Self, MathError> {
     let mut result = Self::default();
     let length = self.length();
+    if length == 0.0 {
+      return Err(MathError::ZeroLengthVector);
+    }
 
     self.as_ref().iter().enumerate().for_each(|(i, a)| {
       result.as_mut()[i] = a / length;
     });
 
-    return result;
+    return Ok(result);
   }
 
   fn scale(&self, scalar: Self::Scalar) -> Self {
@@ -135,6 +152,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::Vector;
+  use crate::math::MathError;
 
   #[test]
   fn adding_vectors() {
@@ -184,7 +202,7 @@ mod tests {
     let b = [4.0, 5.0, 6.0];
     let c = [-3.0, 6.0, -3.0];
 
-    let result = a.cross(&b);
+    let result = a.cross(&b).expect("cross product inputs are 3D vectors");
     assert_eq!(result, c);
   }
 
@@ -193,8 +211,22 @@ mod tests {
     let a = [1.0, 2.0];
     let b = [4.0, 5.0];
 
-    let result = std::panic::catch_unwind(|| a.cross(&b));
-    assert!(result.is_err());
+    let result = a.cross(&b);
+    assert_eq!(result, Err(MathError::CrossProductDimension { actual: 2 }));
+  }
+
+  /// Verify that `cross` returns `MismatchedVectorDimensions` when vectors of
+  /// different dimensions are provided.
+  #[test]
+  fn cross_product_fails_for_mismatched_dimensions() {
+    let a: Vec<f32> = vec![1.0, 2.0];
+    let b: Vec<f32> = vec![4.0, 5.0, 6.0];
+
+    let result = a.cross(&b);
+    assert_eq!(
+      result,
+      Err(MathError::MismatchedVectorDimensions { left: 2, right: 3 })
+    );
   }
 
   #[test]
@@ -215,7 +247,7 @@ mod tests {
   fn normalize() {
     let a = [4.0, 3.0, 2.0];
     let b = [0.74278135, 0.55708605, 0.37139067];
-    let result = a.normalize();
+    let result = a.normalize().expect("vector has non-zero length");
     assert_eq!(result, b);
   }
 
@@ -223,8 +255,8 @@ mod tests {
   fn normalize_fails_for_zero_length_vector() {
     let a = [0.0, 0.0, 0.0];
 
-    let result = std::panic::catch_unwind(|| a.normalize());
-    assert!(result.is_err());
+    let result = a.normalize();
+    assert_eq!(result, Err(MathError::ZeroLengthVector));
   }
 
   #[test]

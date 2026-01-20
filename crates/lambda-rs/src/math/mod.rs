@@ -1,7 +1,10 @@
 //! Lambda Math Types and operations
 
+pub mod error;
 pub mod matrix;
 pub mod vector;
+
+pub use error::MathError;
 
 /// Angle units used by conversion helpers and matrix transforms.
 ///

@@ -411,12 +411,14 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       model,
       [0.0, 1.0, 0.0],
       angle_y_turns,
-    );
+    )
+    .expect("rotation axis must be a unit axis vector");
     model = lambda::math::matrix::rotate_matrix(
       model,
       [1.0, 0.0, 0.0],
       angle_x_turns,
-    );
+    )
+    .expect("rotation axis must be a unit axis vector");
 
     let view = compute_view_matrix(camera.position);
     let projection = compute_perspective_projection(
