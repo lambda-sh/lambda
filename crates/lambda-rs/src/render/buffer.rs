@@ -142,15 +142,67 @@ impl Buffer {
   /// byte offset. This is intended for updating uniform buffer contents from
   /// the CPU. The `data` type must be trivially copyable.
   pub fn write_value<T: Copy>(&self, gpu: &Gpu, offset: u64, data: &T) {
-    let bytes = unsafe {
-      std::slice::from_raw_parts(
-        (data as *const T) as *const u8,
-        std::mem::size_of::<T>(),
-      )
-    };
-
-    self.buffer.write_bytes(gpu.platform(), offset, bytes);
+    let bytes = value_as_bytes(data);
+    self.write_bytes(gpu, offset, bytes);
   }
+
+  /// Write raw bytes into this buffer at the specified byte offset.
+  ///
+  /// This is useful when data is already available as a byte slice (for
+  /// example, asset blobs or staging buffers).
+  ///
+  /// Example
+  /// ```rust,ignore
+  /// let raw_data: &[u8] = load_binary_data();
+  /// buffer.write_bytes(render_context.gpu(), 0, raw_data);
+  /// ```
+  pub fn write_bytes(&self, gpu: &Gpu, offset: u64, data: &[u8]) {
+    self.buffer.write_bytes(gpu.platform(), offset, data);
+  }
+
+  /// Write a slice of plain-old-data values into this buffer at the
+  /// specified byte offset.
+  ///
+  /// This is intended for uploading arrays of vertices, indices, instance
+  /// data, or uniform blocks. The `T` type MUST be plain-old-data (POD) and
+  /// safely representable as bytes.
+  ///
+  /// Example
+  /// ```rust,ignore
+  /// let transforms: Vec<InstanceTransform> = compute_transforms();
+  /// instance_buffer.write_slice(render_context.gpu(), 0, &transforms);
+  /// ```
+  pub fn write_slice<T: Copy>(&self, gpu: &Gpu, offset: u64, data: &[T]) {
+    let bytes = slice_as_bytes(data);
+    self.write_bytes(gpu, offset, bytes);
+  }
+}
+
+fn value_as_bytes<T: Copy>(data: &T) -> &[u8] {
+  let bytes = unsafe {
+    std::slice::from_raw_parts(
+      (data as *const T) as *const u8,
+      std::mem::size_of::<T>(),
+    )
+  };
+  return bytes;
+}
+
+fn slice_as_bytes<T: Copy>(data: &[T]) -> &[u8] {
+  let element_size = std::mem::size_of::<T>();
+  let Some(byte_len) = element_size.checked_mul(data.len()) else {
+    debug_assert!(
+      false,
+      "Buffer::write_slice byte length overflow: element_size={}, len={}",
+      element_size,
+      data.len()
+    );
+    return &[];
+  };
+
+  let bytes =
+    unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_len) };
+  return bytes;
 }
 
 /// Strongly‑typed uniform buffer wrapper for ergonomics and safety.
@@ -374,5 +426,28 @@ mod tests {
     // Indirect check: validate the internal label is stored on the builder.
     // Test module is a child of this module and can access private fields.
     assert_eq!(builder.label.as_deref(), Some("buffer-test"));
+  }
+
+  #[test]
+  fn value_as_bytes_matches_native_bytes() {
+    let value: u32 = 0x1122_3344;
+    let expected = value.to_ne_bytes();
+    assert_eq!(value_as_bytes(&value), expected.as_slice());
+  }
+
+  #[test]
+  fn slice_as_bytes_matches_native_bytes() {
+    let values: [u16; 3] = [0x1122, 0x3344, 0x5566];
+    let mut expected: Vec<u8> = Vec::new();
+    for value in values {
+      expected.extend_from_slice(&value.to_ne_bytes());
+    }
+    assert_eq!(slice_as_bytes(&values), expected.as_slice());
+  }
+
+  #[test]
+  fn slice_as_bytes_empty_is_empty() {
+    let values: [u32; 0] = [];
+    assert_eq!(slice_as_bytes(&values), &[]);
   }
 }
