@@ -1,7 +1,10 @@
 //! Log handling implementations for the logger.
 
 use std::{
-  fs::OpenOptions,
+  fs::{
+    File,
+    OpenOptions,
+  },
   io::{
     self,
     IsTerminal,
@@ -25,15 +28,21 @@ pub trait Handler: Send + Sync {
 /// A handler that logs to a file.
 #[derive(Debug)]
 pub struct FileHandler {
-  file: String,
   log_buffer: Mutex<Vec<String>>,
+  writer: Mutex<io::BufWriter<File>>,
 }
 
 impl FileHandler {
-  pub fn new(file: String) -> Self {
+  pub fn new(path: String) -> Self {
+    let log_file = OpenOptions::new()
+      .append(true)
+      .create(true)
+      .open(&path)
+      .expect("open log file");
+
     Self {
-      file,
       log_buffer: Mutex::new(Vec::new()),
+      writer: Mutex::new(io::BufWriter::new(log_file)),
     }
   }
 }
@@ -59,27 +68,30 @@ impl Handler for FileHandler {
       LogLevel::FATAL => format!("\x1B[31;1m{}\x1B[0m", log_message),
     };
 
-    let mut buf = self.log_buffer.lock().unwrap();
-    buf.push(colored_message);
+    let mut buffer = match self.log_buffer.lock() {
+      Ok(guard) => guard,
+      Err(poisoned) => poisoned.into_inner(),
+    };
+    buffer.push(colored_message);
 
     // Flush buffer every ten messages.
-    if buf.len() < 10 {
+    if buffer.len() < 10 {
       return;
     }
 
-    let log_message = buf.join("\n");
+    let messages = std::mem::take(&mut *buffer);
+    drop(buffer);
 
-    let mut file = OpenOptions::new()
-      .append(true)
-      .create(true)
-      .open(self.file.clone())
-      .unwrap();
+    let log_message = messages.join("\n");
 
-    file
+    let mut writer = match self.writer.lock() {
+      Ok(guard) => guard,
+      Err(poisoned) => poisoned.into_inner(),
+    };
+    writer
       .write_all(log_message.as_bytes())
       .expect("Unable to write data");
-
-    buf.clear();
+    let _ = writer.flush();
   }
 }
 
