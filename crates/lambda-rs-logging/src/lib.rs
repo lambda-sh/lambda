@@ -503,6 +503,51 @@ mod tests {
   }
 
   #[test]
+  #[cfg(unix)]
+  fn file_handler_does_not_reopen_between_flushes() {
+    use std::{
+      fs,
+      time::UNIX_EPOCH,
+    };
+
+    let tmp = std::env::temp_dir();
+    let base = format!(
+      "lambda_logging_persist_{}_{}",
+      std::process::id(),
+      SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
+    );
+    let original = tmp.join(format!("{}.log", base));
+    let moved = tmp.join(format!("{}_moved.log", base));
+
+    let logger = Logger::new(LogLevel::TRACE, "file_reopen");
+    logger.add_handler(Box::new(crate::handler::FileHandler::new(
+      original.to_string_lossy().to_string(),
+    )));
+
+    for i in 0..10 {
+      logger.info(format!("batch1_line{}", i));
+    }
+
+    fs::rename(&original, &moved).expect("rename log file while handler lives");
+
+    for i in 0..10 {
+      logger.info(format!("batch2_line{}", i));
+    }
+
+    assert!(
+      !original.exists(),
+      "handler should not reopen and recreate the original path"
+    );
+
+    let content = fs::read_to_string(&moved).expect("moved file must exist");
+    assert!(content.contains("batch1_line0"));
+    assert!(content.contains("batch2_line0"));
+  }
+
+  #[test]
   fn macro_early_guard_avoids_formatting() {
     // Ensure TRACE is disabled by setting level to INFO.
     super::Logger::global().set_level(super::LogLevel::INFO);
