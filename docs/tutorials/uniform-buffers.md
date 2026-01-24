@@ -3,13 +3,13 @@ title: "Uniform Buffers: Build a Spinning Triangle"
 document_id: "uniform-buffers-tutorial-2025-10-17"
 status: "draft"
 created: "2025-10-17T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.5.1"
+last_updated: "2026-01-24T00:00:00Z"
+version: "0.5.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
+repo_commit: "df476b77e1f2a17818869c3218cf223ab935c456"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "uniform-buffers", "rust", "wgpu"]
@@ -222,7 +222,7 @@ let mesh: Mesh = mesh_builder
 
 ### Step 4 — Uniform Data Layout in Rust <a name="step-4"></a>
 
-Mirror the shader’s uniform block with a Rust structure. Use `#[repr(C)]` so the memory layout is predictable. A `mat4` in the shader corresponds to a 4×4 `f32` array here. Many GPU interfaces expect column‑major matrices; transpose before upload if the local math library is row‑major. This avoids implicit driver conversions and prevents incorrect transforms.
+Mirror the shader’s uniform block with a Rust structure. Use `#[repr(C)]` so the memory layout is predictable. A `mat4` in the shader corresponds to a 4×4 `f32` array here. `PlainOldData` MUST be implemented so the engine can upload the uniform by reinterpreting its bytes. Many GPU interfaces expect column‑major matrices; transpose before upload if the local math library is row‑major. This avoids implicit driver conversions and prevents incorrect transforms.
 
 ```rust
 #[repr(C)]
@@ -230,6 +230,8 @@ Mirror the shader’s uniform block with a Rust structure. Use `#[repr(C)]` so t
 pub struct GlobalsUniform {
   pub render_matrix: [[f32; 4]; 4],
 }
+
+unsafe impl lambda::pod::PlainOldData for GlobalsUniform {}
 ```
 
 ### Step 5 — Bind Group Layout at Set 0 <a name="step-5"></a>
@@ -443,6 +445,8 @@ multiple objects and passes.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.5.3 (2026-01-24): Move `PlainOldData` to `lambda::pod::PlainOldData`.
+- 0.5.2 (2026-01-24): Add `PlainOldData` requirements for uniform buffer data.
 - 0.5.1 (2026-01-16): Replace `on_event` resize handling with `event_mask()` and `on_window_event`.
 - 0.5.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.4.1 (2025‑11‑10): Add Conclusion section summarizing accomplishments; update

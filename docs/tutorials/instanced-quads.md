@@ -3,13 +3,13 @@ title: "Instanced Rendering: Grid of Colored Quads"
 document_id: "instanced-quads-tutorial-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.2.1"
+last_updated: "2026-01-24T00:00:00Z"
+version: "0.2.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
+repo_commit: "df476b77e1f2a17818869c3218cf223ab935c456"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "instancing", "vertex-buffers", "rust", "wgpu"]
@@ -156,12 +156,16 @@ struct QuadVertex {
   position: [f32; 3],
 }
 
+unsafe impl lambda::pod::PlainOldData for QuadVertex {}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct InstanceData {
   offset: [f32; 3],
   color: [f32; 3],
 }
+
+unsafe impl lambda::pod::PlainOldData for InstanceData {}
 
 pub struct InstancedQuadsExample {
   vertex_shader: Shader,
@@ -210,7 +214,7 @@ impl Default for InstancedQuadsExample {
 }
 ```
 
-The `QuadVertex` and `InstanceData` structures mirror the GLSL inputs as arrays of `f32`, and the component tracks resource identifiers and counts that are populated during attachment. The `Default` implementation constructs shader objects from the GLSL source so that the component is ready to build a pipeline when it receives a `RenderContext`.
+The `QuadVertex` and `InstanceData` structures mirror the GLSL inputs as arrays of `f32`, and the component tracks resource identifiers and counts that are populated during attachment. The `PlainOldData` implementations mark the types as safe for `BufferBuilder` uploads, which reinterpret values as raw bytes when initializing GPU buffers. The `Default` implementation constructs shader objects from the GLSL source so that the component is ready to build a pipeline when it receives a `RenderContext`.
 
 ### Step 3 — Render Pass, Geometry, Instances, and Buffers <a name="step-3"></a>
 
@@ -510,6 +514,8 @@ This tutorial demonstrates how the `lambda-rs` crate uses per-vertex and per-ins
 
 ## Changelog <a name="changelog"></a>
 
+- 2026-01-24 (v0.2.3) — Move `PlainOldData` to `lambda::pod::PlainOldData`.
+- 2026-01-24 (v0.2.2) — Add `PlainOldData` requirements for typed buffer data.
 - 2026-01-16 (v0.2.1) — Update resize handling examples to use `event_mask()` and `on_window_event`.
 - 2025-12-15 (v0.2.0) — Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-25 (v0.1.1) — Align feature naming with `render-validation-instancing` and update metadata.
