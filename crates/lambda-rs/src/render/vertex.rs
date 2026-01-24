@@ -78,6 +78,8 @@ pub struct Vertex {
   pub color: [f32; 3],
 }
 
+unsafe impl crate::pod::PlainOldData for Vertex {}
+
 /// Builder for constructing a `Vertex` instance incrementally.
 #[derive(Clone, Copy, Debug)]
 pub struct VertexBuilder {

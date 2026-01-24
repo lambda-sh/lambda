@@ -92,7 +92,7 @@ struct QuadVertex {
   position: [f32; 3],
 }
 
-unsafe impl lambda::render::buffer::PlainOldData for QuadVertex {}
+unsafe impl lambda::pod::PlainOldData for QuadVertex {}
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -101,7 +101,7 @@ struct InstanceData {
   color: [f32; 3],
 }
 
-unsafe impl lambda::render::buffer::PlainOldData for InstanceData {}
+unsafe impl lambda::pod::PlainOldData for InstanceData {}
 
 // --------------------------------- COMPONENT ---------------------------------
 
