@@ -28,6 +28,43 @@ use super::{
   RenderContext,
 };
 
+/// Marker trait for types that are safe to reinterpret as raw bytes.
+///
+/// This trait is required by `Buffer::write_value`, `Buffer::write_slice`, and
+/// `BufferBuilder::build` because those APIs upload the in-memory representation
+/// of a value to the GPU.
+///
+/// # Safety
+/// Types implementing `PlainOldData` MUST satisfy all of the following:
+/// - Every byte of the value is initialized (including any padding bytes).
+/// - The type has no pointers or references that would be invalidated by a
+///   raw byte copy.
+/// - The type's byte representation is stable for GPU consumption. Prefer
+///   `#[repr(C)]` or `#[repr(transparent)]`.
+///
+/// Implementing this trait incorrectly can cause undefined behavior.
+pub unsafe trait PlainOldData: Copy {}
+
+unsafe impl PlainOldData for u8 {}
+unsafe impl PlainOldData for i8 {}
+unsafe impl PlainOldData for u16 {}
+unsafe impl PlainOldData for i16 {}
+unsafe impl PlainOldData for u32 {}
+unsafe impl PlainOldData for i32 {}
+unsafe impl PlainOldData for u64 {}
+unsafe impl PlainOldData for i64 {}
+unsafe impl PlainOldData for u128 {}
+unsafe impl PlainOldData for i128 {}
+unsafe impl PlainOldData for usize {}
+unsafe impl PlainOldData for isize {}
+unsafe impl PlainOldData for f32 {}
+unsafe impl PlainOldData for f64 {}
+unsafe impl PlainOldData for bool {}
+unsafe impl PlainOldData for char {}
+unsafe impl<T: PlainOldData, const N: usize> PlainOldData for [T; N] {}
+
+unsafe impl PlainOldData for super::vertex::Vertex {}
+
 /// High‑level classification for buffers created by the engine.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 ///
@@ -140,8 +177,8 @@ impl Buffer {
 
   /// Write a single plain-old-data value into this buffer at the specified
   /// byte offset. This is intended for updating uniform buffer contents from
-  /// the CPU. The `data` type must be trivially copyable.
-  pub fn write_value<T: Copy>(&self, gpu: &Gpu, offset: u64, data: &T) {
+  /// the CPU. The `data` type must implement `PlainOldData`.
+  pub fn write_value<T: PlainOldData>(&self, gpu: &Gpu, offset: u64, data: &T) {
     let bytes = value_as_bytes(data);
     self.write_bytes(gpu, offset, bytes);
   }
@@ -165,7 +202,8 @@ impl Buffer {
   ///
   /// This is intended for uploading arrays of vertices, indices, instance
   /// data, or uniform blocks. The `T` type MUST be plain-old-data (POD) and
-  /// safely representable as bytes.
+  /// safely representable as bytes. This is enforced by requiring `T` to
+  /// implement `PlainOldData`.
   ///
   /// Example
   /// ```rust,ignore
@@ -174,7 +212,7 @@ impl Buffer {
   ///   .write_slice(render_context.gpu(), 0, &transforms)
   ///   .unwrap();
   /// ```
-  pub fn write_slice<T: Copy>(
+  pub fn write_slice<T: PlainOldData>(
     &self,
     gpu: &Gpu,
     offset: u64,
@@ -186,7 +224,7 @@ impl Buffer {
   }
 }
 
-fn value_as_bytes<T: Copy>(data: &T) -> &[u8] {
+fn value_as_bytes<T: PlainOldData>(data: &T) -> &[u8] {
   let bytes = unsafe {
     std::slice::from_raw_parts(
       (data as *const T) as *const u8,
@@ -206,7 +244,7 @@ fn checked_byte_len(
   return Ok(byte_len);
 }
 
-fn slice_as_bytes<T: Copy>(data: &[T]) -> Result<&[u8], &'static str> {
+fn slice_as_bytes<T: PlainOldData>(data: &[T]) -> Result<&[u8], &'static str> {
   let element_size = std::mem::size_of::<T>();
   let byte_len = checked_byte_len(element_size, data.len())?;
 
@@ -238,7 +276,7 @@ pub struct UniformBuffer<T> {
   _phantom: core::marker::PhantomData<T>,
 }
 
-impl<T: Copy> UniformBuffer<T> {
+impl<T: PlainOldData> UniformBuffer<T> {
   /// Create a new uniform buffer initialized with `initial`.
   pub fn new(
     gpu: &Gpu,
@@ -349,22 +387,23 @@ impl BufferBuilder {
   /// Create a buffer initialized with the provided `data`.
   ///
   /// Returns an error if the resolved length would be zero.
-  pub fn build<Data: Copy>(
+  ///
+  /// The element type MUST implement `PlainOldData` because the engine uploads
+  /// the in-memory representation to the GPU.
+  pub fn build<Data: PlainOldData>(
     &self,
     gpu: &Gpu,
     data: Vec<Data>,
   ) -> Result<Buffer, &'static str> {
     let element_size = std::mem::size_of::<Data>();
     let buffer_length = self.resolve_length(element_size, data.len())?;
+    let byte_len = checked_byte_len(element_size, data.len())?;
 
     // SAFETY: Converting data to bytes is safe because its underlying
-    // type, Data, is constrained to Copy and the lifetime of the slice does
-    // not outlive data.
+    // type, Data, is constrained to PlainOldData and the lifetime of the slice
+    // does not outlive data.
     let bytes = unsafe {
-      std::slice::from_raw_parts(
-        data.as_ptr() as *const u8,
-        element_size * data.len(),
-      )
+      std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_len)
     };
 
     let mut builder = platform_buffer::BufferBuilder::new()

@@ -89,11 +89,15 @@ struct PositionVertex {
   position: [f32; 3],
 }
 
+unsafe impl lambda::render::buffer::PlainOldData for PositionVertex {}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct ColorVertex {
   color: [f32; 3],
 }
+
+unsafe impl lambda::render::buffer::PlainOldData for ColorVertex {}
 
 // --------------------------------- COMPONENT ---------------------------------
 

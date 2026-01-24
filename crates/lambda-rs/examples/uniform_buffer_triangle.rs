@@ -101,6 +101,8 @@ pub struct GlobalsUniform {
   pub render_matrix: [[f32; 4]; 4],
 }
 
+unsafe impl lambda::render::buffer::PlainOldData for GlobalsUniform {}
+
 // --------------------------------- COMPONENT ---------------------------------
 
 pub struct UniformBufferExample {
