@@ -170,11 +170,19 @@ impl Buffer {
   /// Example
   /// ```rust,ignore
   /// let transforms: Vec<InstanceTransform> = compute_transforms();
-  /// instance_buffer.write_slice(render_context.gpu(), 0, &transforms);
+  /// instance_buffer
+  ///   .write_slice(render_context.gpu(), 0, &transforms)
+  ///   .unwrap();
   /// ```
-  pub fn write_slice<T: Copy>(&self, gpu: &Gpu, offset: u64, data: &[T]) {
-    let bytes = slice_as_bytes(data);
+  pub fn write_slice<T: Copy>(
+    &self,
+    gpu: &Gpu,
+    offset: u64,
+    data: &[T],
+  ) -> Result<(), &'static str> {
+    let bytes = slice_as_bytes(data)?;
     self.write_bytes(gpu, offset, bytes);
+    return Ok(());
   }
 }
 
@@ -188,21 +196,23 @@ fn value_as_bytes<T: Copy>(data: &T) -> &[u8] {
   return bytes;
 }
 
-fn slice_as_bytes<T: Copy>(data: &[T]) -> &[u8] {
-  let element_size = std::mem::size_of::<T>();
-  let Some(byte_len) = element_size.checked_mul(data.len()) else {
-    debug_assert!(
-      false,
-      "Buffer::write_slice byte length overflow: element_size={}, len={}",
-      element_size,
-      data.len()
-    );
-    return &[];
+fn checked_byte_len(
+  element_size: usize,
+  element_count: usize,
+) -> Result<usize, &'static str> {
+  let Some(byte_len) = element_size.checked_mul(element_count) else {
+    return Err("Buffer byte length overflow.");
   };
+  return Ok(byte_len);
+}
+
+fn slice_as_bytes<T: Copy>(data: &[T]) -> Result<&[u8], &'static str> {
+  let element_size = std::mem::size_of::<T>();
+  let byte_len = checked_byte_len(element_size, data.len())?;
 
   let bytes =
     unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_len) };
-  return bytes;
+  return Ok(bytes);
 }
 
 /// Strongly‑typed uniform buffer wrapper for ergonomics and safety.
@@ -398,7 +408,7 @@ impl BufferBuilder {
     data_len: usize,
   ) -> Result<usize, &'static str> {
     let buffer_length = if self.buffer_length == 0 {
-      element_size * data_len
+      checked_byte_len(element_size, data_len)?
     } else {
       self.buffer_length
     };
@@ -429,6 +439,13 @@ mod tests {
   }
 
   #[test]
+  fn resolve_length_rejects_overflow() {
+    let builder = BufferBuilder::new();
+    let result = builder.resolve_length(usize::MAX, 2);
+    assert!(result.is_err());
+  }
+
+  #[test]
   fn value_as_bytes_matches_native_bytes() {
     let value: u32 = 0x1122_3344;
     let expected = value.to_ne_bytes();
@@ -442,12 +459,18 @@ mod tests {
     for value in values {
       expected.extend_from_slice(&value.to_ne_bytes());
     }
-    assert_eq!(slice_as_bytes(&values), expected.as_slice());
+    assert_eq!(slice_as_bytes(&values).unwrap(), expected.as_slice());
   }
 
   #[test]
   fn slice_as_bytes_empty_is_empty() {
     let values: [u32; 0] = [];
-    assert_eq!(slice_as_bytes(&values), &[]);
+    assert_eq!(slice_as_bytes(&values).unwrap(), &[]);
+  }
+
+  #[test]
+  fn checked_byte_len_rejects_overflow() {
+    let result = checked_byte_len(usize::MAX, 2);
+    assert!(result.is_err());
   }
 }
