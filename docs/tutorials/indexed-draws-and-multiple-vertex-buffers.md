@@ -3,13 +3,13 @@ title: "Indexed Draws and Multiple Vertex Buffers"
 document_id: "indexed-draws-multiple-vertex-buffers-tutorial-2025-11-22"
 status: "draft"
 created: "2025-11-22T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.3.1"
+last_updated: "2026-01-24T00:00:00Z"
+version: "0.3.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
+repo_commit: "df476b77e1f2a17818869c3218cf223ab935c456"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "indexed-draws", "vertex-buffers", "rust", "wgpu"]
@@ -123,14 +123,18 @@ struct PositionVertex {
   position: [f32; 3],
 }
 
+unsafe impl lambda::pod::PlainOldData for PositionVertex {}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct ColorVertex {
   color: [f32; 3],
 }
+
+unsafe impl lambda::pod::PlainOldData for ColorVertex {}
 ```
 
-The shader `location` qualifiers match the vertex buffer layouts declared on the pipeline, and the `PositionVertex` and `ColorVertex` types mirror the `vec3` inputs as `[f32; 3]` arrays in Rust.
+The shader `location` qualifiers match the vertex buffer layouts declared on the pipeline, and the `PositionVertex` and `ColorVertex` types mirror the `vec3` inputs as `[f32; 3]` arrays in Rust. The `PlainOldData` implementations mark the types as safe for `BufferBuilder` uploads.
 
 ### Step 2 — Component State and Shader Construction <a name="step-2"></a>
 
@@ -498,6 +502,8 @@ This tutorial demonstrates how indexed draws and multiple vertex buffers combine
 
 ## Changelog <a name="changelog"></a>
 
+- 2026-01-24 (v0.3.3) — Move `PlainOldData` to `lambda::pod::PlainOldData`.
+- 2026-01-24 (v0.3.2) — Add `PlainOldData` requirements for typed buffer data.
 - 2026-01-16 (v0.3.1) — Update resize handling examples to use `event_mask()` and `on_window_event`.
 - 2025-12-15 (v0.3.0) — Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-23 (v0.2.0) — Filled in the implementation steps for the indexed draws and multiple vertex buffers tutorial and aligned the narrative with the `indexed_multi_vertex_buffers` example.

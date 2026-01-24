@@ -27,6 +27,7 @@ use super::{
   mesh::Mesh,
   RenderContext,
 };
+pub use crate::pod::PlainOldData;
 
 /// High‑level classification for buffers created by the engine.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -140,17 +141,80 @@ impl Buffer {
 
   /// Write a single plain-old-data value into this buffer at the specified
   /// byte offset. This is intended for updating uniform buffer contents from
-  /// the CPU. The `data` type must be trivially copyable.
-  pub fn write_value<T: Copy>(&self, gpu: &Gpu, offset: u64, data: &T) {
-    let bytes = unsafe {
-      std::slice::from_raw_parts(
-        (data as *const T) as *const u8,
-        std::mem::size_of::<T>(),
-      )
-    };
-
-    self.buffer.write_bytes(gpu.platform(), offset, bytes);
+  /// the CPU. The `data` type must implement `PlainOldData`.
+  pub fn write_value<T: PlainOldData>(&self, gpu: &Gpu, offset: u64, data: &T) {
+    let bytes = value_as_bytes(data);
+    self.write_bytes(gpu, offset, bytes);
   }
+
+  /// Write raw bytes into this buffer at the specified byte offset.
+  ///
+  /// This is useful when data is already available as a byte slice (for
+  /// example, asset blobs or staging buffers).
+  ///
+  /// Example
+  /// ```rust,ignore
+  /// let raw_data: &[u8] = load_binary_data();
+  /// buffer.write_bytes(render_context.gpu(), 0, raw_data);
+  /// ```
+  pub fn write_bytes(&self, gpu: &Gpu, offset: u64, data: &[u8]) {
+    self.buffer.write_bytes(gpu.platform(), offset, data);
+  }
+
+  /// Write a slice of plain-old-data values into this buffer at the
+  /// specified byte offset.
+  ///
+  /// This is intended for uploading arrays of vertices, indices, instance
+  /// data, or uniform blocks. The `T` type MUST be plain-old-data (POD) and
+  /// safely representable as bytes. This is enforced by requiring `T` to
+  /// implement `PlainOldData`.
+  ///
+  /// Example
+  /// ```rust,ignore
+  /// let transforms: Vec<InstanceTransform> = compute_transforms();
+  /// instance_buffer
+  ///   .write_slice(render_context.gpu(), 0, &transforms)
+  ///   .unwrap();
+  /// ```
+  pub fn write_slice<T: PlainOldData>(
+    &self,
+    gpu: &Gpu,
+    offset: u64,
+    data: &[T],
+  ) -> Result<(), &'static str> {
+    let bytes = slice_as_bytes(data)?;
+    self.write_bytes(gpu, offset, bytes);
+    return Ok(());
+  }
+}
+
+fn value_as_bytes<T: PlainOldData>(data: &T) -> &[u8] {
+  let bytes = unsafe {
+    std::slice::from_raw_parts(
+      (data as *const T) as *const u8,
+      std::mem::size_of::<T>(),
+    )
+  };
+  return bytes;
+}
+
+fn checked_byte_len(
+  element_size: usize,
+  element_count: usize,
+) -> Result<usize, &'static str> {
+  let Some(byte_len) = element_size.checked_mul(element_count) else {
+    return Err("Buffer byte length overflow.");
+  };
+  return Ok(byte_len);
+}
+
+fn slice_as_bytes<T: PlainOldData>(data: &[T]) -> Result<&[u8], &'static str> {
+  let element_size = std::mem::size_of::<T>();
+  let byte_len = checked_byte_len(element_size, data.len())?;
+
+  let bytes =
+    unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_len) };
+  return Ok(bytes);
 }
 
 /// Strongly‑typed uniform buffer wrapper for ergonomics and safety.
@@ -176,7 +240,7 @@ pub struct UniformBuffer<T> {
   _phantom: core::marker::PhantomData<T>,
 }
 
-impl<T: Copy> UniformBuffer<T> {
+impl<T: PlainOldData> UniformBuffer<T> {
   /// Create a new uniform buffer initialized with `initial`.
   pub fn new(
     gpu: &Gpu,
@@ -287,22 +351,23 @@ impl BufferBuilder {
   /// Create a buffer initialized with the provided `data`.
   ///
   /// Returns an error if the resolved length would be zero.
-  pub fn build<Data: Copy>(
+  ///
+  /// The element type MUST implement `PlainOldData` because the engine uploads
+  /// the in-memory representation to the GPU.
+  pub fn build<Data: PlainOldData>(
     &self,
     gpu: &Gpu,
     data: Vec<Data>,
   ) -> Result<Buffer, &'static str> {
     let element_size = std::mem::size_of::<Data>();
     let buffer_length = self.resolve_length(element_size, data.len())?;
+    let byte_len = checked_byte_len(element_size, data.len())?;
 
     // SAFETY: Converting data to bytes is safe because its underlying
-    // type, Data, is constrained to Copy and the lifetime of the slice does
-    // not outlive data.
+    // type, Data, is constrained to PlainOldData and the lifetime of the slice
+    // does not outlive data.
     let bytes = unsafe {
-      std::slice::from_raw_parts(
-        data.as_ptr() as *const u8,
-        element_size * data.len(),
-      )
+      std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_len)
     };
 
     let mut builder = platform_buffer::BufferBuilder::new()
@@ -346,7 +411,7 @@ impl BufferBuilder {
     data_len: usize,
   ) -> Result<usize, &'static str> {
     let buffer_length = if self.buffer_length == 0 {
-      element_size * data_len
+      checked_byte_len(element_size, data_len)?
     } else {
       self.buffer_length
     };
@@ -374,5 +439,41 @@ mod tests {
     // Indirect check: validate the internal label is stored on the builder.
     // Test module is a child of this module and can access private fields.
     assert_eq!(builder.label.as_deref(), Some("buffer-test"));
+  }
+
+  #[test]
+  fn resolve_length_rejects_overflow() {
+    let builder = BufferBuilder::new();
+    let result = builder.resolve_length(usize::MAX, 2);
+    assert!(result.is_err());
+  }
+
+  #[test]
+  fn value_as_bytes_matches_native_bytes() {
+    let value: u32 = 0x1122_3344;
+    let expected = value.to_ne_bytes();
+    assert_eq!(value_as_bytes(&value), expected.as_slice());
+  }
+
+  #[test]
+  fn slice_as_bytes_matches_native_bytes() {
+    let values: [u16; 3] = [0x1122, 0x3344, 0x5566];
+    let mut expected: Vec<u8> = Vec::new();
+    for value in values {
+      expected.extend_from_slice(&value.to_ne_bytes());
+    }
+    assert_eq!(slice_as_bytes(&values).unwrap(), expected.as_slice());
+  }
+
+  #[test]
+  fn slice_as_bytes_empty_is_empty() {
+    let values: [u32; 0] = [];
+    assert_eq!(slice_as_bytes(&values).unwrap(), &[]);
+  }
+
+  #[test]
+  fn checked_byte_len_rejects_overflow() {
+    let result = checked_byte_len(usize::MAX, 2);
+    assert!(result.is_err());
   }
 }

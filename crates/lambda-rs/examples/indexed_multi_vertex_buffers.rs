@@ -89,11 +89,15 @@ struct PositionVertex {
   position: [f32; 3],
 }
 
+unsafe impl lambda::pod::PlainOldData for PositionVertex {}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct ColorVertex {
   color: [f32; 3],
 }
+
+unsafe impl lambda::pod::PlainOldData for ColorVertex {}
 
 // --------------------------------- COMPONENT ---------------------------------
 

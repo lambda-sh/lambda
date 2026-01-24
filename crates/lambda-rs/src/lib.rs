@@ -14,6 +14,7 @@
 pub mod component;
 pub mod events;
 pub mod math;
+pub mod pod;
 pub mod render;
 pub mod runtime;
 pub mod runtimes;
