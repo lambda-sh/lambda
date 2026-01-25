@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2025-12-22T00:00:00Z"
-version: "0.1.5"
+last_updated: "2026-01-25T00:00:00Z"
+version: "0.1.6"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "58e7dd9f9b98b05302b8b4cfe4d653e61796c153"
+repo_commit: "229960fd426cf605c7513002b36e3942f14a3140"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo"]
@@ -39,7 +39,6 @@ This document enumerates the primary Cargo features exposed by the workspace rel
 ## Shader Backends
 - `lambda-rs-platform`
   - `shader-backend-naga` (default): uses `naga` for shader handling.
-  - `shader-backend-shaderc`: uses `shaderc`; optional `shader-backend-shaderc-build-from-source`.
 
 ## Render Validation
 
@@ -86,6 +85,8 @@ Usage examples
   - `cargo test -p lambda-rs --features render-validation-msaa`
 
 ## Changelog
+- 0.1.6 (2026-01-25): Remove the deprecated legacy shader backend
+  documentation.
 - 0.1.5 (2025-12-22): Align `lambda-rs` Cargo feature umbrella composition with
   the documented render-validation feature set, including `render-validation-pass-compat`
   and `render-validation-render-targets`.
