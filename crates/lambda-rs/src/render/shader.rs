@@ -5,8 +5,8 @@
 //!   GLSL source or file path + metadata) into a SPIR‑V binary suitable for
 //!   pipeline creation.
 //!
-//! Use the platform’s shader backend configured for the workspace (e.g., naga
-//! or shaderc) without exposing backend‑specific types in the public API.
+//! Use the platform’s shader backend configured for the workspace (naga)
+//! without exposing backend‑specific types in the public API.
 
 // Expose the platform shader compiler abstraction
 pub use lambda_platform::shader::{
