@@ -80,8 +80,6 @@ cargo add lambda-rs
 #### Required external dependencies <a name="ext_deps"></a>
 
 * All platforms
-  * `cmake >= 3.20.0` is needed to build shaderc from source.
-  * `ninja` is needed to build shaderc from source.
   * `git` is needed to clone the project and manage it's dependencies.
   * `git-lfs` is needed for asset files.
   * `rust >= 1.60` is needed for compiling lambda and all of it's crates.
