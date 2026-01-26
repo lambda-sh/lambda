@@ -36,7 +36,7 @@ impl WindowBuilder {
     return Self {
       name: String::from("Window"),
       dimensions: (480, 360),
-      vsync: false,
+      vsync: true,
     };
   }
 
@@ -54,9 +54,8 @@ impl WindowBuilder {
 
   /// Request vertical sync behavior for the swapchain.
   ///
-  /// Note: present mode is ultimately selected when configuring the rendering
-  /// surface in `RenderContextBuilder`. This flag is reserved to influence
-  /// that choice and is currently a no‑op.
+  /// This value is consumed when building a `RenderContext` if no explicit
+  /// present mode is provided to `RenderContextBuilder`.
   pub fn with_vsync(mut self, vsync: bool) -> Self {
     self.vsync = vsync;
     return self;
@@ -64,19 +63,26 @@ impl WindowBuilder {
 
   // TODO(vmarcella): Remove new call for window and construct the window directly.
   pub fn build(self, event_loop: &mut Loop<Events>) -> Window {
-    return Window::new(self.name.as_str(), self.dimensions, event_loop);
+    return Window::new(
+      self.name.as_str(),
+      self.dimensions,
+      self.vsync,
+      event_loop,
+    );
   }
 }
 
 /// Window implementation for rendering applications.
 pub struct Window {
   window_handle: WindowHandle,
+  vsync: bool,
 }
 
 impl Window {
   fn new(
     name: &str,
     dimensions: (u32, u32),
+    vsync: bool,
     event_loop: &mut Loop<Events>,
   ) -> Self {
     let window_properties = WindowProperties {
@@ -89,7 +95,10 @@ impl Window {
       .build();
 
     logging::debug!("Created window: {}", name);
-    return Self { window_handle };
+    return Self {
+      window_handle,
+      vsync,
+    };
   }
 
   /// Redraws the window.
@@ -108,5 +117,10 @@ impl Window {
       self.window_handle.size.width,
       self.window_handle.size.height,
     );
+  }
+
+  /// Returns the requested vertical sync preference for presentation.
+  pub fn vsync_requested(&self) -> bool {
+    return self.vsync;
   }
 }

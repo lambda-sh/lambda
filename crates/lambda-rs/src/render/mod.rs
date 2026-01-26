@@ -69,6 +69,33 @@ use self::{
   targets::surface::RenderTarget,
 };
 
+/// High-level presentation mode selection for window surfaces.
+///
+/// The selected mode is validated against the adapter's surface capabilities
+/// during `RenderContextBuilder::build`. If the requested mode is not
+/// supported, Lambda selects a supported fallback.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PresentMode {
+  /// VSync enabled, capped to display refresh rate (FIFO).
+  Vsync,
+  /// VSync disabled, immediate presentation (may tear).
+  Immediate,
+  /// Triple buffering, low latency without tearing if supported.
+  Mailbox,
+}
+
+impl Default for PresentMode {
+  fn default() -> Self {
+    return PresentMode::Vsync;
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PresentModeOverride {
+  Vsync(bool),
+  Explicit(PresentMode),
+}
+
 /// Builder for configuring a `RenderContext` tied to one window.
 ///
 /// Purpose
@@ -90,6 +117,7 @@ pub struct RenderContextBuilder {
   /// Reserved for future timeout handling during rendering (nanoseconds).
   /// Not currently enforced; kept for forward compatibility with runtime controls.
   _render_timeout: u64,
+  present_mode: Option<PresentModeOverride>,
 }
 
 impl RenderContextBuilder {
@@ -98,6 +126,7 @@ impl RenderContextBuilder {
     Self {
       name: name.to_string(),
       _render_timeout: 1_000_000_000,
+      present_mode: None,
     }
   }
 
@@ -105,6 +134,27 @@ impl RenderContextBuilder {
   pub fn with_render_timeout(mut self, render_timeout: u64) -> Self {
     self._render_timeout = render_timeout;
     self
+  }
+
+  /// Enable or disable vertical sync.
+  ///
+  /// When enabled, the builder requests `PresentMode::Vsync` (FIFO).
+  ///
+  /// When disabled, the builder requests a non‑vsync mode (immediate
+  /// presentation) and falls back to a supported low-latency mode if needed.
+  pub fn with_vsync(mut self, enabled: bool) -> Self {
+    self.present_mode = Some(PresentModeOverride::Vsync(enabled));
+    return self;
+  }
+
+  /// Explicitly select a presentation mode.
+  ///
+  /// The requested mode is validated against the adapter's surface
+  /// capabilities. If unsupported, the renderer falls back to a supported
+  /// mode with similar behavior.
+  pub fn with_present_mode(mut self, mode: PresentMode) -> Self {
+    self.present_mode = Some(PresentModeOverride::Explicit(mode));
+    return self;
   }
 
   /// Build a `RenderContext` for the provided `window` and configure the
@@ -116,7 +166,9 @@ impl RenderContextBuilder {
     self,
     window: &window::Window,
   ) -> Result<RenderContext, RenderContextError> {
-    let RenderContextBuilder { name, .. } = self;
+    let RenderContextBuilder {
+      name, present_mode, ..
+    } = self;
 
     let instance = instance::InstanceBuilder::new()
       .with_label(&format!("{} Instance", name))
@@ -141,11 +193,33 @@ impl RenderContextBuilder {
       })?;
 
     let size = window.dimensions();
+    let requested_present_mode = match present_mode {
+      Some(PresentModeOverride::Vsync(enabled)) => {
+        if enabled {
+          PresentMode::Vsync
+        } else {
+          PresentMode::Immediate
+        }
+      }
+      Some(PresentModeOverride::Explicit(mode)) => mode,
+      None => {
+        if window.vsync_requested() {
+          PresentMode::Vsync
+        } else {
+          PresentMode::Immediate
+        }
+      }
+    };
+    let platform_present_mode = match requested_present_mode {
+      PresentMode::Vsync => targets::surface::PresentMode::Fifo,
+      PresentMode::Immediate => targets::surface::PresentMode::Immediate,
+      PresentMode::Mailbox => targets::surface::PresentMode::Mailbox,
+    };
     surface
       .configure_with_defaults(
         &gpu,
         size,
-        targets::surface::PresentMode::default(),
+        platform_present_mode,
         texture::TextureUsages::RENDER_ATTACHMENT,
       )
       .map_err(|e| {
