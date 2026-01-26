@@ -90,12 +90,6 @@ impl Default for PresentMode {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum PresentModeOverride {
-  Vsync(bool),
-  Explicit(PresentMode),
-}
-
 /// Builder for configuring a `RenderContext` tied to one window.
 ///
 /// Purpose
@@ -117,7 +111,7 @@ pub struct RenderContextBuilder {
   /// Reserved for future timeout handling during rendering (nanoseconds).
   /// Not currently enforced; kept for forward compatibility with runtime controls.
   _render_timeout: u64,
-  present_mode: Option<PresentModeOverride>,
+  present_mode: Option<PresentMode>,
 }
 
 impl RenderContextBuilder {
@@ -143,7 +137,11 @@ impl RenderContextBuilder {
   /// When disabled, the builder requests a non‑vsync mode (immediate
   /// presentation) and falls back to a supported low-latency mode if needed.
   pub fn with_vsync(mut self, enabled: bool) -> Self {
-    self.present_mode = Some(PresentModeOverride::Vsync(enabled));
+    self.present_mode = Some(if enabled {
+      PresentMode::Vsync
+    } else {
+      PresentMode::Immediate
+    });
     return self;
   }
 
@@ -153,7 +151,7 @@ impl RenderContextBuilder {
   /// capabilities. If unsupported, the renderer falls back to a supported
   /// mode with similar behavior.
   pub fn with_present_mode(mut self, mode: PresentMode) -> Self {
-    self.present_mode = Some(PresentModeOverride::Explicit(mode));
+    self.present_mode = Some(mode);
     return self;
   }
 
@@ -193,23 +191,12 @@ impl RenderContextBuilder {
       })?;
 
     let size = window.dimensions();
-    let requested_present_mode = match present_mode {
-      Some(PresentModeOverride::Vsync(enabled)) => {
-        if enabled {
-          PresentMode::Vsync
-        } else {
-          PresentMode::Immediate
-        }
+    let requested_present_mode = present_mode.unwrap_or_else(|| {
+      if window.vsync_requested() {
+        return PresentMode::Vsync;
       }
-      Some(PresentModeOverride::Explicit(mode)) => mode,
-      None => {
-        if window.vsync_requested() {
-          PresentMode::Vsync
-        } else {
-          PresentMode::Immediate
-        }
-      }
-    };
+      return PresentMode::Immediate;
+    });
     let platform_present_mode = match requested_present_mode {
       PresentMode::Vsync => targets::surface::PresentMode::Fifo,
       PresentMode::Immediate => targets::surface::PresentMode::Immediate,
