@@ -261,21 +261,10 @@ impl<'window> Surface<'window> {
       .unwrap_or_else(|| *capabilities.formats.first().unwrap());
 
     let requested_present_mode = present_mode.to_wgpu();
-    config.present_mode = if capabilities
-      .present_modes
-      .contains(&requested_present_mode)
-    {
-      requested_present_mode
-    } else {
-      capabilities
-        .present_modes
-        .iter()
-        .copied()
-        .find(|mode| {
-          matches!(mode, wgpu::PresentMode::Fifo | wgpu::PresentMode::AutoVsync)
-        })
-        .unwrap_or(wgpu::PresentMode::Fifo)
-    };
+    config.present_mode = select_present_mode(
+      requested_present_mode,
+      capabilities.present_modes.as_slice(),
+    );
 
     if capabilities.usages.contains(usage.to_wgpu()) {
       config.usage = usage.to_wgpu();
@@ -321,6 +310,54 @@ impl<'window> Surface<'window> {
   }
 }
 
+fn select_present_mode(
+  requested: wgpu::PresentMode,
+  available: &[wgpu::PresentMode],
+) -> wgpu::PresentMode {
+  if available.contains(&requested) {
+    return requested;
+  }
+
+  let candidates: &[wgpu::PresentMode] = match requested {
+    wgpu::PresentMode::Immediate | wgpu::PresentMode::AutoNoVsync => &[
+      wgpu::PresentMode::Immediate,
+      wgpu::PresentMode::Mailbox,
+      wgpu::PresentMode::AutoNoVsync,
+      wgpu::PresentMode::Fifo,
+      wgpu::PresentMode::AutoVsync,
+    ],
+    wgpu::PresentMode::Mailbox => &[
+      wgpu::PresentMode::Mailbox,
+      wgpu::PresentMode::Fifo,
+      wgpu::PresentMode::AutoVsync,
+    ],
+    wgpu::PresentMode::FifoRelaxed => &[
+      wgpu::PresentMode::FifoRelaxed,
+      wgpu::PresentMode::Fifo,
+      wgpu::PresentMode::AutoVsync,
+    ],
+    wgpu::PresentMode::Fifo | wgpu::PresentMode::AutoVsync => &[
+      wgpu::PresentMode::Fifo,
+      wgpu::PresentMode::AutoVsync,
+      wgpu::PresentMode::FifoRelaxed,
+      wgpu::PresentMode::Mailbox,
+      wgpu::PresentMode::Immediate,
+      wgpu::PresentMode::AutoNoVsync,
+    ],
+  };
+
+  for candidate in candidates {
+    if available.contains(candidate) {
+      return *candidate;
+    }
+  }
+
+  return available
+    .first()
+    .copied()
+    .unwrap_or(wgpu::PresentMode::Fifo);
+}
+
 /// A single acquired frame and its default `TextureView`.
 #[derive(Debug)]
 pub struct Frame {
@@ -343,5 +380,38 @@ impl Frame {
   /// Present the frame to the swapchain.
   pub fn present(self) {
     self.texture.present();
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn select_present_mode_prefers_requested() {
+    let available = &[wgpu::PresentMode::Fifo, wgpu::PresentMode::Immediate];
+    let selected = select_present_mode(wgpu::PresentMode::Immediate, available);
+    assert_eq!(selected, wgpu::PresentMode::Immediate);
+  }
+
+  #[test]
+  fn select_present_mode_falls_back_from_immediate_to_mailbox() {
+    let available = &[wgpu::PresentMode::Fifo, wgpu::PresentMode::Mailbox];
+    let selected = select_present_mode(wgpu::PresentMode::Immediate, available);
+    assert_eq!(selected, wgpu::PresentMode::Mailbox);
+  }
+
+  #[test]
+  fn select_present_mode_falls_back_from_mailbox_to_fifo() {
+    let available = &[wgpu::PresentMode::Fifo, wgpu::PresentMode::Immediate];
+    let selected = select_present_mode(wgpu::PresentMode::Mailbox, available);
+    assert_eq!(selected, wgpu::PresentMode::Fifo);
+  }
+
+  #[test]
+  fn select_present_mode_uses_auto_no_vsync_when_available() {
+    let available = &[wgpu::PresentMode::AutoNoVsync, wgpu::PresentMode::Fifo];
+    let selected = select_present_mode(wgpu::PresentMode::Immediate, available);
+    assert_eq!(selected, wgpu::PresentMode::AutoNoVsync);
   }
 }
