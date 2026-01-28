@@ -37,6 +37,11 @@ use logging; // renamed in Cargo.toml
 use lambda_rs_logging as logging;
 
 fn main() {
+  // Default global level:
+  // - Debug builds: DEBUG
+  // - Release builds: INFO
+  //
+  // Override at runtime with LAMBDA_LOG=trace|debug|info|warn|error|fatal
   logging::trace!("trace {}", 1);
   logging::debug!("debug {}", 2);
   logging::info!("info {}", 3);
