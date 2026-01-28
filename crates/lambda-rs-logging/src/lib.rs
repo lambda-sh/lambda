@@ -1,5 +1,14 @@
 #![allow(clippy::needless_return)]
 //! A simple logging library for lambda-rs crates.
+//!
+//! # Default global level
+//! - Debug builds (`cfg(debug_assertions)`): `DEBUG`
+//! - Release builds (`cfg(not(debug_assertions))`): `INFO`
+//!
+//! The global level can be overridden at runtime with `LAMBDA_LOG`
+//! (`trace|debug|info|warn|error|fatal`). For best results, call
+//! `lambda_rs_logging::env::init_global_from_env()` early in startup before
+//! any logging macros are used.
 
 use std::{
   fmt,
@@ -61,6 +70,20 @@ pub struct Logger {
   handlers: RwLock<Vec<Box<dyn handler::Handler>>>,
 }
 
+static GLOBAL_LOGGER: OnceLock<Arc<Logger>> = OnceLock::new();
+
+fn default_global_level() -> LogLevel {
+  #[cfg(debug_assertions)]
+  {
+    return LogLevel::DEBUG;
+  }
+
+  #[cfg(not(debug_assertions))]
+  {
+    return LogLevel::INFO;
+  }
+}
+
 impl Logger {
   /// Creates a new logger with the given log level and name.
   pub fn new(level: LogLevel, name: &str) -> Self {
@@ -79,9 +102,8 @@ impl Logger {
   /// Returns the global logger (thread-safe). Initializes with a default
   /// console handler if not explicitly initialized via `init`.
   pub fn global() -> &'static Arc<Self> {
-    static GLOBAL: OnceLock<Arc<Logger>> = OnceLock::new();
-    GLOBAL.get_or_init(|| {
-      let logger = Logger::new(LogLevel::TRACE, "lambda-rs");
+    GLOBAL_LOGGER.get_or_init(|| {
+      let logger = Logger::new(default_global_level(), "lambda-rs");
       // Default console handler
       logger.add_handler(Box::new(handler::ConsoleHandler::new("lambda-rs")));
       Arc::new(logger)
@@ -90,8 +112,7 @@ impl Logger {
 
   /// Initialize the global logger (first caller wins).
   pub fn init(logger: Logger) -> Result<(), InitError> {
-    static GLOBAL: OnceLock<Arc<Logger>> = OnceLock::new();
-    GLOBAL
+    GLOBAL_LOGGER
       .set(Arc::new(logger))
       .map_err(|_| InitError::AlreadyInitialized)
   }
@@ -261,11 +282,20 @@ pub mod env {
   pub fn init_global_from_env() -> Result<(), super::InitError> {
     let logger = Logger::builder()
       .name("lambda-rs")
-      .level(LogLevel::INFO)
+      .level(super::default_global_level())
       .with_handler(Box::new(crate::handler::ConsoleHandler::new("lambda-rs")))
       .build();
     apply_env_level(&logger, Some("LAMBDA_LOG"));
-    super::Logger::init(logger)
+    match super::Logger::init(logger) {
+      Ok(()) => {
+        return Ok(());
+      }
+      Err(super::InitError::AlreadyInitialized) => {
+        let global = super::Logger::global().clone();
+        apply_env_level(global.as_ref(), Some("LAMBDA_LOG"));
+        return Ok(());
+      }
+    }
   }
 }
 /// Returns whether the global logger would log at `level`.
