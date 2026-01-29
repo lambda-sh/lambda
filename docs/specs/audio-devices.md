@@ -3,14 +3,13 @@ title: "Audio Device Abstraction"
 document_id: "audio-device-abstraction-2026-01-28"
 status: "draft"
 created: "2026-01-28T22:59:00Z"
-version: "0.1.7"
-version: "0.1.8"
-last_updated: "2026-01-29T20:40:49Z"
+last_updated: "2026-01-29T21:58:43Z"
+version: "0.1.9"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "d1d13296951f9b1f34acceced52591c5915215c9"
+repo_commit: "e8944565ebba497ec59a72bdfdb855a97f41a666"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "audio", "lambda-rs", "platform", "cpal"]
@@ -634,6 +633,7 @@ Manual checks
 
 ## Changelog
 
+- 2026-01-29 (v0.1.9) — Fix YAML front matter to use a single `version` field.
 - 2026-01-29 (v0.1.8) — Make the `lambda-rs` facade example the primary
   reference and remove the platform example requirement.
 - 2026-01-29 (v0.1.7) — Rename the platform audio implementation module to
