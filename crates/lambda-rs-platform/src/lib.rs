@@ -15,3 +15,6 @@ pub mod shader;
 #[cfg(feature = "wgpu")]
 pub mod wgpu;
 pub mod winit;
+
+#[cfg(feature = "audio-device")]
+pub mod cpal;

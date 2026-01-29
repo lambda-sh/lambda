@@ -48,3 +48,11 @@ wgpu-with-vulkan = ["wgpu"]
 wgpu-with-metal = ["wgpu", "wgpu/metal"]
 wgpu-with-dx12 = ["wgpu", "wgpu/dx12"]
 wgpu-with-gl = ["wgpu", "wgpu/webgl"]
+
+# ---------------------------------- AUDIO ------------------------------------
+
+# Umbrella features (disabled by default)
+audio = ["audio-device"]
+
+# Granular feature flags (disabled by default)
+audio-device = []
