@@ -301,3 +301,31 @@ pub fn enumerate_output_devices(
 
   return Ok(devices);
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn errors_map_without_leaking_platform_types() {
+    let result = AudioOutputDeviceBuilder::new().with_sample_rate(0).build();
+    assert!(matches!(
+      result,
+      Err(AudioError::InvalidSampleRate { requested: 0 })
+    ));
+
+    let result = enumerate_output_devices();
+    match result {
+      Err(AudioError::Platform { details }) => {
+        assert_eq!(details, "audio host unavailable: audio backend not wired");
+        return;
+      }
+      Ok(_devices) => {
+        panic!("expected platform error, got Ok");
+      }
+      Err(error) => {
+        panic!("expected platform error, got {error:?}");
+      }
+    }
+  }
+}

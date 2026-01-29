@@ -63,6 +63,184 @@ pub trait AudioOutputWriter {
   );
 }
 
+/// A typed view of an interleaved output buffer for a single callback.
+///
+/// This type is internal and exists to support backend callback adapters.
+#[allow(dead_code)]
+pub(crate) enum AudioOutputBuffer<'buffer> {
+  /// Interleaved `f32` samples.
+  F32(&'buffer mut [f32]),
+  /// Interleaved `i16` samples.
+  I16(&'buffer mut [i16]),
+  /// Interleaved `u16` samples.
+  U16(&'buffer mut [u16]),
+}
+
+impl<'buffer> AudioOutputBuffer<'buffer> {
+  #[allow(dead_code)]
+  fn len(&self) -> usize {
+    match self {
+      Self::F32(buffer) => {
+        return buffer.len();
+      }
+      Self::I16(buffer) => {
+        return buffer.len();
+      }
+      Self::U16(buffer) => {
+        return buffer.len();
+      }
+    }
+  }
+
+  fn sample_format(&self) -> AudioSampleFormat {
+    match self {
+      Self::F32(_) => {
+        return AudioSampleFormat::F32;
+      }
+      Self::I16(_) => {
+        return AudioSampleFormat::I16;
+      }
+      Self::U16(_) => {
+        return AudioSampleFormat::U16;
+      }
+    }
+  }
+}
+
+/// An [`AudioOutputWriter`] implementation for interleaved buffers.
+///
+/// This type is internal and exists to support backend callback adapters.
+#[allow(dead_code)]
+pub(crate) struct InterleavedAudioOutputWriter<'buffer> {
+  channels: u16,
+  frames: usize,
+  buffer: AudioOutputBuffer<'buffer>,
+}
+
+impl<'buffer> InterleavedAudioOutputWriter<'buffer> {
+  #[allow(dead_code)]
+  pub fn new(channels: u16, buffer: AudioOutputBuffer<'buffer>) -> Self {
+    let channels_usize = channels as usize;
+    let frames = if channels_usize == 0 {
+      0
+    } else {
+      buffer.len() / channels_usize
+    };
+
+    return Self {
+      channels,
+      frames,
+      buffer,
+    };
+  }
+
+  #[allow(dead_code)]
+  pub fn sample_format(&self) -> AudioSampleFormat {
+    return self.buffer.sample_format();
+  }
+}
+
+#[allow(dead_code)]
+fn clamp_normalized_sample(sample: f32) -> f32 {
+  if sample > 1.0 {
+    return 1.0;
+  }
+
+  if sample < -1.0 {
+    return -1.0;
+  }
+
+  return sample;
+}
+
+impl<'buffer> AudioOutputWriter for InterleavedAudioOutputWriter<'buffer> {
+  fn channels(&self) -> u16 {
+    return self.channels;
+  }
+
+  fn frames(&self) -> usize {
+    return self.frames;
+  }
+
+  fn clear(&mut self) {
+    match &mut self.buffer {
+      AudioOutputBuffer::F32(buffer) => {
+        buffer.fill(0.0);
+        return;
+      }
+      AudioOutputBuffer::I16(buffer) => {
+        buffer.fill(0);
+        return;
+      }
+      AudioOutputBuffer::U16(buffer) => {
+        buffer.fill(32768);
+        return;
+      }
+    }
+  }
+
+  fn set_sample(
+    &mut self,
+    frame_index: usize,
+    channel_index: usize,
+    sample: f32,
+  ) {
+    let channels = self.channels as usize;
+    if channels == 0 {
+      return;
+    }
+
+    if channel_index >= channels {
+      if cfg!(all(debug_assertions, not(test))) {
+        eprintln!(
+          "audio: set_sample channel_index out of range (channel_index={channel_index} channels={channels})"
+        );
+      }
+      return;
+    }
+
+    if frame_index >= self.frames {
+      if cfg!(all(debug_assertions, not(test))) {
+        eprintln!(
+          "audio: set_sample frame_index out of range (frame_index={frame_index} frames={})",
+          self.frames
+        );
+      }
+      return;
+    }
+
+    let sample_index = frame_index * channels + channel_index;
+    if sample_index >= self.buffer.len() {
+      if cfg!(all(debug_assertions, not(test))) {
+        eprintln!(
+          "audio: set_sample buffer index out of range (sample_index={sample_index} len={})",
+          self.buffer.len()
+        );
+      }
+      return;
+    }
+
+    let sample = clamp_normalized_sample(sample);
+
+    match &mut self.buffer {
+      AudioOutputBuffer::F32(buffer) => {
+        buffer[sample_index] = sample;
+        return;
+      }
+      AudioOutputBuffer::I16(buffer) => {
+        let scaled = (sample * 32767.0).round();
+        buffer[sample_index] = scaled as i16;
+        return;
+      }
+      AudioOutputBuffer::U16(buffer) => {
+        let scaled = ((sample + 1.0) * 0.5 * 65535.0).round();
+        buffer[sample_index] = scaled as u16;
+        return;
+      }
+    }
+  }
+}
+
 /// Metadata describing an available audio output device.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AudioDeviceInfo {
@@ -328,5 +506,83 @@ mod tests {
         panic!("expected host unavailable error, got {error}");
       }
     }
+  }
+
+  #[test]
+  fn writer_clear_sets_silence_for_all_formats() {
+    let mut buffer_f32 = [1.0, -1.0, 0.5, -0.5];
+    let mut writer = InterleavedAudioOutputWriter::new(
+      2,
+      AudioOutputBuffer::F32(&mut buffer_f32),
+    );
+    writer.clear();
+    assert_eq!(buffer_f32, [0.0, 0.0, 0.0, 0.0]);
+
+    let mut buffer_i16 = [1, -1, 200, -200];
+    let mut writer = InterleavedAudioOutputWriter::new(
+      2,
+      AudioOutputBuffer::I16(&mut buffer_i16),
+    );
+    writer.clear();
+    assert_eq!(buffer_i16, [0, 0, 0, 0]);
+
+    let mut buffer_u16 = [0, 1, 65535, 12345];
+    let mut writer = InterleavedAudioOutputWriter::new(
+      2,
+      AudioOutputBuffer::U16(&mut buffer_u16),
+    );
+    writer.clear();
+    assert_eq!(buffer_u16, [32768, 32768, 32768, 32768]);
+  }
+
+  #[test]
+  fn writer_set_sample_clamps_and_converts() {
+    let mut buffer_f32 = [0.0, 0.0, 0.0, 0.0];
+    let mut writer = InterleavedAudioOutputWriter::new(
+      2,
+      AudioOutputBuffer::F32(&mut buffer_f32),
+    );
+    writer.set_sample(0, 0, 2.0);
+    writer.set_sample(0, 1, -2.0);
+    assert_eq!(buffer_f32[0], 1.0);
+    assert_eq!(buffer_f32[1], -1.0);
+
+    let mut buffer_i16 = [0, 0, 0, 0];
+    let mut writer = InterleavedAudioOutputWriter::new(
+      2,
+      AudioOutputBuffer::I16(&mut buffer_i16),
+    );
+    writer.set_sample(0, 0, 1.0);
+    writer.set_sample(0, 1, -1.0);
+    writer.set_sample(1, 0, 0.0);
+    assert_eq!(buffer_i16[0], 32767);
+    assert_eq!(buffer_i16[1], -32767);
+    assert_eq!(buffer_i16[2], 0);
+
+    let mut buffer_u16 = [0, 0, 0, 0];
+    let mut writer = InterleavedAudioOutputWriter::new(
+      2,
+      AudioOutputBuffer::U16(&mut buffer_u16),
+    );
+    writer.set_sample(0, 0, -1.0);
+    writer.set_sample(0, 1, 0.0);
+    writer.set_sample(1, 0, 1.0);
+    assert_eq!(buffer_u16[0], 0);
+    assert_eq!(buffer_u16[1], 32768);
+    assert_eq!(buffer_u16[2], 65535);
+  }
+
+  #[test]
+  fn writer_set_sample_is_noop_for_out_of_range_indices() {
+    let mut buffer_f32 = [0.25, 0.25, 0.25, 0.25];
+    let mut writer = InterleavedAudioOutputWriter::new(
+      2,
+      AudioOutputBuffer::F32(&mut buffer_f32),
+    );
+
+    writer.set_sample(10, 0, 1.0);
+    writer.set_sample(0, 10, 1.0);
+
+    assert_eq!(buffer_f32, [0.25, 0.25, 0.25, 0.25]);
   }
 }
