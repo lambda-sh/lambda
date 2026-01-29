@@ -38,7 +38,7 @@ with-wgpu-gl=["with-wgpu", "lambda-rs-platform/wgpu-with-gl"]
 audio = ["audio-output-device"]
 
 # Granular feature flags (disabled by default)
-audio-output-device = []
+audio-output-device = ["lambda-rs-platform/audio-device"]
 
 # ------------------------------ RENDER VALIDATION -----------------------------
 # Granular, opt-in validation flags for release builds. Debug builds enable
