@@ -4,7 +4,8 @@ document_id: "audio-device-abstraction-2026-01-28"
 status: "draft"
 created: "2026-01-28T22:59:00Z"
 version: "0.1.7"
-last_updated: "2026-01-29T04:49:53Z"
+version: "0.1.8"
+last_updated: "2026-01-29T20:40:49Z"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
@@ -589,13 +590,23 @@ Feature gating requirements
   - [ ] Unsupported configurations reported via `AudioError::UnsupportedConfig`
 - Documentation and Examples
   - [ ] `docs/features.md` updated with audio feature documentation
-  - [ ] Example added demonstrating audible playback (behind `audio-device`)
-  - [ ] `lambda-rs` audio facade and examples implemented
+  - [ ] Example added demonstrating audible playback (behind `audio-output-device`)
+  - [ ] `lambda-rs` audio facade implemented
 
 For each checked item, include a reference to a commit, pull request, or file
 path that demonstrates the implementation.
 
 ## Verification and Testing
+
+Example (lambda-rs facade)
+
+This example is the primary application-facing reference.
+
+- Add `crates/lambda-rs/examples/audio_sine_wave.rs` (feature:
+  `audio-output-device`) that:
+  - Prints `lambda_rs::audio::enumerate_output_devices()` output.
+  - Builds the default output device via the facade builder and plays a
+    deterministic 440 Hz tone for at least 2 seconds.
 
 Unit tests (crate: `lambda-rs-platform`)
 
@@ -608,60 +619,14 @@ Unit tests (crate: `lambda-rs-platform`)
 
 Commands
 
+- `cargo test -p lambda-rs --features audio-output-device -- --nocapture`
 - `cargo test -p lambda-rs-platform --features audio-device -- --nocapture`
 
 Manual checks
 
-- Run a minimal smoke executable (example or integration runnable) that:
-  - Prints `enumerate_devices` output.
-  - Calls `AudioDeviceBuilder::new().build_with_output_callback(...)` and
-    plays a deterministic test tone for at least 2 seconds.
-
-Example (platform layer)
-
-This example is workspace-internal and exists to validate the platform layer in
-isolation. Applications MUST use the `lambda-rs` facade instead.
-
-- Add `crates/lambda-rs-platform/examples/audio_sine_wave.rs` (feature:
-  `audio-device`) that:
-  - Prints `enumerate_devices()` output.
-  - Builds the default output device with a 440 Hz sine wave generator via
-    `build_with_output_callback`.
-  - Plays for 2 seconds and exits.
-
-Example sketch
-
-```rust
-let mut phase: f32 = 0.0;
-let frequency_hz: f32 = 440.0;
-
-let _device = AudioDeviceBuilder::new()
-  .with_sample_rate(48_000)
-  .with_channels(2)
-  .build_with_output_callback(move |writer, info| {
-    let channels = info.channels as usize;
-    let frames = writer.frames();
-    let phase_step = 2.0 * std::f32::consts::PI * frequency_hz
-      / info.sample_rate as f32;
-
-    for frame_index in 0..frames {
-      let sample = phase.sin() * 0.10;
-      phase += phase_step;
-
-      for channel_index in 0..channels {
-        writer.set_sample(frame_index, channel_index, sample);
-      }
-    }
-  })?;
-```
-
-Example (lambda-rs facade)
-
-- Add `crates/lambda-rs/examples/audio_sine_wave.rs` (feature:
-  `audio-output-device`) that:
-  - Prints `lambda_rs::audio::enumerate_output_devices()` output.
-  - Builds the default output device via the facade builder and plays the same
-    deterministic tone.
+- Run the `lambda-rs` facade example and confirm audible playback for at least
+  2 seconds.
+  - `cargo run -p lambda-rs --example audio_sine_wave --features audio-output-device`
 
 ## Compatibility and Migration
 
@@ -669,6 +634,8 @@ Example (lambda-rs facade)
 
 ## Changelog
 
+- 2026-01-29 (v0.1.8) — Make the `lambda-rs` facade example the primary
+  reference and remove the platform example requirement.
 - 2026-01-29 (v0.1.7) — Rename the platform audio implementation module to
   `lambda-rs-platform::cpal` to reflect the internal backend.
 - 2026-01-29 (v0.1.6) — Specify `lambda-rs` as the only supported
