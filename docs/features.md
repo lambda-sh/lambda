@@ -23,8 +23,8 @@ relationships, and expected behavior in debug and release builds.
 ## Table of Contents
 - [Overview](#overview)
 - [Defaults](#defaults)
-- [`lambda-rs`](#lambda-rs)
-- [`lambda-rs-platform`](#lambda-rs-platform)
+- [lambda-rs](#lambda-rs)
+- [lambda-rs-platform](#lambda-rs-platform)
 - [Changelog](#changelog)
 
 ## Defaults
@@ -34,7 +34,7 @@ relationships, and expected behavior in debug and release builds.
 - Audio features are disabled by default and incur runtime cost only when an
   audio device is initialized and kept alive.
 
-## `lambda-rs`
+## lambda-rs
 
 Rendering backends
 - `with-wgpu` (default): enables the `wgpu` platform backend via
@@ -109,7 +109,7 @@ Usage examples
 - Enable only MSAA validation in release:
   - `cargo test -p lambda-rs --features render-validation-msaa`
 
-## `lambda-rs-platform`
+## lambda-rs-platform
 
 This crate provides platform and dependency abstractions for `lambda-rs`.
 Applications MUST NOT depend on `lambda-rs-platform` directly.
