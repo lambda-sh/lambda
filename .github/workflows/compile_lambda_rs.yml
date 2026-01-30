@@ -48,6 +48,7 @@ jobs:
             pkg-config libx11-dev libxcb1-dev libxcb-render0-dev \
             libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev \
             libwayland-dev libudev-dev \
+            libasound2-dev \
             libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools
 
       - name: Configure Vulkan (Ubuntu)

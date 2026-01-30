@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-01-30T22:48:05Z"
-version: "0.1.9"
+last_updated: "2026-01-30T23:40:49Z"
+version: "0.1.10"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "e179f7de3b43f9cd822b4f7ab520c095dc3c6911"
+repo_commit: "df62c624ca869e0493a3a92297d1cebe94251e69"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo", "audio"]
@@ -33,6 +33,9 @@ relationships, and expected behavior in debug and release builds.
 - Release builds enable only cheap safety checks by default; validation logs and per-draw checks MUST be enabled explicitly via features.
 - Audio support in `lambda-rs` is enabled by default and incurs runtime cost
   only when an audio device is initialized and kept alive.
+  - Linux builds that include the default audio backend MUST provide ALSA
+    development headers and `pkg-config` (for example, `libasound2-dev` on
+    Debian/Ubuntu).
 
 ## lambda-rs
 
@@ -132,6 +135,8 @@ Audio
   backend module `lambda_platform::cpal` backed by `cpal =0.17.1`.
 
 ## Changelog
+- 0.1.10 (2026-01-30): Document Linux system dependencies required by the
+  default audio backend.
 - 0.1.9 (2026-01-30): Clarify workspace default audio behavior after enabling
   `lambda-rs` audio features by default.
 - 0.1.8 (2026-01-30): Enable `lambda-rs` audio features by default and update

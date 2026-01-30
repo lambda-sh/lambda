@@ -3,13 +3,13 @@ title: "Audio Device Abstraction"
 document_id: "audio-device-abstraction-2026-01-28"
 status: "draft"
 created: "2026-01-28T22:59:00Z"
-last_updated: "2026-01-30T23:21:06Z"
-version: "0.1.12"
+last_updated: "2026-01-30T23:40:49Z"
+version: "0.1.13"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "7e7851da903fbc7b4aa35acd511999df659af237"
+repo_commit: "df62c624ca869e0493a3a92297d1cebe94251e69"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "audio", "lambda-rs", "platform", "cpal"]
@@ -555,6 +555,9 @@ Feature gating requirements
   - It MUST NOT perform I/O.
 - User-provided output callbacks MUST follow the same real-time safety rules as
   the stream callback.
+- Linux builds with `audio-output-device` enabled MUST provide ALSA development
+  headers and `pkg-config` so the `alsa-sys` dependency can link successfully
+  (for example, `libasound2-dev` on Debian/Ubuntu).
 
 ## Performance Considerations
 
@@ -653,6 +656,8 @@ Manual checks
 
 ## Changelog
 
+- 2026-01-30 (v0.1.13) — Document Linux system dependencies required by the
+  default audio backend.
 - 2026-01-30 (v0.1.12) — Populate the requirements checklist with file
   references matching the implemented surface.
 - 2026-01-30 (v0.1.11) — Align examples with the `lambda` crate name, document
