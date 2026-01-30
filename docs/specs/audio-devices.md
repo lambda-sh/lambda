@@ -3,13 +3,13 @@ title: "Audio Device Abstraction"
 document_id: "audio-device-abstraction-2026-01-28"
 status: "draft"
 created: "2026-01-28T22:59:00Z"
-last_updated: "2026-01-30T22:15:27Z"
-version: "0.1.10"
+last_updated: "2026-01-30T23:21:06Z"
+version: "0.1.12"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "e179f7de3b43f9cd822b4f7ab520c095dc3c6911"
+repo_commit: "7e7851da903fbc7b4aa35acd511999df659af237"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "audio", "lambda-rs", "platform", "cpal"]
@@ -82,23 +82,23 @@ tags: ["spec", "audio", "lambda-rs", "platform", "cpal"]
 
 ## Architecture Overview
 
-- Crate `lambda-rs`
+- Crate `lambda` (package: `lambda-rs`)
   - `audio` module provides the application-facing API for output device access.
   - The public API MUST remain backend-agnostic and MUST NOT expose `cpal` or
     `lambda-rs-platform` types.
-- Crate `lambda-rs-platform`
-  - `cpal` module provides internal implementations used by `lambda-rs`
-    implementations.
+- Crate `lambda_platform` (package: `lambda-rs-platform`)
+  - `cpal` module provides internal implementations used by `lambda-rs`.
   - `cpal::device` wraps `cpal` device discovery and stream creation.
+  - The backend dependency MUST be pinned to `cpal = "=0.17.1"`.
 
 Data flow
 
 ```
 application
-  └── lambda-rs::audio
+  └── lambda::audio
         ├── enumerate_output_devices() -> Vec<AudioOutputDeviceInfo>
         └── AudioOutputDeviceBuilder::build() -> AudioOutputDevice
-              └── lambda-rs-platform::cpal (internal)
+              └── lambda_platform::cpal (internal)
                     ├── enumerate_devices() -> Vec<AudioDeviceInfo>
                     └── AudioDeviceBuilder::build() -> AudioDevice
                           └── cpal (host + device + stream)
@@ -220,8 +220,9 @@ pub fn enumerate_devices() -> Result<Vec<AudioDeviceInfo>, AudioError>;
 ### lambda-rs Public API
 
 `lambda-rs` provides the application-facing audio API and translates to
-`lambda-rs-platform::cpal` internally. The `lambda-rs` layer MUST remain
-backend-agnostic and MUST NOT expose `cpal` types.
+`lambda_platform::cpal` (package: `lambda-rs-platform`) internally. The
+`lambda-rs` layer MUST remain backend-agnostic and MUST NOT expose `cpal`
+types.
 
 Crate boundary
 
@@ -229,7 +230,7 @@ Crate boundary
   `lambda-rs-platform` directly.
 - `lambda-rs-platform` audio APIs are internal implementation details and MAY
   change without regard for application compatibility.
-- `lambda-rs::audio` MUST remain backend-agnostic and MUST NOT require direct
+- `lambda::audio` MUST remain backend-agnostic and MUST NOT require direct
   use of `lambda-rs-platform` types by applications.
 
 Application-facing API surface
@@ -316,16 +317,17 @@ pub fn enumerate_output_devices(
 
 Implementation rules
 
-- `lambda-rs::audio` MUST translate into `lambda-rs-platform::cpal` internally.
-- `lambda-rs::audio` MUST define its own public types and MUST NOT re-export
+- `lambda::audio` MUST translate into `lambda_platform::cpal` (package:
+  `lambda-rs-platform`) internally.
+- `lambda::audio` MUST define its own public types and MUST NOT re-export
   `lambda-rs-platform` audio types.
-- `lambda-rs::audio::AudioError` MUST remain backend-agnostic and MUST NOT
+- `lambda::audio::AudioError` MUST remain backend-agnostic and MUST NOT
   expose `cpal` types.
 
 Features
 
 - `lambda-rs` granular feature: `audio-output-device` (default: enabled)
-  - Enables the `lambda-rs::audio` output device surface.
+  - Enables the `lambda::audio` output device surface.
   - Enables `lambda-rs-platform` `audio-device` internally.
 - `lambda-rs` umbrella feature: `audio` (default: enabled)
   - Composes `audio-output-device` only.
@@ -333,12 +335,12 @@ Features
 ### Application Interaction
 
 This section describes the intended application-facing workflow via
-`lambda-rs::audio`.
+`lambda::audio`.
 
 Initialization flow
 
-- An application SHOULD enumerate devices to present names in diagnostics or a
-  settings UI.
+- An application SHOULD enumerate devices to present names in diagnostics
+  output.
 - An application SHOULD create exactly one default output device during
   startup.
 - The application MUST keep the returned device handle alive for as long as
@@ -347,7 +349,7 @@ Initialization flow
 Device enumeration
 
 ```rust
-let devices = lambda_rs::audio::enumerate_output_devices()?;
+let devices = lambda::audio::enumerate_output_devices()?;
 for device in devices {
   println!(
     "audio: {}{}",
@@ -363,7 +365,7 @@ Default device initialization (deterministic test tone)
 let mut phase: f32 = 0.0;
 let frequency_hz: f32 = 440.0;
 
-let _audio_output = lambda_rs::audio::AudioOutputDeviceBuilder::new()
+let _audio_output = lambda::audio::AudioOutputDeviceBuilder::new()
   .with_sample_rate(48_000)
   .with_channels(2)
   .build_with_output_callback(move |writer, info| {
@@ -394,11 +396,11 @@ Runtime interaction
 Minimal application sketch
 
 ```rust
-use lambda_rs::runtime::start_runtime;
-use lambda_rs::runtimes::ApplicationRuntimeBuilder;
+use lambda::runtime::start_runtime;
+use lambda::runtimes::ApplicationRuntimeBuilder;
 
-fn main() -> Result<(), lambda_rs::audio::AudioError> {
-  let _audio_output = lambda_rs::audio::AudioOutputDeviceBuilder::new()
+fn main() -> Result<(), lambda::audio::AudioError> {
+  let _audio_output = lambda::audio::AudioOutputDeviceBuilder::new()
     .build()?;
 
   let runtime = ApplicationRuntimeBuilder::new("Lambda App").build();
@@ -409,7 +411,7 @@ fn main() -> Result<(), lambda_rs::audio::AudioError> {
 
 ### Behavior
 
-Device enumeration (`lambda_rs::audio::enumerate_output_devices`)
+Device enumeration (`lambda::audio::enumerate_output_devices`)
 
 - `enumerate_output_devices` MUST return only output-capable devices.
 - `enumerate_output_devices` MUST include the default output device when one
@@ -425,9 +427,9 @@ Default device initialization (`AudioOutputDeviceBuilder::build`)
 - `build` MUST validate the requested configuration against the device’s
   supported output configurations.
 - When `sample_rate` is not specified, `build` MUST prefer 48_000 Hz when
-  supported and otherwise fall back to the device default configuration.
-- When `channels` is not specified, `build` MUST prefer stereo (`2`) when
-  supported and otherwise fall back to the device default configuration.
+  supported and otherwise clamp to the nearest supported rate within the chosen
+  configuration range.
+- When `channels` is not specified, `build` MUST NOT filter by channel count.
 - `build` MUST create an output stream that produces silence (all samples set
   to zero) and MUST keep the stream alive for the lifetime of
   `AudioOutputDevice`.
@@ -484,15 +486,15 @@ Error type
 
 - `lambda-rs` MUST define an `AudioError` error enum suitable for actionable
   diagnostics.
-- `lambda-rs::audio::AudioError` MUST remain backend-agnostic and MUST NOT
+- `lambda::audio::AudioError` MUST remain backend-agnostic and MUST NOT
   expose `cpal` or `lambda-rs-platform` types.
 - `lambda-rs-platform` MUST define an internal `AudioError` suitable for
   actionable diagnostics inside the platform layer.
-- `lambda-rs-platform::cpal::AudioError` MUST NOT expose `cpal` types in its
-  public API.
-- `lambda-rs` MUST translate `lambda-rs-platform::cpal::AudioError` into
-  `lambda-rs::audio::AudioError`. Backend-specific failures SHOULD map to
-  `AudioError::Platform { details }`.
+- `lambda_platform::cpal::AudioError` (package: `lambda-rs-platform`) MUST NOT
+  expose `cpal` types in its public API.
+- `lambda-rs` MUST translate `lambda_platform::cpal::AudioError` (package:
+  `lambda-rs-platform`) into `lambda::audio::AudioError`. Backend-specific
+  failures SHOULD map to `AudioError::Platform { details }`.
 
 Platform `AudioError` variants (internal)
 
@@ -521,7 +523,7 @@ Features introduced by this spec
 
 - Crate: `lambda-rs`
   - Granular feature: `audio-output-device` (default: enabled)
-    - Enables `lambda-rs::audio` output device APIs.
+    - Enables `lambda::audio` output device APIs.
     - Enables `lambda-rs-platform` `audio-device` internally.
   - Umbrella feature: `audio` (default: enabled)
     - Composes `audio-output-device` only.
@@ -568,32 +570,50 @@ Feature gating requirements
 ## Requirements Checklist
 
 - Functionality
-  - [ ] Feature flags defined (`lambda-rs`: `audio-output-device`, `audio`)
-  - [ ] Feature flags defined (`lambda-rs-platform`: `audio-device`, `audio`)
-  - [ ] `enumerate_output_devices` implemented and returns output devices
-  - [ ] `AudioOutputDeviceBuilder::build` initializes default output device
-  - [ ] `AudioOutputDeviceBuilder::build_with_output_callback` invokes callback
-  - [ ] Stream created and kept alive for `AudioOutputDevice` lifetime
-  - [ ] Platform enumeration implemented (`lambda-rs-platform::cpal`)
-  - [ ] Platform builder implemented (`lambda-rs-platform::cpal`)
+  - [x] Feature flags defined (`lambda-rs`: `audio-output-device`, `audio`)
+        (`crates/lambda-rs/Cargo.toml:22`)
+  - [x] Feature flags defined (`lambda-rs-platform`: `audio-device`, `audio`)
+        (`crates/lambda-rs-platform/Cargo.toml:53`)
+  - [x] `enumerate_output_devices` implemented and returns output devices
+        (`crates/lambda-rs/src/audio.rs:294`)
+  - [x] `AudioOutputDeviceBuilder::build` initializes default output device
+        (`crates/lambda-rs/src/audio.rs:222`,
+        `crates/lambda-rs-platform/src/cpal/device.rs:403`)
+  - [x] `AudioOutputDeviceBuilder::build_with_output_callback` invokes callback
+        (`crates/lambda-rs/src/audio.rs:247`,
+        `crates/lambda-rs-platform/src/cpal/device.rs:524`)
+  - [x] Stream created and kept alive for `AudioOutputDevice` lifetime
+        (`crates/lambda-rs/src/audio.rs:182`,
+        `crates/lambda-rs-platform/src/cpal/device.rs:352`)
+  - [x] Platform enumeration implemented (`lambda_platform::cpal`)
+        (`crates/lambda-rs-platform/src/cpal/device.rs:807`)
+  - [x] Platform builder implemented (`lambda_platform::cpal`)
+        (`crates/lambda-rs-platform/src/cpal/device.rs:365`)
 - API Surface
-  - [ ] Public `lambda-rs` types implemented: `AudioOutputDevice`,
+  - [x] Public `lambda` types implemented: `AudioOutputDevice`,
         `AudioOutputDeviceInfo`, `AudioOutputDeviceBuilder`, `AudioCallbackInfo`,
-        `AudioOutputWriter`, `AudioError`
-  - [ ] Internal platform types implemented: `AudioDevice`, `AudioDeviceInfo`,
+        `AudioOutputWriter`, `AudioError` (`crates/lambda-rs/src/audio.rs:12`)
+  - [x] Internal platform types implemented: `AudioDevice`, `AudioDeviceInfo`,
         `AudioDeviceBuilder`, `AudioCallbackInfo`, `AudioOutputWriter`, `AudioError`
-  - [ ] `lambda-rs::audio` does not re-export `lambda-rs-platform` types
+        (`crates/lambda-rs-platform/src/cpal/device.rs:12`)
+  - [x] `lambda::audio` does not re-export `lambda-rs-platform` types
+        (`crates/lambda-rs/src/audio.rs:10`)
 - Validation and Errors
-  - [ ] Invalid builder inputs rejected (sample rate and channel count)
-  - [ ] Descriptive `AudioError` variants emitted on failures
-  - [ ] Unsupported configurations reported via `AudioError::UnsupportedConfig`
+  - [x] Invalid builder inputs rejected (sample rate and channel count)
+        (`crates/lambda-rs-platform/src/cpal/device.rs:403`,
+        `crates/lambda-rs-platform/src/cpal/device.rs:847`)
+  - [x] Descriptive `AudioError` variants emitted on failures
+        (`crates/lambda-rs/src/audio.rs:65`,
+        `crates/lambda-rs-platform/src/cpal/device.rs:265`)
+  - [x] Unsupported configurations reported via `AudioError::UnsupportedConfig`
+        (`crates/lambda-rs-platform/src/cpal/device.rs:800`,
+        `crates/lambda-rs/src/audio.rs:72`)
 - Documentation and Examples
-  - [ ] `docs/features.md` updated with audio feature documentation
-  - [ ] Example added demonstrating audible playback (behind `audio-output-device`)
-  - [ ] `lambda-rs` audio facade implemented
-
-For each checked item, include a reference to a commit, pull request, or file
-path that demonstrates the implementation.
+  - [x] `docs/features.md` updated with audio feature documentation
+        (`docs/features.md:1`)
+  - [x] Example added demonstrating audible playback (behind `audio-output-device`)
+        (`crates/lambda-rs/examples/audio_sine_wave.rs:1`)
+  - [x] `lambda-rs` audio facade implemented (`crates/lambda-rs/src/audio.rs:1`)
 
 ## Verification and Testing
 
@@ -603,7 +623,7 @@ This example is the primary application-facing reference.
 
 - Add `crates/lambda-rs/examples/audio_sine_wave.rs` (feature:
   `audio-output-device`, enabled by default) that:
-  - Prints `lambda_rs::audio::enumerate_output_devices()` output.
+  - Prints `lambda::audio::enumerate_output_devices()` output.
   - Builds the default output device via the facade builder and plays a
     deterministic 440 Hz tone for at least 2 seconds.
 
@@ -614,7 +634,7 @@ Unit tests (crate: `lambda-rs-platform`)
   - `with_sample_rate` and `with_channels` override requested values.
   - Invalid values (`0`) are rejected.
 - Enumeration
-  - `enumerate_devices` returns `Ok(_)` and does not panic.
+  - `enumerate_devices` returns `Result<_, _>` and does not panic.
 
 Commands
 
@@ -633,12 +653,18 @@ Manual checks
 
 ## Changelog
 
+- 2026-01-30 (v0.1.12) — Populate the requirements checklist with file
+  references matching the implemented surface.
+- 2026-01-30 (v0.1.11) — Align examples with the `lambda` crate name, document
+  the internal `lambda_platform::cpal` path and pin, and refine default
+  configuration selection requirements to match the implementation.
 - 2026-01-30 (v0.1.10) — Enable `lambda-rs` audio features by default.
 - 2026-01-29 (v0.1.9) — Fix YAML front matter to use a single `version` field.
 - 2026-01-29 (v0.1.8) — Make the `lambda-rs` facade example the primary
   reference and remove the platform example requirement.
 - 2026-01-29 (v0.1.7) — Rename the platform audio implementation module to
-  `lambda-rs-platform::cpal` to reflect the internal backend.
+  `lambda_platform::cpal` (package: `lambda-rs-platform`) to reflect the
+  internal backend.
 - 2026-01-29 (v0.1.6) — Specify `lambda-rs` as the only supported
   application-facing API and treat `lambda-rs-platform` as internal.
 - 2026-01-29 (v0.1.5) — Specify how `lambda-rs` applications enumerate devices
