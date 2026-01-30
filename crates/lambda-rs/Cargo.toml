@@ -20,7 +20,7 @@ cargo-audit = "0.16.0"
 mockall = "0.14.0"
 
 [features]
-default=["with-wgpu"]
+default=["with-wgpu", "audio"]
 with-vulkan=["with-wgpu", "lambda-rs-platform/wgpu-with-vulkan"]
 with-opengl=["with-wgpu", "lambda-rs-platform/wgpu-with-gl"]
 with-dx11=["with-wgpu"]
@@ -34,10 +34,10 @@ with-wgpu-gl=["with-wgpu", "lambda-rs-platform/wgpu-with-gl"]
 
 # ---------------------------------- AUDIO ------------------------------------
 
-# Umbrella features (disabled by default)
+# Umbrella features
 audio = ["audio-output-device"]
 
-# Granular feature flags (disabled by default)
+# Granular feature flags
 audio-output-device = ["lambda-rs-platform/audio-device"]
 
 # ------------------------------ RENDER VALIDATION -----------------------------

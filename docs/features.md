@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-01-30T22:10:39Z"
-version: "0.1.7"
+last_updated: "2026-01-30T22:48:05Z"
+version: "0.1.9"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "939c07cf5c7ff583559c60ea7bb571961579f12b"
+repo_commit: "e179f7de3b43f9cd822b4f7ab520c095dc3c6911"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo", "audio"]
@@ -31,8 +31,8 @@ relationships, and expected behavior in debug and release builds.
 - Workspace defaults prefer `wgpu` on supported platforms and `naga` for shader compilation.
 - Debug builds enable all validations unconditionally via `debug_assertions`.
 - Release builds enable only cheap safety checks by default; validation logs and per-draw checks MUST be enabled explicitly via features.
-- Audio features are disabled by default and incur runtime cost only when an
-  audio device is initialized and kept alive.
+- Audio support in `lambda-rs` is enabled by default and incurs runtime cost
+  only when an audio device is initialized and kept alive.
 
 ## lambda-rs
 
@@ -56,9 +56,9 @@ Rendering backends
   - `with-dx11`: alias for `with-wgpu`.
 
 Audio
-- `audio` (umbrella, disabled by default): enables audio support by composing
+- `audio` (umbrella, enabled by default): enables audio support by composing
   granular audio features. This umbrella includes `audio-output-device`.
-- `audio-output-device` (granular, disabled by default): enables audio output
+- `audio-output-device` (granular, enabled by default): enables audio output
   device enumeration and callback-based audio output via `lambda::audio`. This
   feature enables `lambda-rs-platform/audio-device` internally. Expected
   runtime cost is proportional to the output callback workload and buffer size;
@@ -132,6 +132,10 @@ Audio
   backend module `lambda_platform::cpal` backed by `cpal =0.17.1`.
 
 ## Changelog
+- 0.1.9 (2026-01-30): Clarify workspace default audio behavior after enabling
+  `lambda-rs` audio features by default.
+- 0.1.8 (2026-01-30): Enable `lambda-rs` audio features by default and update
+  audio feature defaults in documentation.
 - 0.1.7 (2026-01-30): Group features by crate and document audio feature flags.
 - 0.1.6 (2026-01-25): Remove the deprecated legacy shader backend
   documentation.
