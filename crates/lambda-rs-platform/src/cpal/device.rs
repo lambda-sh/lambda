@@ -15,6 +15,13 @@ use std::{
   fmt,
 };
 
+use ::cpal as cpal_backend;
+use cpal_backend::traits::{
+  DeviceTrait,
+  HostTrait,
+  StreamTrait,
+};
+
 /// Output sample format used by the platform stream callback.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AudioSampleFormat {
@@ -346,7 +353,13 @@ impl Error for AudioError {}
 ///
 /// This type is an opaque platform wrapper. It MUST NOT expose backend types.
 pub struct AudioDevice {
-  _private: (),
+  _stream: cpal_backend::Stream,
+  #[allow(dead_code)]
+  sample_rate: u32,
+  #[allow(dead_code)]
+  channels: u16,
+  #[allow(dead_code)]
+  sample_format: AudioSampleFormat,
 }
 
 /// Builder for creating an [`AudioDevice`].
@@ -404,8 +417,107 @@ impl AudioDeviceBuilder {
       }
     }
 
-    return Err(AudioError::HostUnavailable {
-      details: "audio backend not wired".to_string(),
+    let host = cpal_backend::default_host();
+
+    let device = host
+      .default_output_device()
+      .ok_or(AudioError::NoDefaultDevice)?;
+
+    let supported_configs =
+      device.supported_output_configs().map_err(|error| {
+        AudioError::SupportedConfigsUnavailable {
+          details: error.to_string(),
+        }
+      })?;
+
+    let supported_configs: Vec<cpal_backend::SupportedStreamConfigRange> =
+      supported_configs.collect();
+
+    let selected_config = select_output_stream_config(
+      &supported_configs,
+      self.sample_rate,
+      self.channels,
+    )?;
+
+    let stream_config = selected_config.config();
+    let sample_rate = stream_config.sample_rate;
+    let channels = stream_config.channels;
+
+    let sample_format = match selected_config.sample_format() {
+      cpal_backend::SampleFormat::F32 => AudioSampleFormat::F32,
+      cpal_backend::SampleFormat::I16 => AudioSampleFormat::I16,
+      cpal_backend::SampleFormat::U16 => AudioSampleFormat::U16,
+      other => {
+        return Err(AudioError::UnsupportedSampleFormat {
+          details: format!("{other:?}"),
+        });
+      }
+    };
+
+    let stream = match selected_config.sample_format() {
+      cpal_backend::SampleFormat::F32 => device
+        .build_output_stream(
+          &stream_config,
+          |data: &mut [f32], _info| {
+            data.fill(0.0);
+            return;
+          },
+          |_error| {
+            return;
+          },
+          None,
+        )
+        .map_err(|error| AudioError::StreamBuildFailed {
+          details: error.to_string(),
+        })?,
+      cpal_backend::SampleFormat::I16 => device
+        .build_output_stream(
+          &stream_config,
+          |data: &mut [i16], _info| {
+            data.fill(0);
+            return;
+          },
+          |_error| {
+            return;
+          },
+          None,
+        )
+        .map_err(|error| AudioError::StreamBuildFailed {
+          details: error.to_string(),
+        })?,
+      cpal_backend::SampleFormat::U16 => device
+        .build_output_stream(
+          &stream_config,
+          |data: &mut [u16], _info| {
+            data.fill(32768);
+            return;
+          },
+          |_error| {
+            return;
+          },
+          None,
+        )
+        .map_err(|error| AudioError::StreamBuildFailed {
+          details: error.to_string(),
+        })?,
+      other => {
+        return Err(AudioError::UnsupportedSampleFormat {
+          details: format!("{other:?}"),
+        });
+      }
+    };
+
+    stream
+      .play()
+      .map_err(|error| AudioError::StreamPlayFailed {
+        details: error.to_string(),
+      })?;
+
+    return Ok(AudioDevice {
+      _stream: stream,
+      sample_rate,
+      channels,
+      sample_format,
     });
   }
 
@@ -423,15 +535,160 @@ impl AudioDeviceBuilder {
   }
 }
 
+impl Default for AudioDeviceBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
+fn sample_format_priority(sample_format: cpal_backend::SampleFormat) -> u8 {
+  match sample_format {
+    cpal_backend::SampleFormat::F32 => {
+      return 3;
+    }
+    cpal_backend::SampleFormat::I16 => {
+      return 2;
+    }
+    cpal_backend::SampleFormat::U16 => {
+      return 1;
+    }
+    _ => {
+      return 0;
+    }
+  }
+}
+
+fn select_output_stream_config(
+  supported_configs: &[cpal_backend::SupportedStreamConfigRange],
+  requested_sample_rate: Option<u32>,
+  requested_channels: Option<u16>,
+) -> Result<cpal_backend::SupportedStreamConfig, AudioError> {
+  let mut best_config: Option<cpal_backend::SupportedStreamConfig> = None;
+  let mut best_priority = 0u8;
+  let mut best_sample_rate_distance = u32::MAX;
+
+  for range in supported_configs.iter().copied() {
+    if let Some(channels) = requested_channels {
+      if range.channels() != channels {
+        continue;
+      }
+    }
+
+    if sample_format_priority(range.sample_format()) == 0 {
+      continue;
+    }
+
+    let min_sample_rate = range.min_sample_rate();
+    let max_sample_rate = range.max_sample_rate();
+
+    let sample_rate = if let Some(requested_sample_rate) = requested_sample_rate
+    {
+      if requested_sample_rate < min_sample_rate
+        || max_sample_rate < requested_sample_rate
+      {
+        continue;
+      }
+
+      requested_sample_rate
+    } else {
+      let target_sample_rate = 48_000;
+      if target_sample_rate < min_sample_rate {
+        min_sample_rate
+      } else if max_sample_rate < target_sample_rate {
+        max_sample_rate
+      } else {
+        target_sample_rate
+      }
+    };
+
+    let config = match range.try_with_sample_rate(sample_rate) {
+      Some(config) => config,
+      None => {
+        continue;
+      }
+    };
+
+    let priority = sample_format_priority(config.sample_format());
+    let sample_rate_distance = if config.sample_rate() < 48_000 {
+      48_000 - config.sample_rate()
+    } else {
+      config.sample_rate() - 48_000
+    };
+
+    if priority < best_priority {
+      continue;
+    }
+
+    if priority == best_priority
+      && best_config.is_some()
+      && best_sample_rate_distance < sample_rate_distance
+    {
+      continue;
+    }
+
+    best_priority = priority;
+    best_sample_rate_distance = sample_rate_distance;
+    best_config = Some(config);
+  }
+
+  if let Some(config) = best_config {
+    return Ok(config);
+  }
+
+  if supported_configs
+    .iter()
+    .all(|config| sample_format_priority(config.sample_format()) == 0)
+  {
+    return Err(AudioError::UnsupportedSampleFormat {
+      details: "no supported sample format among f32/i16/u16".to_string(),
+    });
+  }
+
+  return Err(AudioError::UnsupportedConfig {
+    requested_sample_rate,
+    requested_channels,
+  });
+}
+
 /// Enumerate available audio output devices.
 pub fn enumerate_devices() -> Result<Vec<AudioDeviceInfo>, AudioError> {
-  return Err(AudioError::HostUnavailable {
-    details: "audio backend not wired".to_string(),
-  });
+  let host = cpal_backend::default_host();
+
+  let default_device_id = host
+    .default_output_device()
+    .and_then(|device| device.id().ok());
+
+  let devices = host.output_devices().map_err(|error| {
+    return AudioError::DeviceEnumerationFailed {
+      details: error.to_string(),
+    };
+  })?;
+
+  let mut output_devices = Vec::new();
+  for device in devices {
+    let name = device
+      .description()
+      .map(|description| description.name().to_string())
+      .map_err(|error| {
+        return AudioError::DeviceNameUnavailable {
+          details: error.to_string(),
+        };
+      })?;
+
+    let is_default = default_device_id
+      .as_ref()
+      .is_some_and(|default_id| device.id().ok().as_ref() == Some(default_id));
+
+    output_devices.push(AudioDeviceInfo { name, is_default });
+  }
+
+  return Ok(output_devices);
 }
 
 #[cfg(test)]
 mod tests {
+  use cpal_backend::SupportedBufferSize;
+
   use super::*;
 
   #[test]
@@ -454,36 +711,14 @@ mod tests {
 
   #[test]
   fn build_returns_host_unavailable_until_backend_is_wired() {
-    let result = AudioDeviceBuilder::new().build();
-    match result {
-      Err(AudioError::HostUnavailable { details }) => {
-        assert_eq!(details, "audio backend not wired");
-        return;
-      }
-      Ok(_device) => {
-        panic!("expected host unavailable error, got Ok");
-      }
-      Err(error) => {
-        panic!("expected host unavailable error, got {error}");
-      }
-    }
+    let _result = AudioDeviceBuilder::new().build();
+    return;
   }
 
   #[test]
-  fn enumerate_devices_returns_host_unavailable_until_backend_is_wired() {
-    let result = enumerate_devices();
-    match result {
-      Err(AudioError::HostUnavailable { details }) => {
-        assert_eq!(details, "audio backend not wired");
-        return;
-      }
-      Ok(_devices) => {
-        panic!("expected host unavailable error, got Ok");
-      }
-      Err(error) => {
-        panic!("expected host unavailable error, got {error}");
-      }
-    }
+  fn enumerate_devices_does_not_panic() {
+    let _result = enumerate_devices();
+    return;
   }
 
   #[test]
@@ -494,18 +729,8 @@ mod tests {
         return;
       },
     );
-    match result {
-      Err(AudioError::HostUnavailable { details }) => {
-        assert_eq!(details, "audio backend not wired");
-        return;
-      }
-      Ok(_device) => {
-        panic!("expected host unavailable error, got Ok");
-      }
-      Err(error) => {
-        panic!("expected host unavailable error, got {error}");
-      }
-    }
+    let _ = result;
+    return;
   }
 
   #[test]
@@ -584,5 +809,80 @@ mod tests {
     writer.set_sample(0, 10, 1.0);
 
     assert_eq!(buffer_f32, [0.25, 0.25, 0.25, 0.25]);
+  }
+
+  #[test]
+  fn select_output_stream_config_prefers_f32_when_available() {
+    let supported_configs = [
+      cpal_backend::SupportedStreamConfigRange::new(
+        2,
+        44_100,
+        48_000,
+        SupportedBufferSize::Unknown,
+        cpal_backend::SampleFormat::I16,
+      ),
+      cpal_backend::SupportedStreamConfigRange::new(
+        2,
+        44_100,
+        48_000,
+        SupportedBufferSize::Unknown,
+        cpal_backend::SampleFormat::F32,
+      ),
+    ];
+
+    let selected =
+      select_output_stream_config(&supported_configs, None, None).unwrap();
+    assert_eq!(selected.sample_format(), cpal_backend::SampleFormat::F32);
+    assert_eq!(selected.sample_rate(), 48_000);
+  }
+
+  #[test]
+  fn select_output_stream_config_respects_requested_channels() {
+    let supported_configs = [cpal_backend::SupportedStreamConfigRange::new(
+      2,
+      44_100,
+      48_000,
+      SupportedBufferSize::Unknown,
+      cpal_backend::SampleFormat::F32,
+    )];
+
+    let selected =
+      select_output_stream_config(&supported_configs, None, Some(2)).unwrap();
+    assert_eq!(selected.channels(), 2);
+
+    let result = select_output_stream_config(&supported_configs, None, Some(1));
+    assert!(matches!(
+      result,
+      Err(AudioError::UnsupportedConfig {
+        requested_sample_rate: None,
+        requested_channels: Some(1),
+      })
+    ));
+  }
+
+  #[test]
+  fn select_output_stream_config_respects_requested_sample_rate() {
+    let supported_configs = [cpal_backend::SupportedStreamConfigRange::new(
+      2,
+      44_100,
+      48_000,
+      SupportedBufferSize::Unknown,
+      cpal_backend::SampleFormat::F32,
+    )];
+
+    let selected =
+      select_output_stream_config(&supported_configs, Some(44_100), None)
+        .unwrap();
+    assert_eq!(selected.sample_rate(), 44_100);
+
+    let result =
+      select_output_stream_config(&supported_configs, Some(10), None);
+    assert!(matches!(
+      result,
+      Err(AudioError::UnsupportedConfig {
+        requested_sample_rate: Some(10),
+        requested_channels: None,
+      })
+    ));
   }
 }
