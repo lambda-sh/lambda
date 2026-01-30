@@ -530,8 +530,147 @@ impl AudioDeviceBuilder {
     Callback:
       'static + Send + FnMut(&mut dyn AudioOutputWriter, AudioCallbackInfo),
   {
-    let _ = callback;
-    return self.build();
+    if let Some(sample_rate) = self.sample_rate {
+      if sample_rate == 0 {
+        return Err(AudioError::InvalidSampleRate {
+          requested: sample_rate,
+        });
+      }
+    }
+
+    if let Some(channels) = self.channels {
+      if channels == 0 {
+        return Err(AudioError::InvalidChannels {
+          requested: channels,
+        });
+      }
+    }
+
+    let host = cpal_backend::default_host();
+
+    let device = host
+      .default_output_device()
+      .ok_or(AudioError::NoDefaultDevice)?;
+
+    let supported_configs =
+      device.supported_output_configs().map_err(|error| {
+        AudioError::SupportedConfigsUnavailable {
+          details: error.to_string(),
+        }
+      })?;
+
+    let supported_configs: Vec<cpal_backend::SupportedStreamConfigRange> =
+      supported_configs.collect();
+
+    let selected_config = select_output_stream_config(
+      &supported_configs,
+      self.sample_rate,
+      self.channels,
+    )?;
+
+    let stream_config = selected_config.config();
+    let sample_rate = stream_config.sample_rate;
+    let channels = stream_config.channels;
+
+    let sample_format = match selected_config.sample_format() {
+      cpal_backend::SampleFormat::F32 => AudioSampleFormat::F32,
+      cpal_backend::SampleFormat::I16 => AudioSampleFormat::I16,
+      cpal_backend::SampleFormat::U16 => AudioSampleFormat::U16,
+      other => {
+        return Err(AudioError::UnsupportedSampleFormat {
+          details: format!("{other:?}"),
+        });
+      }
+    };
+
+    let callback_info = AudioCallbackInfo {
+      sample_rate,
+      channels,
+      sample_format,
+    };
+
+    let mut callback = callback;
+
+    let stream = match selected_config.sample_format() {
+      cpal_backend::SampleFormat::F32 => device
+        .build_output_stream(
+          &stream_config,
+          move |data: &mut [f32], _info| {
+            invoke_output_callback_on_buffer(
+              channels,
+              AudioOutputBuffer::F32(data),
+              callback_info,
+              &mut callback,
+            );
+            return;
+          },
+          |_error| {
+            return;
+          },
+          None,
+        )
+        .map_err(|error| AudioError::StreamBuildFailed {
+          details: error.to_string(),
+        })?,
+      cpal_backend::SampleFormat::I16 => device
+        .build_output_stream(
+          &stream_config,
+          move |data: &mut [i16], _info| {
+            invoke_output_callback_on_buffer(
+              channels,
+              AudioOutputBuffer::I16(data),
+              callback_info,
+              &mut callback,
+            );
+            return;
+          },
+          |_error| {
+            return;
+          },
+          None,
+        )
+        .map_err(|error| AudioError::StreamBuildFailed {
+          details: error.to_string(),
+        })?,
+      cpal_backend::SampleFormat::U16 => device
+        .build_output_stream(
+          &stream_config,
+          move |data: &mut [u16], _info| {
+            invoke_output_callback_on_buffer(
+              channels,
+              AudioOutputBuffer::U16(data),
+              callback_info,
+              &mut callback,
+            );
+            return;
+          },
+          |_error| {
+            return;
+          },
+          None,
+        )
+        .map_err(|error| AudioError::StreamBuildFailed {
+          details: error.to_string(),
+        })?,
+      other => {
+        return Err(AudioError::UnsupportedSampleFormat {
+          details: format!("{other:?}"),
+        });
+      }
+    };
+
+    stream
+      .play()
+      .map_err(|error| AudioError::StreamPlayFailed {
+        details: error.to_string(),
+      })?;
+
+    return Ok(AudioDevice {
+      _stream: stream,
+      sample_rate,
+      channels,
+      sample_format,
+    });
   }
 }
 
@@ -539,6 +678,20 @@ impl Default for AudioDeviceBuilder {
   fn default() -> Self {
     return Self::new();
   }
+}
+
+fn invoke_output_callback_on_buffer<Callback>(
+  channels: u16,
+  buffer: AudioOutputBuffer<'_>,
+  callback_info: AudioCallbackInfo,
+  callback: &mut Callback,
+) where
+  Callback: FnMut(&mut dyn AudioOutputWriter, AudioCallbackInfo),
+{
+  let mut writer = InterleavedAudioOutputWriter::new(channels, buffer);
+  writer.clear();
+  callback(&mut writer, callback_info);
+  return;
 }
 
 fn sample_format_priority(sample_format: cpal_backend::SampleFormat) -> u8 {
@@ -731,6 +884,95 @@ mod tests {
     );
     let _ = result;
     return;
+  }
+
+  #[test]
+  fn invoke_output_callback_on_buffer_clears_and_invokes_callback_f32() {
+    let mut buffer_f32 = [1.0, -1.0, 0.5, -0.5];
+    let callback_info = AudioCallbackInfo {
+      sample_rate: 48_000,
+      channels: 2,
+      sample_format: AudioSampleFormat::F32,
+    };
+
+    let mut callback_called = false;
+    let mut callback = |writer: &mut dyn AudioOutputWriter,
+                        info: AudioCallbackInfo| {
+      callback_called = true;
+      assert_eq!(info, callback_info);
+      assert_eq!(writer.channels(), 2);
+      assert_eq!(writer.frames(), 2);
+      writer.set_sample(0, 0, 0.5);
+      return;
+    };
+
+    invoke_output_callback_on_buffer(
+      2,
+      AudioOutputBuffer::F32(&mut buffer_f32),
+      callback_info,
+      &mut callback,
+    );
+
+    assert!(callback_called);
+    assert_eq!(buffer_f32, [0.5, 0.0, 0.0, 0.0]);
+  }
+
+  #[test]
+  fn invoke_output_callback_on_buffer_clears_and_invokes_callback_i16() {
+    let mut buffer_i16 = [1, -1, 200, -200];
+    let callback_info = AudioCallbackInfo {
+      sample_rate: 48_000,
+      channels: 2,
+      sample_format: AudioSampleFormat::I16,
+    };
+
+    let mut callback_called = false;
+    let mut callback = |writer: &mut dyn AudioOutputWriter,
+                        info: AudioCallbackInfo| {
+      callback_called = true;
+      assert_eq!(info, callback_info);
+      writer.set_sample(0, 0, 1.0);
+      return;
+    };
+
+    invoke_output_callback_on_buffer(
+      2,
+      AudioOutputBuffer::I16(&mut buffer_i16),
+      callback_info,
+      &mut callback,
+    );
+
+    assert!(callback_called);
+    assert_eq!(buffer_i16, [32767, 0, 0, 0]);
+  }
+
+  #[test]
+  fn invoke_output_callback_on_buffer_clears_and_invokes_callback_u16() {
+    let mut buffer_u16 = [0, 1, 65535, 12345];
+    let callback_info = AudioCallbackInfo {
+      sample_rate: 48_000,
+      channels: 2,
+      sample_format: AudioSampleFormat::U16,
+    };
+
+    let mut callback_called = false;
+    let mut callback = |writer: &mut dyn AudioOutputWriter,
+                        info: AudioCallbackInfo| {
+      callback_called = true;
+      assert_eq!(info, callback_info);
+      writer.set_sample(0, 0, -1.0);
+      return;
+    };
+
+    invoke_output_callback_on_buffer(
+      2,
+      AudioOutputBuffer::U16(&mut buffer_u16),
+      callback_info,
+      &mut callback,
+    );
+
+    assert!(callback_called);
+    assert_eq!(buffer_u16, [0, 32768, 32768, 32768]);
   }
 
   #[test]
