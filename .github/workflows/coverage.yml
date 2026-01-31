@@ -80,8 +80,9 @@ jobs:
       - name: Generate coverage report data
         id: cov
         run: |
-          # Extract total coverage
-          pct=$(jq -r '(.data[0].totals.lines.percent // 0)' coverage.json)
+          # Extract total coverage and round to 2 decimal places
+          pct_raw=$(jq -r '(.data[0].totals.lines.percent // 0)' coverage.json)
+          pct=$(printf "%.2f" "$pct_raw")
           covered=$(jq -r '(.data[0].totals.lines.covered // 0)' coverage.json)
           total=$(jq -r '(.data[0].totals.lines.count // 0)' coverage.json)
           echo "pct=$pct" >> "$GITHUB_OUTPUT"
