@@ -1,0 +1,282 @@
+name: Code Coverage
+
+on:
+  pull_request:
+    branches: [main]
+
+  push:
+    branches: [main]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  pages: write
+  id-token: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  coverage:
+    name: Generate code coverage with cargo-llvm-cov
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch enough history for diff against base branch
+          fetch-depth: 0
+
+      - name: Cache cargo builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Rust toolchain with llvm-tools-preview
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Install Linux deps for winit/wgpu
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config libx11-dev libxcb1-dev libxcb-render0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev \
+            libwayland-dev libudev-dev \
+            libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools
+
+      - name: Install Linux deps for audio
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+
+      - name: Configure Vulkan (Ubuntu)
+        run: |
+          echo "WGPU_BACKEND=vulkan" >> "$GITHUB_ENV"
+          # Prefer Mesa's software Vulkan (lavapipe) for headless availability
+          echo "VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json" >> "$GITHUB_ENV"
+          vulkaninfo --summary || true
+
+      - name: Generate full coverage JSON
+        run: |
+          cargo llvm-cov --workspace \
+            --features lambda-rs/with-vulkan,lambda-rs/audio-output-device \
+            --json \
+            --output-path coverage.json
+
+      - name: Generate HTML coverage report
+        run: |
+          cargo llvm-cov --workspace \
+            --features lambda-rs/with-vulkan,lambda-rs/audio-output-device \
+            --html \
+            --output-dir coverage-html \
+            --no-run
+
+      - name: Get changed files in PR
+        if: github.event_name == 'pull_request'
+        id: changed
+        run: |
+          # Use GitHub's provided base/head SHAs for accurate diff
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          changed_files=$(git diff --name-only "$base_sha" "$head_sha" -- '*.rs' | tr '\n' ' ')
+          echo "files=$changed_files" >> "$GITHUB_OUTPUT"
+
+      - name: Generate coverage report data
+        id: cov
+        run: |
+          # Extract total coverage and round to 2 decimal places
+          pct_raw=$(jq -r '(.data[0].totals.lines.percent // 0)' coverage.json)
+          pct=$(printf "%.2f" "$pct_raw")
+          covered=$(jq -r '(.data[0].totals.lines.covered // 0)' coverage.json)
+          total=$(jq -r '(.data[0].totals.lines.count // 0)' coverage.json)
+          echo "pct=$pct" >> "$GITHUB_OUTPUT"
+          echo "covered=$covered" >> "$GITHUB_OUTPUT"
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+
+          # Extract per-file coverage as JSON for changed files
+          jq -r '.data[0].files[] | "\(.filename)|\(.summary.lines.percent // 0)|\(.summary.lines.covered // 0)|\(.summary.lines.count // 0)"' coverage.json > file_coverage.txt
+
+      - name: Build PR coverage comment
+        if: github.event_name == 'pull_request'
+        id: comment
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.files }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Base URL for GitHub Pages coverage (from main branch)
+          PAGES_BASE="https://lambda-sh.github.io/lambda/coverage"
+          # Get current timestamp in UTC
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          # Short commit SHA for display
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+
+          # Build the comment body
+          {
+            echo "### ✅ Coverage Report"
+            echo ""
+            echo "📊 [View Full HTML Report](https://github.com/${REPO}/actions/runs/${RUN_ID}) (download artifact)"
+            echo ""
+            echo "#### Overall Coverage"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| **Total Line Coverage** | ${{ steps.cov.outputs.pct }}% |"
+            echo "| **Lines Covered** | ${{ steps.cov.outputs.covered }} / ${{ steps.cov.outputs.total }} |"
+            echo ""
+
+            # Calculate coverage for changed files
+            if [ -n "$CHANGED_FILES" ]; then
+              echo "#### Changed Files in This PR"
+              echo ""
+              echo "| File | Coverage | Lines |"
+              echo "|------|----------|-------|"
+
+              pr_covered=0
+              pr_total=0
+
+              for file in $CHANGED_FILES; do
+                # Find this file in coverage data (match by filename ending)
+                match=$(grep -E "/${file}\|" file_coverage.txt || grep -E "^${file}\|" file_coverage.txt || true)
+                if [ -n "$match" ]; then
+                  file_pct=$(echo "$match" | cut -d'|' -f2)
+                  file_covered=$(echo "$match" | cut -d'|' -f3)
+                  file_total=$(echo "$match" | cut -d'|' -f4)
+                  # Format percentage to 2 decimal places
+                  file_pct_fmt=$(printf "%.2f" "$file_pct")
+                  # Create HTML filename (replace / with path structure, add .html)
+                  html_file=$(echo "$file" | sed 's|/|/|g').html
+                  echo "| [\`${file}\`](${PAGES_BASE}/${html_file}) | ${file_pct_fmt}% | ${file_covered}/${file_total} |"
+                  pr_covered=$((pr_covered + file_covered))
+                  pr_total=$((pr_total + file_total))
+                else
+                  echo "| \`${file}\` | N/A | (no coverage data) |"
+                fi
+              done
+
+              echo ""
+              if [ "$pr_total" -gt 0 ]; then
+                pr_pct=$(echo "scale=2; $pr_covered * 100 / $pr_total" | bc)
+                echo "**PR Files Coverage:** ${pr_pct}% (${pr_covered}/${pr_total} lines)"
+              fi
+            else
+              echo "*No Rust files changed in this PR.*"
+            fi
+
+            echo ""
+            echo "---"
+            echo "*Generated by [cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov) · [Latest main coverage](${PAGES_BASE})*"
+            echo ""
+            echo "<sub>Last updated: ${TIMESTAMP} · Commit: [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${COMMIT_SHA})</sub>"
+          } > comment_body.md
+
+          # Store as output (handle multiline)
+          {
+            echo "body<<EOF"
+            cat comment_body.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Find existing coverage comment
+        if: github.event_name == 'pull_request'
+        id: find_comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const comments = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+            });
+
+            const botComment = comments.data.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('### ✅ Coverage Report')
+            );
+
+            return botComment ? botComment.id : null;
+          result-encoding: string
+
+      - name: Create or update PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('comment_body.md', 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const existingCommentId = ${{ steps.find_comment.outputs.result }};
+
+            if (existingCommentId) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingCommentId,
+                body,
+              });
+              console.log(`Updated existing comment ${existingCommentId}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+              console.log('Created new coverage comment');
+            }
+
+      - name: Upload coverage HTML as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-report
+          path: coverage-html/
+          retention-days: 30
+
+      - name: Upload coverage JSON as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-json
+          path: coverage.json
+          retention-days: 30
+
+  # Deploy HTML report to GitHub Pages on pushes to main
+  deploy-coverage:
+    name: Deploy coverage to GitHub Pages
+    needs: coverage
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download coverage HTML artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-html-report
+          path: coverage-html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: coverage-html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
