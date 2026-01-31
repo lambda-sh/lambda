@@ -32,6 +32,14 @@ with-wgpu-metal=["with-wgpu", "lambda-rs-platform/wgpu-with-metal"]
 with-wgpu-dx12=["with-wgpu", "lambda-rs-platform/wgpu-with-dx12"]
 with-wgpu-gl=["with-wgpu", "lambda-rs-platform/wgpu-with-gl"]
 
+# ---------------------------------- AUDIO ------------------------------------
+
+# Umbrella features
+audio = ["audio-output-device"]
+
+# Granular feature flags
+audio-output-device = ["lambda-rs-platform/audio-device"]
+
 # ------------------------------ RENDER VALIDATION -----------------------------
 # Granular, opt-in validation flags for release builds. Debug builds enable
 # all validations unconditionally via `debug_assertions`.

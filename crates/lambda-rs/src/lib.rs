@@ -20,6 +20,9 @@ pub mod runtime;
 pub mod runtimes;
 pub mod util;
 
+#[cfg(feature = "audio-output-device")]
+pub mod audio;
+
 /// The logging module provides a simple logging interface for Lambda
 /// applications.
 pub use logging;

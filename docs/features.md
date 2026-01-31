@@ -3,44 +3,73 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-01-25T00:00:00Z"
-version: "0.1.6"
+last_updated: "2026-01-31T00:00:27Z"
+version: "0.1.11"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "229960fd426cf605c7513002b36e3942f14a3140"
+repo_commit: "2ae6419f001550adaa13a387b94fdf2bd86a882b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
-tags: ["guide", "features", "validation", "cargo"]
+tags: ["guide", "features", "validation", "cargo", "audio"]
 ---
 
 ## Overview
-This document enumerates the primary Cargo features exposed by the workspace relevant to rendering and validation behavior. It defines defaults, relationships, and expected behavior in debug and release builds.
+This document enumerates the primary Cargo features exposed by the workspace
+relevant to rendering, validation, and audio behavior. It defines defaults,
+relationships, and expected behavior in debug and release builds.
 
 ## Table of Contents
 - [Overview](#overview)
 - [Defaults](#defaults)
-- [Rendering Backends](#rendering-backends)
-- [Shader Backends](#shader-backends)
-- [Render Validation](#render-validation)
+- [lambda-rs](#lambda-rs)
+- [lambda-rs-platform](#lambda-rs-platform)
 - [Changelog](#changelog)
 
 ## Defaults
 - Workspace defaults prefer `wgpu` on supported platforms and `naga` for shader compilation.
 - Debug builds enable all validations unconditionally via `debug_assertions`.
 - Release builds enable only cheap safety checks by default; validation logs and per-draw checks MUST be enabled explicitly via features.
+- Audio support in `lambda-rs` is opt-in (disabled by default) and incurs
+  runtime cost only when an audio device is initialized and kept alive.
+  - Linux builds that enable audio output devices MUST provide ALSA development
+    headers and `pkg-config` (for example, `libasound2-dev` on Debian/Ubuntu).
+- To minimize dependencies in headless or minimal environments, prefer
+  `--no-default-features` and enable only the required features explicitly.
 
-## Rendering Backends
-- `lambda-rs`
-  - `with-wgpu` (default): enables the `wgpu` platform backend via `lambda-rs-platform`.
-  - Platform specializations: `with-wgpu-vulkan`, `with-wgpu-metal`, `with-wgpu-dx12`, `with-wgpu-gl`.
+## lambda-rs
 
-## Shader Backends
-- `lambda-rs-platform`
-  - `shader-backend-naga` (default): uses `naga` for shader handling.
+Rendering backends
+- `with-wgpu` (default): enables the `wgpu` platform backend via
+  `lambda-rs-platform/wgpu`.
+- Platform specializations:
+  - `with-wgpu-vulkan`: enables the Vulkan backend via
+    `lambda-rs-platform/wgpu-with-vulkan`.
+  - `with-wgpu-metal`: enables the Metal backend via
+    `lambda-rs-platform/wgpu-with-metal`.
+  - `with-wgpu-dx12`: enables the DirectX 12 backend via
+    `lambda-rs-platform/wgpu-with-dx12`.
+  - `with-wgpu-gl`: enables the OpenGL/WebGL backend via
+    `lambda-rs-platform/wgpu-with-gl`.
+- Convenience aliases:
+  - `with-vulkan`: alias for `with-wgpu` and `with-wgpu-vulkan`.
+  - `with-metal`: alias for `with-wgpu` and `with-wgpu-metal`.
+  - `with-dx12`: alias for `with-wgpu` and `with-wgpu-dx12`.
+  - `with-opengl`: alias for `with-wgpu` and `with-wgpu-gl`.
+  - `with-dx11`: alias for `with-wgpu`.
 
-## Render Validation
+Audio
+- `audio` (umbrella, disabled by default): enables audio support by composing
+  granular audio features. This umbrella includes `audio-output-device`.
+- `audio-output-device` (granular, disabled by default): enables audio output
+  device enumeration and callback-based audio output via `lambda::audio`. This
+  feature enables `lambda-rs-platform/audio-device` internally. Expected
+  runtime cost is proportional to the output callback workload and buffer size;
+  no runtime cost is incurred unless an `AudioOutputDevice` is built and kept
+  alive.
+
+Render validation
 
 Umbrella features (crate: `lambda-rs`)
 - `render-validation`: enables common builder/pipeline validation logs (MSAA counts, depth clear advisories, stencil format upgrades, render-target compatibility) by composing granular validation features. This umbrella includes `render-validation-msaa`, `render-validation-depth`, `render-validation-stencil`, `render-validation-pass-compat`, and `render-validation-render-targets`.
@@ -84,7 +113,37 @@ Usage examples
 - Enable only MSAA validation in release:
   - `cargo test -p lambda-rs --features render-validation-msaa`
 
+## lambda-rs-platform
+
+This crate provides platform and dependency abstractions for `lambda-rs`.
+Applications MUST NOT depend on `lambda-rs-platform` directly.
+
+Rendering backend
+- `wgpu` (default): enables the `wgpu` backend.
+- `wgpu-with-vulkan`: enables Vulkan support.
+- `wgpu-with-metal`: enables Metal support.
+- `wgpu-with-dx12`: enables DirectX 12 support.
+- `wgpu-with-gl`: enables OpenGL/WebGL support.
+
+Shader backends
+- `shader-backend-naga` (default): uses `naga` for shader handling.
+
+Audio
+- `audio` (umbrella, disabled by default): enables platform audio support by
+  composing granular platform audio features. This umbrella includes
+  `audio-device`.
+- `audio-device` (granular, disabled by default): enables the internal audio
+  backend module `lambda_platform::cpal` backed by `cpal =0.17.1`.
+
 ## Changelog
+- 0.1.11 (2026-01-30): Make `lambda-rs` audio features opt-in by default.
+- 0.1.10 (2026-01-30): Document Linux system dependencies required by the
+  default audio backend.
+- 0.1.9 (2026-01-30): Clarify workspace default audio behavior after enabling
+  `lambda-rs` audio features by default.
+- 0.1.8 (2026-01-30): Enable `lambda-rs` audio features by default and update
+  audio feature defaults in documentation.
+- 0.1.7 (2026-01-30): Group features by crate and document audio feature flags.
 - 0.1.6 (2026-01-25): Remove the deprecated legacy shader backend
   documentation.
 - 0.1.5 (2025-12-22): Align `lambda-rs` Cargo feature umbrella composition with
