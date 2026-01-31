@@ -25,6 +25,9 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          # Fetch enough history for diff against base branch
+          fetch-depth: 0
 
       - name: Cache cargo builds
         uses: Swatinem/rust-cache@v2
@@ -68,8 +71,10 @@ jobs:
         if: github.event_name == 'pull_request'
         id: changed
         run: |
-          git fetch origin ${{ github.base_ref }} --depth=1
-          changed_files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.rs' | tr '\n' ' ')
+          # Use GitHub's provided base/head SHAs for accurate diff
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          changed_files=$(git diff --name-only "$base_sha" "$head_sha" -- '*.rs' | tr '\n' ' ')
           echo "files=$changed_files" >> "$GITHUB_OUTPUT"
 
       - name: Generate coverage report data
