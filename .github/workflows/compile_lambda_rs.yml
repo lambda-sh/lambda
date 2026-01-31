@@ -23,12 +23,21 @@ jobs:
           - os: ubuntu-latest
             rustup-toolchain: "stable"
             features: "lambda-rs/with-vulkan"
+          - os: ubuntu-latest
+            rustup-toolchain: "stable"
+            features: "lambda-rs/with-vulkan,lambda-rs/audio-output-device"
           - os: windows-latest
             rustup-toolchain: "stable"
             features: "lambda-rs/with-dx12"
+          - os: windows-latest
+            rustup-toolchain: "stable"
+            features: "lambda-rs/with-dx12,lambda-rs/audio-output-device"
           - os: macos-latest
             rustup-toolchain: "stable"
             features: "lambda-rs/with-metal"
+          - os: macos-latest
+            rustup-toolchain: "stable"
+            features: "lambda-rs/with-metal,lambda-rs/audio-output-device"
 
     steps:
       - name: Checkout Repository
@@ -48,8 +57,14 @@ jobs:
             pkg-config libx11-dev libxcb1-dev libxcb-render0-dev \
             libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev \
             libwayland-dev libudev-dev \
-            libasound2-dev \
             libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools
+
+      - name: Install Linux deps for audio
+        if: ${{ matrix.os == 'ubuntu-latest' && contains(matrix.features, 'lambda-rs/audio-output-device') }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev
 
       - name: Configure Vulkan (Ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}

@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-01-30T23:40:49Z"
-version: "0.1.10"
+last_updated: "2026-01-31T00:00:27Z"
+version: "0.1.11"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "df62c624ca869e0493a3a92297d1cebe94251e69"
+repo_commit: "2ae6419f001550adaa13a387b94fdf2bd86a882b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo", "audio"]
@@ -31,11 +31,12 @@ relationships, and expected behavior in debug and release builds.
 - Workspace defaults prefer `wgpu` on supported platforms and `naga` for shader compilation.
 - Debug builds enable all validations unconditionally via `debug_assertions`.
 - Release builds enable only cheap safety checks by default; validation logs and per-draw checks MUST be enabled explicitly via features.
-- Audio support in `lambda-rs` is enabled by default and incurs runtime cost
-  only when an audio device is initialized and kept alive.
-  - Linux builds that include the default audio backend MUST provide ALSA
-    development headers and `pkg-config` (for example, `libasound2-dev` on
-    Debian/Ubuntu).
+- Audio support in `lambda-rs` is opt-in (disabled by default) and incurs
+  runtime cost only when an audio device is initialized and kept alive.
+  - Linux builds that enable audio output devices MUST provide ALSA development
+    headers and `pkg-config` (for example, `libasound2-dev` on Debian/Ubuntu).
+- To minimize dependencies in headless or minimal environments, prefer
+  `--no-default-features` and enable only the required features explicitly.
 
 ## lambda-rs
 
@@ -59,9 +60,9 @@ Rendering backends
   - `with-dx11`: alias for `with-wgpu`.
 
 Audio
-- `audio` (umbrella, enabled by default): enables audio support by composing
+- `audio` (umbrella, disabled by default): enables audio support by composing
   granular audio features. This umbrella includes `audio-output-device`.
-- `audio-output-device` (granular, enabled by default): enables audio output
+- `audio-output-device` (granular, disabled by default): enables audio output
   device enumeration and callback-based audio output via `lambda::audio`. This
   feature enables `lambda-rs-platform/audio-device` internally. Expected
   runtime cost is proportional to the output callback workload and buffer size;
@@ -135,6 +136,7 @@ Audio
   backend module `lambda_platform::cpal` backed by `cpal =0.17.1`.
 
 ## Changelog
+- 0.1.11 (2026-01-30): Make `lambda-rs` audio features opt-in by default.
 - 0.1.10 (2026-01-30): Document Linux system dependencies required by the
   default audio backend.
 - 0.1.9 (2026-01-30): Clarify workspace default audio behavior after enabling

@@ -3,13 +3,13 @@ title: "Audio Device Abstraction"
 document_id: "audio-device-abstraction-2026-01-28"
 status: "draft"
 created: "2026-01-28T22:59:00Z"
-last_updated: "2026-01-30T23:40:49Z"
-version: "0.1.13"
+last_updated: "2026-01-31T00:00:27Z"
+version: "0.1.15"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "df62c624ca869e0493a3a92297d1cebe94251e69"
+repo_commit: "2ae6419f001550adaa13a387b94fdf2bd86a882b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "audio", "lambda-rs", "platform", "cpal"]
@@ -326,10 +326,10 @@ Implementation rules
 
 Features
 
-- `lambda-rs` granular feature: `audio-output-device` (default: enabled)
+- `lambda-rs` granular feature: `audio-output-device` (default: disabled)
   - Enables the `lambda::audio` output device surface.
   - Enables `lambda-rs-platform` `audio-device` internally.
-- `lambda-rs` umbrella feature: `audio` (default: enabled)
+- `lambda-rs` umbrella feature: `audio` (default: disabled)
   - Composes `audio-output-device` only.
 
 ### Application Interaction
@@ -522,10 +522,10 @@ Validation rules
 Features introduced by this spec
 
 - Crate: `lambda-rs`
-  - Granular feature: `audio-output-device` (default: enabled)
+  - Granular feature: `audio-output-device` (default: disabled)
     - Enables `lambda::audio` output device APIs.
     - Enables `lambda-rs-platform` `audio-device` internally.
-  - Umbrella feature: `audio` (default: enabled)
+  - Umbrella feature: `audio` (default: disabled)
     - Composes `audio-output-device` only.
 - Crate: `lambda-rs-platform`
   - Granular feature: `audio-device` (default: disabled)
@@ -625,7 +625,7 @@ Example (lambda-rs facade)
 This example is the primary application-facing reference.
 
 - Add `crates/lambda-rs/examples/audio_sine_wave.rs` (feature:
-  `audio-output-device`, enabled by default) that:
+  `audio-output-device`, disabled by default) that:
   - Prints `lambda::audio::enumerate_output_devices()` output.
   - Builds the default output device via the facade builder and plays a
     deterministic 440 Hz tone for at least 2 seconds.
@@ -648,7 +648,7 @@ Manual checks
 
 - Run the `lambda-rs` facade example and confirm audible playback for at least
   2 seconds.
-  - `cargo run -p lambda-rs --example audio_sine_wave`
+  - `cargo run -p lambda-rs --example audio_sine_wave --features audio-output-device`
 
 ## Compatibility and Migration
 
@@ -656,6 +656,10 @@ Manual checks
 
 ## Changelog
 
+- 2026-01-31 (v0.1.15) — Update verification command to include
+  `audio-output-device`.
+- 2026-01-30 (v0.1.14) — Make `lambda-rs` audio features opt-in by default and
+  update CI to test Linux audio builds explicitly.
 - 2026-01-30 (v0.1.13) — Document Linux system dependencies required by the
   default audio backend.
 - 2026-01-30 (v0.1.12) — Populate the requirements checklist with file
