@@ -35,10 +35,18 @@ with-wgpu-gl=["with-wgpu", "lambda-rs-platform/wgpu-with-gl"]
 # ---------------------------------- AUDIO ------------------------------------
 
 # Umbrella features
-audio = ["audio-output-device"]
+audio = ["audio-output-device", "audio-sound-buffer"]
 
 # Granular feature flags
 audio-output-device = ["lambda-rs-platform/audio-device"]
+audio-sound-buffer-wav = []
+audio-sound-buffer-vorbis = []
+
+# Umbrella feature
+audio-sound-buffer = [
+  "audio-sound-buffer-wav",
+  "audio-sound-buffer-vorbis",
+]
 
 # ------------------------------ RENDER VALIDATION -----------------------------
 # Granular, opt-in validation flags for release builds. Debug builds enable
