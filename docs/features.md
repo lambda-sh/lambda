@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-01-31T00:00:27Z"
-version: "0.1.11"
+last_updated: "2026-01-31T22:33:14Z"
+version: "0.1.12"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "2ae6419f001550adaa13a387b94fdf2bd86a882b"
+repo_commit: "1aaa56a242939572b6ec08eda82364c16a85e59a"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo", "audio"]
@@ -133,7 +133,7 @@ Audio
   composing granular platform audio features. This umbrella includes
   `audio-device`.
 - `audio-device` (granular, disabled by default): enables the internal audio
-  backend module `lambda_platform::cpal` backed by `cpal =0.17.1`.
+  backend module `lambda_platform::audio::cpal` backed by `cpal =0.17.1`.
 
 ## Changelog
 - 0.1.11 (2026-01-30): Make `lambda-rs` audio features opt-in by default.
