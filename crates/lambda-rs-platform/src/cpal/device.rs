@@ -863,8 +863,13 @@ mod tests {
   }
 
   #[test]
-  fn build_returns_host_unavailable_until_backend_is_wired() {
-    let _result = AudioDeviceBuilder::new().build();
+  fn build_does_not_panic() {
+    let result = AudioDeviceBuilder::new().build();
+    assert!(!matches!(
+      result,
+      Err(AudioError::InvalidSampleRate { .. })
+        | Err(AudioError::InvalidChannels { .. })
+    ));
     return;
   }
 
@@ -875,14 +880,17 @@ mod tests {
   }
 
   #[test]
-  fn build_with_output_callback_returns_host_unavailable_until_backend_is_wired(
-  ) {
+  fn build_with_output_callback_does_not_panic() {
     let result = AudioDeviceBuilder::new().build_with_output_callback(
       |_writer, _callback_info| {
         return;
       },
     );
-    let _ = result;
+    assert!(!matches!(
+      result,
+      Err(AudioError::InvalidSampleRate { .. })
+        | Err(AudioError::InvalidChannels { .. })
+    ));
     return;
   }
 
