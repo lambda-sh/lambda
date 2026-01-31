@@ -7,7 +7,7 @@
 //! `lambda-rs-platform` and MUST NOT be exposed through the `lambda-rs` public
 //! API.
 
-use lambda_platform::cpal as platform_audio;
+use lambda_platform::audio::cpal as platform_audio;
 
 /// Output sample format used by an audio stream callback.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

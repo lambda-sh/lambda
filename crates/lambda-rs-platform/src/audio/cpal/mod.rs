@@ -1,6 +1,6 @@
 #![allow(clippy::needless_return)]
 
-//! Internal audio backend abstractions used by `lambda-rs`.
+//! Internal audio backend abstractions used by `lambda-rs` (cpal backend).
 
 pub mod device;
 

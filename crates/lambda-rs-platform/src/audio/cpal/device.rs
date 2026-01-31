@@ -1,6 +1,6 @@
 #![allow(clippy::needless_return)]
 
-//! Audio output device discovery and stream initialization.
+//! Audio output device discovery and stream initialization (cpal backend).
 //!
 //! This module defines a backend-agnostic surface that `lambda-rs` can use to
 //! enumerate and initialize audio output devices. The implementation is

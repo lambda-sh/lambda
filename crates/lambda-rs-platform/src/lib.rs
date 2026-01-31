@@ -17,4 +17,4 @@ pub mod wgpu;
 pub mod winit;
 
 #[cfg(feature = "audio-device")]
-pub mod cpal;
+pub mod audio;
