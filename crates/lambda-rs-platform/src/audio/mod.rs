@@ -7,3 +7,6 @@
 
 #[cfg(feature = "audio-device")]
 pub mod cpal;
+
+#[cfg(any(feature = "audio-decode-wav", feature = "audio-decode-vorbis"))]
+pub mod symphonia;

@@ -16,5 +16,10 @@ pub mod shader;
 pub mod wgpu;
 pub mod winit;
 
-#[cfg(feature = "audio-device")]
+#[cfg(any(
+  feature = "audio",
+  feature = "audio-device",
+  feature = "audio-decode-wav",
+  feature = "audio-decode-vorbis"
+))]
 pub mod audio;
