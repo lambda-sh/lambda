@@ -1,5 +1,7 @@
 #![allow(clippy::needless_return)]
 
+use std::fmt;
+
 /// Actionable errors produced by the `lambda-rs` audio facade.
 ///
 /// This error type MUST remain backend-agnostic and MUST NOT expose platform or
@@ -33,3 +35,61 @@ pub enum AudioError {
   /// A platform or backend specific error occurred.
   Platform { details: String },
 }
+
+impl fmt::Display for AudioError {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::InvalidSampleRate { requested } => {
+        return write!(formatter, "invalid sample rate: {requested}");
+      }
+      Self::InvalidChannels { requested } => {
+        return write!(formatter, "invalid channel count: {requested}");
+      }
+      Self::Io { path, details } => {
+        if let Some(path) = path {
+          return write!(
+            formatter,
+            "I/O error reading {}: {details}",
+            path.display()
+          );
+        }
+        return write!(formatter, "I/O error reading audio: {details}");
+      }
+      Self::UnsupportedFormat { details } => {
+        return write!(formatter, "unsupported audio format: {details}");
+      }
+      Self::InvalidData { details } => {
+        return write!(formatter, "invalid audio data: {details}");
+      }
+      Self::DecodeFailed { details } => {
+        return write!(formatter, "audio decode failed: {details}");
+      }
+      Self::NoDefaultDevice => {
+        return write!(
+          formatter,
+          "no default audio output device is available"
+        );
+      }
+      Self::UnsupportedConfig {
+        requested_sample_rate,
+        requested_channels,
+      } => {
+        return write!(
+          formatter,
+          "unsupported audio output configuration (sample_rate={requested_sample_rate:?}, channels={requested_channels:?})"
+        );
+      }
+      Self::UnsupportedSampleFormat { details } => {
+        return write!(
+          formatter,
+          "unsupported audio output sample format: {details}"
+        );
+      }
+      Self::Platform { details } => {
+        return write!(formatter, "platform audio error: {details}");
+      }
+    }
+  }
+}
+
+impl std::error::Error for AudioError {}

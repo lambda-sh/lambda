@@ -12,10 +12,11 @@ use std::{
 
 #[cfg(feature = "audio-decode-vorbis")]
 use symphonia::core::codecs::CODEC_TYPE_VORBIS;
-#[cfg(feature = "audio-decode-wav")]
-use symphonia::core::sample::SampleFormat;
 use symphonia::core::{
-  audio::SampleBuffer,
+  audio::{
+    AudioBufferRef,
+    SampleBuffer,
+  },
   codecs::{
     Decoder,
     DecoderOptions,
@@ -193,6 +194,7 @@ fn decode_track_to_interleaved_f32(
 
   let mut sample_rate: Option<u32> = None;
   let mut channel_count: Option<u16> = None;
+  let mut wav_sample_format_validated = false;
 
   loop {
     let packet = match format.next_packet() {
@@ -269,6 +271,15 @@ fn decode_track_to_interleaved_f32(
     }
 
     let frames = decoded.frames();
+    if frames == 0 {
+      continue;
+    }
+
+    if source_description == "WAV" && !wav_sample_format_validated {
+      validate_wav_decoded_sample_format(&decoded)?;
+      wav_sample_format_validated = true;
+    }
+
     let mut sample_buffer =
       SampleBuffer::<f32>::new(frames as u64, *decoded.spec());
     sample_buffer.copy_interleaved_ref(decoded);
@@ -299,6 +310,43 @@ fn decode_track_to_interleaved_f32(
   });
 }
 
+fn validate_wav_decoded_sample_format(
+  decoded: &AudioBufferRef<'_>,
+) -> Result<(), AudioDecodeError> {
+  match decoded {
+    AudioBufferRef::S16(_)
+    | AudioBufferRef::S24(_)
+    | AudioBufferRef::F32(_) => {
+      return Ok(());
+    }
+    other => {
+      return Err(AudioDecodeError::UnsupportedFormat {
+        details: format!(
+          "unsupported WAV decoded sample format: {}",
+          wav_decoded_sample_format_name(other)
+        ),
+      });
+    }
+  }
+}
+
+fn wav_decoded_sample_format_name(
+  decoded: &AudioBufferRef<'_>,
+) -> &'static str {
+  match decoded {
+    AudioBufferRef::U8(_) => "U8",
+    AudioBufferRef::U16(_) => "U16",
+    AudioBufferRef::U24(_) => "U24",
+    AudioBufferRef::U32(_) => "U32",
+    AudioBufferRef::S8(_) => "S8",
+    AudioBufferRef::S16(_) => "S16",
+    AudioBufferRef::S24(_) => "S24",
+    AudioBufferRef::S32(_) => "S32",
+    AudioBufferRef::F32(_) => "F32",
+    AudioBufferRef::F64(_) => "F64",
+  }
+}
+
 /// Decode WAV bytes into interleaved `f32` samples.
 #[cfg(feature = "audio-decode-wav")]
 pub fn decode_wav_bytes(
@@ -313,22 +361,6 @@ pub fn decode_wav_bytes(
       });
     }
   };
-
-  let sample_format =
-    codec_params
-      .sample_format
-      .ok_or(AudioDecodeError::UnsupportedFormat {
-        details: "WAV sample format is unspecified".to_string(),
-      })?;
-
-  match sample_format {
-    SampleFormat::S16 | SampleFormat::S24 | SampleFormat::F32 => {}
-    other => {
-      return Err(AudioDecodeError::UnsupportedFormat {
-        details: format!("unsupported WAV sample format: {other:?}"),
-      });
-    }
-  }
 
   let mut decoder = symphonia::default::get_codecs()
     .make(&codec_params, &DecoderOptions::default())
@@ -388,6 +420,36 @@ mod tests {
   use super::*;
 
   #[cfg(feature = "audio-decode-wav")]
+  const TONE_S16_MONO_44100_WAV: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/audio/tone_s16_mono_44100.wav"
+  ));
+
+  #[cfg(feature = "audio-decode-wav")]
+  const TONE_S16_STEREO_44100_WAV: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/audio/tone_s16_stereo_44100.wav"
+  ));
+
+  #[cfg(feature = "audio-decode-wav")]
+  const TONE_S24_MONO_44100_WAV: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/audio/tone_s24_mono_44100.wav"
+  ));
+
+  #[cfg(feature = "audio-decode-wav")]
+  const TONE_F32_STEREO_44100_WAV: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/audio/tone_f32_stereo_44100.wav"
+  ));
+
+  #[cfg(feature = "audio-decode-vorbis")]
+  const SLASH_VORBIS_STEREO_48000_OGG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/audio/slash_vorbis_stereo_48000.ogg"
+  ));
+
+  #[cfg(feature = "audio-decode-wav")]
   #[test]
   fn wav_decode_rejects_invalid_bytes() {
     let result = decode_wav_bytes(&[0u8, 1u8, 2u8, 3u8]);
@@ -397,6 +459,50 @@ mod tests {
         | Err(AudioDecodeError::InvalidData { .. })
         | Err(AudioDecodeError::DecodeFailed { .. })
     ));
+    return;
+  }
+
+  #[cfg(feature = "audio-decode-wav")]
+  #[test]
+  fn wav_decode_s16_mono_fixture_decodes() {
+    let decoded =
+      decode_wav_bytes(TONE_S16_MONO_44100_WAV).expect("decode failed");
+    assert_eq!(decoded.sample_rate, 44100);
+    assert_eq!(decoded.channels, 1);
+    assert_eq!(decoded.samples.len(), 4410);
+    return;
+  }
+
+  #[cfg(feature = "audio-decode-wav")]
+  #[test]
+  fn wav_decode_s16_stereo_fixture_decodes() {
+    let decoded =
+      decode_wav_bytes(TONE_S16_STEREO_44100_WAV).expect("decode failed");
+    assert_eq!(decoded.sample_rate, 44100);
+    assert_eq!(decoded.channels, 2);
+    assert_eq!(decoded.samples.len(), 4410 * 2);
+    return;
+  }
+
+  #[cfg(feature = "audio-decode-wav")]
+  #[test]
+  fn wav_decode_s24_mono_fixture_decodes() {
+    let decoded =
+      decode_wav_bytes(TONE_S24_MONO_44100_WAV).expect("decode failed");
+    assert_eq!(decoded.sample_rate, 44100);
+    assert_eq!(decoded.channels, 1);
+    assert_eq!(decoded.samples.len(), 4410);
+    return;
+  }
+
+  #[cfg(feature = "audio-decode-wav")]
+  #[test]
+  fn wav_decode_f32_stereo_fixture_decodes() {
+    let decoded =
+      decode_wav_bytes(TONE_F32_STEREO_44100_WAV).expect("decode failed");
+    assert_eq!(decoded.sample_rate, 44100);
+    assert_eq!(decoded.channels, 2);
+    assert_eq!(decoded.samples.len(), 4410 * 2);
     return;
   }
 
@@ -410,6 +516,17 @@ mod tests {
         | Err(AudioDecodeError::InvalidData { .. })
         | Err(AudioDecodeError::DecodeFailed { .. })
     ));
+    return;
+  }
+
+  #[cfg(feature = "audio-decode-vorbis")]
+  #[test]
+  fn ogg_vorbis_decode_fixture_decodes() {
+    let decoded = decode_ogg_vorbis_bytes(SLASH_VORBIS_STEREO_48000_OGG)
+      .expect("decode failed");
+    assert_eq!(decoded.sample_rate, 48000);
+    assert_eq!(decoded.channels, 2);
+    assert!(!decoded.samples.is_empty());
     return;
   }
 }

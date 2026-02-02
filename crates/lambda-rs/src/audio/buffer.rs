@@ -131,4 +131,60 @@ mod tests {
     assert_eq!(buffer.duration_seconds(), 1.0);
     return;
   }
+
+  #[cfg(feature = "audio-sound-buffer-wav")]
+  #[test]
+  fn from_wav_bytes_decodes_fixture() {
+    let bytes = include_bytes!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../lambda-rs-platform/assets/audio/tone_s16_mono_44100.wav"
+    ));
+
+    let buffer = SoundBuffer::from_wav_bytes(bytes).expect("decode failed");
+    assert_eq!(buffer.sample_rate(), 44100);
+    assert_eq!(buffer.channels(), 1);
+    assert!(buffer.duration_seconds() > 0.0);
+    return;
+  }
+
+  #[cfg(feature = "audio-sound-buffer-wav")]
+  #[test]
+  fn from_wav_file_decodes_fixture() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+      .join("../lambda-rs-platform/assets/audio/tone_s16_mono_44100.wav");
+
+    let buffer = SoundBuffer::from_wav_file(&path).expect("decode failed");
+    assert_eq!(buffer.sample_rate(), 44100);
+    assert_eq!(buffer.channels(), 1);
+    assert!(buffer.duration_seconds() > 0.0);
+    return;
+  }
+
+  #[cfg(feature = "audio-sound-buffer-vorbis")]
+  #[test]
+  fn from_ogg_bytes_decodes_fixture() {
+    let bytes = include_bytes!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../lambda-rs-platform/assets/audio/slash_vorbis_stereo_48000.ogg"
+    ));
+
+    let buffer = SoundBuffer::from_ogg_bytes(bytes).expect("decode failed");
+    assert_eq!(buffer.sample_rate(), 48000);
+    assert_eq!(buffer.channels(), 2);
+    assert!(buffer.duration_seconds() > 0.0);
+    return;
+  }
+
+  #[cfg(feature = "audio-sound-buffer-vorbis")]
+  #[test]
+  fn from_ogg_file_decodes_fixture() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+      .join("../lambda-rs-platform/assets/audio/slash_vorbis_stereo_48000.ogg");
+
+    let buffer = SoundBuffer::from_ogg_file(&path).expect("decode failed");
+    assert_eq!(buffer.sample_rate(), 48000);
+    assert_eq!(buffer.channels(), 2);
+    assert!(buffer.duration_seconds() > 0.0);
+    return;
+  }
 }
