@@ -1,4 +1,17 @@
 #![allow(clippy::needless_return)]
+//! A small CLI for inspecting and playing sound files using the `lambda` audio
+//! APIs.
+//!
+//! This tool is intended for quick manual validation of decoding, device
+//! enumeration, and basic output playback behavior.
+//!
+//! # Commands
+//! - `info <path>`: Decode a sound file and print basic metadata.
+//! - `view <path>`: Decode a sound file, print metadata, and render an ASCII
+//!   waveform preview.
+//! - `play <path>`: Decode a sound file and play it through the default output
+//!   device.
+//! - `list-devices`: List output devices (platform-dependent).
 
 use std::{
   path::Path,
@@ -19,6 +32,7 @@ use lambda::audio::{
   SoundBuffer,
 };
 
+/// Runs the `lambda-audio` CLI.
 fn main() {
   let mut args = std::env::args();
   let raw_program_name =
@@ -62,11 +76,26 @@ fn main() {
 }
 
 #[derive(Debug)]
+/// A CLI error type that separates usage errors from runtime failures.
 enum ExitError {
+  /// The user provided invalid arguments.
   Usage,
+  /// The command failed due to an audio/runtime error.
   Runtime(AudioError),
 }
 
+/// Prints metadata about a decoded sound file.
+///
+/// # Arguments
+/// - `program_name`: The CLI program name used for usage output.
+/// - `path`: A file path argument, if provided.
+///
+/// # Returns
+/// Returns `Ok(())` when the command completes successfully.
+///
+/// # Errors
+/// Returns `ExitError::Usage` when the path argument is missing.
+/// Returns `ExitError::Runtime` when decoding fails.
 fn cmd_info(program_name: &str, path: Option<String>) -> Result<(), ExitError> {
   let path = require_path(program_name, "info", path)?;
   let buffer = load_sound_buffer(&path).map_err(ExitError::Runtime)?;
@@ -74,6 +103,18 @@ fn cmd_info(program_name: &str, path: Option<String>) -> Result<(), ExitError> {
   return Ok(());
 }
 
+/// Prints metadata and renders an ASCII waveform preview.
+///
+/// # Arguments
+/// - `program_name`: The CLI program name used for usage output.
+/// - `path`: A file path argument, if provided.
+///
+/// # Returns
+/// Returns `Ok(())` when the command completes successfully.
+///
+/// # Errors
+/// Returns `ExitError::Usage` when the path argument is missing.
+/// Returns `ExitError::Runtime` when decoding fails.
 fn cmd_view(program_name: &str, path: Option<String>) -> Result<(), ExitError> {
   let path = require_path(program_name, "view", path)?;
   let buffer = load_sound_buffer(&path).map_err(ExitError::Runtime)?;
@@ -82,6 +123,18 @@ fn cmd_view(program_name: &str, path: Option<String>) -> Result<(), ExitError> {
   return Ok(());
 }
 
+/// Plays a decoded sound file through the default output device.
+///
+/// # Arguments
+/// - `program_name`: The CLI program name used for usage output.
+/// - `path`: A file path argument, if provided.
+///
+/// # Returns
+/// Returns `Ok(())` when the command completes successfully.
+///
+/// # Errors
+/// Returns `ExitError::Usage` when the path argument is missing.
+/// Returns `ExitError::Runtime` when decoding or playback fails.
 fn cmd_play(program_name: &str, path: Option<String>) -> Result<(), ExitError> {
   let path = require_path(program_name, "play", path)?;
   let buffer = load_sound_buffer(&path).map_err(ExitError::Runtime)?;
@@ -90,6 +143,13 @@ fn cmd_play(program_name: &str, path: Option<String>) -> Result<(), ExitError> {
   return Ok(());
 }
 
+/// Lists available output devices.
+///
+/// # Returns
+/// Returns `Ok(())` when the command completes successfully.
+///
+/// # Errors
+/// Returns `ExitError::Runtime` when device enumeration fails.
 fn cmd_list_devices() -> Result<(), ExitError> {
   let devices = enumerate_output_devices().map_err(ExitError::Runtime)?;
 
@@ -106,6 +166,18 @@ fn cmd_list_devices() -> Result<(), ExitError> {
   return Ok(());
 }
 
+/// Requires a file path argument for a command.
+///
+/// # Arguments
+/// - `program_name`: The CLI program name used for usage output.
+/// - `command`: The command name used for usage output.
+/// - `path`: A file path argument, if provided.
+///
+/// # Returns
+/// Returns the provided path string.
+///
+/// # Errors
+/// Returns `ExitError::Usage` when `path` is `None`.
 fn require_path(
   program_name: &str,
   command: &str,
@@ -118,6 +190,17 @@ fn require_path(
   return Ok(path);
 }
 
+/// Loads a sound file into a decoded `SoundBuffer` based on its file extension.
+///
+/// # Arguments
+/// - `path`: A file path to a supported sound file.
+///
+/// # Returns
+/// Returns a decoded `SoundBuffer`.
+///
+/// # Errors
+/// Returns an `AudioError` if decoding fails or the file extension is not
+/// supported.
 fn load_sound_buffer(path: &str) -> Result<SoundBuffer, AudioError> {
   let path_value = Path::new(path);
   let extension = path_value
@@ -141,6 +224,14 @@ fn load_sound_buffer(path: &str) -> Result<SoundBuffer, AudioError> {
   }
 }
 
+/// Prints basic decoded metadata for a `SoundBuffer`.
+///
+/// # Arguments
+/// - `path`: The decoded source path for display purposes.
+/// - `buffer`: The decoded sound buffer.
+///
+/// # Returns
+/// Returns `()` after printing metadata to stdout.
 fn print_info(path: &str, buffer: &SoundBuffer) {
   println!("path: {path}");
   println!("sample_rate: {}", buffer.sample_rate());
@@ -151,6 +242,17 @@ fn print_info(path: &str, buffer: &SoundBuffer) {
   return;
 }
 
+/// Renders an ASCII waveform preview for a `SoundBuffer`.
+///
+/// The rendering uses a single channel (the first channel) and shows a
+/// peak-per-column visualization, which is intended for quick human inspection
+/// rather than precise analysis.
+///
+/// # Arguments
+/// - `buffer`: The decoded sound buffer to visualize.
+///
+/// # Returns
+/// Returns `()` after printing the visualization to stdout.
 fn print_waveform(buffer: &SoundBuffer) {
   let width: usize = 64;
   let height: usize = 10;
@@ -200,6 +302,22 @@ fn print_waveform(buffer: &SoundBuffer) {
   return;
 }
 
+/// Plays a decoded `SoundBuffer` through the default output device.
+///
+/// This performs a best-effort playback by writing sequential frames into the
+/// output callback. No resampling or channel remapping is performed; instead,
+/// the output device is configured to match the buffer's sample rate and
+/// channel count.
+///
+/// # Arguments
+/// - `buffer`: The decoded sound buffer to play.
+///
+/// # Returns
+/// Returns `Ok(())` after playback has completed.
+///
+/// # Errors
+/// Returns an `AudioError` if the buffer is empty or output device creation
+/// fails.
 fn play_buffer(buffer: &SoundBuffer) -> Result<(), AudioError> {
   let samples = buffer.samples();
   let total_samples = samples.len();
@@ -259,6 +377,13 @@ fn play_buffer(buffer: &SoundBuffer) -> Result<(), AudioError> {
   return Ok(());
 }
 
+/// Prints usage text to stdout.
+///
+/// # Arguments
+/// - `program_name`: The CLI program name shown in examples.
+///
+/// # Returns
+/// Returns `()` after printing the usage text.
 fn print_usage(program_name: &str) {
   println!("usage:");
   println!("  {program_name} info <path>");
