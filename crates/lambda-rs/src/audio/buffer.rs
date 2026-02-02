@@ -14,6 +14,21 @@ pub struct SoundBuffer {
 }
 
 impl SoundBuffer {
+  /// Decode a WAV file from disk into an in-memory sound buffer.
+  ///
+  /// This method is available when the `audio-sound-buffer-wav` feature is
+  /// enabled.
+  ///
+  /// # Arguments
+  /// - `path`: Path to a WAV file on disk.
+  ///
+  /// # Returns
+  /// A fully decoded sound buffer with interleaved `f32` samples.
+  ///
+  /// # Errors
+  /// Returns [`AudioError::Io`] if the file cannot be read. Returns
+  /// [`AudioError::UnsupportedFormat`], [`AudioError::InvalidData`], or
+  /// [`AudioError::DecodeFailed`] if decoding fails.
   #[cfg(feature = "audio-sound-buffer-wav")]
   pub fn from_wav_file(path: &Path) -> Result<Self, AudioError> {
     let bytes = std::fs::read(path).map_err(|error| {
@@ -26,6 +41,20 @@ impl SoundBuffer {
     return Self::from_wav_bytes(&bytes);
   }
 
+  /// Decode WAV container bytes into an in-memory sound buffer.
+  ///
+  /// This method is available when the `audio-sound-buffer-wav` feature is
+  /// enabled.
+  ///
+  /// # Arguments
+  /// - `bytes`: Full WAV container bytes.
+  ///
+  /// # Returns
+  /// A fully decoded sound buffer with interleaved `f32` samples.
+  ///
+  /// # Errors
+  /// Returns [`AudioError::UnsupportedFormat`], [`AudioError::InvalidData`], or
+  /// [`AudioError::DecodeFailed`] if decoding fails.
   #[cfg(feature = "audio-sound-buffer-wav")]
   pub fn from_wav_bytes(bytes: &[u8]) -> Result<Self, AudioError> {
     let decoded = lambda_platform::audio::symphonia::decode_wav_bytes(bytes)
@@ -33,6 +62,21 @@ impl SoundBuffer {
     return Self::from_decoded(decoded);
   }
 
+  /// Decode an OGG Vorbis file from disk into an in-memory sound buffer.
+  ///
+  /// This method is available when the `audio-sound-buffer-vorbis` feature is
+  /// enabled.
+  ///
+  /// # Arguments
+  /// - `path`: Path to an OGG Vorbis file on disk.
+  ///
+  /// # Returns
+  /// A fully decoded sound buffer with interleaved `f32` samples.
+  ///
+  /// # Errors
+  /// Returns [`AudioError::Io`] if the file cannot be read. Returns
+  /// [`AudioError::UnsupportedFormat`], [`AudioError::InvalidData`], or
+  /// [`AudioError::DecodeFailed`] if decoding fails.
   #[cfg(feature = "audio-sound-buffer-vorbis")]
   pub fn from_ogg_file(path: &Path) -> Result<Self, AudioError> {
     let bytes = std::fs::read(path).map_err(|error| {
@@ -45,6 +89,20 @@ impl SoundBuffer {
     return Self::from_ogg_bytes(&bytes);
   }
 
+  /// Decode OGG Vorbis container bytes into an in-memory sound buffer.
+  ///
+  /// This method is available when the `audio-sound-buffer-vorbis` feature is
+  /// enabled.
+  ///
+  /// # Arguments
+  /// - `bytes`: Full OGG container bytes.
+  ///
+  /// # Returns
+  /// A fully decoded sound buffer with interleaved `f32` samples.
+  ///
+  /// # Errors
+  /// Returns [`AudioError::UnsupportedFormat`], [`AudioError::InvalidData`], or
+  /// [`AudioError::DecodeFailed`] if decoding fails.
   #[cfg(feature = "audio-sound-buffer-vorbis")]
   pub fn from_ogg_bytes(bytes: &[u8]) -> Result<Self, AudioError> {
     let decoded =
@@ -53,6 +111,18 @@ impl SoundBuffer {
     return Self::from_decoded(decoded);
   }
 
+  /// Convert platform decoded audio into the public sound buffer
+  /// representation.
+  ///
+  /// # Arguments
+  /// - `decoded`: Decoded audio samples and associated metadata produced by the
+  ///   platform layer.
+  ///
+  /// # Returns
+  /// A sound buffer containing the provided samples and validated metadata.
+  ///
+  /// # Errors
+  /// Returns [`AudioError::InvalidData`] if the decoded metadata is invalid.
   fn from_decoded(
     decoded: lambda_platform::audio::symphonia::DecodedAudio,
   ) -> Result<Self, AudioError> {
@@ -75,20 +145,34 @@ impl SoundBuffer {
     });
   }
 
+  /// Return the sample rate in Hz.
+  ///
+  /// # Returns
+  /// The sample rate in Hz.
   pub fn sample_rate(&self) -> u32 {
     return self.sample_rate;
   }
 
+  /// Return the interleaved channel count.
+  ///
+  /// # Returns
+  /// The channel count.
   pub fn channels(&self) -> u16 {
     return self.channels;
   }
 
   /// Return interleaved `f32` samples in nominal range `[-1.0, 1.0]`.
+  ///
+  /// # Returns
+  /// A slice of interleaved samples.
   pub fn samples(&self) -> &[f32] {
     return self.samples.as_slice();
   }
 
   /// Return the number of frames in this buffer.
+  ///
+  /// # Returns
+  /// The number of frames in the buffer.
   pub fn frames(&self) -> usize {
     if self.channels == 0 {
       return 0;
@@ -97,6 +181,10 @@ impl SoundBuffer {
     return self.samples.len() / self.channels as usize;
   }
 
+  /// Return the duration of the buffer in seconds.
+  ///
+  /// # Returns
+  /// The duration in seconds.
   pub fn duration_seconds(&self) -> f32 {
     if self.channels == 0 || self.sample_rate == 0 {
       return 0.0;
@@ -108,6 +196,13 @@ impl SoundBuffer {
   }
 }
 
+/// Map platform decode errors into backend-agnostic public errors.
+///
+/// # Arguments
+/// - `error`: The platform decode error.
+///
+/// # Returns
+/// The equivalent public audio error.
 fn map_decode_error(
   error: lambda_platform::audio::symphonia::AudioDecodeError,
 ) -> AudioError {
@@ -134,6 +229,7 @@ fn map_decode_error(
 mod tests {
   use super::*;
 
+  /// Duration computation MUST match frames / sample_rate.
   #[test]
   fn duration_seconds_computes_expected_value() {
     let buffer = SoundBuffer {
@@ -146,6 +242,7 @@ mod tests {
     return;
   }
 
+  /// WAV decode from bytes MUST succeed for the bundled fixture.
   #[cfg(feature = "audio-sound-buffer-wav")]
   #[test]
   fn from_wav_bytes_decodes_fixture() {
@@ -161,6 +258,7 @@ mod tests {
     return;
   }
 
+  /// WAV decode from file MUST succeed for the bundled fixture.
   #[cfg(feature = "audio-sound-buffer-wav")]
   #[test]
   fn from_wav_file_decodes_fixture() {
@@ -174,6 +272,7 @@ mod tests {
     return;
   }
 
+  /// OGG Vorbis decode from bytes MUST succeed for the bundled fixture.
   #[cfg(feature = "audio-sound-buffer-vorbis")]
   #[test]
   fn from_ogg_bytes_decodes_fixture() {
@@ -189,6 +288,7 @@ mod tests {
     return;
   }
 
+  /// OGG Vorbis decode from file MUST succeed for the bundled fixture.
   #[cfg(feature = "audio-sound-buffer-vorbis")]
   #[test]
   fn from_ogg_file_decodes_fixture() {

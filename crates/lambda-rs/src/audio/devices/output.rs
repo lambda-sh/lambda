@@ -23,6 +23,13 @@ pub enum AudioSampleFormat {
 }
 
 impl AudioSampleFormat {
+  /// Map a platform sample format into the public API sample format.
+  ///
+  /// # Arguments
+  /// - `value`: The platform-provided sample format.
+  ///
+  /// # Returns
+  /// The equivalent public API sample format.
   fn from_platform(value: platform_audio::AudioSampleFormat) -> Self {
     match value {
       platform_audio::AudioSampleFormat::F32 => {
@@ -50,6 +57,13 @@ pub struct AudioCallbackInfo {
 }
 
 impl AudioCallbackInfo {
+  /// Map platform callback metadata into the public API callback metadata.
+  ///
+  /// # Arguments
+  /// - `value`: The platform-provided callback metadata.
+  ///
+  /// # Returns
+  /// The equivalent public API callback metadata.
   fn from_platform(value: platform_audio::AudioCallbackInfo) -> Self {
     return Self {
       sample_rate: value.sample_rate,
@@ -59,6 +73,13 @@ impl AudioCallbackInfo {
   }
 }
 
+/// Map platform audio errors into backend-agnostic public errors.
+///
+/// # Arguments
+/// - `error`: The platform error.
+///
+/// # Returns
+/// A backend-agnostic error suitable for returning from `lambda-rs`.
 fn map_platform_error(error: platform_audio::AudioError) -> AudioError {
   match error {
     platform_audio::AudioError::InvalidSampleRate { requested } => {
@@ -105,11 +126,20 @@ pub struct AudioOutputDeviceInfo {
 /// underlying device output buffer for the current callback invocation.
 pub trait AudioOutputWriter {
   /// Return the output channel count for the current callback invocation.
+  ///
+  /// # Returns
+  /// The number of interleaved channels in the output buffer.
   fn channels(&self) -> u16;
   /// Return the number of frames in the output buffer for the current callback
   /// invocation.
+  ///
+  /// # Returns
+  /// The number of frames in the output buffer.
   fn frames(&self) -> usize;
   /// Clear the entire output buffer to silence.
+  ///
+  /// # Returns
+  /// `()` after clearing the output buffer to silence.
   fn clear(&mut self);
 
   /// Write a normalized sample in the range `[-1.0, 1.0]`.
@@ -117,6 +147,16 @@ pub trait AudioOutputWriter {
   /// Implementations MUST clamp values outside `[-1.0, 1.0]`. Implementations
   /// MUST NOT panic for out-of-range indices and MUST perform no write in that
   /// case.
+  ///
+  /// # Arguments
+  /// - `frame_index`: The target frame index within the current callback
+  ///   buffer.
+  /// - `channel_index`: The target channel index within the current callback
+  ///   buffer.
+  /// - `sample`: A normalized sample in nominal range `[-1.0, 1.0]`.
+  ///
+  /// # Returns
+  /// `()` after attempting to write the sample.
   fn set_sample(
     &mut self,
     frame_index: usize,
@@ -172,6 +212,9 @@ pub struct AudioOutputDeviceBuilder {
 
 impl AudioOutputDeviceBuilder {
   /// Create a builder with engine defaults.
+  ///
+  /// # Returns
+  /// A builder with no explicit configuration requests.
   pub fn new() -> Self {
     return Self {
       sample_rate: None,
@@ -181,18 +224,36 @@ impl AudioOutputDeviceBuilder {
   }
 
   /// Request a specific sample rate (Hz).
+  ///
+  /// # Arguments
+  /// - `rate`: Requested sample rate in Hz.
+  ///
+  /// # Returns
+  /// The updated builder.
   pub fn with_sample_rate(mut self, rate: u32) -> Self {
     self.sample_rate = Some(rate);
     return self;
   }
 
   /// Request a specific channel count.
+  ///
+  /// # Arguments
+  /// - `channels`: Requested interleaved channel count.
+  ///
+  /// # Returns
+  /// The updated builder.
   pub fn with_channels(mut self, channels: u16) -> Self {
     self.channels = Some(channels);
     return self;
   }
 
   /// Attach a label for diagnostics.
+  ///
+  /// # Arguments
+  /// - `label`: A human-readable label used for diagnostics.
+  ///
+  /// # Returns
+  /// The updated builder.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
     return self;
@@ -200,6 +261,14 @@ impl AudioOutputDeviceBuilder {
 
   /// Initialize the default audio output device using the requested
   /// configuration.
+  ///
+  /// # Returns
+  /// An initialized audio output device handle. Dropping the handle stops
+  /// output.
+  ///
+  /// # Errors
+  /// Returns an error if the platform layer cannot initialize a default output
+  /// device or cannot satisfy the requested configuration.
   pub fn build(self) -> Result<AudioOutputDevice, AudioError> {
     let mut platform_builder = platform_audio::AudioDeviceBuilder::new();
 
@@ -224,6 +293,20 @@ impl AudioOutputDeviceBuilder {
   }
 
   /// Initialize the default audio output device and play audio via a callback.
+  ///
+  /// The callback is invoked from the platform audio thread. The callback MUST
+  /// avoid blocking and MUST NOT allocate.
+  ///
+  /// # Arguments
+  /// - `callback`: A real-time callback invoked for each output buffer tick.
+  ///
+  /// # Returns
+  /// An initialized audio output device handle. Dropping the handle stops
+  /// output.
+  ///
+  /// # Errors
+  /// Returns an error if the platform layer cannot initialize a default output
+  /// device or cannot satisfy the requested configuration.
   pub fn build_with_output_callback<Callback>(
     self,
     callback: Callback,
@@ -271,6 +354,12 @@ impl Default for AudioOutputDeviceBuilder {
 }
 
 /// Enumerate available audio output devices via the platform layer.
+///
+/// # Returns
+/// A list of available output devices with stable metadata.
+///
+/// # Errors
+/// Returns an error if the platform layer cannot enumerate devices.
 pub fn enumerate_output_devices(
 ) -> Result<Vec<AudioOutputDeviceInfo>, AudioError> {
   let devices =
@@ -291,6 +380,7 @@ pub fn enumerate_output_devices(
 mod tests {
   use super::*;
 
+  /// Error mapping MUST remain backend-agnostic.
   #[test]
   fn errors_map_without_leaking_platform_types() {
     let result = AudioOutputDeviceBuilder::new().with_sample_rate(0).build();
