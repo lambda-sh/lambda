@@ -3,13 +3,13 @@ title: "Audio File Loading (SoundBuffer)"
 document_id: "audio-file-loading-2026-01-31"
 status: "draft"
 created: "2026-01-31T22:07:49Z"
-last_updated: "2026-01-31T23:03:17Z"
-version: "0.2.0"
+last_updated: "2026-02-02T17:40:16Z"
+version: "0.2.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "7cf8891f861a625b989f3751fd61674d072a53fe"
+repo_commit: "5d43a864febd72111671a4fab701cb0e5d2538b6"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "audio", "lambda-rs", "platform", "assets"]
@@ -175,6 +175,8 @@ impl SoundBuffer {
 
   pub fn sample_rate(&self) -> u32;
   pub fn channels(&self) -> u16;
+  pub fn samples(&self) -> &[f32];
+  pub fn frames(&self) -> usize;
   pub fn duration_seconds(&self) -> f32;
 }
 ```
@@ -296,7 +298,7 @@ Recommendations
 - Tests
   - [ ] Unit tests cover WAV mono and stereo
   - [ ] Unit tests cover OGG Vorbis mono and stereo
-  - [ ] Test assets are stored under `crates/lambda-rs/assets/`
+  - [ ] Test assets are stored under `crates/lambda-rs-platform/assets/audio/`
 
 For each checked item, include a reference to a commit, pull request, or file
 path that demonstrates the implementation.

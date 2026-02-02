@@ -83,6 +83,20 @@ impl SoundBuffer {
     return self.channels;
   }
 
+  /// Return interleaved `f32` samples in nominal range `[-1.0, 1.0]`.
+  pub fn samples(&self) -> &[f32] {
+    return self.samples.as_slice();
+  }
+
+  /// Return the number of frames in this buffer.
+  pub fn frames(&self) -> usize {
+    if self.channels == 0 {
+      return 0;
+    }
+
+    return self.samples.len() / self.channels as usize;
+  }
+
   pub fn duration_seconds(&self) -> f32 {
     if self.channels == 0 || self.sample_rate == 0 {
       return 0.0;
