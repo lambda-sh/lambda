@@ -9,6 +9,19 @@
 mod error;
 pub use error::AudioError;
 
+#[cfg(any(
+  feature = "audio-sound-buffer",
+  feature = "audio-sound-buffer-wav",
+  feature = "audio-sound-buffer-vorbis"
+))]
+mod buffer;
+#[cfg(any(
+  feature = "audio-sound-buffer",
+  feature = "audio-sound-buffer-wav",
+  feature = "audio-sound-buffer-vorbis"
+))]
+pub use buffer::SoundBuffer;
+
 #[cfg(feature = "audio-output-device")]
 pub mod devices;
 

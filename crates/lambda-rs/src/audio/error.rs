@@ -10,6 +10,17 @@ pub enum AudioError {
   InvalidSampleRate { requested: u32 },
   /// The requested channel count was invalid.
   InvalidChannels { requested: u16 },
+  /// An error occurred while reading audio bytes from disk.
+  Io {
+    path: Option<std::path::PathBuf>,
+    details: String,
+  },
+  /// The input format or codec is unsupported by the configured features.
+  UnsupportedFormat { details: String },
+  /// The input bytes were invalid or corrupted.
+  InvalidData { details: String },
+  /// An unrecoverable decoding failure occurred.
+  DecodeFailed { details: String },
   /// No default audio output device is available.
   NoDefaultDevice,
   /// No supported output configuration satisfied the request.

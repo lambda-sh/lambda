@@ -39,8 +39,8 @@ audio = ["audio-output-device", "audio-sound-buffer"]
 
 # Granular feature flags
 audio-output-device = ["lambda-rs-platform/audio-device"]
-audio-sound-buffer-wav = []
-audio-sound-buffer-vorbis = []
+audio-sound-buffer-wav = ["lambda-rs-platform/audio-decode-wav"]
+audio-sound-buffer-vorbis = ["lambda-rs-platform/audio-decode-vorbis"]
 
 # Umbrella feature
 audio-sound-buffer = [
