@@ -34,16 +34,22 @@ use symphonia::core::{
 /// Fully decoded, interleaved `f32` samples with associated metadata.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DecodedAudio {
+  /// Interleaved audio samples in nominal range `[-1.0, 1.0]`.
   pub samples: Vec<f32>,
+  /// Sample rate in Hz.
   pub sample_rate: u32,
+  /// Interleaved channel count (currently `1` or `2`).
   pub channels: u16,
 }
 
 /// Vendor-free errors produced by audio decoding helpers.
 #[derive(Clone, Debug)]
 pub enum AudioDecodeError {
+  /// The provided bytes were not a recognized container or codec.
   UnsupportedFormat { details: String },
+  /// The provided bytes were recognized but invalid or corrupted.
   InvalidData { details: String },
+  /// A platform or backend error prevented decoding.
   DecodeFailed { details: String },
 }
 
@@ -65,6 +71,7 @@ impl fmt::Display for AudioDecodeError {
 
 impl std::error::Error for AudioDecodeError {}
 
+/// Build a `symphonia` probe hint from a list of likely filename extensions.
 fn hint_for_decode(extensions: &[&str]) -> Hint {
   let mut hint_value = Hint::new();
   for extension in extensions {
@@ -73,6 +80,7 @@ fn hint_for_decode(extensions: &[&str]) -> Hint {
   return hint_value;
 }
 
+/// Map probe-time `symphonia` errors into backend-agnostic decode errors.
 fn map_probe_error(source_description: &str, error: Error) -> AudioDecodeError {
   match error {
     Error::Unsupported(_) => {
@@ -93,6 +101,10 @@ fn map_probe_error(source_description: &str, error: Error) -> AudioDecodeError {
   }
 }
 
+/// Map packet read or decode-time `symphonia` errors into decode errors.
+///
+/// This keeps the surface area stable for `lambda-rs` and avoids leaking
+/// vendor-specific error types.
 fn map_read_or_decode_error(
   source_description: &str,
   error: Error,
@@ -121,6 +133,10 @@ fn map_read_or_decode_error(
   }
 }
 
+/// Probe the container format for an in-memory audio buffer.
+///
+/// `symphonia` expects a `MediaSourceStream`. This wrapper creates an owned
+/// cursor backed by `bytes` so the probe can seek without borrowing the input.
 fn probe_format(
   bytes: &[u8],
   source_description: &str,
@@ -150,6 +166,10 @@ fn probe_format(
   return Ok(probe_result.format);
 }
 
+/// Pre-allocate a decoded sample buffer using optional codec metadata.
+///
+/// Failure to reserve is treated as a recoverable decode error to avoid
+/// panicking on large files or constrained platforms.
 fn try_reserve_samples(
   samples: &mut Vec<f32>,
   source_description: &str,
@@ -176,6 +196,16 @@ fn try_reserve_samples(
   return Ok(());
 }
 
+/// Decode a single `symphonia` track into interleaved `f32` samples.
+///
+/// Behavior:
+/// - Reads packets until end-of-stream.
+/// - Ignores packets from other tracks.
+/// - Handles `ResetRequired` by resetting the decoder and continuing.
+/// - Validates that sample rate and channel count remain stable across packets.
+/// - Restricts channel count to mono/stereo for the current engine surface.
+/// - For WAV, validates the decoded sample format on first decoded packet to
+///   ensure only the supported input formats are accepted.
 fn decode_track_to_interleaved_f32(
   format: &mut dyn FormatReader,
   track_id: u32,
@@ -310,6 +340,12 @@ fn decode_track_to_interleaved_f32(
   });
 }
 
+/// Validate the sample format returned by `symphonia` for WAV decoding.
+///
+/// The engine surface currently supports WAV inputs that decode to:
+/// - 16-bit signed integer (`S16`)
+/// - 24-bit signed integer (`S24`)
+/// - 32-bit float (`F32`)
 fn validate_wav_decoded_sample_format(
   decoded: &AudioBufferRef<'_>,
 ) -> Result<(), AudioDecodeError> {
@@ -330,6 +366,7 @@ fn validate_wav_decoded_sample_format(
   }
 }
 
+/// Return a stable string name for WAV decoded sample formats.
 fn wav_decoded_sample_format_name(
   decoded: &AudioBufferRef<'_>,
 ) -> &'static str {
@@ -419,36 +456,42 @@ pub fn decode_ogg_vorbis_bytes(
 mod tests {
   use super::*;
 
+  /// Fixture: 44100 Hz, mono, 16-bit integer PCM.
   #[cfg(feature = "audio-decode-wav")]
   const TONE_S16_MONO_44100_WAV: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/audio/tone_s16_mono_44100.wav"
   ));
 
+  /// Fixture: 44100 Hz, stereo, 16-bit integer PCM.
   #[cfg(feature = "audio-decode-wav")]
   const TONE_S16_STEREO_44100_WAV: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/audio/tone_s16_stereo_44100.wav"
   ));
 
+  /// Fixture: 44100 Hz, mono, 24-bit integer PCM.
   #[cfg(feature = "audio-decode-wav")]
   const TONE_S24_MONO_44100_WAV: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/audio/tone_s24_mono_44100.wav"
   ));
 
+  /// Fixture: 44100 Hz, stereo, 32-bit float PCM.
   #[cfg(feature = "audio-decode-wav")]
   const TONE_F32_STEREO_44100_WAV: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/audio/tone_f32_stereo_44100.wav"
   ));
 
+  /// Fixture: 48000 Hz, stereo, OGG Vorbis.
   #[cfg(feature = "audio-decode-vorbis")]
   const SLASH_VORBIS_STEREO_48000_OGG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/audio/slash_vorbis_stereo_48000.ogg"
   ));
 
+  /// Decoding invalid WAV bytes MUST return a structured error.
   #[cfg(feature = "audio-decode-wav")]
   #[test]
   fn wav_decode_rejects_invalid_bytes() {
@@ -462,6 +505,7 @@ mod tests {
     return;
   }
 
+  /// WAV decode MUST preserve sample rate and channel metadata from the input.
   #[cfg(feature = "audio-decode-wav")]
   #[test]
   fn wav_decode_s16_mono_fixture_decodes() {
@@ -473,6 +517,7 @@ mod tests {
     return;
   }
 
+  /// WAV decode MUST support stereo 16-bit integer PCM.
   #[cfg(feature = "audio-decode-wav")]
   #[test]
   fn wav_decode_s16_stereo_fixture_decodes() {
@@ -484,6 +529,7 @@ mod tests {
     return;
   }
 
+  /// WAV decode MUST support mono 24-bit integer PCM.
   #[cfg(feature = "audio-decode-wav")]
   #[test]
   fn wav_decode_s24_mono_fixture_decodes() {
@@ -495,6 +541,7 @@ mod tests {
     return;
   }
 
+  /// WAV decode MUST support stereo 32-bit float PCM.
   #[cfg(feature = "audio-decode-wav")]
   #[test]
   fn wav_decode_f32_stereo_fixture_decodes() {
@@ -506,6 +553,7 @@ mod tests {
     return;
   }
 
+  /// Decoding invalid OGG bytes MUST return a structured error.
   #[cfg(feature = "audio-decode-vorbis")]
   #[test]
   fn ogg_vorbis_decode_rejects_invalid_bytes() {
@@ -519,6 +567,7 @@ mod tests {
     return;
   }
 
+  /// OGG Vorbis decode MUST preserve sample rate and channel metadata.
   #[cfg(feature = "audio-decode-vorbis")]
   #[test]
   fn ogg_vorbis_decode_fixture_decodes() {
