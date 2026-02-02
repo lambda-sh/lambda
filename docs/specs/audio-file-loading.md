@@ -3,13 +3,13 @@ title: "Audio File Loading (SoundBuffer)"
 document_id: "audio-file-loading-2026-01-31"
 status: "draft"
 created: "2026-01-31T22:07:49Z"
-last_updated: "2026-02-02T17:40:16Z"
-version: "0.2.1"
+last_updated: "2026-02-02T22:57:02Z"
+version: "0.2.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "5d43a864febd72111671a4fab701cb0e5d2538b6"
+repo_commit: "6a5fd409c8097665ffd6e6a4a976206320ae4f80"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "audio", "lambda-rs", "platform", "assets"]
@@ -119,8 +119,7 @@ can be converted into `lambda::audio::SoundBuffer` without exposing codec
 types.
 
 ```rust
-// crates/lambda-rs-platform/src/audio_decode.rs (module name selected in
-// implementation)
+// crates/lambda-rs-platform/src/audio/symphonia/mod.rs
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DecodedAudio {
@@ -139,9 +138,8 @@ pub enum AudioDecodeError {
 
 Notes
 
-- The implementation MAY avoid adding a shared `DecodedAudio` module and MAY
-  instead implement format-specific decode functions returning an equivalent
-  internal struct.
+- This data model is internal to `lambda-rs-platform` and MAY change between
+  releases.
 - The platform error type MUST implement `Display` and MUST NOT include vendor
   error types in variants.
 
@@ -168,9 +166,13 @@ pub struct SoundBuffer {
 }
 
 impl SoundBuffer {
+  #[cfg(feature = "audio-sound-buffer-wav")]
   pub fn from_wav_file(path: &std::path::Path) -> Result<Self, AudioError>;
+  #[cfg(feature = "audio-sound-buffer-wav")]
   pub fn from_wav_bytes(bytes: &[u8]) -> Result<Self, AudioError>;
+  #[cfg(feature = "audio-sound-buffer-vorbis")]
   pub fn from_ogg_file(path: &std::path::Path) -> Result<Self, AudioError>;
+  #[cfg(feature = "audio-sound-buffer-vorbis")]
   pub fn from_ogg_bytes(bytes: &[u8]) -> Result<Self, AudioError>;
 
   pub fn sample_rate(&self) -> u32;
@@ -246,11 +248,10 @@ Crate `lambda-rs-platform` (package: `lambda-rs-platform`)
 
 Feature gating rules
 
-- The `lambda::audio` module MUST be compiled when either `audio-output-device`
-  or `audio-sound-buffer` is enabled.
-- Format-specific entry points SHOULD be gated behind the corresponding
-  granular features and MUST return a deterministic error if called when the
-  required feature is disabled (if the symbol remains available).
+- The `lambda::audio::SoundBuffer` type MUST be compiled only when either
+  `audio-sound-buffer` or a granular sound buffer feature is enabled.
+- Format-specific entry points MUST be compiled only when the corresponding
+  granular features are enabled.
 - `docs/features.md` MUST be updated in the implementation change that adds
   these features.
 
@@ -281,24 +282,40 @@ Recommendations
 ## Requirements Checklist
 
 - Functionality
-  - [ ] WAV decode implemented (16-bit PCM, 24-bit PCM, 32-bit float)
-  - [ ] OGG Vorbis decode implemented
-  - [ ] Load-from-file and load-from-bytes supported
+  - [x] WAV decode implemented (16-bit PCM, 24-bit PCM, 32-bit float)
+        (`crates/lambda-rs-platform/src/audio/symphonia/mod.rs`)
+  - [x] OGG Vorbis decode implemented
+        (`crates/lambda-rs-platform/src/audio/symphonia/mod.rs`)
+  - [x] Load-from-file and load-from-bytes supported
+        (`crates/lambda-rs/src/audio/buffer.rs`)
 - API Surface
-  - [ ] `SoundBuffer` public API implemented in `lambda-rs`
-  - [ ] `lambda-rs` does not expose vendor/platform decode types
-  - [ ] `lambda::audio` module is available when sound-buffer features enabled
+  - [x] `SoundBuffer` public API implemented in `lambda-rs`
+        (`crates/lambda-rs/src/audio/buffer.rs`)
+  - [x] `lambda-rs` does not expose vendor/platform decode types
+        (`crates/lambda-rs/src/audio/buffer.rs`)
+  - [x] `lambda::audio::SoundBuffer` is available when sound-buffer features
+        enabled (`crates/lambda-rs/src/audio/mod.rs`)
 - Validation and Errors
-  - [ ] Unsupported formats return actionable errors
-  - [ ] Corrupt data returns actionable errors
-  - [ ] File I/O errors return actionable errors
+  - [x] Unsupported formats return actionable errors
+        (`crates/lambda-rs-platform/src/audio/symphonia/mod.rs`,
+        `crates/lambda-rs/src/audio/error.rs`)
+  - [x] Corrupt data returns actionable errors
+        (`crates/lambda-rs-platform/src/audio/symphonia/mod.rs`,
+        `crates/lambda-rs/src/audio/error.rs`)
+  - [x] File I/O errors return actionable errors
+        (`crates/lambda-rs/src/audio/buffer.rs`)
 - Documentation and Examples
-  - [ ] `docs/features.md` updated with new features and defaults
-  - [ ] Minimal example loads a sound file and prints metadata
+  - [x] `docs/features.md` updated with new features and defaults
+        (`docs/features.md`)
+  - [x] Minimal example loads a sound file and prints metadata
+        (`crates/lambda-rs/examples/sound_buffer_load.rs`)
 - Tests
-  - [ ] Unit tests cover WAV mono and stereo
-  - [ ] Unit tests cover OGG Vorbis mono and stereo
-  - [ ] Test assets are stored under `crates/lambda-rs-platform/assets/audio/`
+  - [x] Unit tests cover WAV mono and stereo
+        (`crates/lambda-rs-platform/src/audio/symphonia/mod.rs`)
+  - [x] Unit tests cover OGG Vorbis decode (stereo fixture)
+        (`crates/lambda-rs-platform/src/audio/symphonia/mod.rs`)
+  - [x] Test assets are stored under `crates/lambda-rs-platform/assets/audio/`
+        (`crates/lambda-rs-platform/assets/audio/`)
 
 For each checked item, include a reference to a commit, pull request, or file
 path that demonstrates the implementation.
@@ -310,13 +327,12 @@ path that demonstrates the implementation.
 Coverage targets
 
 - WAV
-  - mono 16-bit PCM
-  - stereo 16-bit PCM
-  - mono 24-bit PCM
-  - stereo 32-bit float
+  - mono 16-bit PCM (`tone_s16_mono_44100.wav`)
+  - stereo 16-bit PCM (`tone_s16_stereo_44100.wav`)
+  - mono 24-bit PCM (`tone_s24_mono_44100.wav`)
+  - stereo 32-bit float (`tone_f32_stereo_44100.wav`)
 - OGG Vorbis
-  - mono
-  - stereo
+  - stereo (`slash_vorbis_stereo_48000.ogg`)
 
 Commands
 
@@ -325,7 +341,7 @@ Commands
 
 ### Example
 
-- Add `crates/lambda-rs/examples/sound_buffer_load.rs`.
+- Provide `crates/lambda-rs/examples/sound_buffer_load.rs`.
 - The example SHOULD load a file path provided via CLI args and print:
   - channels
   - sample rate
@@ -340,6 +356,8 @@ Commands
 
 ## Changelog
 
+- 2026-02-02 (v0.2.2) — Align spec with feature-gated `SoundBuffer` surface and
+  implemented fixtures.
 - 2026-01-31 (v0.2.0) — Center decoding on `symphonia` 0.5.5.
 - 2026-01-31 (v0.1.1) — Align spec with platform audio module layout.
 - 2026-01-31 (v0.1.0) — Initial draft.
