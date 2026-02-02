@@ -72,6 +72,13 @@ impl fmt::Display for AudioDecodeError {
 impl std::error::Error for AudioDecodeError {}
 
 /// Build a `symphonia` probe hint from a list of likely filename extensions.
+///
+/// # Arguments
+/// - `extensions`: A list of likely filename extensions (without a leading
+///   period) used to guide `symphonia`'s format probe.
+///
+/// # Returns
+/// A probe hint configured with all provided extensions.
 fn hint_for_decode(extensions: &[&str]) -> Hint {
   let mut hint_value = Hint::new();
   for extension in extensions {
@@ -81,6 +88,14 @@ fn hint_for_decode(extensions: &[&str]) -> Hint {
 }
 
 /// Map probe-time `symphonia` errors into backend-agnostic decode errors.
+///
+/// # Arguments
+/// - `source_description`: A human-readable description used to contextualize
+///   error messages (for example, `"WAV"` or `"OGG Vorbis"`).
+/// - `error`: The `symphonia` probe error.
+///
+/// # Returns
+/// A stable, vendor-free decode error.
 fn map_probe_error(source_description: &str, error: Error) -> AudioDecodeError {
   match error {
     Error::Unsupported(_) => {
@@ -105,6 +120,14 @@ fn map_probe_error(source_description: &str, error: Error) -> AudioDecodeError {
 ///
 /// This keeps the surface area stable for `lambda-rs` and avoids leaking
 /// vendor-specific error types.
+///
+/// # Arguments
+/// - `source_description`: A human-readable description used to contextualize
+///   error messages (for example, `"WAV"` or `"OGG Vorbis"`).
+/// - `error`: The `symphonia` read or decode error.
+///
+/// # Returns
+/// A stable, vendor-free decode error.
 fn map_read_or_decode_error(
   source_description: &str,
   error: Error,
@@ -137,6 +160,20 @@ fn map_read_or_decode_error(
 ///
 /// `symphonia` expects a `MediaSourceStream`. This wrapper creates an owned
 /// cursor backed by `bytes` so the probe can seek without borrowing the input.
+///
+/// # Arguments
+/// - `bytes`: The complete container bytes.
+/// - `source_description`: A human-readable description used to contextualize
+///   error messages.
+/// - `extensions`: A list of filename extensions used as a probe hint.
+///
+/// # Returns
+/// A `FormatReader` capable of reading packets from the probed container.
+///
+/// # Errors
+/// Returns [`AudioDecodeError::UnsupportedFormat`] when the container cannot be
+/// recognized. Returns [`AudioDecodeError::InvalidData`] when the bytes are
+/// recognized but no tracks can be read.
 fn probe_format(
   bytes: &[u8],
   source_description: &str,
@@ -170,6 +207,20 @@ fn probe_format(
 ///
 /// Failure to reserve is treated as a recoverable decode error to avoid
 /// panicking on large files or constrained platforms.
+///
+/// # Arguments
+/// - `samples`: The output sample vector to reserve capacity for.
+/// - `source_description`: A human-readable description used to contextualize
+///   error messages.
+/// - `frames`: Optional total frame count metadata for the selected track.
+/// - `channels`: Optional channel count metadata for the selected track.
+///
+/// # Returns
+/// `Ok(())` when reservation succeeds or cannot be estimated.
+///
+/// # Errors
+/// Returns [`AudioDecodeError::DecodeFailed`] if the allocator fails to reserve
+/// the requested capacity.
 fn try_reserve_samples(
   samples: &mut Vec<f32>,
   source_description: &str,
@@ -206,6 +257,29 @@ fn try_reserve_samples(
 /// - Restricts channel count to mono/stereo for the current engine surface.
 /// - For WAV, validates the decoded sample format on first decoded packet to
 ///   ensure only the supported input formats are accepted.
+///
+/// # Arguments
+/// - `format`: Container reader used to fetch packets.
+/// - `track_id`: The track identifier to decode. Packets from other tracks are
+///   ignored.
+/// - `decoder`: Codec decoder for the selected track.
+/// - `source_description`: A human-readable description used to contextualize
+///   error messages.
+/// - `reserve_frames`: Optional frame count metadata used to pre-reserve the
+///   output buffer.
+/// - `reserve_channels`: Optional channel count metadata used to pre-reserve
+///   the output buffer.
+///
+/// # Returns
+/// Fully decoded audio with interleaved `f32` samples and associated metadata.
+///
+/// # Errors
+/// Returns:
+/// - [`AudioDecodeError::UnsupportedFormat`] for unsupported channel counts or
+///   unsupported WAV decoded sample formats.
+/// - [`AudioDecodeError::InvalidData`] for corrupted streams or inconsistent
+///   metadata during decode.
+/// - [`AudioDecodeError::DecodeFailed`] for other backend failures.
 fn decode_track_to_interleaved_f32(
   format: &mut dyn FormatReader,
   track_id: u32,
@@ -346,6 +420,16 @@ fn decode_track_to_interleaved_f32(
 /// - 16-bit signed integer (`S16`)
 /// - 24-bit signed integer (`S24`)
 /// - 32-bit float (`F32`)
+///
+/// # Arguments
+/// - `decoded`: The decoded packet audio buffer view.
+///
+/// # Returns
+/// `Ok(())` when the decoded sample format is supported.
+///
+/// # Errors
+/// Returns [`AudioDecodeError::UnsupportedFormat`] if the decoded sample format
+/// is not supported by the current engine surface.
 fn validate_wav_decoded_sample_format(
   decoded: &AudioBufferRef<'_>,
 ) -> Result<(), AudioDecodeError> {
@@ -367,6 +451,12 @@ fn validate_wav_decoded_sample_format(
 }
 
 /// Return a stable string name for WAV decoded sample formats.
+///
+/// # Arguments
+/// - `decoded`: The decoded packet audio buffer view.
+///
+/// # Returns
+/// A stable name for diagnostics and error messages.
 fn wav_decoded_sample_format_name(
   decoded: &AudioBufferRef<'_>,
 ) -> &'static str {
@@ -385,6 +475,19 @@ fn wav_decoded_sample_format_name(
 }
 
 /// Decode WAV bytes into interleaved `f32` samples.
+///
+/// # Arguments
+/// - `bytes`: Complete WAV container bytes.
+///
+/// # Returns
+/// Fully decoded audio with interleaved `f32` samples and associated metadata.
+///
+/// # Errors
+/// Returns [`AudioDecodeError::UnsupportedFormat`] if the bytes are not a WAV
+/// file or use an unsupported encoding. Returns
+/// [`AudioDecodeError::InvalidData`] if the bytes are a WAV container but are
+/// invalid or corrupted. Returns
+/// [`AudioDecodeError::DecodeFailed`] for other backend failures.
 #[cfg(feature = "audio-decode-wav")]
 pub fn decode_wav_bytes(
   bytes: &[u8],
@@ -416,6 +519,18 @@ pub fn decode_wav_bytes(
 }
 
 /// Decode OGG Vorbis bytes into interleaved `f32` samples.
+///
+/// # Arguments
+/// - `bytes`: Complete OGG container bytes.
+///
+/// # Returns
+/// Fully decoded audio with interleaved `f32` samples and associated metadata.
+///
+/// # Errors
+/// Returns [`AudioDecodeError::UnsupportedFormat`] if the bytes are not an OGG
+/// container, or if the OGG stream is not Vorbis. Returns
+/// [`AudioDecodeError::InvalidData`] if the container is invalid or corrupted.
+/// Returns [`AudioDecodeError::DecodeFailed`] for other backend failures.
 #[cfg(feature = "audio-decode-vorbis")]
 pub fn decode_ogg_vorbis_bytes(
   bytes: &[u8],

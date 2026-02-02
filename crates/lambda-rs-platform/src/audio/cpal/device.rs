@@ -50,11 +50,20 @@ pub struct AudioCallbackInfo {
 /// underlying device output buffer for the current callback invocation.
 pub trait AudioOutputWriter {
   /// Return the output channel count for the current callback invocation.
+  ///
+  /// # Returns
+  /// The number of interleaved channels in the output buffer.
   fn channels(&self) -> u16;
   /// Return the number of frames in the output buffer for the current callback
   /// invocation.
+  ///
+  /// # Returns
+  /// The number of frames in the output buffer.
   fn frames(&self) -> usize;
   /// Clear the entire output buffer to silence.
+  ///
+  /// # Returns
+  /// `()` after clearing the output buffer to silence.
   fn clear(&mut self);
 
   /// Write a normalized sample in the range `[-1.0, 1.0]`.
@@ -62,6 +71,16 @@ pub trait AudioOutputWriter {
   /// Implementations MUST clamp values outside `[-1.0, 1.0]`. Implementations
   /// MUST NOT panic for out-of-range indices and MUST perform no write in that
   /// case.
+  ///
+  /// # Arguments
+  /// - `frame_index`: The target frame index within the current callback
+  ///   buffer.
+  /// - `channel_index`: The target channel index within the current callback
+  ///   buffer.
+  /// - `sample`: A normalized sample in nominal range `[-1.0, 1.0]`.
+  ///
+  /// # Returns
+  /// `()` after attempting to write the sample.
   fn set_sample(
     &mut self,
     frame_index: usize,
@@ -132,6 +151,14 @@ impl<'buffer> InterleavedAudioOutputWriter<'buffer> {
   /// `channels` MUST match the channel count encoded in the output stream
   /// configuration. The frame count is derived from the buffer length and
   /// channel count.
+  ///
+  /// # Arguments
+  /// - `channels`: Interleaved output channel count.
+  /// - `buffer`: A typed interleaved output buffer view for the current audio
+  ///   callback.
+  ///
+  /// # Returns
+  /// A writer that can clear and write normalized samples into `buffer`.
   #[allow(dead_code)]
   pub fn new(channels: u16, buffer: AudioOutputBuffer<'buffer>) -> Self {
     let channels_usize = channels as usize;
@@ -149,6 +176,9 @@ impl<'buffer> InterleavedAudioOutputWriter<'buffer> {
   }
 
   /// Return the sample format of the current callback buffer.
+  ///
+  /// # Returns
+  /// The typed sample format for the current callback buffer.
   #[allow(dead_code)]
   pub fn sample_format(&self) -> AudioSampleFormat {
     return self.buffer.sample_format();
@@ -156,6 +186,12 @@ impl<'buffer> InterleavedAudioOutputWriter<'buffer> {
 }
 
 /// Clamp a normalized audio sample to the nominal output range `[-1.0, 1.0]`.
+///
+/// # Arguments
+/// - `sample`: A potentially out-of-range normalized sample.
+///
+/// # Returns
+/// The clamped sample in range `[-1.0, 1.0]`.
 #[allow(dead_code)]
 fn clamp_normalized_sample(sample: f32) -> f32 {
   if sample > 1.0 {
@@ -381,6 +417,9 @@ pub struct AudioDeviceBuilder {
 
 impl AudioDeviceBuilder {
   /// Create a builder with engine defaults.
+  ///
+  /// # Returns
+  /// A builder with no explicit configuration requests.
   pub fn new() -> Self {
     return Self {
       sample_rate: None,
@@ -390,18 +429,36 @@ impl AudioDeviceBuilder {
   }
 
   /// Request a specific sample rate (Hz).
+  ///
+  /// # Arguments
+  /// - `rate`: Requested sample rate in Hz.
+  ///
+  /// # Returns
+  /// The updated builder.
   pub fn with_sample_rate(mut self, rate: u32) -> Self {
     self.sample_rate = Some(rate);
     return self;
   }
 
   /// Request a specific channel count.
+  ///
+  /// # Arguments
+  /// - `channels`: Requested interleaved channel count.
+  ///
+  /// # Returns
+  /// The updated builder.
   pub fn with_channels(mut self, channels: u16) -> Self {
     self.channels = Some(channels);
     return self;
   }
 
   /// Attach a label for diagnostics.
+  ///
+  /// # Arguments
+  /// - `label`: A human-readable label used for diagnostics.
+  ///
+  /// # Returns
+  /// The updated builder.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
     return self;
@@ -409,6 +466,17 @@ impl AudioDeviceBuilder {
 
   /// Initialize the default audio output device using the requested
   /// configuration.
+  ///
+  /// This method selects a supported output configuration from the default
+  /// output device and starts an output stream that plays silence.
+  ///
+  /// # Returns
+  /// An initialized audio output device handle. Dropping the handle stops
+  /// output.
+  ///
+  /// # Errors
+  /// Returns an error when the host, device, or stream cannot be initialized,
+  /// or when no supported output configuration satisfies the request.
   pub fn build(self) -> Result<AudioDevice, AudioError> {
     if let Some(sample_rate) = self.sample_rate {
       if sample_rate == 0 {
@@ -531,6 +599,20 @@ impl AudioDeviceBuilder {
   }
 
   /// Initialize the default audio output device and play audio via a callback.
+  ///
+  /// The callback is invoked from the platform audio thread. The callback MUST
+  /// avoid blocking and MUST NOT allocate.
+  ///
+  /// # Arguments
+  /// - `callback`: A real-time callback invoked for each output buffer tick.
+  ///
+  /// # Returns
+  /// An initialized audio output device handle. Dropping the handle stops
+  /// output.
+  ///
+  /// # Errors
+  /// Returns an error when the host, device, or stream cannot be initialized,
+  /// or when no supported output configuration satisfies the request.
   pub fn build_with_output_callback<Callback>(
     self,
     callback: Callback,
@@ -695,6 +777,15 @@ impl Default for AudioDeviceBuilder {
 /// - Wraps the typed `cpal` output slice in an [`AudioOutputWriter`].
 /// - Clears the buffer to silence before invoking the callback.
 /// - Guarantees a single callback invocation per platform callback tick.
+///
+/// # Arguments
+/// - `channels`: Interleaved channel count for the output buffer.
+/// - `buffer`: A typed interleaved output buffer view.
+/// - `callback_info`: Stream metadata for the current callback invocation.
+/// - `callback`: The engine callback to invoke.
+///
+/// # Returns
+/// `()` after clearing the buffer and invoking the callback.
 fn invoke_output_callback_on_buffer<Callback>(
   channels: u16,
   buffer: AudioOutputBuffer<'_>,
@@ -713,6 +804,12 @@ fn invoke_output_callback_on_buffer<Callback>(
 ///
 /// The current backend prefers `f32`, then `i16`, then `u16`. Any other format
 /// is treated as unsupported by this abstraction.
+///
+/// # Arguments
+/// - `sample_format`: The `cpal` sample format for a supported stream config.
+///
+/// # Returns
+/// A priority value where higher values are preferred.
 fn sample_format_priority(sample_format: cpal_backend::SampleFormat) -> u8 {
   match sample_format {
     cpal_backend::SampleFormat::F32 => {
@@ -741,6 +838,19 @@ fn sample_format_priority(sample_format: cpal_backend::SampleFormat) -> u8 {
 /// - Higher-quality sample formats are preferred (`f32` > `i16` > `u16`).
 /// - When priorities tie, the configuration with sample rate closest to
 ///   `48_000` Hz is preferred.
+///
+/// # Arguments
+/// - `supported_configs`: The device-provided supported config ranges.
+/// - `requested_sample_rate`: Optional exact sample rate request.
+/// - `requested_channels`: Optional exact channel count request.
+///
+/// # Returns
+/// A supported stream configuration selected from `supported_configs`.
+///
+/// # Errors
+/// Returns [`AudioError::UnsupportedConfig`] when no configuration satisfies
+/// the request. Returns [`AudioError::UnsupportedSampleFormat`] when the device
+/// does not expose any supported sample format among `f32`, `i16`, and `u16`.
 fn select_output_stream_config(
   supported_configs: &[cpal_backend::SupportedStreamConfigRange],
   requested_sample_rate: Option<u32>,
@@ -834,6 +944,13 @@ fn select_output_stream_config(
 }
 
 /// Enumerate available audio output devices.
+///
+/// # Returns
+/// A list of available output devices with stable metadata.
+///
+/// # Errors
+/// Returns an error if the platform host cannot enumerate output devices or if
+/// device metadata cannot be retrieved.
 pub fn enumerate_devices() -> Result<Vec<AudioDeviceInfo>, AudioError> {
   let host = cpal_backend::default_host();
 
