@@ -21,7 +21,13 @@ use lambda::audio::{
 
 fn main() {
   let mut args = std::env::args();
-  let program_name = args.next().unwrap_or_else(|| "lambda-audio".to_string());
+  let raw_program_name =
+    args.next().unwrap_or_else(|| "lambda-audio".to_string());
+  let program_name = Path::new(&raw_program_name)
+    .file_name()
+    .and_then(|value| value.to_str())
+    .unwrap_or(raw_program_name.as_str())
+    .to_string();
 
   let command = args.next().unwrap_or_else(|| "help".to_string());
 
