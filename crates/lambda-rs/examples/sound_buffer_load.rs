@@ -1,15 +1,46 @@
 #![allow(clippy::needless_return)]
+//! Sound buffer loading example that decodes a WAV or OGG Vorbis file.
+//!
+//! This example is application-facing and uses only the `lambda-rs` API surface.
 
+#[cfg(any(
+  feature = "audio-sound-buffer",
+  feature = "audio-sound-buffer-wav",
+  feature = "audio-sound-buffer-vorbis"
+))]
 use std::path::{
   Path,
   PathBuf,
 };
 
+#[cfg(any(
+  feature = "audio-sound-buffer",
+  feature = "audio-sound-buffer-wav",
+  feature = "audio-sound-buffer-vorbis"
+))]
 use lambda::audio::{
   AudioError,
   SoundBuffer,
 };
 
+#[cfg(not(any(
+  feature = "audio-sound-buffer",
+  feature = "audio-sound-buffer-wav",
+  feature = "audio-sound-buffer-vorbis"
+)))]
+fn main() {
+  eprintln!(
+    "This example requires `lambda-rs` sound buffer features.\n\n\
+Run:\n  cargo run -p lambda-rs --example sound_buffer_load --features audio-sound-buffer"
+  );
+  return;
+}
+
+#[cfg(any(
+  feature = "audio-sound-buffer",
+  feature = "audio-sound-buffer-wav",
+  feature = "audio-sound-buffer-vorbis"
+))]
 fn main() {
   let path = match parse_path_argument() {
     Ok(path) => path,
@@ -34,6 +65,11 @@ fn main() {
   return;
 }
 
+#[cfg(any(
+  feature = "audio-sound-buffer",
+  feature = "audio-sound-buffer-wav",
+  feature = "audio-sound-buffer-vorbis"
+))]
 fn parse_path_argument() -> Result<PathBuf, String> {
   let mut args = std::env::args_os();
   let program_name = args
@@ -48,6 +84,11 @@ fn parse_path_argument() -> Result<PathBuf, String> {
   return Ok(PathBuf::from(path));
 }
 
+#[cfg(any(
+  feature = "audio-sound-buffer",
+  feature = "audio-sound-buffer-wav",
+  feature = "audio-sound-buffer-vorbis"
+))]
 fn load_sound_buffer(path: &Path) -> Result<SoundBuffer, AudioError> {
   let extension = path
     .extension()
