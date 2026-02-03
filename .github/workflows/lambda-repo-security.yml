@@ -41,6 +41,11 @@ jobs:
       - name: Install dependencies for converting clippy output to SARIF
         run: cargo install clippy-sarif sarif-fmt
 
+      - name: Install Linux deps for audio
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+
       - name: Check formatting
         run: |
           rustup component add rustfmt --toolchain nightly-2025-09-26
