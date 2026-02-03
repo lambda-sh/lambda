@@ -207,7 +207,7 @@ fn load_sound_buffer(path: &str) -> Result<SoundBuffer, AudioError> {
     .extension()
     .and_then(|value| value.to_str())
     .map(|value| value.to_ascii_lowercase())
-    .unwrap_or_else(|| "".to_string());
+    .unwrap_or_default();
 
   match extension.as_str() {
     "wav" => {
