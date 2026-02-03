@@ -30,6 +30,7 @@ jobs:
         with:
           # Fetch enough history for diff against base branch
           fetch-depth: 0
+          lfs: true
 
       - name: Cache cargo builds
         uses: Swatinem/rust-cache@v2
