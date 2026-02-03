@@ -1,5 +1,13 @@
 #![allow(clippy::needless_return)]
+//! Audio example that plays the bundled "slash" OGG Vorbis fixture.
+//!
+//! This example validates that `SoundBuffer` decoding and audio output playback
+//! can be composed together using only the `lambda-rs` API surface.
 
+#[cfg(all(
+  feature = "audio-output-device",
+  feature = "audio-sound-buffer-vorbis"
+))]
 use std::{
   sync::{
     atomic::{
@@ -11,6 +19,10 @@ use std::{
   time::Duration,
 };
 
+#[cfg(all(
+  feature = "audio-output-device",
+  feature = "audio-sound-buffer-vorbis"
+))]
 use lambda::audio::{
   AudioOutputDeviceBuilder,
   SoundBuffer,
@@ -80,7 +92,10 @@ fn main() {
 )))]
 fn main() {
   eprintln!(
-    "this example requires `audio-output-device` and `audio-sound-buffer-vorbis`"
+    "This example requires `lambda-rs` features `audio-output-device` and \
+`audio-sound-buffer-vorbis`.\n\n\
+Run:\n  cargo run -p lambda-rs --example play_slash_sound \\\n\
+    --features audio-output-device,audio-sound-buffer-vorbis"
   );
   return;
 }
