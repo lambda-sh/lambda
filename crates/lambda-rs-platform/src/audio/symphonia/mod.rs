@@ -569,7 +569,127 @@ pub fn decode_ogg_vorbis_bytes(
 
 #[cfg(test)]
 mod tests {
+  use std::io;
+
+  use symphonia::core::audio::{
+    AsAudioBufferRef,
+    AudioBuffer,
+    Channels,
+    SignalSpec,
+  };
+
   use super::*;
+
+  /// Probe-time error mapping MUST produce stable vendor-free variants.
+  #[test]
+  fn probe_error_mapping_produces_vendor_free_errors() {
+    let unsupported = map_probe_error("WAV", Error::Unsupported("container"));
+    assert!(matches!(
+      unsupported,
+      AudioDecodeError::UnsupportedFormat { .. }
+    ));
+
+    let io_error = map_probe_error(
+      "WAV",
+      Error::IoError(io::Error::new(io::ErrorKind::UnexpectedEof, "eof")),
+    );
+    assert!(matches!(io_error, AudioDecodeError::InvalidData { .. }));
+
+    let other = map_probe_error("WAV", Error::LimitError("limit"));
+    assert!(matches!(other, AudioDecodeError::DecodeFailed { .. }));
+    return;
+  }
+
+  /// Decode-time error mapping MUST produce stable vendor-free variants.
+  #[test]
+  fn decode_error_mapping_produces_vendor_free_errors() {
+    let unsupported =
+      map_read_or_decode_error("OGG Vorbis", Error::Unsupported("codec"));
+    assert!(matches!(
+      unsupported,
+      AudioDecodeError::UnsupportedFormat { .. }
+    ));
+
+    let decode_error =
+      map_read_or_decode_error("OGG Vorbis", Error::DecodeError("bad"));
+    assert!(matches!(decode_error, AudioDecodeError::InvalidData { .. }));
+
+    let io_error = map_read_or_decode_error(
+      "OGG Vorbis",
+      Error::IoError(io::Error::new(io::ErrorKind::UnexpectedEof, "eof")),
+    );
+    assert!(matches!(io_error, AudioDecodeError::InvalidData { .. }));
+
+    let other = map_read_or_decode_error("OGG Vorbis", Error::LimitError("x"));
+    assert!(matches!(other, AudioDecodeError::DecodeFailed { .. }));
+    return;
+  }
+
+  /// Sample reservation MUST be a no-op when metadata is unavailable.
+  #[test]
+  fn reserve_samples_is_noop_without_metadata() {
+    let mut samples = Vec::new();
+    try_reserve_samples(&mut samples, "WAV", None, None)
+      .expect("reserve should succeed");
+    return;
+  }
+
+  /// Sample reservation MUST skip sizes that cannot fit on 32-bit targets.
+  #[cfg(target_pointer_width = "32")]
+  #[test]
+  fn reserve_samples_skips_overflowing_sizes_on_32_bit_targets() {
+    let mut samples = Vec::new();
+    try_reserve_samples(&mut samples, "WAV", Some(u64::MAX), Some(u16::MAX))
+      .expect("reserve should skip overflow");
+    return;
+  }
+
+  /// Sample reservation MUST succeed for reasonable metadata on 64-bit targets.
+  #[cfg(target_pointer_width = "64")]
+  #[test]
+  fn reserve_samples_reserves_for_reasonable_metadata_on_64_bit_targets() {
+    let mut samples = Vec::new();
+    try_reserve_samples(&mut samples, "WAV", Some(4), Some(2))
+      .expect("reserve should succeed");
+    return;
+  }
+
+  /// WAV decoded sample format names MUST be stable.
+  #[test]
+  fn wav_decoded_sample_format_name_is_stable() {
+    let spec = SignalSpec::new(44_100, Channels::FRONT_LEFT);
+    let buffer_u8 = AudioBuffer::<u8>::new(1, spec);
+    let buffer = buffer_u8.as_audio_buffer_ref();
+    assert_eq!(wav_decoded_sample_format_name(&buffer), "U8");
+
+    let buffer_i16 = AudioBuffer::<i16>::new(1, spec);
+    let buffer = buffer_i16.as_audio_buffer_ref();
+    assert_eq!(wav_decoded_sample_format_name(&buffer), "S16");
+
+    let buffer_f32 = AudioBuffer::<f32>::new(1, spec);
+    let buffer = buffer_f32.as_audio_buffer_ref();
+    assert_eq!(wav_decoded_sample_format_name(&buffer), "F32");
+    return;
+  }
+
+  /// WAV decoded sample format validation MUST reject unsupported formats.
+  #[test]
+  fn wav_decoded_sample_format_validation_rejects_unsupported_formats() {
+    let spec = SignalSpec::new(44_100, Channels::FRONT_LEFT);
+    let unsupported_u8 = AudioBuffer::<u8>::new(1, spec);
+    let unsupported = unsupported_u8.as_audio_buffer_ref();
+    let result = validate_wav_decoded_sample_format(&unsupported);
+    assert!(matches!(
+      result,
+      Err(AudioDecodeError::UnsupportedFormat { .. })
+    ));
+
+    let supported_i16 = AudioBuffer::<i16>::new(1, spec);
+    let supported = supported_i16.as_audio_buffer_ref();
+    validate_wav_decoded_sample_format(&supported)
+      .expect("format should be supported");
+    return;
+  }
 
   /// Fixture: 44100 Hz, mono, 16-bit integer PCM.
   #[cfg(feature = "audio-decode-wav")]

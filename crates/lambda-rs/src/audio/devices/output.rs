@@ -392,4 +392,143 @@ mod tests {
     let _result = enumerate_output_devices();
     return;
   }
+
+  /// Sample format mapping MUST be stable.
+  #[test]
+  fn sample_format_maps_from_platform() {
+    assert_eq!(
+      AudioSampleFormat::from_platform(platform_audio::AudioSampleFormat::F32),
+      AudioSampleFormat::F32
+    );
+    assert_eq!(
+      AudioSampleFormat::from_platform(platform_audio::AudioSampleFormat::I16),
+      AudioSampleFormat::I16
+    );
+    assert_eq!(
+      AudioSampleFormat::from_platform(platform_audio::AudioSampleFormat::U16),
+      AudioSampleFormat::U16
+    );
+    return;
+  }
+
+  /// Callback metadata mapping MUST preserve stable fields.
+  #[test]
+  fn callback_info_maps_from_platform() {
+    let platform_info = platform_audio::AudioCallbackInfo {
+      sample_rate: 48_000,
+      channels: 2,
+      sample_format: platform_audio::AudioSampleFormat::F32,
+    };
+
+    let info = AudioCallbackInfo::from_platform(platform_info);
+    assert_eq!(info.sample_rate, 48_000);
+    assert_eq!(info.channels, 2);
+    assert_eq!(info.sample_format, AudioSampleFormat::F32);
+    return;
+  }
+
+  /// Platform error mapping MUST cover each supported public error variant.
+  #[test]
+  fn platform_errors_map_to_public_errors() {
+    assert!(matches!(
+      map_platform_error(platform_audio::AudioError::InvalidSampleRate {
+        requested: 1
+      }),
+      AudioError::InvalidSampleRate { requested: 1 }
+    ));
+
+    assert!(matches!(
+      map_platform_error(platform_audio::AudioError::InvalidChannels {
+        requested: 2
+      }),
+      AudioError::InvalidChannels { requested: 2 }
+    ));
+
+    assert!(matches!(
+      map_platform_error(platform_audio::AudioError::NoDefaultDevice),
+      AudioError::NoDefaultDevice
+    ));
+
+    assert!(matches!(
+      map_platform_error(platform_audio::AudioError::UnsupportedConfig {
+        requested_sample_rate: Some(44_100),
+        requested_channels: Some(1),
+      }),
+      AudioError::UnsupportedConfig {
+        requested_sample_rate: Some(44_100),
+        requested_channels: Some(1),
+      }
+    ));
+
+    assert!(matches!(
+      map_platform_error(platform_audio::AudioError::UnsupportedSampleFormat {
+        details: "format".to_string(),
+      }),
+      AudioError::UnsupportedSampleFormat { .. }
+    ));
+
+    let mapped =
+      map_platform_error(platform_audio::AudioError::StreamBuildFailed {
+        details: "boom".to_string(),
+      });
+    assert!(matches!(mapped, AudioError::Platform { .. }));
+    return;
+  }
+
+  /// Output writer adapter MUST forward calls to the platform writer.
+  #[test]
+  fn output_writer_adapter_forwards_calls() {
+    #[derive(Default)]
+    struct StubPlatformWriter {
+      channels: u16,
+      frames: usize,
+      cleared: bool,
+      last_sample: Option<(usize, usize, f32)>,
+    }
+
+    impl platform_audio::AudioOutputWriter for StubPlatformWriter {
+      fn channels(&self) -> u16 {
+        return self.channels;
+      }
+
+      fn frames(&self) -> usize {
+        return self.frames;
+      }
+
+      fn clear(&mut self) {
+        self.cleared = true;
+        return;
+      }
+
+      fn set_sample(
+        &mut self,
+        frame_index: usize,
+        channel_index: usize,
+        sample: f32,
+      ) {
+        self.last_sample = Some((frame_index, channel_index, sample));
+        return;
+      }
+    }
+
+    let mut writer = StubPlatformWriter {
+      channels: 2,
+      frames: 3,
+      ..Default::default()
+    };
+
+    {
+      let mut adapter = OutputWriterAdapter {
+        writer: &mut writer,
+      };
+      assert_eq!(adapter.channels(), 2);
+      assert_eq!(adapter.frames(), 3);
+      adapter.clear();
+      adapter.set_sample(1, 0, 0.5);
+    }
+
+    assert!(writer.cleared);
+    assert_eq!(writer.last_sample, Some((1, 0, 0.5)));
+    return;
+  }
 }

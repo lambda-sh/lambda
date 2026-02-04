@@ -242,6 +242,69 @@ mod tests {
     return;
   }
 
+  /// Frames MUST return 0 when channel metadata is invalid.
+  #[test]
+  fn frames_returns_zero_when_channels_is_zero() {
+    let buffer = SoundBuffer {
+      samples: vec![0.0, 0.0],
+      sample_rate: 48_000,
+      channels: 0,
+    };
+
+    assert_eq!(buffer.frames(), 0);
+    assert_eq!(buffer.duration_seconds(), 0.0);
+    return;
+  }
+
+  /// Decoded audio conversion MUST reject invalid metadata.
+  #[test]
+  fn from_decoded_rejects_invalid_metadata() {
+    let result = SoundBuffer::from_decoded(
+      lambda_platform::audio::symphonia::DecodedAudio {
+        samples: vec![0.0],
+        sample_rate: 0,
+        channels: 1,
+      },
+    );
+    assert!(matches!(result, Err(AudioError::InvalidData { .. })));
+
+    let result = SoundBuffer::from_decoded(
+      lambda_platform::audio::symphonia::DecodedAudio {
+        samples: vec![0.0],
+        sample_rate: 44_100,
+        channels: 0,
+      },
+    );
+    assert!(matches!(result, Err(AudioError::InvalidData { .. })));
+    return;
+  }
+
+  /// Decode error mapping MUST preserve stable variants.
+  #[test]
+  fn map_decode_error_preserves_variants() {
+    let unsupported = map_decode_error(
+      lambda_platform::audio::symphonia::AudioDecodeError::UnsupportedFormat {
+        details: "wav".to_string(),
+      },
+    );
+    assert!(matches!(unsupported, AudioError::UnsupportedFormat { .. }));
+
+    let invalid = map_decode_error(
+      lambda_platform::audio::symphonia::AudioDecodeError::InvalidData {
+        details: "bad".to_string(),
+      },
+    );
+    assert!(matches!(invalid, AudioError::InvalidData { .. }));
+
+    let failed = map_decode_error(
+      lambda_platform::audio::symphonia::AudioDecodeError::DecodeFailed {
+        details: "boom".to_string(),
+      },
+    );
+    assert!(matches!(failed, AudioError::DecodeFailed { .. }));
+    return;
+  }
+
   /// WAV decode from bytes MUST succeed for the bundled fixture.
   #[cfg(feature = "audio-sound-buffer-wav")]
   #[test]

@@ -93,3 +93,56 @@ impl fmt::Display for AudioError {
 }
 
 impl std::error::Error for AudioError {}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// Display formatting MUST remain actionable and stable across variants.
+  #[test]
+  fn display_formats_all_variants() {
+    let cases = [
+      AudioError::InvalidSampleRate { requested: 0 }.to_string(),
+      AudioError::InvalidChannels { requested: 0 }.to_string(),
+      AudioError::Io {
+        path: None,
+        details: "missing".to_string(),
+      }
+      .to_string(),
+      AudioError::Io {
+        path: Some(std::path::PathBuf::from("sounds/test.wav")),
+        details: "missing".to_string(),
+      }
+      .to_string(),
+      AudioError::UnsupportedFormat {
+        details: "wav".to_string(),
+      }
+      .to_string(),
+      AudioError::InvalidData {
+        details: "corrupt".to_string(),
+      }
+      .to_string(),
+      AudioError::DecodeFailed {
+        details: "boom".to_string(),
+      }
+      .to_string(),
+      AudioError::NoDefaultDevice.to_string(),
+      AudioError::UnsupportedConfig {
+        requested_sample_rate: Some(44_100),
+        requested_channels: Some(2),
+      }
+      .to_string(),
+      AudioError::UnsupportedSampleFormat {
+        details: "i8".to_string(),
+      }
+      .to_string(),
+      AudioError::Platform {
+        details: "backend".to_string(),
+      }
+      .to_string(),
+    ];
+
+    assert!(cases.iter().all(|value| !value.trim().is_empty()));
+    return;
+  }
+}

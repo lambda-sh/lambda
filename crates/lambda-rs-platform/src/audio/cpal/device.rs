@@ -991,6 +991,160 @@ mod tests {
 
   use super::*;
 
+  /// Normalized sample clamping MUST clamp to the nominal output range.
+  #[test]
+  fn clamp_normalized_sample_clamps_to_nominal_range() {
+    assert_eq!(clamp_normalized_sample(2.0), 1.0);
+    assert_eq!(clamp_normalized_sample(-2.0), -1.0);
+    assert_eq!(clamp_normalized_sample(0.25), 0.25);
+    return;
+  }
+
+  /// Sample format priority MUST prefer `f32`, then `i16`, then `u16`.
+  #[test]
+  fn sample_format_priority_orders_supported_formats() {
+    assert!(
+      sample_format_priority(cpal_backend::SampleFormat::F32)
+        > sample_format_priority(cpal_backend::SampleFormat::I16)
+    );
+    assert!(
+      sample_format_priority(cpal_backend::SampleFormat::I16)
+        > sample_format_priority(cpal_backend::SampleFormat::U16)
+    );
+    assert_eq!(sample_format_priority(cpal_backend::SampleFormat::I8), 0);
+    return;
+  }
+
+  /// Platform audio error display MUST cover each error variant.
+  #[test]
+  fn platform_audio_error_display_covers_each_variant() {
+    let cases = [
+      AudioError::InvalidSampleRate { requested: 0 }.to_string(),
+      AudioError::InvalidChannels { requested: 0 }.to_string(),
+      AudioError::HostUnavailable {
+        details: "missing".to_string(),
+      }
+      .to_string(),
+      AudioError::NoDefaultDevice.to_string(),
+      AudioError::DeviceNameUnavailable {
+        details: "name".to_string(),
+      }
+      .to_string(),
+      AudioError::DeviceEnumerationFailed {
+        details: "enum".to_string(),
+      }
+      .to_string(),
+      AudioError::SupportedConfigsUnavailable {
+        details: "configs".to_string(),
+      }
+      .to_string(),
+      AudioError::UnsupportedConfig {
+        requested_sample_rate: Some(44_100),
+        requested_channels: Some(2),
+      }
+      .to_string(),
+      AudioError::UnsupportedSampleFormat {
+        details: "fmt".to_string(),
+      }
+      .to_string(),
+      AudioError::Platform {
+        details: "backend".to_string(),
+      }
+      .to_string(),
+      AudioError::StreamBuildFailed {
+        details: "build".to_string(),
+      }
+      .to_string(),
+      AudioError::StreamPlayFailed {
+        details: "play".to_string(),
+      }
+      .to_string(),
+    ];
+
+    assert!(cases.iter().all(|value| !value.trim().is_empty()));
+    return;
+  }
+
+  /// Output buffer helpers MUST report length and format.
+  #[test]
+  fn output_buffer_reports_length_and_format() {
+    let mut samples_f32 = [0.0f32, 0.0];
+    let buffer = AudioOutputBuffer::F32(&mut samples_f32);
+    assert_eq!(buffer.len(), 2);
+    assert_eq!(buffer.sample_format(), AudioSampleFormat::F32);
+
+    let mut samples_i16 = [0i16, 0];
+    let buffer = AudioOutputBuffer::I16(&mut samples_i16);
+    assert_eq!(buffer.len(), 2);
+    assert_eq!(buffer.sample_format(), AudioSampleFormat::I16);
+
+    let mut samples_u16 = [0u16, 0];
+    let buffer = AudioOutputBuffer::U16(&mut samples_u16);
+    assert_eq!(buffer.len(), 2);
+    assert_eq!(buffer.sample_format(), AudioSampleFormat::U16);
+    return;
+  }
+
+  /// Writer construction MUST handle invalid channel counts without panicking.
+  #[test]
+  fn writer_new_handles_zero_channels() {
+    let mut samples_f32 = [0.0f32, 0.0];
+    let writer = InterleavedAudioOutputWriter::new(
+      0,
+      AudioOutputBuffer::F32(&mut samples_f32),
+    );
+    assert_eq!(writer.frames(), 0);
+    assert_eq!(writer.channels(), 0);
+    assert_eq!(writer.sample_format(), AudioSampleFormat::F32);
+    return;
+  }
+
+  /// Config selection MUST reject devices that only expose unsupported formats.
+  #[test]
+  fn select_output_stream_config_rejects_all_unsupported_formats() {
+    let supported_configs = [cpal_backend::SupportedStreamConfigRange::new(
+      2,
+      44_100,
+      48_000,
+      SupportedBufferSize::Unknown,
+      cpal_backend::SampleFormat::I8,
+    )];
+
+    let result = select_output_stream_config(&supported_configs, None, None);
+    assert!(matches!(
+      result,
+      Err(AudioError::UnsupportedSampleFormat { .. })
+    ));
+    return;
+  }
+
+  /// Config selection MUST pick the sample rate closest to 48_000 when
+  /// priorities tie.
+  #[test]
+  fn select_output_stream_config_prefers_closest_sample_rate_when_tied() {
+    let supported_configs = [
+      cpal_backend::SupportedStreamConfigRange::new(
+        2,
+        44_100,
+        44_100,
+        SupportedBufferSize::Unknown,
+        cpal_backend::SampleFormat::F32,
+      ),
+      cpal_backend::SupportedStreamConfigRange::new(
+        2,
+        48_000,
+        48_000,
+        SupportedBufferSize::Unknown,
+        cpal_backend::SampleFormat::F32,
+      ),
+    ];
+
+    let selected =
+      select_output_stream_config(&supported_configs, None, None).unwrap();
+    assert_eq!(selected.sample_rate(), 48_000);
+    return;
+  }
+
   /// Builder MUST reject invalid sample rates.
   #[test]
   fn build_rejects_zero_sample_rate() {
