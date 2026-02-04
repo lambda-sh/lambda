@@ -8,6 +8,7 @@ members = [
   "crates/lambda-rs-logging",
   "crates/lambda-rs-platform",
   "tools/obj_loader",
+  "tools/lambda_audio",
 ]
 
 default-members = [

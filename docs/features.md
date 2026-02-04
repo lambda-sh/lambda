@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-01-31T00:00:27Z"
-version: "0.1.11"
+last_updated: "2026-02-02T01:40:30Z"
+version: "0.1.13"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "2ae6419f001550adaa13a387b94fdf2bd86a882b"
+repo_commit: "bdb9575ccdc3431ee9991fbb786bda017dcd3777"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo", "audio"]
@@ -61,13 +61,26 @@ Rendering backends
 
 Audio
 - `audio` (umbrella, disabled by default): enables audio support by composing
-  granular audio features. This umbrella includes `audio-output-device`.
+  granular audio features. This umbrella includes `audio-output-device` and
+  `audio-sound-buffer`.
 - `audio-output-device` (granular, disabled by default): enables audio output
   device enumeration and callback-based audio output via `lambda::audio`. This
   feature enables `lambda-rs-platform/audio-device` internally. Expected
   runtime cost is proportional to the output callback workload and buffer size;
   no runtime cost is incurred unless an `AudioOutputDevice` is built and kept
   alive.
+- `audio-sound-buffer` (umbrella, disabled by default): enables
+  `lambda::audio::SoundBuffer` loading APIs by composing the granular decode
+  features below. This umbrella has no runtime cost unless a sound file is
+  decoded and loaded into memory.
+- `audio-sound-buffer-wav` (granular, disabled by default): enables WAV decode
+  support for `SoundBuffer`. This feature enables
+  `lambda-rs-platform/audio-decode-wav` internally. Runtime cost is incurred at
+  load time only (decode + allocation).
+- `audio-sound-buffer-vorbis` (granular, disabled by default): enables OGG
+  Vorbis decode support for `SoundBuffer`. This feature enables
+  `lambda-rs-platform/audio-decode-vorbis` internally. Runtime cost is incurred
+  at load time only (decode + allocation).
 
 Render validation
 
@@ -131,11 +144,19 @@ Shader backends
 Audio
 - `audio` (umbrella, disabled by default): enables platform audio support by
   composing granular platform audio features. This umbrella includes
-  `audio-device`.
+  `audio-device`, `audio-decode-wav`, and `audio-decode-vorbis`.
 - `audio-device` (granular, disabled by default): enables the internal audio
-  backend module `lambda_platform::cpal` backed by `cpal =0.17.1`.
+  backend module `lambda_platform::audio::cpal` backed by `cpal =0.17.1`.
+- `audio-decode-wav` (granular, disabled by default): enables internal WAV
+  decoding helpers in `lambda_platform::audio::symphonia` backed by
+  `symphonia =0.5.5`.
+- `audio-decode-vorbis` (granular, disabled by default): enables internal OGG
+  Vorbis decoding helpers in `lambda_platform::audio::symphonia` backed by
+  `symphonia =0.5.5`.
 
 ## Changelog
+- 0.1.13 (2026-02-02): Document `SoundBuffer` decode features for WAV and OGG
+  Vorbis in `lambda-rs` and the corresponding platform decode features.
 - 0.1.11 (2026-01-30): Make `lambda-rs` audio features opt-in by default.
 - 0.1.10 (2026-01-30): Document Linux system dependencies required by the
   default audio backend.

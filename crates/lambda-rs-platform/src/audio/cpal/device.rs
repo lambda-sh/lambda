@@ -1,6 +1,6 @@
 #![allow(clippy::needless_return)]
 
-//! Audio output device discovery and stream initialization.
+//! Audio output device discovery and stream initialization (cpal backend).
 //!
 //! This module defines a backend-agnostic surface that `lambda-rs` can use to
 //! enumerate and initialize audio output devices. The implementation is
@@ -50,11 +50,20 @@ pub struct AudioCallbackInfo {
 /// underlying device output buffer for the current callback invocation.
 pub trait AudioOutputWriter {
   /// Return the output channel count for the current callback invocation.
+  ///
+  /// # Returns
+  /// The number of interleaved channels in the output buffer.
   fn channels(&self) -> u16;
   /// Return the number of frames in the output buffer for the current callback
   /// invocation.
+  ///
+  /// # Returns
+  /// The number of frames in the output buffer.
   fn frames(&self) -> usize;
   /// Clear the entire output buffer to silence.
+  ///
+  /// # Returns
+  /// `()` after clearing the output buffer to silence.
   fn clear(&mut self);
 
   /// Write a normalized sample in the range `[-1.0, 1.0]`.
@@ -62,6 +71,16 @@ pub trait AudioOutputWriter {
   /// Implementations MUST clamp values outside `[-1.0, 1.0]`. Implementations
   /// MUST NOT panic for out-of-range indices and MUST perform no write in that
   /// case.
+  ///
+  /// # Arguments
+  /// - `frame_index`: The target frame index within the current callback
+  ///   buffer.
+  /// - `channel_index`: The target channel index within the current callback
+  ///   buffer.
+  /// - `sample`: A normalized sample in nominal range `[-1.0, 1.0]`.
+  ///
+  /// # Returns
+  /// `()` after attempting to write the sample.
   fn set_sample(
     &mut self,
     frame_index: usize,
@@ -84,6 +103,7 @@ pub(crate) enum AudioOutputBuffer<'buffer> {
 }
 
 impl<'buffer> AudioOutputBuffer<'buffer> {
+  /// Return the number of interleaved samples in the underlying buffer.
   #[allow(dead_code)]
   fn len(&self) -> usize {
     match self {
@@ -99,6 +119,7 @@ impl<'buffer> AudioOutputBuffer<'buffer> {
     }
   }
 
+  /// Return the sample format of the underlying typed buffer.
   fn sample_format(&self) -> AudioSampleFormat {
     match self {
       Self::F32(_) => {
@@ -125,6 +146,19 @@ pub(crate) struct InterleavedAudioOutputWriter<'buffer> {
 }
 
 impl<'buffer> InterleavedAudioOutputWriter<'buffer> {
+  /// Create a writer for an interleaved output buffer.
+  ///
+  /// `channels` MUST match the channel count encoded in the output stream
+  /// configuration. The frame count is derived from the buffer length and
+  /// channel count.
+  ///
+  /// # Arguments
+  /// - `channels`: Interleaved output channel count.
+  /// - `buffer`: A typed interleaved output buffer view for the current audio
+  ///   callback.
+  ///
+  /// # Returns
+  /// A writer that can clear and write normalized samples into `buffer`.
   #[allow(dead_code)]
   pub fn new(channels: u16, buffer: AudioOutputBuffer<'buffer>) -> Self {
     let channels_usize = channels as usize;
@@ -141,12 +175,23 @@ impl<'buffer> InterleavedAudioOutputWriter<'buffer> {
     };
   }
 
+  /// Return the sample format of the current callback buffer.
+  ///
+  /// # Returns
+  /// The typed sample format for the current callback buffer.
   #[allow(dead_code)]
   pub fn sample_format(&self) -> AudioSampleFormat {
     return self.buffer.sample_format();
   }
 }
 
+/// Clamp a normalized audio sample to the nominal output range `[-1.0, 1.0]`.
+///
+/// # Arguments
+/// - `sample`: A potentially out-of-range normalized sample.
+///
+/// # Returns
+/// The clamped sample in range `[-1.0, 1.0]`.
 #[allow(dead_code)]
 fn clamp_normalized_sample(sample: f32) -> f32 {
   if sample > 1.0 {
@@ -372,6 +417,9 @@ pub struct AudioDeviceBuilder {
 
 impl AudioDeviceBuilder {
   /// Create a builder with engine defaults.
+  ///
+  /// # Returns
+  /// A builder with no explicit configuration requests.
   pub fn new() -> Self {
     return Self {
       sample_rate: None,
@@ -381,18 +429,36 @@ impl AudioDeviceBuilder {
   }
 
   /// Request a specific sample rate (Hz).
+  ///
+  /// # Arguments
+  /// - `rate`: Requested sample rate in Hz.
+  ///
+  /// # Returns
+  /// The updated builder.
   pub fn with_sample_rate(mut self, rate: u32) -> Self {
     self.sample_rate = Some(rate);
     return self;
   }
 
   /// Request a specific channel count.
+  ///
+  /// # Arguments
+  /// - `channels`: Requested interleaved channel count.
+  ///
+  /// # Returns
+  /// The updated builder.
   pub fn with_channels(mut self, channels: u16) -> Self {
     self.channels = Some(channels);
     return self;
   }
 
   /// Attach a label for diagnostics.
+  ///
+  /// # Arguments
+  /// - `label`: A human-readable label used for diagnostics.
+  ///
+  /// # Returns
+  /// The updated builder.
   pub fn with_label(mut self, label: &str) -> Self {
     self.label = Some(label.to_string());
     return self;
@@ -400,6 +466,17 @@ impl AudioDeviceBuilder {
 
   /// Initialize the default audio output device using the requested
   /// configuration.
+  ///
+  /// This method selects a supported output configuration from the default
+  /// output device and starts an output stream that plays silence.
+  ///
+  /// # Returns
+  /// An initialized audio output device handle. Dropping the handle stops
+  /// output.
+  ///
+  /// # Errors
+  /// Returns an error when the host, device, or stream cannot be initialized,
+  /// or when no supported output configuration satisfies the request.
   pub fn build(self) -> Result<AudioDevice, AudioError> {
     if let Some(sample_rate) = self.sample_rate {
       if sample_rate == 0 {
@@ -522,6 +599,20 @@ impl AudioDeviceBuilder {
   }
 
   /// Initialize the default audio output device and play audio via a callback.
+  ///
+  /// The callback is invoked from the platform audio thread. The callback MUST
+  /// avoid blocking and MUST NOT allocate.
+  ///
+  /// # Arguments
+  /// - `callback`: A real-time callback invoked for each output buffer tick.
+  ///
+  /// # Returns
+  /// An initialized audio output device handle. Dropping the handle stops
+  /// output.
+  ///
+  /// # Errors
+  /// Returns an error when the host, device, or stream cannot be initialized,
+  /// or when no supported output configuration satisfies the request.
   pub fn build_with_output_callback<Callback>(
     self,
     callback: Callback,
@@ -680,6 +771,21 @@ impl Default for AudioDeviceBuilder {
   }
 }
 
+/// Invoke an output callback using a typed platform buffer.
+///
+/// This adapter:
+/// - Wraps the typed `cpal` output slice in an [`AudioOutputWriter`].
+/// - Clears the buffer to silence before invoking the callback.
+/// - Guarantees a single callback invocation per platform callback tick.
+///
+/// # Arguments
+/// - `channels`: Interleaved channel count for the output buffer.
+/// - `buffer`: A typed interleaved output buffer view.
+/// - `callback_info`: Stream metadata for the current callback invocation.
+/// - `callback`: The engine callback to invoke.
+///
+/// # Returns
+/// `()` after clearing the buffer and invoking the callback.
 fn invoke_output_callback_on_buffer<Callback>(
   channels: u16,
   buffer: AudioOutputBuffer<'_>,
@@ -694,6 +800,16 @@ fn invoke_output_callback_on_buffer<Callback>(
   return;
 }
 
+/// Convert a `cpal` sample format into a stable preference ordering.
+///
+/// The current backend prefers `f32`, then `i16`, then `u16`. Any other format
+/// is treated as unsupported by this abstraction.
+///
+/// # Arguments
+/// - `sample_format`: The `cpal` sample format for a supported stream config.
+///
+/// # Returns
+/// A priority value where higher values are preferred.
 fn sample_format_priority(sample_format: cpal_backend::SampleFormat) -> u8 {
   match sample_format {
     cpal_backend::SampleFormat::F32 => {
@@ -711,6 +827,30 @@ fn sample_format_priority(sample_format: cpal_backend::SampleFormat) -> u8 {
   }
 }
 
+/// Select a supported output stream configuration for the default device.
+///
+/// Selection rules:
+/// - If `requested_channels` is set, only exact channel matches are considered.
+/// - If `requested_sample_rate` is set, only ranges that contain the rate are
+///   considered.
+/// - If no rate is requested, the selection targets `48_000` Hz and chooses the
+///   closest available rate within each range.
+/// - Higher-quality sample formats are preferred (`f32` > `i16` > `u16`).
+/// - When priorities tie, the configuration with sample rate closest to
+///   `48_000` Hz is preferred.
+///
+/// # Arguments
+/// - `supported_configs`: The device-provided supported config ranges.
+/// - `requested_sample_rate`: Optional exact sample rate request.
+/// - `requested_channels`: Optional exact channel count request.
+///
+/// # Returns
+/// A supported stream configuration selected from `supported_configs`.
+///
+/// # Errors
+/// Returns [`AudioError::UnsupportedConfig`] when no configuration satisfies
+/// the request. Returns [`AudioError::UnsupportedSampleFormat`] when the device
+/// does not expose any supported sample format among `f32`, `i16`, and `u16`.
 fn select_output_stream_config(
   supported_configs: &[cpal_backend::SupportedStreamConfigRange],
   requested_sample_rate: Option<u32>,
@@ -804,6 +944,13 @@ fn select_output_stream_config(
 }
 
 /// Enumerate available audio output devices.
+///
+/// # Returns
+/// A list of available output devices with stable metadata.
+///
+/// # Errors
+/// Returns an error if the platform host cannot enumerate output devices or if
+/// device metadata cannot be retrieved.
 pub fn enumerate_devices() -> Result<Vec<AudioDeviceInfo>, AudioError> {
   let host = cpal_backend::default_host();
 
@@ -844,6 +991,161 @@ mod tests {
 
   use super::*;
 
+  /// Normalized sample clamping MUST clamp to the nominal output range.
+  #[test]
+  fn clamp_normalized_sample_clamps_to_nominal_range() {
+    assert_eq!(clamp_normalized_sample(2.0), 1.0);
+    assert_eq!(clamp_normalized_sample(-2.0), -1.0);
+    assert_eq!(clamp_normalized_sample(0.25), 0.25);
+    return;
+  }
+
+  /// Sample format priority MUST prefer `f32`, then `i16`, then `u16`.
+  #[test]
+  fn sample_format_priority_orders_supported_formats() {
+    assert!(
+      sample_format_priority(cpal_backend::SampleFormat::F32)
+        > sample_format_priority(cpal_backend::SampleFormat::I16)
+    );
+    assert!(
+      sample_format_priority(cpal_backend::SampleFormat::I16)
+        > sample_format_priority(cpal_backend::SampleFormat::U16)
+    );
+    assert_eq!(sample_format_priority(cpal_backend::SampleFormat::I8), 0);
+    return;
+  }
+
+  /// Platform audio error display MUST cover each error variant.
+  #[test]
+  fn platform_audio_error_display_covers_each_variant() {
+    let cases = [
+      AudioError::InvalidSampleRate { requested: 0 }.to_string(),
+      AudioError::InvalidChannels { requested: 0 }.to_string(),
+      AudioError::HostUnavailable {
+        details: "missing".to_string(),
+      }
+      .to_string(),
+      AudioError::NoDefaultDevice.to_string(),
+      AudioError::DeviceNameUnavailable {
+        details: "name".to_string(),
+      }
+      .to_string(),
+      AudioError::DeviceEnumerationFailed {
+        details: "enum".to_string(),
+      }
+      .to_string(),
+      AudioError::SupportedConfigsUnavailable {
+        details: "configs".to_string(),
+      }
+      .to_string(),
+      AudioError::UnsupportedConfig {
+        requested_sample_rate: Some(44_100),
+        requested_channels: Some(2),
+      }
+      .to_string(),
+      AudioError::UnsupportedSampleFormat {
+        details: "fmt".to_string(),
+      }
+      .to_string(),
+      AudioError::Platform {
+        details: "backend".to_string(),
+      }
+      .to_string(),
+      AudioError::StreamBuildFailed {
+        details: "build".to_string(),
+      }
+      .to_string(),
+      AudioError::StreamPlayFailed {
+        details: "play".to_string(),
+      }
+      .to_string(),
+    ];
+
+    assert!(cases.iter().all(|value| !value.trim().is_empty()));
+    return;
+  }
+
+  /// Output buffer helpers MUST report length and format.
+  #[test]
+  fn output_buffer_reports_length_and_format() {
+    let mut samples_f32 = [0.0f32, 0.0];
+    let buffer = AudioOutputBuffer::F32(&mut samples_f32);
+    assert_eq!(buffer.len(), 2);
+    assert_eq!(buffer.sample_format(), AudioSampleFormat::F32);
+
+    let mut samples_i16 = [0i16, 0];
+    let buffer = AudioOutputBuffer::I16(&mut samples_i16);
+    assert_eq!(buffer.len(), 2);
+    assert_eq!(buffer.sample_format(), AudioSampleFormat::I16);
+
+    let mut samples_u16 = [0u16, 0];
+    let buffer = AudioOutputBuffer::U16(&mut samples_u16);
+    assert_eq!(buffer.len(), 2);
+    assert_eq!(buffer.sample_format(), AudioSampleFormat::U16);
+    return;
+  }
+
+  /// Writer construction MUST handle invalid channel counts without panicking.
+  #[test]
+  fn writer_new_handles_zero_channels() {
+    let mut samples_f32 = [0.0f32, 0.0];
+    let writer = InterleavedAudioOutputWriter::new(
+      0,
+      AudioOutputBuffer::F32(&mut samples_f32),
+    );
+    assert_eq!(writer.frames(), 0);
+    assert_eq!(writer.channels(), 0);
+    assert_eq!(writer.sample_format(), AudioSampleFormat::F32);
+    return;
+  }
+
+  /// Config selection MUST reject devices that only expose unsupported formats.
+  #[test]
+  fn select_output_stream_config_rejects_all_unsupported_formats() {
+    let supported_configs = [cpal_backend::SupportedStreamConfigRange::new(
+      2,
+      44_100,
+      48_000,
+      SupportedBufferSize::Unknown,
+      cpal_backend::SampleFormat::I8,
+    )];
+
+    let result = select_output_stream_config(&supported_configs, None, None);
+    assert!(matches!(
+      result,
+      Err(AudioError::UnsupportedSampleFormat { .. })
+    ));
+    return;
+  }
+
+  /// Config selection MUST pick the sample rate closest to 48_000 when
+  /// priorities tie.
+  #[test]
+  fn select_output_stream_config_prefers_closest_sample_rate_when_tied() {
+    let supported_configs = [
+      cpal_backend::SupportedStreamConfigRange::new(
+        2,
+        44_100,
+        44_100,
+        SupportedBufferSize::Unknown,
+        cpal_backend::SampleFormat::F32,
+      ),
+      cpal_backend::SupportedStreamConfigRange::new(
+        2,
+        48_000,
+        48_000,
+        SupportedBufferSize::Unknown,
+        cpal_backend::SampleFormat::F32,
+      ),
+    ];
+
+    let selected =
+      select_output_stream_config(&supported_configs, None, None).unwrap();
+    assert_eq!(selected.sample_rate(), 48_000);
+    return;
+  }
+
+  /// Builder MUST reject invalid sample rates.
   #[test]
   fn build_rejects_zero_sample_rate() {
     let result = AudioDeviceBuilder::new().with_sample_rate(0).build();
@@ -851,8 +1153,10 @@ mod tests {
       result,
       Err(AudioError::InvalidSampleRate { requested: 0 })
     ));
+    return;
   }
 
+  /// Builder MUST reject invalid channel counts.
   #[test]
   fn build_rejects_zero_channels() {
     let result = AudioDeviceBuilder::new().with_channels(0).build();
@@ -860,8 +1164,10 @@ mod tests {
       result,
       Err(AudioError::InvalidChannels { requested: 0 })
     ));
+    return;
   }
 
+  /// Builder MUST NOT panic for typical host/device states.
   #[test]
   fn build_does_not_panic() {
     let result = AudioDeviceBuilder::new().build();
@@ -873,12 +1179,14 @@ mod tests {
     return;
   }
 
+  /// Device enumeration MUST NOT panic for typical host/device states.
   #[test]
   fn enumerate_devices_does_not_panic() {
     let _result = enumerate_devices();
     return;
   }
 
+  /// Callback-based builder MUST NOT panic for typical host/device states.
   #[test]
   fn build_with_output_callback_does_not_panic() {
     let result = AudioDeviceBuilder::new().build_with_output_callback(
@@ -894,6 +1202,7 @@ mod tests {
     return;
   }
 
+  /// Callback adapter MUST clear and then invoke the callback for `f32`.
   #[test]
   fn invoke_output_callback_on_buffer_clears_and_invokes_callback_f32() {
     let mut buffer_f32 = [1.0, -1.0, 0.5, -0.5];
@@ -923,8 +1232,10 @@ mod tests {
 
     assert!(callback_called);
     assert_eq!(buffer_f32, [0.5, 0.0, 0.0, 0.0]);
+    return;
   }
 
+  /// Callback adapter MUST clear and then invoke the callback for `i16`.
   #[test]
   fn invoke_output_callback_on_buffer_clears_and_invokes_callback_i16() {
     let mut buffer_i16 = [1, -1, 200, -200];
@@ -952,8 +1263,10 @@ mod tests {
 
     assert!(callback_called);
     assert_eq!(buffer_i16, [32767, 0, 0, 0]);
+    return;
   }
 
+  /// Callback adapter MUST clear and then invoke the callback for `u16`.
   #[test]
   fn invoke_output_callback_on_buffer_clears_and_invokes_callback_u16() {
     let mut buffer_u16 = [0, 1, 65535, 12345];
@@ -981,8 +1294,10 @@ mod tests {
 
     assert!(callback_called);
     assert_eq!(buffer_u16, [0, 32768, 32768, 32768]);
+    return;
   }
 
+  /// Writer silence MUST match each sample format's conventions.
   #[test]
   fn writer_clear_sets_silence_for_all_formats() {
     let mut buffer_f32 = [1.0, -1.0, 0.5, -0.5];
@@ -1008,8 +1323,10 @@ mod tests {
     );
     writer.clear();
     assert_eq!(buffer_u16, [32768, 32768, 32768, 32768]);
+    return;
   }
 
+  /// Writer MUST clamp normalized samples and convert to output formats.
   #[test]
   fn writer_set_sample_clamps_and_converts() {
     let mut buffer_f32 = [0.0, 0.0, 0.0, 0.0];
@@ -1045,8 +1362,10 @@ mod tests {
     assert_eq!(buffer_u16[0], 0);
     assert_eq!(buffer_u16[1], 32768);
     assert_eq!(buffer_u16[2], 65535);
+    return;
   }
 
+  /// Out-of-range indices MUST be treated as no-ops.
   #[test]
   fn writer_set_sample_is_noop_for_out_of_range_indices() {
     let mut buffer_f32 = [0.25, 0.25, 0.25, 0.25];
@@ -1059,8 +1378,10 @@ mod tests {
     writer.set_sample(0, 10, 1.0);
 
     assert_eq!(buffer_f32, [0.25, 0.25, 0.25, 0.25]);
+    return;
   }
 
+  /// Config selection MUST prefer `f32` when available.
   #[test]
   fn select_output_stream_config_prefers_f32_when_available() {
     let supported_configs = [
@@ -1084,8 +1405,10 @@ mod tests {
       select_output_stream_config(&supported_configs, None, None).unwrap();
     assert_eq!(selected.sample_format(), cpal_backend::SampleFormat::F32);
     assert_eq!(selected.sample_rate(), 48_000);
+    return;
   }
 
+  /// Config selection MUST honor exact requested channel counts.
   #[test]
   fn select_output_stream_config_respects_requested_channels() {
     let supported_configs = [cpal_backend::SupportedStreamConfigRange::new(
@@ -1108,8 +1431,10 @@ mod tests {
         requested_channels: Some(1),
       })
     ));
+    return;
   }
 
+  /// Config selection MUST honor requested sample rates when available.
   #[test]
   fn select_output_stream_config_respects_requested_sample_rate() {
     let supported_configs = [cpal_backend::SupportedStreamConfigRange::new(
@@ -1134,5 +1459,6 @@ mod tests {
         requested_channels: None,
       })
     ));
+    return;
   }
 }

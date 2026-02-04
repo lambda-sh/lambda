@@ -60,10 +60,22 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: |
+          cargo clippy --workspace \
+            # Excluded in the release workflow to avoid pulling in Linux ALSA
+            # build dependencies (`alsa-sys`) that are unnecessary for release
+            # binaries. Audio/tool validation runs in the CI build matrix when
+            # audio features are enabled.
+            --exclude lambda-audio-tool \
+            --all-targets \
+            -- -D warnings
 
       - name: Tests
-        run: cargo test --workspace -- --nocapture
+        run: |
+          cargo test --workspace \
+            # See note above in the Clippy step.
+            --exclude lambda-audio-tool \
+            -- --nocapture
 
   prepare_version:
     name: Prepare version, tag, push
@@ -221,7 +233,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo build --workspace --release --bins
+          # See note in the validate job: `lambda-audio-tool` is excluded here
+          # to avoid Linux ALSA build dependencies that are unnecessary for
+          # release artifacts.
+          cargo build --workspace --exclude lambda-audio-tool --release --bins
 
       - name: Stage files
         id: stage
