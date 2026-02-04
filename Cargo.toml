@@ -9,6 +9,10 @@ members = [
   "crates/lambda-rs-platform",
   "tools/obj_loader",
   "tools/lambda_audio",
+  # Demo crates (not built by default; see `default-members`).
+  "demos/audio",
+  "demos/render",
+  "demos/minimal",
 ]
 
 default-members = [

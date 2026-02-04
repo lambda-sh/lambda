@@ -1407,6 +1407,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "lambda-demos-audio"
+version = "0.1.0"
+
+[[package]]
+name = "lambda-demos-minimal"
+version = "0.1.0"
+
+[[package]]
+name = "lambda-demos-render"
+version = "0.1.0"
+
+[[package]]
 name = "lambda-obj-loader"
 version = "2023.1.28"
 dependencies = [
