@@ -1409,6 +1409,9 @@ dependencies = [
 [[package]]
 name = "lambda-demos-audio"
 version = "0.1.0"
+dependencies = [
+ "lambda-rs",
+]
 
 [[package]]
 name = "lambda-demos-minimal"
