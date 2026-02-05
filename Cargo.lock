@@ -1423,6 +1423,10 @@ dependencies = [
 [[package]]
 name = "lambda-demos-render"
 version = "0.1.0"
+dependencies = [
+ "lambda-rs",
+ "lambda-rs-logging",
+]
 
 [[package]]
 name = "lambda-obj-loader"
