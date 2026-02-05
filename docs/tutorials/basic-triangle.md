@@ -3,13 +3,13 @@ title: "Basic Triangle: Vertex‑Only Draw"
 document_id: "basic-triangle-tutorial-2025-12-16"
 status: "draft"
 created: "2025-12-16T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.2.3"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.2.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "87aa423aca541823f271101e5bac390f5ca54c42"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "triangle", "rust", "wgpu"]
@@ -22,7 +22,7 @@ positions from `gl_VertexIndex`. The implementation uses no vertex buffers and
 demonstrates the minimal render pass, pipeline, and command sequence in
 `lambda-rs`.
 
-Reference implementation: `crates/lambda-rs/examples/triangle.rs`.
+Reference implementation: `demos/render/src/bin/triangle.rs`.
 
 ## Table of Contents
 
@@ -53,7 +53,7 @@ Reference implementation: `crates/lambda-rs/examples/triangle.rs`.
 ## Prerequisites <a name="prerequisites"></a>
 
 - The workspace builds: `cargo build --workspace`.
-- The `lambda-rs` crate examples run: `cargo run -p lambda-rs --example minimal`.
+- The minimal demo runs: `cargo run -p lambda-demos-minimal --bin minimal`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
@@ -214,7 +214,7 @@ and the component keeps a current width/height for viewport creation.
 ## Validation <a name="validation"></a>
 
 - Build: `cargo build --workspace`
-- Run: `cargo run -p lambda-rs --example triangle`
+- Run: `cargo run -p lambda-demos-render --bin triangle`
 - Expected behavior: a window opens and shows a solid-color triangle.
 
 ## Notes <a name="notes"></a>
@@ -247,16 +247,17 @@ shaders, build a render pass and pipeline, and issue a draw using
     triangles.
 - Exercise 4: Introduce immediates
   - Add an immediate data block for color and position and port the shader interface to
-    match `crates/lambda-rs/examples/triangles.rs`.
+    match `demos/render/src/bin/triangles.rs`.
 - Exercise 5: Replace `gl_VertexIndex` with a vertex buffer
   - Create a vertex buffer for positions and update the pipeline and shader
     inputs accordingly.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.2.4 (2026-02-05): Update demo commands and reference paths for `demos/`.
 - 0.2.3 (2026-01-16): Normalize event handler terminology.
 - 0.2.2 (2026-01-16): Add `event_mask()` and `on_window_event` resize example.
 - 0.2.1 (2026-01-16): Replace deprecated `on_event` references with per-category handlers.
 - 0.2.0 (2026-01-05): Update for wgpu v28; rename push constants to immediates in exercises.
 - 0.1.0 (2025-12-16): Initial draft aligned with
-  `crates/lambda-rs/examples/triangle.rs`.
+  `demos/render/src/bin/triangle.rs`.

@@ -3,13 +3,13 @@ title: "Indexed Draws and Multiple Vertex Buffers"
 document_id: "indexed-draws-multiple-vertex-buffers-2025-11-22"
 status: "draft"
 created: "2025-11-22T00:00:00Z"
-last_updated: "2025-12-15T00:00:00Z"
-version: "0.2.0"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.2.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "vertex-input", "indexed-draws"]
@@ -271,7 +271,7 @@ let commands = vec![
   - Example: an indexed mesh rendered with two vertex buffers (positions and colors) and a 16-bit index buffer.
   - Example: fall back to non-indexed draws for simple meshes to ensure both paths remain valid.
   - Commands:
-    - `cargo run -p lambda-rs --example indexed_multi_vertex_buffers`
+    - `cargo run -p lambda-demos-render --bin indexed_multi_vertex_buffers`
     - `cargo test --workspace`
 - Manual Checks (optional)
   - Render a mesh with and without indexed draws and visually confirm identical geometry.
@@ -285,6 +285,7 @@ let commands = vec![
 
 ## Changelog
 
+- 2026-02-05 (v0.2.1) — Update demo and example references for `demos/`.
 - 2025-12-15 (v0.2.0) — Update example code to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPipelineBuilder`.
 - 2025-11-22 (v0.1.0) — Initial draft specifying indexed draws and multiple vertex buffers, including API surface, behavior, validation hooks, performance guidance, and verification plan.
 - 2025-11-22 (v0.1.1) — Added engine-level `IndexFormat`, instance ranges to `Draw`/`DrawIndexed`, encoder-side validation for pipeline and index buffer bindings, and updated requirements checklist.

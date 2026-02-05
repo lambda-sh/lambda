@@ -3,13 +3,13 @@ title: "Immediates: Draw Multiple 2D Triangles"
 document_id: "immediates-multiple-triangles-tutorial-2025-12-16"
 status: "draft"
 created: "2025-12-16T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.2.3"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.2.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "87aa423aca541823f271101e5bac390f5ca54c42"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "immediates", "triangle", "rust", "wgpu"]
@@ -26,7 +26,7 @@ immediate values and issuing one draw per triangle.
 > behind the `Features::IMMEDIATES` feature flag. The GLSL shaders still use
 > `layout(push_constant)` syntax.
 
-Reference implementation: `crates/lambda-rs/examples/triangles.rs`.
+Reference implementation: `demos/render/src/bin/triangles.rs`.
 
 ## Table of Contents
 
@@ -56,7 +56,7 @@ Reference implementation: `crates/lambda-rs/examples/triangles.rs`.
 ## Prerequisites <a name="prerequisites"></a>
 
 - The workspace builds: `cargo build --workspace`.
-- The `lambda-rs` crate examples run: `cargo run -p lambda-rs --example minimal`.
+- The minimal demo runs: `cargo run -p lambda-demos-minimal --bin minimal`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
@@ -229,7 +229,7 @@ per-component pattern matching over the full `Events` enum.
 ## Validation <a name="validation"></a>
 
 - Build: `cargo build --workspace`
-- Run: `cargo run -p lambda-rs --example triangles`
+- Run: `cargo run -p lambda-demos-render --bin triangles`
 - Expected behavior: a window opens and shows multiple colored triangles; the
   `W`, `A`, `S`, and `D` keys move one triangle.
 
@@ -273,9 +273,10 @@ issuing repeated draws within one render pass.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.2.4 (2026-02-05): Update demo commands and reference paths for `demos/`.
 - 0.2.3 (2026-01-16): Normalize event handler terminology.
 - 0.2.2 (2026-01-16): Add `event_mask()` and `on_*_event` handler examples.
 - 0.2.1 (2026-01-07): Remove stage usage from immediates API examples.
 - 0.2.0 (2026-01-05): Updated to use wgpu v28 immediates terminology.
 - 0.1.0 (2025-12-16): Initial draft aligned with
-  `crates/lambda-rs/examples/triangles.rs`.
+  `demos/render/src/bin/triangles.rs`.

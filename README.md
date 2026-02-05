@@ -134,26 +134,27 @@ Start with the tutorials to build features step by step:
 
 ## Examples <a name="examples"></a>
 
-Browse example sources:
+Browse runnable demos and example sources:
 
-* Core API examples: [crates/lambda-rs/examples/](./crates/lambda-rs/examples/)
+* Demo crates (recommended): [demos/](./demos/)
+* Minimal rustdoc examples: [crates/lambda-rs/examples/](./crates/lambda-rs/examples/)
 * Logging examples: [crates/lambda-rs-logging/examples/](./crates/lambda-rs-logging/examples/)
 * Argument parsing examples: [crates/lambda-rs-args/examples/](./crates/lambda-rs-args/examples/)
 
 ### Minimal
 
-A minimal example of an application with a working window using lambda.
+A minimal demo of an application with a working window using lambda.
 
-```rust
-cargo run --example minimal
+```bash
+cargo run -p lambda-demos-minimal --bin minimal
 ```
 
 ### Immediates
 
 An example of using shaders with immediates (per-draw data) to render a 3D image.
 
-```rust
-cargo run --example immediates
+```bash
+cargo run -p lambda-demos-render --bin immediates
 ```
 
 #### Notes
@@ -166,16 +167,16 @@ in either dx11 or dx12.
 
 An example using shaders to render a single triangle.
 
-```rust
-cargo run --example triangle
+```bash
+cargo run -p lambda-demos-render --bin triangle
 ```
 
 ### Triangles
 
 An example using shaders to render multiple triangles and keyboard input to move one of the triangles on screen.
 
-```rust
-cargo run --example triangles
+```bash
+cargo run -p lambda-demos-render --bin triangles
 ```
 
 ## Plans <a name="plans"></a>

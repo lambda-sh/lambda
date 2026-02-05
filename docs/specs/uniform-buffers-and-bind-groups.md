@@ -3,13 +3,13 @@ title: "Uniform Buffers and Bind Groups"
 document_id: "ubo-spec-2025-10-11"
 status: "living"
 created: "2025-10-11T00:00:00Z"
-last_updated: "2025-12-15T00:00:00Z"
-version: "0.5.0"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.5.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "uniforms", "bind-groups", "wgpu"]
@@ -278,7 +278,7 @@ RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
   - [x] Dynamic offsets example provided — docs/specs/uniform-buffers-and-bind-groups.md
 - Documentation and Examples
   - [x] Spec updated (this document)
-  - [x] Example added — crates/lambda-rs/examples/uniform_buffer_triangle.rs
+  - [x] Example added — demos/render/src/bin/uniform_buffer_triangle.rs
 
 ## Verification and Testing
 
@@ -288,8 +288,8 @@ RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
   - Command encoding satisfies device limits — crates/lambda-rs/src/render/command.rs
   - Command: `cargo test --workspace`
 - Integration tests and examples
-  - `uniform_buffer_triangle` exercises the full path — crates/lambda-rs/examples/uniform_buffer_triangle.rs
-  - Command: `cargo run -p lambda-rs --example uniform_buffer_triangle`
+  - `uniform_buffer_triangle` exercises the full path — demos/render/src/bin/uniform_buffer_triangle.rs
+  - Command: `cargo run -p lambda-demos-render --bin uniform_buffer_triangle`
 - Manual checks (optional)
   - Validate dynamic offsets across multiple objects render correctly (no
     misaligned reads) by varying object counts and strides.
@@ -302,6 +302,7 @@ RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
 
 ## Changelog
 
+- 2026-02-05 (v0.5.1) — Update demo and example references for `demos/`.
 - 2025-12-15 (v0.5.0) — Update example code to use `rc.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPipelineBuilder`.
 - 2025-10-17 (v0.4.0) — Restructure to match spec template: add Summary, Scope,
   Terminology, Design (API/Behavior/Validation), Constraints and Rules,

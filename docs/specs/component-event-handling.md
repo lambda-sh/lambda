@@ -3,13 +3,13 @@ title: "Component Event Handling"
 document_id: "component-event-handling-2026-01-10"
 status: "draft"
 created: "2026-01-10T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.1.1"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.1.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "events", "components", "runtime"]
@@ -227,7 +227,7 @@ winit event loop
     `crates/lambda-rs/src/runtimes/application.rs`)
 - Documentation and Examples
   - [x] Examples updated to implement `event_mask` and granular handlers (Ref:
-    `crates/lambda-rs/examples/`)
+    `demos/render/src/bin/`)
   - [x] `docs/features.md` checked for relevance (no new features expected)
     (Ref: `docs/features.md`)
   - [x] Migration notes added to component documentation (Ref:
@@ -268,5 +268,6 @@ path that demonstrates the implementation.
 
 ## Changelog
 
+- 2026-02-05 (v0.1.2) — Update example references to demo crates under `demos/`.
 - 2026-01-16 (v0.1.1) — Update checklist references and align docs.
 - 2026-01-10 (v0.1.0) — Initial draft.

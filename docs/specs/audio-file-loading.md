@@ -3,13 +3,13 @@ title: "Audio File Loading (SoundBuffer)"
 document_id: "audio-file-loading-2026-01-31"
 status: "draft"
 created: "2026-01-31T22:07:49Z"
-last_updated: "2026-02-02T22:57:02Z"
-version: "0.2.2"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.2.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "6a5fd409c8097665ffd6e6a4a976206320ae4f80"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "audio", "lambda-rs", "platform", "assets"]
@@ -308,7 +308,7 @@ Recommendations
   - [x] `docs/features.md` updated with new features and defaults
         (`docs/features.md`)
   - [x] Minimal example loads a sound file and prints metadata
-        (`crates/lambda-rs/examples/sound_buffer_load.rs`)
+        (`demos/audio/src/bin/sound_buffer.rs`)
 - Tests
   - [x] Unit tests cover WAV mono and stereo
         (`crates/lambda-rs-platform/src/audio/symphonia/mod.rs`)
@@ -341,7 +341,7 @@ Commands
 
 ### Example
 
-- Provide `crates/lambda-rs/examples/sound_buffer_load.rs`.
+- Provide `demos/audio/src/bin/sound_buffer.rs`.
 - The example SHOULD load a file path provided via CLI args and print:
   - channels
   - sample rate
@@ -356,6 +356,7 @@ Commands
 
 ## Changelog
 
+- 2026-02-05 (v0.2.3) — Update example references to demo crates under `demos/`.
 - 2026-02-02 (v0.2.2) — Align spec with feature-gated `SoundBuffer` surface and
   implemented fixtures.
 - 2026-01-31 (v0.2.0) — Center decoding on `symphonia` 0.5.5.
