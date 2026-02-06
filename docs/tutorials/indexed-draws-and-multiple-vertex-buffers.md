@@ -3,13 +3,13 @@ title: "Indexed Draws and Multiple Vertex Buffers"
 document_id: "indexed-draws-multiple-vertex-buffers-tutorial-2025-11-22"
 status: "draft"
 created: "2025-11-22T00:00:00Z"
-last_updated: "2026-01-24T00:00:00Z"
-version: "0.3.3"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.3.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "df476b77e1f2a17818869c3218cf223ab935c456"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "indexed-draws", "vertex-buffers", "rust", "wgpu"]
@@ -19,7 +19,7 @@ tags: ["tutorial", "graphics", "indexed-draws", "vertex-buffers", "rust", "wgpu"
 
 This tutorial constructs a small scene rendered with indexed geometry and multiple vertex buffers. The example separates per-vertex positions from per-vertex colors and draws the result using the engine’s high-level buffer and command builders.
 
-Reference implementation: `crates/lambda-rs/examples/indexed_multi_vertex_buffers.rs`.
+Reference implementation: `demos/render/src/bin/indexed_multi_vertex_buffers.rs`.
 
 ## Table of Contents
 
@@ -52,8 +52,8 @@ Reference implementation: `crates/lambda-rs/examples/indexed_multi_vertex_buffer
 - The workspace builds successfully: `cargo build --workspace`.
 - Familiarity with the basics of the runtime and component model.
 - Ability to run examples and tutorials:
-  - `cargo run --example minimal`
-  - `cargo run -p lambda-rs --example textured_quad`
+  - `cargo run -p lambda-demos-minimal --bin minimal`
+  - `cargo run -p lambda-demos-render --bin textured_quad`
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
@@ -476,7 +476,7 @@ The commands bind both vertex buffers and the index buffer before issuing `DrawI
 ## Validation <a name="validation"></a>
 
 - Commands:
-  - `cargo run -p lambda-rs --example indexed_multi_vertex_buffers`
+  - `cargo run -p lambda-demos-render --bin indexed_multi_vertex_buffers`
   - `cargo test -p lambda-rs -- --nocapture`
 - Expected behavior:
   - Indexed geometry renders correctly with distinct colors sourced from a second vertex buffer.
@@ -490,7 +490,7 @@ The commands bind both vertex buffers and the index buffer before issuing `DrawI
 
 ## Conclusion <a name="conclusion"></a>
 
-This tutorial demonstrates how indexed draws and multiple vertex buffers combine to render geometry efficiently while keeping the engine’s high-level abstractions simple. The example in `crates/lambda-rs/examples/indexed_multi_vertex_buffers.rs` provides a concrete reference for applications that require indexed meshes or split vertex streams.
+This tutorial demonstrates how indexed draws and multiple vertex buffers combine to render geometry efficiently while keeping the engine’s high-level abstractions simple. The example in `demos/render/src/bin/indexed_multi_vertex_buffers.rs` provides a concrete reference for applications that require indexed meshes or split vertex streams.
 
 ## Exercises <a name="exercises"></a>
 
@@ -502,6 +502,7 @@ This tutorial demonstrates how indexed draws and multiple vertex buffers combine
 
 ## Changelog <a name="changelog"></a>
 
+- 2026-02-05 (v0.3.4) — Update demo commands and reference paths for `demos/`.
 - 2026-01-24 (v0.3.3) — Move `PlainOldData` to `lambda::pod::PlainOldData`.
 - 2026-01-24 (v0.3.2) — Add `PlainOldData` requirements for typed buffer data.
 - 2026-01-16 (v0.3.1) — Update resize handling examples to use `event_mask()` and `on_window_event`.

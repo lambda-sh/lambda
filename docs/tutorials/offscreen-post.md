@@ -3,13 +3,13 @@ title: "Offscreen Post: Render to a Texture and Sample to the Surface"
 document_id: "offscreen-post-tutorial-2025-12-29"
 status: "draft"
 created: "2025-12-29T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.2.1"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.2.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "offscreen", "render-targets", "multipass", "post-processing", "texture", "sampler", "wgpu", "rust"]
@@ -22,7 +22,7 @@ that target in a second pass to present the result on the window surface. The
 implementation demonstrates multi-pass rendering, bind groups for texture
 sampling, and resource replacement during window resize.
 
-Reference implementation: `crates/lambda-rs/examples/offscreen_post.rs`.
+Reference implementation: `demos/render/src/bin/offscreen_post.rs`.
 
 ## Table of Contents
 
@@ -55,8 +55,8 @@ Reference implementation: `crates/lambda-rs/examples/offscreen_post.rs`.
 ## Prerequisites <a name="prerequisites"></a>
 
 - The workspace builds: `cargo build --workspace`.
-- The `lambda-rs` crate examples run:
-  `cargo run -p lambda-rs --example minimal`.
+- The minimal demo runs:
+  `cargo run -p lambda-demos-minimal --bin minimal`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
@@ -676,7 +676,7 @@ presents the sampled result to the surface each frame.
 ## Validation <a name="validation"></a>
 
 - Build: `cargo build --workspace`
-- Run: `cargo run -p lambda-rs --example offscreen_post`
+- Run: `cargo run -p lambda-demos-render --bin offscreen_post`
 - Expected behavior:
   - A window opens and shows a solid-color triangle.
   - Resizing the window preserves the rendering without stretching artifacts.
@@ -726,8 +726,9 @@ a fullscreen quad and a bind group.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.2.2 (2026-02-05): Update demo commands and reference paths for `demos/`.
 - 0.2.1 (2026-01-16): Replace `on_event` resize handling with `event_mask()` and `on_window_event`.
 - 0.2.0 (2025-12-31): Update the tutorial to match the example’s `Default`,
   `on_attach`, `on_render`, and resize replacement structure.
 - 0.1.0 (2025-12-29): Initial draft aligned with
-  `crates/lambda-rs/examples/offscreen_post.rs`.
+  `demos/render/src/bin/offscreen_post.rs`.

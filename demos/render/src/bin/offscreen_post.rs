@@ -441,14 +441,22 @@ impl OffscreenPostExample {
 impl Default for OffscreenPostExample {
   fn default() -> Self {
     let triangle_vertex = VirtualShader::Source {
-      source: include_str!("../assets/shaders/triangle.vert").to_string(),
+      source: include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../crates/lambda-rs/assets/shaders/triangle.vert"
+      ))
+      .to_string(),
       kind: ShaderKind::Vertex,
       name: String::from("triangle"),
       entry_point: String::from("main"),
     };
 
     let triangle_fragment = VirtualShader::Source {
-      source: include_str!("../assets/shaders/triangle.frag").to_string(),
+      source: include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../crates/lambda-rs/assets/shaders/triangle.frag"
+      ))
+      .to_string(),
       kind: ShaderKind::Fragment,
       name: String::from("triangle"),
       entry_point: String::from("main"),

@@ -1,0 +1,15 @@
+[package]
+name = "lambda-demos-render"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+lambda-rs = { path = "../../crates/lambda-rs" }
+lambda-rs-logging = { path = "../../crates/lambda-rs-logging" }
+
+[features]
+default = []
+validation = ["lambda-rs/render-validation"]
+validation-strict = ["lambda-rs/render-validation-strict"]
+validation-all = ["lambda-rs/render-validation-all"]

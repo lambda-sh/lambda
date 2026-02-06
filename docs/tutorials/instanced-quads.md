@@ -3,13 +3,13 @@ title: "Instanced Rendering: Grid of Colored Quads"
 document_id: "instanced-quads-tutorial-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2026-01-24T00:00:00Z"
-version: "0.2.3"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.2.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "df476b77e1f2a17818869c3218cf223ab935c456"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "instancing", "vertex-buffers", "rust", "wgpu"]
@@ -19,7 +19,7 @@ tags: ["tutorial", "graphics", "instancing", "vertex-buffers", "rust", "wgpu"]
 
 This tutorial builds an instanced rendering example using the `lambda-rs` crate. The final application renders a grid of 2D quads that all share the same geometry but read per-instance offsets and colors from a second vertex buffer. The example demonstrates how to configure per-vertex and per-instance buffers, construct an instanced render pipeline, and issue draw commands with a multi-instance range.
 
-Reference implementation: `crates/lambda-rs/examples/instanced_quads.rs`.
+Reference implementation: `demos/render/src/bin/instanced_quads.rs`.
 
 ## Goals <a name="goals"></a>
 
@@ -33,8 +33,8 @@ Reference implementation: `crates/lambda-rs/examples/instanced_quads.rs`.
 - The workspace builds successfully: `cargo build --workspace`.
 - Familiarity with the `lambda-rs` runtime and component model, for example from the indexed draws and uniform buffer tutorials.
 - Ability to run examples:
-  - `cargo run -p lambda-rs --example minimal`
-  - `cargo run -p lambda-rs --example instanced_quads`
+  - `cargo run -p lambda-demos-minimal --bin minimal`
+  - `cargo run -p lambda-demos-render --bin instanced_quads`
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
@@ -486,7 +486,7 @@ The commands bind both vertex buffers and the index buffer before issuing `DrawI
 ## Validation <a name="validation"></a>
 
 - Commands:
-  - `cargo run -p lambda-rs --example instanced_quads`
+  - `cargo run -p lambda-demos-render --bin instanced_quads`
   - `cargo test -p lambda-rs -- --nocapture`
 - Expected behavior:
   - A grid of small quads appears in the window, with colors varying smoothly across the grid based on instance indices.
@@ -514,6 +514,7 @@ This tutorial demonstrates how the `lambda-rs` crate uses per-vertex and per-ins
 
 ## Changelog <a name="changelog"></a>
 
+- 2026-02-05 (v0.2.4) — Update reference paths for `demos/`.
 - 2026-01-24 (v0.2.3) — Move `PlainOldData` to `lambda::pod::PlainOldData`.
 - 2026-01-24 (v0.2.2) — Add `PlainOldData` requirements for typed buffer data.
 - 2026-01-16 (v0.2.1) — Update resize handling examples to use `event_mask()` and `on_window_event`.

@@ -1,4 +1,5 @@
 #![allow(clippy::needless_return)]
+
 use lambda::{
   component::Component,
   events::{
@@ -64,6 +65,7 @@ impl Component<ComponentResult, String> for TrianglesComponent {
         Some(&self.triangle_vertex),
       );
 
+    // Attach the render pass and pipeline to the render context
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
 
@@ -72,7 +74,7 @@ impl Component<ComponentResult, String> for TrianglesComponent {
   }
 
   fn on_detach(
-    &mut self,
+    self: &mut TrianglesComponent,
     _render_context: &mut RenderContext,
   ) -> Result<ComponentResult, String> {
     return Ok(ComponentResult::Success);
@@ -139,8 +141,8 @@ impl Component<ComponentResult, String> for TrianglesComponent {
       viewports: vec![viewport.clone()],
     });
 
-    // Upload triangle data into the the GPU at the vertex stage of the pipeline
-    // before requesting to draw each triangle.
+    // Upload triangle data into the the GPU at the vertex stage of the
+    // pipeline before requesting to draw each triangle.
     for triangle in triangle_data {
       commands.push(RenderCommand::Immediates {
         pipeline: render_pipeline,
@@ -236,14 +238,22 @@ impl Default for TrianglesComponent {
   fn default() -> Self {
     // Specify virtual shaders to use for rendering
     let triangle_vertex = VirtualShader::Source {
-      source: include_str!("../assets/shaders/triangles.vert").to_string(),
+      source: include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../crates/lambda-rs/assets/shaders/triangles.vert"
+      ))
+      .to_string(),
       kind: ShaderKind::Vertex,
       name: String::from("triangles"),
       entry_point: String::from("main"),
     };
 
     let triangle_fragment = VirtualShader::Source {
-      source: include_str!("../assets/shaders/triangles.frag").to_string(),
+      source: include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../crates/lambda-rs/assets/shaders/triangles.frag"
+      ))
+      .to_string(),
       kind: ShaderKind::Fragment,
       name: String::from("triangles"),
       entry_point: String::from("main"),

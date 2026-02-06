@@ -138,8 +138,8 @@ Temporary Items
 
 #!! ERROR: opengl is undefined. Use list command to see defined gitignore types !!#
 
-# Remove bin
-bin
+# Remove root-level bin
+/bin/
 
 # Remove clangd
 .clangd/

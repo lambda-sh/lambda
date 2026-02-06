@@ -1,29 +1,18 @@
 #![allow(clippy::needless_return)]
-//! Audio output example that plays a short sine wave tone.
+//! Audio output demo that plays a short sine wave tone.
 //!
-//! This example is application-facing and uses only the `lambda-rs` API surface.
+//! This demo assumes `lambda-demos-audio` is built with its default features.
 
-#[cfg(feature = "audio-output-device")]
 use std::{
   thread,
   time::Duration,
 };
 
-#[cfg(feature = "audio-output-device")]
 use lambda::audio::{
   enumerate_output_devices,
   AudioOutputDeviceBuilder,
 };
 
-#[cfg(not(feature = "audio-output-device"))]
-fn main() {
-  eprintln!(
-    "This example requires `lambda-rs` feature `audio-output-device`.\n\n\
-Run:\n  cargo run -p lambda-rs --example audio_sine_wave --features audio-output-device"
-  );
-}
-
-#[cfg(feature = "audio-output-device")]
 fn main() {
   let devices = match enumerate_output_devices() {
     Ok(devices) => devices,
@@ -44,7 +33,7 @@ fn main() {
   let mut phase_radians = 0.0f32;
 
   let device = AudioOutputDeviceBuilder::new()
-    .with_label("audio_sine_wave")
+    .with_label("sine-wave")
     .build_with_output_callback(move |writer, callback_info| {
       let phase_delta = std::f32::consts::TAU * frequency_hz
         / (callback_info.sample_rate as f32);
@@ -75,4 +64,5 @@ fn main() {
   println!("Playing 440 Hz sine wave for 2 seconds...");
   thread::sleep(Duration::from_secs(2));
   println!("Done.");
+  return;
 }

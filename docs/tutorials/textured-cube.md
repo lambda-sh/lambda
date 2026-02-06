@@ -3,13 +3,13 @@ title: "Textured Cube: 3D Immediates + 2D Sampling"
 document_id: "textured-cube-tutorial-2025-11-10"
 status: "draft"
 created: "2025-11-10T00:00:00Z"
-last_updated: "2026-01-19T00:00:00Z"
-version: "0.3.3"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.3.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "d0abc736e9d7308fdae80b2d0b568c4614f5a642"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "3d", "immediates", "textures", "samplers", "rust", "wgpu"]
@@ -19,7 +19,7 @@ tags: ["tutorial", "graphics", "3d", "immediates", "textures", "samplers", "rust
 
 This tutorial builds a spinning 3D cube that uses immediates to provide model‑view‑projection (MVP) and model matrices to the vertex shader, and samples a 2D checkerboard texture in the fragment shader. Depth testing and back‑face culling are enabled so hidden faces do not render.
 
-Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
+Reference implementation: `demos/render/src/bin/textured_cube.rs`.
 
 ## Table of Contents
 
@@ -55,7 +55,7 @@ Reference implementation: `crates/lambda-rs/examples/textured_cube.rs`.
 ## Prerequisites <a name="prerequisites"></a>
 
 - Workspace builds: `cargo build --workspace`.
-- Run a quick example: `cargo run --example minimal`.
+- Run the minimal demo: `cargo run -p lambda-demos-minimal --bin minimal`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
@@ -512,7 +512,7 @@ fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
 ## Validation <a name="validation"></a>
 
 - Build the workspace: `cargo build --workspace`
-- Run the example: `cargo run -p lambda-rs --example textured_cube`
+- Run the demo: `cargo run -p lambda-demos-render --bin textured_cube`
 - Expected behavior: a spinning cube shows a gray checkerboard on all faces, shaded by a directional light. Hidden faces do not render due to back‑face culling and depth testing.
 
 ## Notes <a name="notes"></a>
@@ -536,7 +536,7 @@ transforms alongside 2D sampling in a 3D render path.
 
 ## Putting It Together <a name="putting-it-together"></a>
 
-- Full reference: `crates/lambda-rs/examples/textured_cube.rs`
+- Full reference: `demos/render/src/bin/textured_cube.rs`
 - The example includes logging in `on_attach` and uses the same builders and commands shown here.
 
 ## Exercises <a name="exercises"></a>
@@ -558,9 +558,10 @@ transforms alongside 2D sampling in a 3D render path.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.3.4 (2026-02-05): Update demo commands and reference paths for `demos/`.
 - 0.3.2 (2026-01-16): Replace `on_event` resize handling with `event_mask()` and `on_window_event`.
 - 0.3.1 (2026-01-07): Remove stage usage from immediates API examples.
 - 0.3.0 (2026-01-05): Migrate from push constants to immediates for wgpu v28; update all code examples and terminology.
 - 0.2.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.1.1 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
-- 0.1.0 (2025-11-10): Initial draft aligned with `crates/lambda-rs/examples/textured_cube.rs` including immediates, depth, culling, and projected UV sampling.
+- 0.1.0 (2025-11-10): Initial draft aligned with `demos/render/src/bin/textured_cube.rs` including immediates, depth, culling, and projected UV sampling.

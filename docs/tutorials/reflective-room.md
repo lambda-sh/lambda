@@ -3,13 +3,13 @@ title: "Reflective Floor: Stencil‑Masked Planar Reflections"
 document_id: "reflective-room-tutorial-2025-11-17"
 status: "draft"
 created: "2025-11-17T00:00:00Z"
-last_updated: "2026-01-19T00:00:00Z"
-version: "0.4.4"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.4.5"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "d0abc736e9d7308fdae80b2d0b568c4614f5a642"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "stencil", "depth", "msaa", "mirror", "3d", "immediates", "wgpu", "rust"]
@@ -19,7 +19,7 @@ tags: ["tutorial", "graphics", "stencil", "depth", "msaa", "mirror", "3d", "imme
 
 This tutorial builds a reflective floor using the stencil buffer with an optional depth test and 4× multi‑sample anti‑aliasing (MSAA). The scene renders in four phases: a floor mask into stencil, a mirrored cube clipped by the mask, a translucent lit floor surface, and a normal cube above the plane. The camera looks down at a moderate angle so the reflection is clearly visible.
 
-Reference implementation: `crates/lambda-rs/examples/reflective_room.rs`.
+Reference implementation: `demos/render/src/bin/reflective_room.rs`.
 
 ## Table of Contents
 
@@ -57,7 +57,7 @@ Reference implementation: `crates/lambda-rs/examples/reflective_room.rs`.
 ## Prerequisites <a name="prerequisites"></a>
 
 - Build the workspace: `cargo build --workspace`.
-- Run an example to verify setup: `cargo run --example minimal`.
+- Run the minimal demo to verify setup: `cargo run -p lambda-demos-minimal --bin minimal`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
@@ -198,7 +198,7 @@ pub fn immediate_data_to_words(data: &ImmediateData) -> &[u32] {
 
 Build a unit cube (36 vertices) with per‑face normals and a large XZ floor quad at `y = 0`. Provide matching vertex attributes for position and normal at locations 0 and 1.
 
-Reference: `crates/lambda-rs/examples/reflective_room.rs:740` and `crates/lambda-rs/examples/reflective_room.rs:807`.
+Reference: `demos/render/src/bin/reflective_room.rs:740` and `demos/render/src/bin/reflective_room.rs:807`.
 
 ### Step 4 — Render Passes: Mask and Color <a name="step-4"></a>
 
@@ -434,7 +434,7 @@ Support runtime toggles to observe the impact of each setting:
 - `I` and `K` adjust the camera pitch up/down in small steps.
 - On window resize, update stored `width` and `height` and use them when computing the viewport and projection matrix.
 
-Reference: `crates/lambda-rs/examples/reflective_room.rs:164`.
+Reference: `demos/render/src/bin/reflective_room.rs:164`.
 
 Implement resize and toggles using `event_mask()` and `on_*_event` handlers.
 
@@ -488,7 +488,7 @@ rebuilt on the next frame with the updated MSAA/depth/stencil settings.
 
 ## Validation <a name="validation"></a>
 
-- Build and run: `cargo run --example reflective_room`.
+- Build and run: `cargo run -p lambda-demos-render --bin reflective_room`.
 - Expected behavior:
   - A cube rotates above a reflective floor. The reflection appears only inside the floor area and shows correct mirroring.
   - Press `S` to toggle the reflection (stencil). The reflected cube disappears when stencil is off.
@@ -515,7 +515,7 @@ The reflective floor combines a simple stencil mask with an optional depth test 
 
 ## Putting It Together <a name="putting-it-together"></a>
 
-- Full reference: `crates/lambda-rs/examples/reflective_room.rs`.
+- Full reference: `demos/render/src/bin/reflective_room.rs`.
 
 ## Exercises <a name="exercises"></a>
 
@@ -529,6 +529,7 @@ The reflective floor combines a simple stencil mask with an optional depth test 
 
 ## Changelog <a name="changelog"></a>
 
+- 2026-02-05, 0.4.5: Update demo commands and reference paths for `demos/`.
 - 2026-01-16, 0.4.3: Normalize event handler terminology.
 - 2026-01-16, 0.4.2: Add `event_mask()` and `on_*_event` handler examples.
 - 2026-01-07, 0.4.1: Remove stage usage from immediates API examples.
@@ -536,4 +537,4 @@ The reflective floor combines a simple stencil mask with an optional depth test 
 - 2025-12-15, 0.3.0: Update builder API calls to use `ctx.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-21, 0.2.2: Align tutorial with removal of the unmasked reflection debug toggle in the example and update metadata to the current engine workspace commit.
 - 0.2.0 (2025‑11‑19): Updated for camera pitch, front‑face culling on reflection, lit translucent floor, unmasked reflection debug toggle, floor overlay toggle, and Metal portability note.
-- 0.1.0 (2025‑11‑17): Initial draft aligned with `crates/lambda-rs/examples/reflective_room.rs`, including stencil mask pass, reflected pipeline, and MSAA/depth toggles.
+- 0.1.0 (2025‑11‑17): Initial draft aligned with `demos/render/src/bin/reflective_room.rs`, including stencil mask pass, reflected pipeline, and MSAA/depth toggles.

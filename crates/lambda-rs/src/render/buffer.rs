@@ -16,7 +16,7 @@
 //! - Creating a vertex buffer from a mesh: `BufferBuilder::build_from_mesh`.
 //! - Creating a uniform buffer and updating it each frame:
 //!   see `UniformBuffer<T>` below and the runnable example
-//!   `crates/lambda-rs/examples/uniform_buffer_triangle.rs`.
+//!   `demos/render/src/bin/uniform_buffer_triangle.rs`.
 
 use std::rc::Rc;
 

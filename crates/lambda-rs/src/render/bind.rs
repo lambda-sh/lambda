@@ -15,7 +15,7 @@
 //!   `SetBindGroup` time. Offsets MUST follow the device’s
 //!   `min_uniform_buffer_offset_alignment`.
 //!
-//! See `crates/lambda-rs/examples/uniform_buffer_triangle.rs` for a complete
+//! See `demos/render/src/bin/uniform_buffer_triangle.rs` for a complete
 //! example.
 
 use std::rc::Rc;

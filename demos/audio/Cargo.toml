@@ -1,0 +1,16 @@
+[package]
+name = "lambda-demos-audio"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+lambda-rs = { path = "../../crates/lambda-rs" }
+
+[features]
+default = ["audio"]
+audio = ["audio-output-device", "audio-sound-buffer"]
+audio-output-device = ["lambda-rs/audio-output-device"]
+audio-sound-buffer = ["lambda-rs/audio-sound-buffer"]
+audio-sound-buffer-wav = ["lambda-rs/audio-sound-buffer-wav"]
+audio-sound-buffer-vorbis = ["lambda-rs/audio-sound-buffer-vorbis"]

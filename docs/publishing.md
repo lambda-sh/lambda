@@ -3,13 +3,13 @@ title: "Release and Publishing Guide"
 document_id: "release-guide-2025-09-28"
 status: "living"
 created: "2025-09-28T00:00:00Z"
-last_updated: "2025-09-28T00:00:00Z"
-version: "0.1.0"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.1.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "fda8ee236986"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "releases", "publishing", "ci"]
@@ -139,11 +139,12 @@ Jobs run in this order when manually triggered:
 ## Manual Verification (optional)
 
 - Before cutting a release, you can verify examples locally:
-  - `cargo run --example minimal`
+  - `cargo run -p lambda-demos-minimal --bin minimal`
 - For native engine builds:
   - `scripts/compile_lambda.sh --build Debug`
   - `scripts/compile_and_test.sh --os MacOS`
 
 ## Changelog
 
+- 0.1.1 – Update demo run commands for `demos/`.
 - 0.1.0 – Initial authoring of the guide and workflow documentation.

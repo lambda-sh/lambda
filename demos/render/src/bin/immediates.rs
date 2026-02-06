@@ -222,15 +222,19 @@ impl Component<ComponentResult, String> for ImmediatesExample {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    if let WindowEvent::Resize { width, height } = event {
-      self.width = *width;
-      self.height = *height;
-      logging::info!("Window resized to {}x{}", width, height);
+    match event {
+      WindowEvent::Resize { width, height } => {
+        logging::info!("Window resized to {}x{}", width, height);
+        self.width = *width;
+        self.height = *height;
+      }
+      WindowEvent::Close => {
+        logging::info!("Window closed");
+      }
     }
     return Ok(());
   }
 
-  /// Update elapsed time every frame.
   fn on_update(
     &mut self,
     last_frame: &std::time::Duration,
@@ -242,96 +246,103 @@ impl Component<ComponentResult, String> for ImmediatesExample {
   fn on_render(
     &mut self,
     _render_context: &mut lambda::render::RenderContext,
-  ) -> Vec<lambda::render::command::RenderCommand> {
+  ) -> Vec<RenderCommand> {
+    let viewport =
+      viewport::ViewportBuilder::new().build(self.width, self.height);
+
+    let render_pass = self
+      .render_pass
+      .expect("Cannot begin the render pass when it doesn't exist.");
+    let render_pipeline = self
+      .render_pipeline
+      .expect("No render pipeline actively set for rendering.");
+
     let camera = SimpleCamera {
       position: [0.0, 0.0, 3.0],
       field_of_view_in_turns: 0.25,
       near_clipping_plane: 0.1,
       far_clipping_plane: 100.0,
     };
-    let angle_in_turns = ROTATION_TURNS_PER_SECOND * self.elapsed_seconds;
+
+    let turns = (self.elapsed_seconds * ROTATION_TURNS_PER_SECOND) % 1.0_f32;
     let mesh_matrix = compute_model_view_projection_matrix_about_pivot(
       &camera,
       self.width.max(1),
       self.height.max(1),
       [0.0, -1.0 / 3.0, 0.0],
       [0.0, 1.0, 0.0],
-      angle_in_turns,
+      turns,
       0.5,
       [0.0, 1.0 / 3.0, 0.0],
     );
 
-    // Create viewport.
-    let viewport =
-      viewport::ViewportBuilder::new().build(self.width, self.height);
+    // All state setting must be inside the render pass.
+    let mut commands = vec![RenderCommand::BeginRenderPass {
+      render_pass,
+      viewport: viewport.clone(),
+    }];
 
-    let render_pipeline = self
-      .render_pipeline
-      .expect("No render pipeline actively set for rendering.");
+    commands.push(RenderCommand::SetPipeline {
+      pipeline: render_pipeline,
+    });
+    commands.push(RenderCommand::SetViewports {
+      start_at: 0,
+      viewports: vec![viewport.clone()],
+    });
+    commands.push(RenderCommand::SetScissors {
+      start_at: 0,
+      viewports: vec![viewport.clone()],
+    });
 
-    return vec![
-      RenderCommand::BeginRenderPass {
-        render_pass: self
-          .render_pass
-          .expect("Cannot begin the render pass when it doesn't exist."),
-        viewport: viewport.clone(),
-      },
-      RenderCommand::SetPipeline {
-        pipeline: render_pipeline,
-      },
-      RenderCommand::SetViewports {
-        start_at: 0,
-        viewports: vec![viewport.clone()],
-      },
-      RenderCommand::SetScissors {
-        start_at: 0,
-        viewports: vec![viewport.clone()],
-      },
-      RenderCommand::BindVertexBuffer {
-        pipeline: render_pipeline,
-        buffer: 0,
-      },
-      RenderCommand::Immediates {
-        pipeline: render_pipeline,
-        offset: 0,
-        bytes: Vec::from(immediate_data_to_bytes(&ImmediateData {
-          data: [0.0, 0.0, 0.0, 0.0],
-          // Transpose to match GPU's column‑major expectation.
-          render_matrix: mesh_matrix.transpose(),
-        })),
-      },
-      RenderCommand::Draw {
-        vertices: 0..self.mesh.as_ref().unwrap().vertices().len() as u32,
-        instances: 0..1,
-      },
-      RenderCommand::EndRenderPass,
-    ];
+    commands.push(RenderCommand::BindVertexBuffer {
+      pipeline: render_pipeline,
+      buffer: 0,
+    });
+
+    let immediate = ImmediateData {
+      data: [0.0, 0.0, 0.0, 0.0],
+      render_matrix: mesh_matrix.transpose(),
+    };
+    commands.push(RenderCommand::Immediates {
+      pipeline: render_pipeline,
+      offset: 0,
+      bytes: Vec::from(immediate_data_to_bytes(&immediate)),
+    });
+
+    commands.push(RenderCommand::Draw {
+      vertices: 0..self.mesh.as_ref().unwrap().vertices().len() as u32,
+      instances: 0..1,
+    });
+    commands.push(RenderCommand::EndRenderPass);
+
+    return commands;
   }
 }
 
 impl Default for ImmediatesExample {
   fn default() -> Self {
-    let triangle_in_3d = VirtualShader::Source {
+    let triangle_vertex = VirtualShader::Source {
       source: VERTEX_SHADER_SOURCE.to_string(),
       kind: ShaderKind::Vertex,
-      entry_point: "main".to_string(),
-      name: "immediates".to_string(),
+      name: String::from("immediates"),
+      entry_point: String::from("main"),
     };
 
-    let triangle_fragment_shader = VirtualShader::Source {
+    let triangle_fragment = VirtualShader::Source {
       source: FRAGMENT_SHADER_SOURCE.to_string(),
       kind: ShaderKind::Fragment,
-      entry_point: "main".to_string(),
-      name: "immediates".to_string(),
+      name: String::from("immediates"),
+      entry_point: String::from("main"),
     };
 
+    // Create a shader builder to compile the shaders.
     let mut builder = ShaderBuilder::new();
-    let shader = builder.build(triangle_in_3d);
-    let fs = builder.build(triangle_fragment_shader);
+    let vs = builder.build(triangle_vertex);
+    let fs = builder.build(triangle_fragment);
 
-    return Self {
+    return ImmediatesExample {
       elapsed_seconds: 0.0,
-      shader,
+      shader: vs,
       fs,
       mesh: None,
       render_pipeline: None,
@@ -343,17 +354,17 @@ impl Default for ImmediatesExample {
 }
 
 fn main() {
-  let runtime = ApplicationRuntimeBuilder::new("3D Immediates Example")
+  let runtime = ApplicationRuntimeBuilder::new("Immediates Demo")
+    .with_renderer_configured_as(move |render_context_builder| {
+      return render_context_builder.with_render_timeout(1_000_000_000);
+    })
     .with_window_configured_as(move |window_builder| {
       return window_builder
-        .with_dimensions(800, 600)
-        .with_name("3D Immediates Example");
+        .with_dimensions(1200, 600)
+        .with_name("Immediates Window");
     })
-    .with_renderer_configured_as(|renderer_builder| {
-      return renderer_builder.with_render_timeout(1_000_000_000);
-    })
-    .with_component(move |runtime, triangles: ImmediatesExample| {
-      return (runtime, triangles);
+    .with_component(move |runtime, demo: ImmediatesExample| {
+      return (runtime, demo);
     })
     .build();
 

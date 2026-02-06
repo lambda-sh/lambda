@@ -3,13 +3,13 @@ title: "Offscreen Render Targets and Multipass Rendering"
 document_id: "offscreen-render-targets-2025-11-25"
 status: "draft"
 created: "2025-11-25T00:00:00Z"
-last_updated: "2025-12-29T00:00:00Z"
-version: "0.2.5"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.2.6"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "bc191ae9d47e9339390b9c21e47933a36d737987"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "offscreen", "multipass"]
@@ -377,7 +377,7 @@ Gating requirements
   - [x] Pass/pipeline/destination compatibility checks implemented.
   - [x] `docs/features.md` updated to list the feature, default state, and cost.
 - Documentation and Examples
-  - [x] Minimal render-to-texture example added under `crates/lambda-rs/examples/`.
+  - [x] Minimal render-to-texture example added under `demos/render/src/bin/offscreen_post.rs`.
   - [ ] Rendering guide updated to include an offscreen multipass walkthrough.
   - [ ] Migration notes added for consumers adopting destination-based passes.
 
@@ -397,7 +397,7 @@ Gating requirements
   - Render-to-texture example:
     - Pass 1: scene → offscreen destination.
     - Pass 2: fullscreen quad sampling `offscreen.color_texture()` → surface.
-  - Commands: `cargo run -p lambda-rs --example offscreen_post`
+  - Commands: `cargo run -p lambda-demos-render --bin offscreen_post`
 - Manual checks
   - Visual confirmation that:
     - Offscreen-only passes do not produce visible output until sampled.
@@ -420,6 +420,7 @@ Gating requirements
 
 ## Changelog
 
+- 2026-02-05 (v0.2.6) — Update demo and example references for `demos/`.
 - 2025-12-29 (v0.2.5) — Remove references to `lambda::render::target` and
   `lambda::render::render_target` compatibility shims; document
   `lambda::render::targets::{surface,offscreen}` as the canonical module

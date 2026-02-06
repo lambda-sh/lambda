@@ -1,10 +1,10 @@
 #![allow(clippy::needless_return)]
 
-//! Example: Instanced 2D quads with per-instance vertex data.
+//! Demo: Instanced 2D quads with per-instance vertex data.
 //!
-//! This example renders a grid of quads that all share the same geometry
-//! but use per-instance offsets and colors supplied from a second vertex
-//! buffer. It exercises `RenderPipelineBuilder::with_instance_buffer` and
+//! This demo renders a grid of quads that all share the same geometry but use
+//! per-instance offsets and colors supplied from a second vertex buffer. It
+//! exercises `RenderPipelineBuilder::with_instance_buffer` and
 //! `RenderCommand::DrawIndexed` with a non-trivial instance range.
 
 use lambda::{

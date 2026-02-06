@@ -3,13 +3,13 @@ title: "Depth/Stencil and Multi-Sample Rendering"
 document_id: "depth-stencil-msaa-2025-11-11"
 status: "draft"
 created: "2025-11-11T00:00:00Z"
-last_updated: "2025-12-15T00:00:00Z"
-version: "0.5.0"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.5.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "71256389b9efe247a59aabffe9de58147b30669d"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "rendering", "depth", "stencil", "msaa"]
@@ -248,8 +248,8 @@ Always-on safeguards (release and debug)
     and 4; verify occlusion and smoother edges when multi-sampling is enabled.
   - Commands: `cargo test --workspace`
 - Manual Checks (if necessary)
-  - Run `cargo run --example minimal` with a toggle for multi-sampling and
-    observe aliasing reduction with 4x multi-sampling.
+  - Run `cargo run -p lambda-demos-minimal --bin minimal` with a toggle for
+    multi-sampling and observe aliasing reduction with 4x multi-sampling.
 
 ## Compatibility and Migration
 
@@ -259,6 +259,7 @@ Always-on safeguards (release and debug)
 
 ## Changelog
 
+- 2026-02-05 (v0.5.1) — Update demo run commands for `demos/`.
 - 2025-12-15 (v0.5.0) — Update example code to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 2025-11-21 (v0.4.1) — Clarify depth attachment and clear behavior for
   stencil-only passes; align specification with engine behavior that preserves

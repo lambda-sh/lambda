@@ -43,7 +43,8 @@ body:
       description: Provide minimal steps to reproduce the issue.
       placeholder: |
         1. Clone repository
-        2. Run `cargo run --example <name>`
+        2. Run `cargo run -p lambda-demos-render --bin <name>` (or the relevant
+           `lambda-demos-*` crate)
         3. Observe error/unexpected behavior
     validations:
       required: true

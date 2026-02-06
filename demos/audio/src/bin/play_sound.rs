@@ -1,13 +1,9 @@
 #![allow(clippy::needless_return)]
-//! Audio example that plays the bundled "slash" OGG Vorbis fixture.
+//! Audio demo that plays the bundled "slash" OGG Vorbis fixture.
 //!
-//! This example validates that `SoundBuffer` decoding and audio output playback
+//! This demo validates that `SoundBuffer` decoding and audio output playback
 //! can be composed together using only the `lambda-rs` API surface.
 
-#[cfg(all(
-  feature = "audio-output-device",
-  feature = "audio-sound-buffer-vorbis"
-))]
 use std::{
   sync::{
     atomic::{
@@ -19,23 +15,15 @@ use std::{
   time::Duration,
 };
 
-#[cfg(all(
-  feature = "audio-output-device",
-  feature = "audio-sound-buffer-vorbis"
-))]
 use lambda::audio::{
   AudioOutputDeviceBuilder,
   SoundBuffer,
 };
 
-#[cfg(all(
-  feature = "audio-output-device",
-  feature = "audio-sound-buffer-vorbis"
-))]
 fn main() {
   const SLASH_VORBIS_STEREO_48000_OGG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../lambda-rs-platform/assets/audio/slash_vorbis_stereo_48000.ogg"
+    "/../../crates/lambda-rs-platform/assets/audio/slash_vorbis_stereo_48000.ogg"
   ));
 
   let buffer =
@@ -48,7 +36,7 @@ fn main() {
   let buffer_for_callback = buffer.clone();
 
   let _device = AudioOutputDeviceBuilder::new()
-    .with_label("play-slash-sound")
+    .with_label("play-sound")
     .with_sample_rate(buffer.sample_rate())
     .with_channels(buffer.channels())
     .build_with_output_callback(move |writer, _info| {
@@ -83,19 +71,5 @@ fn main() {
 
   std::thread::sleep(Duration::from_secs_f32(buffer.duration_seconds() + 0.20));
   drop(_device);
-  return;
-}
-
-#[cfg(not(all(
-  feature = "audio-output-device",
-  feature = "audio-sound-buffer-vorbis"
-)))]
-fn main() {
-  eprintln!(
-    "This example requires `lambda-rs` features `audio-output-device` and \
-`audio-sound-buffer-vorbis`.\n\n\
-Run:\n  cargo run -p lambda-rs --example play_slash_sound \\\n\
-    --features audio-output-device,audio-sound-buffer-vorbis"
-  );
   return;
 }

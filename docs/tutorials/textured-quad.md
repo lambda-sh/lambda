@@ -3,13 +3,13 @@ title: "Textured Quad: Sample a 2D Texture"
 document_id: "textured-quad-tutorial-2025-11-01"
 status: "draft"
 created: "2025-11-01T00:00:00Z"
-last_updated: "2026-01-16T00:00:00Z"
-version: "0.4.1"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.4.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "9435ad1491b5930054117406abe08dd1c37f2102"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "textures", "samplers", "rust", "wgpu"]
@@ -19,7 +19,7 @@ tags: ["tutorial", "graphics", "textures", "samplers", "rust", "wgpu"]
 
 This tutorial builds a textured quad using a sampled 2D texture and sampler. It covers creating pixel data on the central processing unit (CPU), uploading to a graphics processing unit (GPU) texture, defining a sampler, wiring a bind group layout, and sampling the texture in the fragment shader.
 
-Reference implementation: `crates/lambda-rs/examples/textured_quad.rs`.
+Reference implementation: `demos/render/src/bin/textured_quad.rs`.
 
 ## Table of Contents
 
@@ -54,7 +54,7 @@ Reference implementation: `crates/lambda-rs/examples/textured_quad.rs`.
 ## Prerequisites <a name="prerequisites"></a>
 
 - Workspace builds: `cargo build --workspace`.
-- Run any example to verify setup: `cargo run --example minimal`.
+- Run the minimal demo to verify setup: `cargo run -p lambda-demos-minimal --bin minimal`.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
@@ -475,8 +475,8 @@ This window event handler updates the stored window dimensions when a resize occ
 ## Validation <a name="validation"></a>
 
 - Build the workspace: `cargo build --workspace`
-- Run the example (workspace root): `cargo run --example textured_quad`
-  - If needed, specify the package: `cargo run -p lambda-rs --example textured_quad`
+- Run the demo (workspace root): `cargo run -p lambda-demos-render --bin textured_quad`
+  - If needed, specify the package: `cargo run -p lambda-demos-render --bin textured_quad`
 - Expected behavior: a centered square quad shows a gray checkerboard. Resizing the window preserves square aspect ratio by letterboxing with the viewport. With linear filtering, downscaling appears smooth.
 
 ## Notes <a name="notes"></a>
@@ -498,7 +498,7 @@ with correct color space handling and filtering.
 
 ## Putting It Together <a name="putting-it-together"></a>
 
-- Full reference: `crates/lambda-rs/examples/textured_quad.rs`
+- Full reference: `demos/render/src/bin/textured_quad.rs`
 - Minimal differences: the example includes empty `on_detach` and `on_update` hooks and a log line in `on_attach`.
 
 ## Exercises <a name="exercises"></a>
@@ -518,9 +518,10 @@ with correct color space handling and filtering.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.4.2 (2026-02-05): Update demo commands and reference paths for `demos/`.
 - 0.4.1 (2026-01-16): Replace `on_event` resize handling with `event_mask()` and `on_window_event`.
 - 0.4.0 (2025-12-15): Update builder API calls to use `render_context.gpu()` and add `surface_format`/`depth_format` parameters to `RenderPassBuilder` and `RenderPipelineBuilder`.
 - 0.3.3 (2025-11-10): Add Conclusion section summarizing outcomes; update metadata and commit.
 - 0.3.2 (2025-11-10): Add narrative explanations after each code block; clarify lifecycle and binding flow.
 - 0.3.1 (2025-11-10): Align with example; add shader constants; attach resources; fix variable names; add missing section.
-- 0.3.0 (2025-11-01): Initial draft aligned with `crates/lambda-rs/examples/textured_quad.rs`.
+- 0.3.0 (2025-11-01): Initial draft aligned with `demos/render/src/bin/textured_quad.rs`.

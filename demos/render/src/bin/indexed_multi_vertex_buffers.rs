@@ -1,10 +1,10 @@
 #![allow(clippy::needless_return)]
 
-//! Example: Indexed draw with multiple vertex buffers.
+//! Demo: Indexed draw with multiple vertex buffers.
 //!
-//! This example renders a simple quad composed from two triangles using
-//! separate vertex buffers for positions and colors plus a 16-bit index
-//! buffer. It exercises `BindVertexBuffer` for multiple slots and
+//! This demo renders a simple quad composed from two triangles using separate
+//! vertex buffers for positions and colors plus a 16-bit index buffer. It
+//! exercises `BindVertexBuffer` for multiple slots and
 //! `BindIndexBuffer`/`DrawIndexed` in the render command stream.
 
 use lambda::{

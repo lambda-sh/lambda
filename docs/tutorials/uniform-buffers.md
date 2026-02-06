@@ -3,13 +3,13 @@ title: "Uniform Buffers: Build a Spinning Triangle"
 document_id: "uniform-buffers-tutorial-2025-10-17"
 status: "draft"
 created: "2025-10-17T00:00:00Z"
-last_updated: "2026-01-24T00:00:00Z"
-version: "0.5.3"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.5.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "df476b77e1f2a17818869c3218cf223ab935c456"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["tutorial", "graphics", "uniform-buffers", "rust", "wgpu"]
@@ -19,7 +19,7 @@ tags: ["tutorial", "graphics", "uniform-buffers", "rust", "wgpu"]
 
 Uniform buffer objects (UBOs) are a standard mechanism to pass per‑frame or per‑draw constants to shaders. This document demonstrates a minimal 3D spinning triangle that uses a UBO to provide a model‑view‑projection matrix to the vertex shader.
 
-Reference implementation: `crates/lambda-rs/examples/uniform_buffer_triangle.rs`.
+Reference implementation: `demos/render/src/bin/uniform_buffer_triangle.rs`.
 
 ## Table of Contents
 
@@ -56,7 +56,8 @@ Reference implementation: `crates/lambda-rs/examples/uniform_buffer_triangle.rs`
 
 - Rust toolchain installed and the workspace builds: `cargo build --workspace`.
 - Familiarity with basic Rust and the repository’s example layout.
-- Ability to run examples: `cargo run --example minimal` verifies setup.
+- Ability to run demos: `cargo run -p lambda-demos-minimal --bin minimal`
+  verifies setup.
 
 ## Requirements and Constraints <a name="requirements-and-constraints"></a>
 
@@ -391,7 +392,7 @@ fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
 ## Validation <a name="validation"></a>
 
 - Build the workspace: `cargo build --workspace`
-- Run the example: `cargo run --example uniform_buffer_triangle`
+- Run the demo: `cargo run -p lambda-demos-render --bin uniform_buffer_triangle`
 
 ## Notes <a name="notes"></a>
 
@@ -432,7 +433,7 @@ multiple objects and passes.
   - Provide a lighting UBO at binding 2 with light position and color.
 
 - Exercise 5: Immediates comparison
-  - Port to immediates (see `crates/lambda-rs/examples/immediates.rs`)
+  - Port to immediates (see `demos/render/src/bin/immediates.rs`)
   and compare trade‑offs.
 
 - Exercise 6: Per‑material uniforms
@@ -445,6 +446,7 @@ multiple objects and passes.
 
 ## Changelog <a name="changelog"></a>
 
+- 0.5.4 (2026-02-05): Update demo commands and reference paths for `demos/`.
 - 0.5.3 (2026-01-24): Move `PlainOldData` to `lambda::pod::PlainOldData`.
 - 0.5.2 (2026-01-24): Add `PlainOldData` requirements for uniform buffer data.
 - 0.5.1 (2026-01-16): Replace `on_event` resize handling with `event_mask()` and `on_window_event`.
@@ -454,4 +456,4 @@ metadata and commit.
 - 0.4.0 (2025‑10‑30): Added table of contents with links; converted sections to anchored headings; added ASCII data flow diagram; metadata updated.
 - 0.2.0 (2025‑10‑17): Added goals and book‑style step explanations; expanded
 rationale before code blocks; refined validation and notes.
-- 0.1.0 (2025‑10‑17): Initial draft aligned with `crates/lambda-rs/examples/uniform_buffer_triangle.rs`.
+- 0.1.0 (2025‑10‑17): Initial draft aligned with `demos/render/src/bin/uniform_buffer_triangle.rs`.

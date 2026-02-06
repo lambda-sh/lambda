@@ -3,13 +3,13 @@ title: "Audio Device Abstraction"
 document_id: "audio-device-abstraction-2026-01-28"
 status: "draft"
 created: "2026-01-28T22:59:00Z"
-last_updated: "2026-02-02T22:57:02Z"
-version: "0.1.17"
+last_updated: "2026-02-05T23:05:40Z"
+version: "0.1.18"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "6a5fd409c8097665ffd6e6a4a976206320ae4f80"
+repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "audio", "lambda-rs", "platform", "cpal"]
@@ -625,7 +625,7 @@ Feature gating requirements
   - [x] `docs/features.md` updated with audio feature documentation
         (`docs/features.md`)
   - [x] Example added demonstrating audible playback (behind `audio-output-device`)
-        (`crates/lambda-rs/examples/audio_sine_wave.rs`)
+        (`demos/audio/src/bin/sine_wave.rs`)
   - [x] `lambda-rs` audio facade implemented (`crates/lambda-rs/src/audio/mod.rs`)
 
 ## Verification and Testing
@@ -634,8 +634,7 @@ Example (lambda-rs facade)
 
 This example is the primary application-facing reference.
 
-- Add `crates/lambda-rs/examples/audio_sine_wave.rs` (feature:
-  `audio-output-device`, disabled by default) that:
+- Add `demos/audio/src/bin/sine_wave.rs` (crate: `lambda-demos-audio`) that:
   - Prints `lambda::audio::enumerate_output_devices()` output.
   - Builds the default output device via the facade builder and plays a
     deterministic 440 Hz tone for at least 2 seconds.
@@ -658,7 +657,7 @@ Manual checks
 
 - Run the `lambda-rs` facade example and confirm audible playback for at least
   2 seconds.
-  - `cargo run -p lambda-rs --example audio_sine_wave --features audio-output-device`
+  - `cargo run -p lambda-demos-audio --bin sine_wave`
 
 ## Compatibility and Migration
 
@@ -666,6 +665,7 @@ Manual checks
 
 ## Changelog
 
+- 2026-02-05 (v0.1.18) — Update demo and example references for `demos/`.
 - 2026-02-02 (v0.1.17) — Align specification file references with the current
   `lambda::audio` module layout and feature composition.
 - 2026-01-31 (v0.1.15) — Update verification command to include

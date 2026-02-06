@@ -1,11 +1,11 @@
 #![allow(clippy::needless_return)]
 
-//! Example: Spinning triangle in 3D using a uniform buffer and a bind group.
+//! Demo: Spinning triangle in 3D using a uniform buffer and a bind group.
 //!
-//! This example mirrors the push constants demo but uses a uniform buffer
-//! bound at group(0) binding(0) and a bind group layout declared in Rust.
-//! The model, view, and projection matrices are computed via the shared
-//! `scene_math` helpers so the example does not hand-roll the math.
+//! This demo mirrors the push constants demo but uses a uniform buffer bound
+//! at group(0) binding(0) and a bind group layout declared in Rust. The model,
+//! view, and projection matrices are computed via the shared `scene_math`
+//! helpers so the demo does not hand-roll the math.
 
 use lambda::{
   component::Component,
@@ -218,9 +218,8 @@ impl Component<ComponentResult, String> for UniformBufferExample {
       .with_properties(Properties::CPU_VISIBLE)
       .with_label("globals-uniform")
       .build(render_context.gpu(), vec![initial_uniform])
-      .expect("Failed to create uniform buffer");
+      .expect("Failed to build uniform buffer");
 
-    // Create the bind group using the layout and uniform buffer.
     let bind_group = BindGroupBuilder::new()
       .with_layout(&layout)
       .with_uniform(0, &uniform_buffer, 0, None)
@@ -245,9 +244,9 @@ impl Component<ComponentResult, String> for UniformBufferExample {
 
     self.render_pass = Some(render_context.attach_render_pass(render_pass));
     self.render_pipeline = Some(render_context.attach_pipeline(pipeline));
-    self.bind_group = Some(render_context.attach_bind_group(bind_group));
-    self.uniform_buffer = Some(uniform_buffer);
     self.mesh = Some(mesh);
+    self.uniform_buffer = Some(uniform_buffer);
+    self.bind_group = Some(render_context.attach_bind_group(bind_group));
 
     return Ok(ComponentResult::Success);
   }
@@ -265,10 +264,15 @@ impl Component<ComponentResult, String> for UniformBufferExample {
   }
 
   fn on_window_event(&mut self, event: &WindowEvent) -> Result<(), String> {
-    if let WindowEvent::Resize { width, height } = event {
-      self.width = *width;
-      self.height = *height;
-      logging::info!("Window resized to {}x{}", width, height);
+    match event {
+      WindowEvent::Resize { width, height } => {
+        logging::info!("Window resized to {}x{}", width, height);
+        self.width = *width;
+        self.height = *height;
+      }
+      WindowEvent::Close => {
+        logging::info!("Window closed");
+      }
     }
     return Ok(());
   }
@@ -284,106 +288,110 @@ impl Component<ComponentResult, String> for UniformBufferExample {
   fn on_render(
     &mut self,
     render_context: &mut lambda::render::RenderContext,
-  ) -> Vec<lambda::render::command::RenderCommand> {
-    const ROTATION_TURNS_PER_SECOND: f32 = 0.12;
+  ) -> Vec<RenderCommand> {
+    let viewport =
+      viewport::ViewportBuilder::new().build(self.width, self.height);
 
-    // Compute the model, view, projection matrix for this frame.
+    let render_pass = self
+      .render_pass
+      .expect("Cannot begin the render pass when it doesn't exist.");
+    let render_pipeline = self
+      .render_pipeline
+      .expect("No render pipeline actively set for rendering.");
+
+    let bind_group = self.bind_group.expect("Bind group missing");
+
     let camera = SimpleCamera {
       position: [0.0, 0.0, 3.0],
       field_of_view_in_turns: 0.25,
       near_clipping_plane: 0.1,
       far_clipping_plane: 100.0,
     };
-    let angle_in_turns = ROTATION_TURNS_PER_SECOND * self.elapsed_seconds;
-    let render_matrix = compute_model_view_projection_matrix_about_pivot(
+
+    let turns = (self.elapsed_seconds * 0.12) % 1.0_f32;
+    let matrix = compute_model_view_projection_matrix_about_pivot(
       &camera,
       self.width.max(1),
       self.height.max(1),
       [0.0, -1.0 / 3.0, 0.0],
       [0.0, 1.0, 0.0],
-      angle_in_turns,
+      turns,
       0.5,
       [0.0, 1.0 / 3.0, 0.0],
     );
 
-    // Update the uniform buffer with the new matrix.
+    // Update the uniform buffer each frame.
     if let Some(ref uniform_buffer) = self.uniform_buffer {
-      // Transpose to match GPU column‑major layout.
       let value = GlobalsUniform {
-        render_matrix: render_matrix.transpose(),
+        render_matrix: matrix.transpose(),
       };
       uniform_buffer.write_value(render_context.gpu(), 0, &value);
     }
 
-    // Create viewport.
-    let viewport =
-      viewport::ViewportBuilder::new().build(self.width, self.height);
+    // All state setting must be inside the render pass.
+    let mut commands = vec![RenderCommand::BeginRenderPass {
+      render_pass,
+      viewport: viewport.clone(),
+    }];
 
-    let render_pipeline = self
-      .render_pipeline
-      .expect("No render pipeline actively set for rendering.");
-    let group_id = self.bind_group.expect("Bind group must exist");
+    commands.push(RenderCommand::SetPipeline {
+      pipeline: render_pipeline,
+    });
+    commands.push(RenderCommand::SetViewports {
+      start_at: 0,
+      viewports: vec![viewport.clone()],
+    });
+    commands.push(RenderCommand::SetScissors {
+      start_at: 0,
+      viewports: vec![viewport.clone()],
+    });
 
-    return vec![
-      RenderCommand::BeginRenderPass {
-        render_pass: self
-          .render_pass
-          .expect("Cannot begin the render pass when it does not exist."),
-        viewport: viewport.clone(),
-      },
-      RenderCommand::SetPipeline {
-        pipeline: render_pipeline,
-      },
-      RenderCommand::SetViewports {
-        start_at: 0,
-        viewports: vec![viewport.clone()],
-      },
-      RenderCommand::SetScissors {
-        start_at: 0,
-        viewports: vec![viewport.clone()],
-      },
-      RenderCommand::BindVertexBuffer {
-        pipeline: render_pipeline,
-        buffer: 0,
-      },
-      RenderCommand::SetBindGroup {
-        set: 0,
-        group: group_id,
-        dynamic_offsets: vec![],
-      },
-      RenderCommand::Draw {
-        vertices: 0..self.mesh.as_ref().unwrap().vertices().len() as u32,
-        instances: 0..1,
-      },
-      RenderCommand::EndRenderPass,
-    ];
+    commands.push(RenderCommand::SetBindGroup {
+      set: 0,
+      group: bind_group,
+      dynamic_offsets: Vec::new(),
+    });
+
+    commands.push(RenderCommand::BindVertexBuffer {
+      pipeline: render_pipeline,
+      buffer: 0,
+    });
+
+    commands.push(RenderCommand::Draw {
+      vertices: 0..self.mesh.as_ref().unwrap().vertices().len() as u32,
+      instances: 0..1,
+    });
+    commands.push(RenderCommand::EndRenderPass);
+
+    return commands;
   }
 }
 
 impl Default for UniformBufferExample {
   fn default() -> Self {
-    let vertex_virtual_shader = VirtualShader::Source {
+    let triangle_vertex = VirtualShader::Source {
       source: VERTEX_SHADER_SOURCE.to_string(),
       kind: ShaderKind::Vertex,
-      entry_point: "main".to_string(),
-      name: "uniform_buffer_triangle".to_string(),
+      name: String::from("uniform-buffer"),
+      entry_point: String::from("main"),
     };
 
-    let fragment_virtual_shader = VirtualShader::Source {
+    let triangle_fragment = VirtualShader::Source {
       source: FRAGMENT_SHADER_SOURCE.to_string(),
       kind: ShaderKind::Fragment,
-      entry_point: "main".to_string(),
-      name: "uniform_buffer_triangle".to_string(),
+      name: String::from("uniform-buffer"),
+      entry_point: String::from("main"),
     };
 
+    // Create a shader builder to compile the shaders.
     let mut builder = ShaderBuilder::new();
-    let shader = builder.build(vertex_virtual_shader);
-    let fragment_shader = builder.build(fragment_virtual_shader);
+    let vs = builder.build(triangle_vertex);
+    let fs = builder.build(triangle_fragment);
 
-    return Self {
+    return UniformBufferExample {
       elapsed_seconds: 0.0,
-      shader,
-      fragment_shader,
+      shader: vs,
+      fragment_shader: fs,
       mesh: None,
       render_pipeline: None,
       render_pass: None,
@@ -396,17 +404,17 @@ impl Default for UniformBufferExample {
 }
 
 fn main() {
-  let runtime = ApplicationRuntimeBuilder::new("3D Uniform Buffer Example")
+  let runtime = ApplicationRuntimeBuilder::new("Uniform Buffer Triangle Demo")
+    .with_renderer_configured_as(move |render_context_builder| {
+      return render_context_builder.with_render_timeout(1_000_000_000);
+    })
     .with_window_configured_as(move |window_builder| {
       return window_builder
-        .with_dimensions(800, 600)
-        .with_name("3D Uniform Buffer Example");
+        .with_dimensions(1200, 600)
+        .with_name("Uniform Buffer Triangle");
     })
-    .with_renderer_configured_as(|renderer_builder| {
-      return renderer_builder.with_render_timeout(1_000_000_000);
-    })
-    .with_component(move |runtime, example: UniformBufferExample| {
-      return (runtime, example);
+    .with_component(move |runtime, demo: UniformBufferExample| {
+      return (runtime, demo);
     })
     .build();
 
