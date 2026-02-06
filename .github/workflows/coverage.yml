@@ -67,6 +67,9 @@ jobs:
       - name: Generate full coverage JSON
         run: |
           cargo llvm-cov --workspace \
+            --exclude lambda-demos-audio \
+            --exclude lambda-demos-minimal \
+            --exclude lambda-demos-render \
             --features lambda-rs/with-vulkan,lambda-rs/audio-output-device \
             --json \
             --output-path coverage.json
@@ -74,6 +77,9 @@ jobs:
       - name: Generate HTML coverage report
         run: |
           cargo llvm-cov --workspace \
+            --exclude lambda-demos-audio \
+            --exclude lambda-demos-minimal \
+            --exclude lambda-demos-render \
             --features lambda-rs/with-vulkan,lambda-rs/audio-output-device \
             --html \
             --output-dir coverage-html \
@@ -86,7 +92,10 @@ jobs:
           # Use GitHub's provided base/head SHAs for accurate diff
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.event.pull_request.head.sha }}"
-          changed_files=$(git diff --name-only "$base_sha" "$head_sha" -- '*.rs' | tr '\n' ' ')
+          changed_files=$(git diff --name-only "$base_sha" "$head_sha" -- \
+            '*.rs' \
+            ':(exclude)demos/**' \
+            | tr '\n' ' ')
           echo "files=$changed_files" >> "$GITHUB_OUTPUT"
 
       - name: Generate coverage report data
