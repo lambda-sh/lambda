@@ -8,8 +8,9 @@
 //!   event/render loop.
 //! - `math`: minimal vector/matrix utilities used by examples and helpers.
 //!
-//! See runnable examples in `crates/lambda-rs/examples/` and integration tests
-//! under `crates/lambda-rs/tests/` for typical usage patterns.
+//! See runnable demos under `demos/` and the minimal rustdoc reference example
+//! under `crates/lambda-rs/examples/` for typical usage patterns. Integration
+//! tests live under `crates/lambda-rs/tests/`.
 
 pub mod component;
 pub mod events;

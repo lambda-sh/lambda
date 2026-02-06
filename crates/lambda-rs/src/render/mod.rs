@@ -22,8 +22,7 @@
 //! 3) Record a `Vec<RenderCommand>` each frame and pass it to
 //!    `RenderContext::render`.
 //!
-//! See workspace examples under `crates/lambda-rs/examples/` for runnable
-//! end‑to‑end snippets.
+//! See runnable demos under `demos/render/src/bin/` for end‑to‑end snippets.
 
 // Module Exports
 pub mod bind;
