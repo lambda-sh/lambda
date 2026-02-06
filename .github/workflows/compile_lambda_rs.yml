@@ -90,13 +90,15 @@ jobs:
 
       - name: Build workspace
         if: ${{ contains(matrix.features, 'lambda-rs/audio-output-device') }}
-        run: cargo build --workspace --features ${{ matrix.features }}
+        run: cargo build --workspace --bins --features ${{ matrix.features }}
 
       - name: Build workspace (exclude audio tools)
         if: ${{ !contains(matrix.features, 'lambda-rs/audio-output-device') }}
         run: |
           cargo build --workspace \
             --exclude lambda-audio-tool \
+            --exclude lambda-demos-audio \
+            --bins \
             --features ${{ matrix.features }}
 
       - name: Build examples (lambda-rs)
@@ -111,6 +113,7 @@ jobs:
         run: |
           cargo test --workspace \
             --exclude lambda-audio-tool \
+            --exclude lambda-demos-audio \
             --features ${{ matrix.features }}
 
       - uses: actions/setup-ruby@v1

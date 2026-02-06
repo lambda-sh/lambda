@@ -67,6 +67,12 @@ jobs:
             # binaries. Audio/tool validation runs in the CI build matrix when
             # audio features are enabled.
             --exclude lambda-audio-tool \
+            # Demo crates are validated in the CI build matrix (compile & test
+            # workflow). Exclude them here to keep the release workflow focused
+            # on release artifacts.
+            --exclude lambda-demos-audio \
+            --exclude lambda-demos-minimal \
+            --exclude lambda-demos-render \
             --all-targets \
             -- -D warnings
 
@@ -75,6 +81,9 @@ jobs:
           cargo test --workspace \
             # See note above in the Clippy step.
             --exclude lambda-audio-tool \
+            --exclude lambda-demos-audio \
+            --exclude lambda-demos-minimal \
+            --exclude lambda-demos-render \
             -- --nocapture
 
   prepare_version:
@@ -236,7 +245,13 @@ jobs:
           # See note in the validate job: `lambda-audio-tool` is excluded here
           # to avoid Linux ALSA build dependencies that are unnecessary for
           # release artifacts.
-          cargo build --workspace --exclude lambda-audio-tool --release --bins
+          cargo build --workspace \
+            --exclude lambda-audio-tool \
+            --exclude lambda-demos-audio \
+            --exclude lambda-demos-minimal \
+            --exclude lambda-demos-render \
+            --release \
+            --bins
 
       - name: Stage files
         id: stage
