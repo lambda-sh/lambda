@@ -3,7 +3,7 @@ title: "Component Event Handling"
 document_id: "component-event-handling-2026-01-10"
 status: "draft"
 created: "2026-01-10T00:00:00Z"
-last_updated: "2026-02-05T23:05:40Z"
+last_updated: "2026-02-07T00:00:00Z"
 version: "0.1.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
@@ -214,10 +214,10 @@ winit event loop
   - [x] `Component` trait documentation updated (Ref:
     `docs/rendering.md`)
   - [x] Backwards compatibility assessed and migration documented (Ref:
-    `docs/specs/component-event-handling.md`)
+    `docs/specs/runtime/component-event-handling.md`)
 - Validation and Errors
   - [x] Error behavior specified for handler failures (Ref:
-    `docs/specs/component-event-handling.md`)
+    `docs/specs/runtime/component-event-handling.md`)
   - [x] Runtime publishes `RuntimeEvent::ComponentPanic` on handler errors
     (Ref: `crates/lambda-rs/src/runtimes/application.rs`)
 - Performance
@@ -231,7 +231,7 @@ winit event loop
   - [x] `docs/features.md` checked for relevance (no new features expected)
     (Ref: `docs/features.md`)
   - [x] Migration notes added to component documentation (Ref:
-    `docs/specs/component-event-handling.md`)
+    `docs/specs/runtime/component-event-handling.md`)
 
 For each checked item, include a reference to a commit, pull request, or file
 path that demonstrates the implementation.
