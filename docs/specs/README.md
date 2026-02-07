@@ -10,9 +10,6 @@ reviewers: ["engine"]
 tags: ["index", "specs", "docs"]
 ---
 
-This index groups `lambda-rs` specifications by the feature area they add or
-demonstrate.
-
 ## Rendering
 
 - Uniform Buffers and Bind Groups — [rendering/uniform-buffers-and-bind-groups.md](rendering/uniform-buffers-and-bind-groups.md)
