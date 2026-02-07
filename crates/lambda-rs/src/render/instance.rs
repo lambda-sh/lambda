@@ -358,4 +358,83 @@ mod tests {
     assert_ne!(combined, Backends::VULKAN);
     assert_ne!(combined, Backends::METAL);
   }
+
+  #[test]
+  fn instance_flags_bitor_maps_to_platform() {
+    let flags = InstanceFlags::VALIDATION | InstanceFlags::DEBUG;
+    let platform = flags.to_platform();
+    assert_eq!(
+      platform,
+      platform::instance::InstanceFlags::VALIDATION
+        | platform::instance::InstanceFlags::DEBUG
+    );
+  }
+
+  #[test]
+  fn dx12_compiler_maps_to_platform() {
+    assert!(matches!(
+      Dx12Compiler::Fxc.to_platform(),
+      platform::instance::Dx12Compiler::Fxc
+    ));
+  }
+
+  #[test]
+  fn gles_minor_version_maps_to_platform() {
+    assert!(matches!(
+      Gles3MinorVersion::Automatic.to_platform(),
+      platform::instance::Gles3MinorVersion::Automatic
+    ));
+    assert!(matches!(
+      Gles3MinorVersion::Version0.to_platform(),
+      platform::instance::Gles3MinorVersion::Version0
+    ));
+    assert!(matches!(
+      Gles3MinorVersion::Version1.to_platform(),
+      platform::instance::Gles3MinorVersion::Version1
+    ));
+    assert!(matches!(
+      Gles3MinorVersion::Version2.to_platform(),
+      platform::instance::Gles3MinorVersion::Version2
+    ));
+  }
+
+  #[test]
+  fn instance_debug_includes_label_field() {
+    let instance = InstanceBuilder::new().with_label("debug instance").build();
+    let formatted = format!("{:?}", instance);
+    assert!(formatted.contains("Instance"));
+    assert!(formatted.contains("label"));
+  }
+
+  #[test]
+  fn backends_map_to_platform_constants() {
+    assert_eq!(
+      Backends::PRIMARY.to_platform(),
+      platform::instance::Backends::PRIMARY
+    );
+    assert_eq!(
+      Backends::VULKAN.to_platform(),
+      platform::instance::Backends::VULKAN
+    );
+    assert_eq!(
+      Backends::METAL.to_platform(),
+      platform::instance::Backends::METAL
+    );
+    assert_eq!(
+      Backends::DX12.to_platform(),
+      platform::instance::Backends::DX12
+    );
+    assert_eq!(Backends::GL.to_platform(), platform::instance::Backends::GL);
+  }
+
+  #[test]
+  fn instance_builder_accepts_all_options() {
+    let _instance = InstanceBuilder::new()
+      .with_label("options")
+      .with_backends(Backends::VULKAN | Backends::METAL)
+      .with_flags(InstanceFlags::VALIDATION | InstanceFlags::DEBUG)
+      .with_dx12_shader_compiler(Dx12Compiler::Fxc)
+      .with_gles_minor_version(Gles3MinorVersion::Version2)
+      .build();
+  }
 }

@@ -64,7 +64,180 @@ impl BindingVisibility {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+  use super::*;
+  use crate::render::{
+    buffer::{
+      BufferBuilder,
+      BufferType,
+      Properties,
+      Usage,
+    },
+    gpu::{
+      Gpu,
+      GpuBuilder,
+    },
+    instance::InstanceBuilder,
+    texture::{
+      SamplerBuilder,
+      TextureBuilder,
+      TextureFormat,
+      ViewDimension,
+    },
+  };
+
+  fn create_test_gpu() -> Option<Gpu> {
+    let instance = InstanceBuilder::new()
+      .with_label("lambda-bind-test-instance")
+      .build();
+    return GpuBuilder::new()
+      .with_label("lambda-bind-test-gpu")
+      .build(&instance, None)
+      .ok();
+  }
+
+  #[test]
+  fn binding_visibility_maps_to_platform() {
+    assert!(matches!(
+      BindingVisibility::Vertex.to_platform(),
+      lambda_platform::wgpu::bind::Visibility::Vertex
+    ));
+    assert!(matches!(
+      BindingVisibility::Fragment.to_platform(),
+      lambda_platform::wgpu::bind::Visibility::Fragment
+    ));
+    assert!(matches!(
+      BindingVisibility::Compute.to_platform(),
+      lambda_platform::wgpu::bind::Visibility::Compute
+    ));
+    assert!(matches!(
+      BindingVisibility::VertexAndFragment.to_platform(),
+      lambda_platform::wgpu::bind::Visibility::VertexAndFragment
+    ));
+    assert!(matches!(
+      BindingVisibility::All.to_platform(),
+      lambda_platform::wgpu::bind::Visibility::All
+    ));
+  }
+
+  #[test]
+  #[cfg(debug_assertions)]
+  #[ignore = "requires a real GPU adapter"]
+  fn bind_group_layout_builder_rejects_duplicate_binding() {
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+
+    // Duplicate binding index 0 across entries should panic in debug builds.
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+      let _layout = BindGroupLayoutBuilder::new()
+        .with_uniform(0, BindingVisibility::Vertex)
+        .with_uniform_dynamic(0, BindingVisibility::Vertex)
+        .build(&gpu);
+    }));
+    assert!(result.is_err());
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn bind_group_layout_counts_dynamic_uniforms() {
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+
+    let layout = BindGroupLayoutBuilder::new()
+      .with_uniform(0, BindingVisibility::VertexAndFragment)
+      .with_uniform_dynamic(1, BindingVisibility::VertexAndFragment)
+      .build(&gpu);
+
+    assert_eq!(layout.dynamic_binding_count(), 1);
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn bind_group_builder_requires_layout() {
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+      let _group = BindGroupBuilder::new().build(&gpu);
+    }));
+    assert!(result.is_err());
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn bind_group_dynamic_binding_count_matches_layout() {
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+
+    let layout = BindGroupLayoutBuilder::new()
+      .with_uniform_dynamic(0, BindingVisibility::VertexAndFragment)
+      .build(&gpu);
+
+    let uniform = BufferBuilder::new()
+      .with_label("bind-test-uniform")
+      .with_usage(Usage::UNIFORM)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Uniform)
+      .build(&gpu, vec![0u32; 4])
+      .expect("build uniform buffer");
+
+    let group = BindGroupBuilder::new()
+      .with_layout(&layout)
+      .with_uniform(0, &uniform, 0, None)
+      .build(&gpu);
+
+    assert_eq!(
+      group.dynamic_binding_count(),
+      layout.dynamic_binding_count()
+    );
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn bind_group_supports_textures_and_samplers() {
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+
+    let texture_2d = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(1, 1)
+      .build(&gpu)
+      .expect("build 2d texture");
+    let texture_3d = TextureBuilder::new_3d(TextureFormat::Rgba8Unorm)
+      .with_size_3d(1, 1, 2)
+      .build(&gpu)
+      .expect("build 3d texture");
+    let sampler = SamplerBuilder::new().linear().build(&gpu);
+
+    let layout = BindGroupLayoutBuilder::new()
+      .with_sampled_texture(0)
+      .with_sampled_texture_dim(
+        1,
+        ViewDimension::D3,
+        BindingVisibility::Fragment,
+      )
+      .with_sampler(2)
+      .build(&gpu);
+
+    let group = BindGroupBuilder::new()
+      .with_layout(&layout)
+      .with_texture(0, &texture_2d)
+      .with_texture(1, &texture_3d)
+      .with_sampler(2, &sampler)
+      .build(&gpu);
+
+    assert_eq!(group.dynamic_binding_count(), 0);
+  }
+
+  #[test]
+  #[cfg(debug_assertions)]
+  #[ignore = "requires a real GPU adapter"]
+  fn bind_group_layout_rejects_duplicate_binding_across_resource_kinds() {
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+      let _layout = BindGroupLayoutBuilder::new()
+        .with_uniform(0, BindingVisibility::Vertex)
+        .with_sampler(0)
+        .build(&gpu);
+    }));
+    assert!(result.is_err());
+  }
+}
 
 /// Bind group layout used when creating pipelines and bind groups.
 #[derive(Debug, Clone)]
@@ -348,7 +521,7 @@ impl<'a> BindGroupBuilder<'a> {
     return self;
   }
 
-  /// Bind a 2D texture at the specified binding index.
+  /// Bind a texture at the specified binding index.
   pub fn with_texture(mut self, binding: u32, texture: &'a Texture) -> Self {
     self.textures.push((binding, texture.platform_texture()));
     return self;

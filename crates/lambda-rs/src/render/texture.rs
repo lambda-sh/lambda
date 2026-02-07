@@ -647,6 +647,92 @@ mod tests {
   use super::*;
 
   #[test]
+  fn texture_format_round_trips_through_platform() {
+    let formats = [
+      TextureFormat::Rgba8Unorm,
+      TextureFormat::Rgba8UnormSrgb,
+      TextureFormat::Bgra8Unorm,
+      TextureFormat::Bgra8UnormSrgb,
+    ];
+
+    for fmt in formats {
+      let platform = fmt.to_platform();
+      let back = TextureFormat::from_platform(platform).expect("round trip");
+      assert_eq!(back, fmt);
+      assert_eq!(fmt.bytes_per_pixel(), 4);
+    }
+
+    assert!(TextureFormat::Rgba8UnormSrgb.is_srgb());
+    assert!(!TextureFormat::Rgba8Unorm.is_srgb());
+  }
+
+  #[test]
+  fn depth_format_maps_to_platform() {
+    assert!(matches!(
+      DepthFormat::Depth32Float.to_platform(),
+      platform::DepthFormat::Depth32Float
+    ));
+    assert!(matches!(
+      DepthFormat::Depth24Plus.to_platform(),
+      platform::DepthFormat::Depth24Plus
+    ));
+    assert!(matches!(
+      DepthFormat::Depth24PlusStencil8.to_platform(),
+      platform::DepthFormat::Depth24PlusStencil8
+    ));
+  }
+
+  #[test]
+  fn view_dimension_maps_to_platform() {
+    assert!(matches!(
+      ViewDimension::D2.to_platform(),
+      platform::ViewDimension::TwoDimensional
+    ));
+    assert!(matches!(
+      ViewDimension::D3.to_platform(),
+      platform::ViewDimension::ThreeDimensional
+    ));
+  }
+
+  #[test]
+  fn sampler_modes_map_to_platform() {
+    assert!(matches!(
+      FilterMode::Nearest.to_platform(),
+      platform::FilterMode::Nearest
+    ));
+    assert!(matches!(
+      FilterMode::Linear.to_platform(),
+      platform::FilterMode::Linear
+    ));
+
+    assert!(matches!(
+      AddressMode::ClampToEdge.to_platform(),
+      platform::AddressMode::ClampToEdge
+    ));
+    assert!(matches!(
+      AddressMode::Repeat.to_platform(),
+      platform::AddressMode::Repeat
+    ));
+    assert!(matches!(
+      AddressMode::MirrorRepeat.to_platform(),
+      platform::AddressMode::MirrorRepeat
+    ));
+  }
+
+  #[test]
+  fn texture_usages_support_bit_ops_and_contains() {
+    let mut usages = TextureUsages::empty();
+    assert!(!usages.contains(TextureUsages::RENDER_ATTACHMENT));
+
+    usages |= TextureUsages::RENDER_ATTACHMENT;
+    assert!(usages.contains(TextureUsages::RENDER_ATTACHMENT));
+
+    let combined = TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST;
+    assert!(combined.contains(TextureUsages::TEXTURE_BINDING));
+    assert!(combined.contains(TextureUsages::COPY_DST));
+  }
+
+  #[test]
   fn texture_builder_marks_render_target_usage() {
     let builder =
       TextureBuilder::new_2d(TextureFormat::Rgba8Unorm).for_render_target();
@@ -658,5 +744,66 @@ mod tests {
   fn depth_texture_builder_clamps_sample_count() {
     let builder = DepthTextureBuilder::new().with_sample_count(0);
     assert_eq!(builder.sample_count, 1);
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn texture_builder_rejects_invalid_dimensions() {
+    use crate::render::{
+      gpu::{
+        Gpu,
+        GpuBuilder,
+      },
+      instance::InstanceBuilder,
+    };
+
+    fn create_test_gpu() -> Gpu {
+      let instance = InstanceBuilder::new()
+        .with_label("lambda-texture-test-instance")
+        .build();
+      return GpuBuilder::new()
+        .with_label("lambda-texture-test-gpu")
+        .build(&instance, None)
+        .expect("requires a real GPU adapter");
+    }
+
+    let gpu = create_test_gpu();
+
+    let err = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(0, 0)
+      .build(&gpu)
+      .expect_err("invalid dimensions should error");
+    assert_eq!(err, "Invalid texture dimensions");
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn texture_builder_builds_3d_texture_path() {
+    use crate::render::{
+      gpu::{
+        Gpu,
+        GpuBuilder,
+      },
+      instance::InstanceBuilder,
+    };
+
+    fn create_test_gpu() -> Gpu {
+      let instance = InstanceBuilder::new()
+        .with_label("lambda-texture-3d-test-instance")
+        .build();
+      return GpuBuilder::new()
+        .with_label("lambda-texture-3d-test-gpu")
+        .build(&instance, None)
+        .expect("requires a real GPU adapter");
+    }
+
+    let gpu = create_test_gpu();
+
+    // 3D texture builder selects the 3D upload path when depth > 1.
+    let tex = TextureBuilder::new_3d(TextureFormat::Rgba8Unorm)
+      .with_size_3d(2, 2, 2)
+      .build(&gpu)
+      .expect("build 3d texture");
+    let _ = tex.platform_texture();
   }
 }

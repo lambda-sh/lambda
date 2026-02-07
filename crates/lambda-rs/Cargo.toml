@@ -31,6 +31,7 @@ with-wgpu-vulkan=["with-wgpu", "lambda-rs-platform/wgpu-with-vulkan"]
 with-wgpu-metal=["with-wgpu", "lambda-rs-platform/wgpu-with-metal"]
 with-wgpu-dx12=["with-wgpu", "lambda-rs-platform/wgpu-with-dx12"]
 with-wgpu-gl=["with-wgpu", "lambda-rs-platform/wgpu-with-gl"]
+render-coverage-smoke=[]
 
 # ---------------------------------- AUDIO ------------------------------------
 
@@ -95,3 +96,8 @@ render-validation-render-targets = []
 # Linux dev-dependencies.
 [target.'cfg(all(unix, not(target_os = "macos")))'.dev-dependencies]
 cargo-tarpaulin = "=0.19.1"
+
+[[bin]]
+name = "render_coverage_smoke"
+path = "src/bin/render_coverage_smoke.rs"
+required-features = ["render-coverage-smoke"]

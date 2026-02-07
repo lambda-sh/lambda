@@ -90,3 +90,51 @@ impl Shader {
     return &self.virtual_shader;
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn shader_builder_compiles_source_and_exposes_binary() {
+    let source = r#"
+      #version 450
+      #extension GL_ARB_separate_shader_objects : enable
+      void main() {
+        gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+      }
+    "#;
+
+    let mut builder = ShaderBuilder::new();
+    let shader = builder.build(VirtualShader::Source {
+      source: source.to_string(),
+      kind: ShaderKind::Vertex,
+      name: "test-vert".to_string(),
+      entry_point: "main".to_string(),
+    });
+
+    assert!(!shader.binary().is_empty());
+    assert_eq!(shader.as_binary(), shader.binary());
+    assert_eq!(shader.virtual_shader().name(), "test-vert");
+    assert!(matches!(shader.virtual_shader().kind(), ShaderKind::Vertex));
+  }
+
+  #[test]
+  fn shader_builder_compiles_file_shader() {
+    let vert_path = format!(
+      "{}/assets/shaders/triangle.vert",
+      env!("CARGO_MANIFEST_DIR")
+    );
+
+    let mut builder = ShaderBuilder::new();
+    let shader = builder.build(VirtualShader::File {
+      path: vert_path,
+      kind: ShaderKind::Vertex,
+      name: "triangle-vert".to_string(),
+      entry_point: "main".to_string(),
+    });
+
+    assert!(!shader.binary().is_empty());
+    assert_eq!(shader.virtual_shader().name(), "triangle-vert");
+  }
+}

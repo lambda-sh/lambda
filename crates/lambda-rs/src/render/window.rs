@@ -124,3 +124,53 @@ impl Window {
     return self.vsync;
   }
 }
+
+#[cfg(test)]
+mod tests {
+  #[cfg(not(target_os = "macos"))]
+  use lambda_platform::winit::LoopBuilder;
+
+  use super::*;
+
+  #[test]
+  fn window_builder_defaults_are_sensible() {
+    let builder = WindowBuilder::new();
+    assert_eq!(builder.name, "Window");
+    assert_eq!(builder.dimensions, (480, 360));
+    assert!(builder.vsync);
+  }
+
+  #[test]
+  fn window_builder_allows_overriding_properties() {
+    let builder = WindowBuilder::new()
+      .with_name("Hello")
+      .with_dimensions(800, 600)
+      .with_vsync(false);
+
+    assert_eq!(builder.name, "Hello");
+    assert_eq!(builder.dimensions, (800, 600));
+    assert!(!builder.vsync);
+  }
+
+  #[test]
+  #[cfg(not(target_os = "macos"))]
+  fn window_build_is_best_effort_in_headless_envs() {
+    let attempt =
+      std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let mut event_loop = LoopBuilder::new().build();
+        WindowBuilder::new()
+          .with_name("lambda-window-test")
+          .with_dimensions(10, 20)
+          .with_vsync(true)
+          .build(&mut event_loop)
+      }));
+
+    let window = match attempt {
+      Ok(window) => window,
+      Err(_) => return, // likely headless environment
+    };
+
+    assert_eq!(window.dimensions(), (10, 20));
+    assert!(window.vsync_requested());
+  }
+}

@@ -358,11 +358,9 @@ mod tests {
   }
 
   #[test]
+  #[ignore = "requires a real GPU adapter"]
   fn build_rejects_missing_color_attachment() {
-    let gpu = match create_test_gpu() {
-      Some(gpu) => gpu,
-      None => return,
-    };
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
 
     let built = OffscreenTargetBuilder::new().build(&gpu);
     assert_eq!(
@@ -372,11 +370,9 @@ mod tests {
   }
 
   #[test]
+  #[ignore = "requires a real GPU adapter"]
   fn build_rejects_unsupported_sample_count() {
-    let gpu = match create_test_gpu() {
-      Some(gpu) => gpu,
-      None => return,
-    };
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
 
     let built = OffscreenTargetBuilder::new()
       .with_color(texture::TextureFormat::Rgba8Unorm, 1, 1)
@@ -390,11 +386,9 @@ mod tests {
   }
 
   #[test]
+  #[ignore = "requires a real GPU adapter"]
   fn resolve_texture_supports_sampling_and_render_attachment() {
-    let gpu = match create_test_gpu() {
-      Some(gpu) => gpu,
-      None => return,
-    };
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
 
     let target = OffscreenTargetBuilder::new()
       .with_color(texture::TextureFormat::Rgba8Unorm, 4, 4)
@@ -438,11 +432,9 @@ mod tests {
   }
 
   #[test]
+  #[ignore = "requires a real GPU adapter"]
   fn msaa_target_depth_attachment_matches_sample_count() {
-    let gpu = match create_test_gpu() {
-      Some(gpu) => gpu,
-      None => return,
-    };
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
 
     let target = OffscreenTargetBuilder::new()
       .with_color(texture::TextureFormat::Rgba8Unorm, 4, 4)

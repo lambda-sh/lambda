@@ -371,3 +371,57 @@ impl std::fmt::Display for WindowSurfaceError {
     };
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn present_mode_round_trips_through_platform() {
+    let modes = [
+      PresentMode::Fifo,
+      PresentMode::FifoRelaxed,
+      PresentMode::Immediate,
+      PresentMode::Mailbox,
+      PresentMode::AutoVsync,
+      PresentMode::AutoNoVsync,
+    ];
+
+    for mode in modes {
+      let platform = mode.to_platform();
+      let back = PresentMode::from_platform(platform);
+      assert_eq!(back, mode);
+    }
+  }
+
+  #[test]
+  fn surface_error_maps_platform_variants() {
+    assert!(matches!(
+      SurfaceError::from(platform::surface::SurfaceError::Lost),
+      SurfaceError::Lost
+    ));
+    assert!(matches!(
+      SurfaceError::from(platform::surface::SurfaceError::Outdated),
+      SurfaceError::Outdated
+    ));
+    assert!(matches!(
+      SurfaceError::from(platform::surface::SurfaceError::OutOfMemory),
+      SurfaceError::OutOfMemory
+    ));
+    assert!(matches!(
+      SurfaceError::from(platform::surface::SurfaceError::Timeout),
+      SurfaceError::Timeout
+    ));
+    let other = SurfaceError::from(platform::surface::SurfaceError::Other(
+      "opaque".to_string(),
+    ));
+    assert!(matches!(other, SurfaceError::Other(_)));
+  }
+
+  #[test]
+  fn window_surface_error_is_displayed() {
+    let error =
+      WindowSurfaceError::CreationFailed("creation failed".to_string());
+    assert_eq!(error.to_string(), "creation failed");
+  }
+}

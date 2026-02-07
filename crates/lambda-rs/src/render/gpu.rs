@@ -294,3 +294,50 @@ impl std::fmt::Display for GpuBuildError {
 }
 
 impl std::error::Error for GpuBuildError {}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn gpu_limits_from_platform_maps_fields() {
+    let platform_limits = platform::gpu::GpuLimits {
+      max_uniform_buffer_binding_size: 1024,
+      max_bind_groups: 4,
+      max_vertex_buffers: 8,
+      max_vertex_attributes: 16,
+      min_uniform_buffer_offset_alignment: 256,
+    };
+
+    let limits = GpuLimits::from_platform(platform_limits);
+    assert_eq!(limits.max_uniform_buffer_binding_size, 1024);
+    assert_eq!(limits.max_bind_groups, 4);
+    assert_eq!(limits.max_vertex_buffers, 8);
+    assert_eq!(limits.max_vertex_attributes, 16);
+    assert_eq!(limits.min_uniform_buffer_offset_alignment, 256);
+  }
+
+  #[test]
+  fn gpu_build_error_display_messages_are_actionable() {
+    assert_eq!(
+      GpuBuildError::AdapterUnavailable.to_string(),
+      "No compatible GPU adapter found"
+    );
+
+    let missing = GpuBuildError::MissingFeatures("missing".to_string());
+    assert_eq!(missing.to_string(), "missing");
+
+    let create_failed = GpuBuildError::DeviceCreationFailed("boom".to_string());
+    assert_eq!(create_failed.to_string(), "Device creation failed: boom");
+  }
+
+  #[test]
+  fn gpu_build_error_from_platform_maps_request_device() {
+    let platform_error =
+      platform::gpu::GpuBuildError::RequestDevice("device error".to_string());
+    let mapped = GpuBuildError::from_platform(platform_error);
+
+    assert!(matches!(mapped, GpuBuildError::DeviceCreationFailed(_)));
+    assert!(mapped.to_string().contains("device error"));
+  }
+}

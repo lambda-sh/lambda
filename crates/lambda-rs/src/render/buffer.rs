@@ -426,6 +426,21 @@ impl BufferBuilder {
 mod tests {
   use super::*;
 
+  fn create_test_gpu() -> Option<Gpu> {
+    use crate::render::{
+      gpu::GpuBuilder,
+      instance::InstanceBuilder,
+    };
+
+    let instance = InstanceBuilder::new()
+      .with_label("lambda-buffer-test-instance")
+      .build();
+    return GpuBuilder::new()
+      .with_label("lambda-buffer-test-gpu")
+      .build(&instance, None)
+      .ok();
+  }
+
   #[test]
   fn resolve_length_rejects_zero() {
     let builder = BufferBuilder::new();
@@ -475,5 +490,57 @@ mod tests {
   fn checked_byte_len_rejects_overflow() {
     let result = checked_byte_len(usize::MAX, 2);
     assert!(result.is_err());
+  }
+
+  #[test]
+  fn usage_and_properties_support_defaults_and_bit_ops() {
+    let default_usage = Usage::default();
+    let _ = default_usage.to_platform();
+
+    let combined = Usage::VERTEX | Usage::INDEX;
+    let _ = combined.to_platform();
+
+    assert!(Properties::default().cpu_visible());
+    assert!(!Properties::DEVICE_LOCAL.cpu_visible());
+  }
+
+  #[test]
+  fn buffer_type_is_copy_and_debug() {
+    let t = BufferType::Uniform;
+    let _ = format!("{:?}", t);
+    let copied = t;
+    assert!(matches!(copied, BufferType::Uniform));
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn buffer_write_value_and_slice_paths_are_callable() {
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+
+    let buffer = BufferBuilder::new()
+      .with_label("lambda-buffer-write-test")
+      .with_usage(Usage::UNIFORM)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Uniform)
+      .build(&gpu, vec![0_u32; 16])
+      .expect("build uniform buffer");
+
+    buffer.write_value(&gpu, 0, &0x1122_3344_u32);
+    buffer
+      .write_slice(&gpu, 0, &[1_u32, 2_u32, 3_u32])
+      .expect("write slice");
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn uniform_buffer_wrapper_builds_and_writes() {
+    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+
+    let initial = 7_u32;
+    let ubo =
+      UniformBuffer::new(&gpu, &initial, Some("lambda-ubo-test")).unwrap();
+    ubo.write(&gpu, &9_u32);
+
+    let _ = ubo.raw();
   }
 }

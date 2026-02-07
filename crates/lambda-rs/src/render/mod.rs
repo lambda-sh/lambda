@@ -229,7 +229,7 @@ impl RenderContextBuilder {
     let mut render_context = RenderContext {
       label: name,
       instance,
-      surface,
+      surface: Some(surface),
       gpu,
       config,
       texture_usage,
@@ -281,7 +281,7 @@ pub struct RenderContext {
   label: String,
   #[allow(dead_code)]
   instance: instance::Instance,
-  surface: targets::surface::WindowSurface,
+  surface: Option<targets::surface::WindowSurface>,
   gpu: gpu::Gpu,
   config: targets::surface::SurfaceConfig,
   texture_usage: texture::TextureUsages,
@@ -435,8 +435,10 @@ impl RenderContext {
     }
 
     self.size = (width, height);
-    if let Err(err) = self.reconfigure_surface(self.size) {
-      logging::error!("Failed to resize surface: {:?}", err);
+    if self.surface.is_some() {
+      if let Err(err) = self.reconfigure_surface(self.size) {
+        logging::error!("Failed to resize surface: {:?}", err);
+      }
     }
 
     // Recreate depth texture to match new size.
@@ -560,19 +562,46 @@ impl RenderContext {
       return Ok(());
     }
 
-    let frame = match self.surface.acquire_frame() {
-      Ok(frame) => frame,
-      Err(err) => match err {
-        targets::surface::SurfaceError::Lost
-        | targets::surface::SurfaceError::Outdated => {
-          self.reconfigure_surface(self.size)?;
-          self.surface.acquire_frame().map_err(RenderError::Surface)?
-        }
-        _ => return Err(RenderError::Surface(err)),
-      },
+    let requires_surface = commands.iter().any(|cmd| match cmd {
+      RenderCommand::BeginRenderPass { .. } => true,
+      RenderCommand::BeginRenderPassTo {
+        destination: RenderDestination::Surface,
+        ..
+      } => true,
+      _ => false,
+    });
+
+    let mut frame = if requires_surface {
+      Some(
+        match {
+          let surface = self.surface.as_mut().ok_or_else(|| {
+            RenderError::Configuration(
+              "No surface attached to RenderContext".to_string(),
+            )
+          })?;
+          surface.acquire_frame()
+        } {
+          Ok(frame) => frame,
+          Err(err) => match err {
+            targets::surface::SurfaceError::Lost
+            | targets::surface::SurfaceError::Outdated => {
+              self.reconfigure_surface(self.size)?;
+              let surface = self.surface.as_mut().ok_or_else(|| {
+                RenderError::Configuration(
+                  "No surface attached to RenderContext".to_string(),
+                )
+              })?;
+              surface.acquire_frame().map_err(RenderError::Surface)?
+            }
+            _ => return Err(RenderError::Surface(err)),
+          },
+        },
+      )
+    } else {
+      None
     };
 
-    let view = frame.texture_view();
+    let view = frame.as_ref().map(|f| f.texture_view());
     let mut encoder =
       CommandEncoder::new(self, "lambda-render-command-encoder");
 
@@ -583,6 +612,12 @@ impl RenderContext {
           render_pass,
           viewport,
         } => {
+          let view = view.ok_or_else(|| {
+            RenderError::Configuration(
+              "Surface render pass requested but no surface is attached"
+                .to_string(),
+            )
+          })?;
           self.encode_surface_render_pass(
             &mut encoder,
             &mut command_iter,
@@ -597,6 +632,12 @@ impl RenderContext {
           destination,
         } => match destination {
           RenderDestination::Surface => {
+            let view = view.ok_or_else(|| {
+              RenderError::Configuration(
+                "Surface render pass requested but no surface is attached"
+                  .to_string(),
+              )
+            })?;
             self.encode_surface_render_pass(
               &mut encoder,
               &mut command_iter,
@@ -625,7 +666,9 @@ impl RenderContext {
     }
 
     encoder.finish(self);
-    frame.present();
+    if let Some(frame) = frame.take() {
+      frame.present();
+    }
     return Ok(());
   }
 
@@ -999,12 +1042,17 @@ impl RenderContext {
     &mut self,
     size: (u32, u32),
   ) -> Result<(), RenderError> {
-    self
-      .surface
+    let surface = self.surface.as_mut().ok_or_else(|| {
+      RenderError::Configuration(
+        "No surface attached to RenderContext".to_string(),
+      )
+    })?;
+
+    surface
       .resize(&self.gpu, size)
       .map_err(RenderError::Configuration)?;
 
-    let config = self.surface.configuration().ok_or_else(|| {
+    let config = surface.configuration().ok_or_else(|| {
       RenderError::Configuration("Surface was not configured".to_string())
     })?;
 
@@ -1103,5 +1151,856 @@ mod tests {
     let err = RenderContext::validate_pipeline_exists(&pipelines, 7)
       .expect_err("must error");
     assert!(err.to_string().contains("Unknown pipeline 7"));
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn encode_active_render_pass_commands_executes_common_commands() {
+    use lambda_platform::wgpu as platform;
+
+    let instance = instance::InstanceBuilder::new()
+      .with_label("lambda-render-mod-test-instance")
+      .build();
+    let gpu = gpu::GpuBuilder::new()
+      .with_label("lambda-render-mod-test-gpu")
+      .build(&instance, None)
+      .expect("requires a real GPU adapter");
+
+    let (vs, fs) = {
+      let vert_path = format!(
+        "{}/assets/shaders/triangle.vert",
+        env!("CARGO_MANIFEST_DIR")
+      );
+      let frag_path = format!(
+        "{}/assets/shaders/triangle.frag",
+        env!("CARGO_MANIFEST_DIR")
+      );
+      let mut builder = shader::ShaderBuilder::new();
+      let vs = builder.build(shader::VirtualShader::File {
+        path: vert_path,
+        kind: shader::ShaderKind::Vertex,
+        name: "triangle-vert".to_string(),
+        entry_point: "main".to_string(),
+      });
+      let fs = builder.build(shader::VirtualShader::File {
+        path: frag_path,
+        kind: shader::ShaderKind::Fragment,
+        name: "triangle-frag".to_string(),
+        entry_point: "main".to_string(),
+      });
+      (vs, fs)
+    };
+
+    let pass = render_pass::RenderPassBuilder::new()
+      .with_label("lambda-mod-encode-pass")
+      .build(
+        &gpu,
+        texture::TextureFormat::Rgba8Unorm,
+        texture::DepthFormat::Depth24Plus,
+      );
+
+    let pipeline = pipeline::RenderPipelineBuilder::new()
+      .with_label("lambda-mod-encode-pipeline")
+      .build(
+        &gpu,
+        texture::TextureFormat::Rgba8Unorm,
+        texture::DepthFormat::Depth24Plus,
+        &pass,
+        &vs,
+        Some(&fs),
+      );
+
+    let uniform = buffer::BufferBuilder::new()
+      .with_label("lambda-mod-uniform")
+      .with_usage(buffer::Usage::UNIFORM)
+      .with_properties(buffer::Properties::CPU_VISIBLE)
+      .with_buffer_type(buffer::BufferType::Uniform)
+      .build(&gpu, vec![0u32; 4])
+      .expect("build uniform buffer");
+
+    let layout = bind::BindGroupLayoutBuilder::new()
+      .with_uniform(0, bind::BindingVisibility::VertexAndFragment)
+      .build(&gpu);
+    let group = bind::BindGroupBuilder::new()
+      .with_label("lambda-mod-bind-group")
+      .with_layout(&layout)
+      .with_uniform(0, &uniform, 0, None)
+      .build(&gpu);
+
+    let index_buffer = buffer::BufferBuilder::new()
+      .with_label("lambda-mod-index")
+      .with_usage(buffer::Usage::INDEX)
+      .with_properties(buffer::Properties::CPU_VISIBLE)
+      .with_buffer_type(buffer::BufferType::Index)
+      .build(&gpu, vec![0u16, 1u16, 2u16])
+      .expect("build index buffer");
+
+    let resolve =
+      texture::TextureBuilder::new_2d(texture::TextureFormat::Rgba8Unorm)
+        .with_size(4, 4)
+        .for_render_target()
+        .build(&gpu)
+        .expect("build resolve texture");
+
+    let mut platform_encoder = platform::command::CommandEncoder::new(
+      gpu.platform(),
+      Some("lambda-mod-command-encoder"),
+    );
+
+    let mut attachments =
+      color_attachments::RenderColorAttachments::for_offscreen_pass(
+        pass.uses_color(),
+        pass.sample_count(),
+        None,
+        resolve.view_ref(),
+      );
+
+    let mut rp_encoder = encoder::new_render_pass_encoder_for_tests(
+      &mut platform_encoder,
+      &pass,
+      encoder::RenderPassDestinationInfo {
+        color_format: Some(texture::TextureFormat::Rgba8Unorm),
+        depth_format: None,
+      },
+      &mut attachments,
+      None,
+    );
+
+    let initial_viewport = viewport::Viewport {
+      x: 0,
+      y: 0,
+      width: 4,
+      height: 4,
+      min_depth: 0.0,
+      max_depth: 1.0,
+    };
+
+    let render_pipelines = vec![pipeline];
+    let bind_groups = vec![group];
+    let buffers = vec![Rc::new(index_buffer)];
+    let min_align = gpu.limit_min_uniform_buffer_offset_alignment();
+
+    let commands = vec![
+      RenderCommand::SetViewports {
+        start_at: 0,
+        viewports: vec![initial_viewport.clone()],
+      },
+      RenderCommand::SetScissors {
+        start_at: 0,
+        viewports: vec![initial_viewport.clone()],
+      },
+      RenderCommand::SetPipeline { pipeline: 0 },
+      RenderCommand::SetBindGroup {
+        set: 0,
+        group: 0,
+        dynamic_offsets: vec![],
+      },
+      RenderCommand::BindIndexBuffer {
+        buffer: 0,
+        format: command::IndexFormat::Uint16,
+      },
+      RenderCommand::Draw {
+        vertices: 0..3,
+        instances: 0..1,
+      },
+      RenderCommand::DrawIndexed {
+        indices: 0..3,
+        base_vertex: 0,
+        instances: 0..1,
+      },
+      RenderCommand::EndRenderPass,
+    ];
+
+    let mut iter = commands.into_iter();
+    RenderContext::encode_active_render_pass_commands(
+      &mut iter,
+      &mut rp_encoder,
+      &initial_viewport,
+      &render_pipelines,
+      &bind_groups,
+      &buffers,
+      min_align,
+    )
+    .expect("encode commands");
+
+    drop(rp_encoder);
+    let buffer = platform_encoder.finish();
+    gpu.submit(std::iter::once(buffer));
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn encode_active_render_pass_commands_requires_end_render_pass() {
+    use lambda_platform::wgpu as platform;
+
+    let instance = instance::InstanceBuilder::new()
+      .with_label("lambda-render-mod-test-instance-2")
+      .build();
+    let gpu = gpu::GpuBuilder::new()
+      .with_label("lambda-render-mod-test-gpu-2")
+      .build(&instance, None)
+      .expect("requires a real GPU adapter");
+
+    let pass = render_pass::RenderPassBuilder::new()
+      .with_label("lambda-mod-missing-end-pass")
+      .build(
+        &gpu,
+        texture::TextureFormat::Rgba8Unorm,
+        texture::DepthFormat::Depth24Plus,
+      );
+
+    let resolve =
+      texture::TextureBuilder::new_2d(texture::TextureFormat::Rgba8Unorm)
+        .with_size(1, 1)
+        .for_render_target()
+        .build(&gpu)
+        .expect("build resolve texture");
+
+    let mut platform_encoder = platform::command::CommandEncoder::new(
+      gpu.platform(),
+      Some("lambda-mod-missing-end-encoder"),
+    );
+
+    let mut attachments =
+      color_attachments::RenderColorAttachments::for_offscreen_pass(
+        pass.uses_color(),
+        pass.sample_count(),
+        None,
+        resolve.view_ref(),
+      );
+
+    let mut rp_encoder = encoder::new_render_pass_encoder_for_tests(
+      &mut platform_encoder,
+      &pass,
+      encoder::RenderPassDestinationInfo {
+        color_format: Some(texture::TextureFormat::Rgba8Unorm),
+        depth_format: None,
+      },
+      &mut attachments,
+      None,
+    );
+
+    let initial_viewport = viewport::Viewport {
+      x: 0,
+      y: 0,
+      width: 1,
+      height: 1,
+      min_depth: 0.0,
+      max_depth: 1.0,
+    };
+
+    let mut iter =
+      vec![RenderCommand::SetStencilReference { reference: 1 }].into_iter();
+    let err = RenderContext::encode_active_render_pass_commands(
+      &mut iter,
+      &mut rp_encoder,
+      &initial_viewport,
+      &[],
+      &[],
+      &[],
+      gpu.limit_min_uniform_buffer_offset_alignment(),
+    )
+    .expect_err("must require EndRenderPass");
+
+    assert!(err.to_string().contains("EndRenderPass"));
+  }
+
+  #[test]
+  #[ignore = "requires a real GPU adapter"]
+  fn render_context_builder_renders_surface_and_offscreen_passes() {
+    use std::num::NonZeroU64;
+
+    use crate::render::{
+      bind::{
+        BindGroupBuilder,
+        BindGroupLayoutBuilder,
+        BindingVisibility,
+      },
+      buffer::{
+        BufferBuilder,
+        BufferType,
+        Properties,
+        Usage,
+      },
+      command::{
+        IndexFormat,
+        RenderCommand,
+      },
+      encoder::CommandEncoder,
+      gpu::GpuBuilder,
+      instance::InstanceBuilder,
+      pipeline::RenderPipelineBuilder,
+      shader::{
+        ShaderBuilder,
+        ShaderKind,
+        VirtualShader,
+      },
+      targets::offscreen::OffscreenTargetBuilder,
+      texture::{
+        DepthFormat,
+        DepthTextureBuilder,
+        TextureBuilder,
+        TextureFormat,
+        TextureUsages,
+      },
+      vertex::{
+        ColorFormat,
+        VertexAttribute,
+        VertexElement,
+      },
+      viewport::ViewportBuilder,
+    };
+
+    fn compile_shaders(
+    ) -> (crate::render::shader::Shader, crate::render::shader::Shader) {
+      let vs_source = r#"
+        #version 450
+        #extension GL_ARB_separate_shader_objects : enable
+
+        layout(location = 0) in vec3 a_pos;
+
+        layout(push_constant) uniform Immediates {
+          vec4 v;
+        } imms;
+
+        void main() {
+          // Reference immediates to keep push constants alive.
+          gl_Position = vec4(a_pos, 1.0) + imms.v * 0.0;
+        }
+      "#;
+
+      let fs_source = r#"
+        #version 450
+        #extension GL_ARB_separate_shader_objects : enable
+
+        layout(set = 0, binding = 0) uniform ColorData {
+          vec4 color;
+        } u_color;
+
+        layout(location = 0) out vec4 fragment_color;
+
+        void main() {
+          fragment_color = u_color.color;
+        }
+      "#;
+
+      let mut builder = ShaderBuilder::new();
+      let vs = builder.build(VirtualShader::Source {
+        source: vs_source.to_string(),
+        kind: ShaderKind::Vertex,
+        name: "lambda-e2e-vert".to_string(),
+        entry_point: "main".to_string(),
+      });
+      let fs = builder.build(VirtualShader::Source {
+        source: fs_source.to_string(),
+        kind: ShaderKind::Fragment,
+        name: "lambda-e2e-frag".to_string(),
+        entry_point: "main".to_string(),
+      });
+      return (vs, fs);
+    }
+
+    let instance = InstanceBuilder::new()
+      .with_label("lambda-render-context-e2e-instance")
+      .build();
+    let gpu = GpuBuilder::new()
+      .with_label("lambda-render-context-e2e-gpu")
+      .build(&instance, None)
+      .expect("requires a real GPU adapter");
+
+    let config = targets::surface::SurfaceConfig {
+      width: 64,
+      height: 64,
+      format: TextureFormat::Rgba8Unorm,
+      present_mode: targets::surface::PresentMode::Fifo,
+      usage: TextureUsages::RENDER_ATTACHMENT,
+    };
+
+    let depth_texture = DepthTextureBuilder::new()
+      .with_size(64, 64)
+      .with_format(DepthFormat::Depth32Float)
+      .with_label("lambda-depth")
+      .build(&gpu);
+
+    let mut render_context = RenderContext {
+      label: "lambda-render-context-e2e".to_string(),
+      instance,
+      surface: None,
+      gpu,
+      config: config.clone(),
+      texture_usage: config.usage,
+      size: (64, 64),
+      depth_texture: Some(depth_texture),
+      depth_format: DepthFormat::Depth32Float,
+      depth_sample_count: 1,
+      msaa_color: None,
+      msaa_sample_count: 1,
+      offscreen_targets: vec![],
+      render_passes: vec![],
+      render_pipelines: vec![],
+      bind_group_layouts: vec![],
+      bind_groups: vec![],
+      buffers: vec![],
+      seen_error_messages: Default::default(),
+    };
+
+    assert_eq!(render_context.label(), "lambda-render-context-e2e");
+    assert_eq!(render_context.surface_size(), (64, 64));
+    assert_eq!(render_context.surface_format(), TextureFormat::Rgba8Unorm);
+
+    let msaa_samples = [4_u32, 2, 1]
+      .into_iter()
+      .find(|&count| {
+        render_context.gpu().supports_sample_count_for_format(
+          render_context.surface_format(),
+          count,
+        ) && render_context
+          .gpu()
+          .supports_sample_count_for_depth(DepthFormat::Depth32Float, count)
+      })
+      .unwrap_or(1);
+
+    // Build an offscreen destination matching the headless surface config.
+    let offscreen = OffscreenTargetBuilder::new()
+      .with_label("lambda-e2e-offscreen")
+      .with_color(TextureFormat::Rgba8Unorm, 64, 64)
+      .with_depth(DepthFormat::Depth24PlusStencil8)
+      .with_multi_sample(1)
+      .build(render_context.gpu())
+      .expect("build offscreen target");
+    let offscreen_id = render_context.attach_offscreen_target(offscreen);
+
+    // Exercise error path for unknown ids.
+    assert!(render_context
+      .replace_offscreen_target(
+        999,
+        OffscreenTargetBuilder::new()
+          .with_color(TextureFormat::Rgba8Unorm, 1, 1)
+          .build(render_context.gpu())
+          .expect("build replacement target"),
+      )
+      .is_err());
+
+    // Create a pass that requests depth + stencil (single-sample for offscreen compatibility).
+    let supported_samples = 1_u32;
+    let pass = render_pass::RenderPassBuilder::new()
+      .with_label("lambda-e2e-pass")
+      .with_multi_sample(supported_samples)
+      .with_depth()
+      .with_stencil()
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        DepthFormat::Depth24PlusStencil8,
+      );
+    let pass_id = render_context.attach_render_pass(pass);
+
+    // One dynamic uniform at set=0,binding=0.
+    let layout = BindGroupLayoutBuilder::new()
+      .with_label("lambda-e2e-bgl")
+      .with_uniform_dynamic(0, BindingVisibility::Fragment)
+      .build(render_context.gpu());
+    let layout_id = render_context.attach_bind_group_layout(layout.clone());
+    assert_eq!(layout_id, 0);
+
+    let min_alignment =
+      render_context.limit_min_uniform_buffer_offset_alignment() as usize;
+    let ubo_byte_len = (min_alignment * 2).max(256);
+    let ubo_u32_len = ubo_byte_len / std::mem::size_of::<u32>();
+    let uniform = BufferBuilder::new()
+      .with_label("lambda-e2e-uniform")
+      .with_usage(Usage::UNIFORM)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Uniform)
+      .build(render_context.gpu(), vec![0_u32; ubo_u32_len])
+      .expect("build uniform buffer");
+
+    let group = BindGroupBuilder::new()
+      .with_label("lambda-e2e-bg")
+      .with_layout(&layout)
+      .with_uniform(0, &uniform, 0, Some(NonZeroU64::new(16).unwrap()))
+      .build(render_context.gpu());
+    let group_id = render_context.attach_bind_group(group.clone());
+    assert_eq!(group_id, 0);
+
+    assert!(render_context.replace_bind_group(999, group).is_err());
+
+    // Vertex + index buffers for a simple triangle.
+    let vertices: Vec<[f32; 3]> =
+      vec![[0.0, -0.5, 0.0], [-0.5, 0.5, 0.0], [0.5, 0.5, 0.0]];
+    let vertex_buffer = BufferBuilder::new()
+      .with_label("lambda-e2e-vertex")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(render_context.gpu(), vertices)
+      .expect("build vertex buffer");
+
+    let vertices_msaa: Vec<[f32; 3]> =
+      vec![[0.0, -0.5, 0.0], [-0.5, 0.5, 0.0], [0.5, 0.5, 0.0]];
+    let vertex_buffer_msaa = BufferBuilder::new()
+      .with_label("lambda-e2e-vertex-msaa")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(render_context.gpu(), vertices_msaa)
+      .expect("build msaa vertex buffer");
+
+    let indices: Vec<u16> = vec![0, 1, 2];
+    let index_buffer = BufferBuilder::new()
+      .with_label("lambda-e2e-index")
+      .with_usage(Usage::INDEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Index)
+      .build(render_context.gpu(), indices)
+      .expect("build index buffer");
+    let index_id = render_context.attach_buffer(index_buffer);
+
+    let (vs, fs) = compile_shaders();
+
+    let attributes = vec![VertexAttribute {
+      location: 0,
+      offset: 0,
+      element: VertexElement {
+        format: ColorFormat::Rgb32Sfloat,
+        offset: 0,
+      },
+    }];
+
+    let pipeline = RenderPipelineBuilder::new()
+      .with_label("lambda-e2e-pipeline")
+      .with_layouts(&[&layout])
+      .with_immediate_data(16)
+      .with_buffer(vertex_buffer, attributes.clone())
+      .with_multi_sample(supported_samples)
+      .with_depth_format(DepthFormat::Depth24PlusStencil8)
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        DepthFormat::Depth24PlusStencil8,
+        render_context.get_render_pass(pass_id),
+        &vs,
+        Some(&fs),
+      );
+    let pipeline_id = render_context.attach_pipeline(pipeline);
+
+    let viewport = ViewportBuilder::new().build(64, 64);
+    let viewport_small = ViewportBuilder::new().build(16, 16);
+    let viewport_offset =
+      ViewportBuilder::new().with_coordinates(8, 8).build(8, 8);
+
+    // Exercise encoding for a "surface" pass using an offscreen texture view.
+    let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(64, 64)
+      .for_render_target()
+      .build(render_context.gpu())
+      .expect("build resolve texture");
+    let surface_view = resolve.view_ref();
+
+    let dynamic_offset = min_alignment as u32;
+    let mut encoder =
+      CommandEncoder::new(&render_context, "lambda-e2e-encoder");
+
+    let surface_pass_commands = vec![
+      RenderCommand::SetViewports {
+        start_at: 0,
+        viewports: vec![viewport_small.clone(), viewport_offset.clone()],
+      },
+      RenderCommand::SetScissors {
+        start_at: 0,
+        viewports: vec![viewport_small.clone(), viewport_offset.clone()],
+      },
+      RenderCommand::SetStencilReference { reference: 1 },
+      RenderCommand::SetPipeline {
+        pipeline: pipeline_id,
+      },
+      RenderCommand::SetBindGroup {
+        set: 0,
+        group: group_id,
+        dynamic_offsets: vec![dynamic_offset],
+      },
+      RenderCommand::BindVertexBuffer {
+        pipeline: pipeline_id,
+        buffer: 0,
+      },
+      RenderCommand::BindIndexBuffer {
+        buffer: index_id,
+        format: IndexFormat::Uint16,
+      },
+      RenderCommand::Immediates {
+        pipeline: pipeline_id,
+        offset: 0,
+        bytes: vec![0_u32; 4],
+      },
+      RenderCommand::DrawIndexed {
+        indices: 0..3,
+        base_vertex: 0,
+        instances: 0..1,
+      },
+      RenderCommand::EndRenderPass,
+    ];
+    let mut surface_pass_iter = surface_pass_commands.into_iter();
+    render_context
+      .encode_surface_render_pass(
+        &mut encoder,
+        &mut surface_pass_iter,
+        pass_id,
+        viewport.clone(),
+        surface_view,
+      )
+      .expect("encode headless surface pass");
+
+    // Encode an offscreen pass as well.
+    let offscreen_commands = vec![
+      RenderCommand::SetPipeline {
+        pipeline: pipeline_id,
+      },
+      RenderCommand::SetBindGroup {
+        set: 0,
+        group: group_id,
+        dynamic_offsets: vec![0],
+      },
+      RenderCommand::BindVertexBuffer {
+        pipeline: pipeline_id,
+        buffer: 0,
+      },
+      RenderCommand::BindIndexBuffer {
+        buffer: index_id,
+        format: IndexFormat::Uint16,
+      },
+      RenderCommand::DrawIndexed {
+        indices: 0..3,
+        base_vertex: 0,
+        instances: 0..1,
+      },
+      RenderCommand::EndRenderPass,
+    ];
+    let mut offscreen_iter = offscreen_commands.into_iter();
+    render_context
+      .encode_offscreen_render_pass(
+        &mut encoder,
+        &mut offscreen_iter,
+        pass_id,
+        viewport.clone(),
+        offscreen_id,
+      )
+      .expect("encode offscreen pass");
+
+    if msaa_samples > 1 {
+      let pass_msaa = render_pass::RenderPassBuilder::new()
+        .with_label("lambda-e2e-pass-msaa")
+        .with_multi_sample(msaa_samples)
+        .with_depth()
+        .with_stencil()
+        .build(
+          render_context.gpu(),
+          render_context.surface_format(),
+          DepthFormat::Depth24PlusStencil8,
+        );
+      let pass_msaa_id = render_context.attach_render_pass(pass_msaa);
+
+      let pipeline_msaa = RenderPipelineBuilder::new()
+        .with_label("lambda-e2e-pipeline-msaa")
+        .with_layouts(&[&layout])
+        .with_immediate_data(16)
+        .with_buffer(vertex_buffer_msaa, attributes)
+        .with_multi_sample(msaa_samples)
+        .with_depth_format(DepthFormat::Depth24PlusStencil8)
+        .build(
+          render_context.gpu(),
+          render_context.surface_format(),
+          DepthFormat::Depth24PlusStencil8,
+          render_context.get_render_pass(pass_msaa_id),
+          &vs,
+          Some(&fs),
+        );
+      let pipeline_msaa_id = render_context.attach_pipeline(pipeline_msaa);
+
+      let msaa_pass_commands = vec![
+        RenderCommand::SetPipeline {
+          pipeline: pipeline_msaa_id,
+        },
+        RenderCommand::SetBindGroup {
+          set: 0,
+          group: group_id,
+          dynamic_offsets: vec![0],
+        },
+        RenderCommand::BindVertexBuffer {
+          pipeline: pipeline_msaa_id,
+          buffer: 0,
+        },
+        RenderCommand::BindIndexBuffer {
+          buffer: index_id,
+          format: IndexFormat::Uint16,
+        },
+        RenderCommand::DrawIndexed {
+          indices: 0..3,
+          base_vertex: 0,
+          instances: 0..1,
+        },
+        RenderCommand::EndRenderPass,
+      ];
+      let mut msaa_iter = msaa_pass_commands.into_iter();
+      render_context
+        .encode_surface_render_pass(
+          &mut encoder,
+          &mut msaa_iter,
+          pass_msaa_id,
+          viewport.clone(),
+          surface_view,
+        )
+        .expect("encode msaa surface pass");
+    }
+
+    encoder.finish(&render_context);
+
+    // Cover headless `render_internal` (offscreen-only) as well.
+    render_context
+      .render_internal(vec![
+        RenderCommand::SetPipeline {
+          pipeline: pipeline_id,
+        },
+        RenderCommand::BeginRenderPassTo {
+          render_pass: pass_id,
+          viewport: viewport.clone(),
+          destination: command::RenderDestination::Offscreen(offscreen_id),
+        },
+        RenderCommand::SetPipeline {
+          pipeline: pipeline_id,
+        },
+        RenderCommand::SetBindGroup {
+          set: 0,
+          group: group_id,
+          dynamic_offsets: vec![0],
+        },
+        RenderCommand::BindVertexBuffer {
+          pipeline: pipeline_id,
+          buffer: 0,
+        },
+        RenderCommand::BindIndexBuffer {
+          buffer: index_id,
+          format: IndexFormat::Uint16,
+        },
+        RenderCommand::DrawIndexed {
+          indices: 0..3,
+          base_vertex: 0,
+          instances: 0..1,
+        },
+        RenderCommand::EndRenderPass,
+      ])
+      .expect("headless render_internal should support offscreen passes");
+
+    let err = render_context
+      .render_internal(vec![RenderCommand::BeginRenderPassTo {
+        render_pass: pass_id,
+        viewport: viewport.clone(),
+        destination: command::RenderDestination::Surface,
+      }])
+      .expect_err("surface passes require an attached surface");
+    assert!(matches!(
+      err,
+      RenderError::Configuration(msg) if msg.contains("No surface")
+    ));
+
+    // Cover offscreen configuration error paths.
+    let mismatch_samples = [4_u32, 2]
+      .into_iter()
+      .find(|&count| {
+        render_context
+          .gpu()
+          .supports_sample_count_for_format(TextureFormat::Rgba8Unorm, count)
+      })
+      .unwrap_or(1);
+    if mismatch_samples != 1 {
+      let mismatch_pass = render_pass::RenderPassBuilder::new()
+        .with_label("lambda-e2e-mismatch-pass")
+        .with_multi_sample(mismatch_samples)
+        .build(
+          render_context.gpu(),
+          TextureFormat::Rgba8Unorm,
+          DepthFormat::Depth24Plus,
+        );
+      let mismatch_pass_id = render_context.attach_render_pass(mismatch_pass);
+      let mut mismatch_iter = vec![RenderCommand::EndRenderPass].into_iter();
+      let mut mismatch_encoder =
+        CommandEncoder::new(&render_context, "lambda-e2e-mismatch-encoder");
+      let mismatch_err = render_context
+        .encode_offscreen_render_pass(
+          &mut mismatch_encoder,
+          &mut mismatch_iter,
+          mismatch_pass_id,
+          viewport.clone(),
+          offscreen_id,
+        )
+        .expect_err("mismatched pass/target sample counts must error");
+      assert!(matches!(
+        mismatch_err,
+        RenderError::Configuration(msg) if msg.contains("sample_count")
+      ));
+    }
+
+    let target_no_depth = OffscreenTargetBuilder::new()
+      .with_label("lambda-e2e-offscreen-no-depth")
+      .with_color(TextureFormat::Rgba8Unorm, 8, 8)
+      .build(render_context.gpu())
+      .expect("build offscreen target without depth");
+    let target_no_depth_id =
+      render_context.attach_offscreen_target(target_no_depth);
+    let mut no_depth_iter = vec![RenderCommand::EndRenderPass].into_iter();
+    let mut no_depth_encoder =
+      CommandEncoder::new(&render_context, "lambda-e2e-no-depth-encoder");
+    let no_depth_err = render_context
+      .encode_offscreen_render_pass(
+        &mut no_depth_encoder,
+        &mut no_depth_iter,
+        pass_id,
+        viewport.clone(),
+        target_no_depth_id,
+      )
+      .expect_err(
+        "pass with depth/stencil must require a target depth attachment",
+      );
+    assert!(matches!(
+      no_depth_err,
+      RenderError::Configuration(msg) if msg.contains("no depth attachment")
+    ));
+
+    let target_no_stencil = OffscreenTargetBuilder::new()
+      .with_label("lambda-e2e-offscreen-no-stencil")
+      .with_color(TextureFormat::Rgba8Unorm, 8, 8)
+      .with_depth(DepthFormat::Depth24Plus)
+      .build(render_context.gpu())
+      .expect("build offscreen target without stencil");
+    let target_no_stencil_id =
+      render_context.attach_offscreen_target(target_no_stencil);
+    let stencil_pass = render_pass::RenderPassBuilder::new()
+      .with_label("lambda-e2e-stencil-pass")
+      .with_stencil()
+      .build(
+        render_context.gpu(),
+        TextureFormat::Rgba8Unorm,
+        DepthFormat::Depth24Plus,
+      );
+    let stencil_pass_id = render_context.attach_render_pass(stencil_pass);
+    let mut stencil_iter = vec![RenderCommand::EndRenderPass].into_iter();
+    let mut stencil_encoder =
+      CommandEncoder::new(&render_context, "lambda-e2e-stencil-encoder");
+    let stencil_err = render_context
+      .encode_offscreen_render_pass(
+        &mut stencil_encoder,
+        &mut stencil_iter,
+        stencil_pass_id,
+        viewport.clone(),
+        target_no_stencil_id,
+      )
+      .expect_err("stencil pass must require stencil-capable depth format");
+    assert!(matches!(
+      stencil_err,
+      RenderError::Configuration(msg) if msg.contains("stencil")
+    ));
+
+    // Resize exercises headless depth/MSAA rebuild paths without touching a surface.
+    render_context.resize(32, 32);
+    assert_eq!(render_context.surface_size(), (32, 32));
   }
 }
