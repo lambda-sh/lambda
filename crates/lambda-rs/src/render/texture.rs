@@ -758,42 +758,8 @@ mod tests {
   /// actionable error message.
   #[test]
   fn texture_builder_rejects_invalid_dimensions() {
-    use crate::render::{
-      gpu::{
-        Gpu,
-        GpuBuilder,
-      },
-      instance::InstanceBuilder,
-    };
-
-    fn create_test_gpu() -> Option<Gpu> {
-      let instance = InstanceBuilder::new()
-        .with_label("lambda-texture-test-instance")
-        .build();
-      let built = GpuBuilder::new()
-        .with_label("lambda-texture-test-gpu")
-        .build(&instance, None)
-        .ok();
-      if built.is_some() {
-        return built;
-      }
-
-      let fallback = GpuBuilder::new()
-        .with_label("lambda-texture-test-gpu-fallback")
-        .force_fallback(true)
-        .build(&instance, None)
-        .ok();
-
-      if fallback.is_none()
-        && crate::render::gpu::require_gpu_adapter_for_tests()
-      {
-        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-      }
-
-      return fallback;
-    }
-
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-texture-test")
+    else {
       return;
     };
 
@@ -808,42 +774,9 @@ mod tests {
   /// the configured depth is greater than `1`.
   #[test]
   fn texture_builder_builds_3d_texture_path() {
-    use crate::render::{
-      gpu::{
-        Gpu,
-        GpuBuilder,
-      },
-      instance::InstanceBuilder,
-    };
-
-    fn create_test_gpu() -> Option<Gpu> {
-      let instance = InstanceBuilder::new()
-        .with_label("lambda-texture-3d-test-instance")
-        .build();
-      let built = GpuBuilder::new()
-        .with_label("lambda-texture-3d-test-gpu")
-        .build(&instance, None)
-        .ok();
-      if built.is_some() {
-        return built;
-      }
-
-      let fallback = GpuBuilder::new()
-        .with_label("lambda-texture-3d-test-gpu-fallback")
-        .force_fallback(true)
-        .build(&instance, None)
-        .ok();
-
-      if fallback.is_none()
-        && crate::render::gpu::require_gpu_adapter_for_tests()
-      {
-        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-      }
-
-      return fallback;
-    }
-
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-texture-3d-test")
+    else {
       return;
     };
 

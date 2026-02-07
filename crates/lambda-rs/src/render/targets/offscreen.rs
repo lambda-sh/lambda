@@ -316,10 +316,6 @@ mod tests {
   use lambda_platform::wgpu as platform;
 
   use super::*;
-  use crate::render::{
-    gpu::GpuBuilder,
-    instance::InstanceBuilder,
-  };
 
   /// Fails when the builder has a zero dimension.
   #[test]
@@ -347,37 +343,13 @@ mod tests {
     assert_eq!(builder.sample_count, 1);
   }
 
-  fn create_test_gpu() -> Option<Gpu> {
-    let instance = InstanceBuilder::new()
-      .with_label("lambda-offscreen-target-test-instance")
-      .build();
-    let built = GpuBuilder::new()
-      .with_label("lambda-offscreen-target-test-gpu")
-      .build(&instance, None)
-      .ok();
-    if built.is_some() {
-      return built;
-    }
-
-    let fallback = GpuBuilder::new()
-      .with_label("lambda-offscreen-target-test-gpu-fallback")
-      .force_fallback(true)
-      .build(&instance, None)
-      .ok();
-
-    if fallback.is_none() && crate::render::gpu::require_gpu_adapter_for_tests()
-    {
-      panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-    }
-
-    return fallback;
-  }
-
   /// Ensures the builder rejects attempts to build without configuring a color
   /// attachment.
   #[test]
   fn build_rejects_missing_color_attachment() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-offscreen-target-test")
+    else {
       return;
     };
 
@@ -392,7 +364,9 @@ mod tests {
   /// error rather than silently falling back.
   #[test]
   fn build_rejects_unsupported_sample_count() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-offscreen-target-test")
+    else {
       return;
     };
 
@@ -411,7 +385,9 @@ mod tests {
   /// render attachment (required for render-to-texture workflows).
   #[test]
   fn resolve_texture_supports_sampling_and_render_attachment() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-offscreen-target-test")
+    else {
       return;
     };
 
@@ -460,7 +436,9 @@ mod tests {
   /// and depth attachments so they can be encoded into a single render pass.
   #[test]
   fn msaa_target_depth_attachment_matches_sample_count() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-offscreen-target-test")
+    else {
       return;
     };
 

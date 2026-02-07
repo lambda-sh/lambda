@@ -756,11 +756,7 @@ mod tests {
         Properties,
         Usage,
       },
-      gpu::{
-        Gpu,
-        GpuBuilder,
-      },
-      instance::InstanceBuilder,
+      gpu::create_test_gpu,
       render_pass::RenderPassBuilder,
       shader::{
         ShaderBuilder,
@@ -778,34 +774,7 @@ mod tests {
       },
     };
 
-    fn create_test_gpu() -> Option<Gpu> {
-      let instance = InstanceBuilder::new()
-        .with_label("lambda-pipeline-depth-test-instance")
-        .build();
-      let built = GpuBuilder::new()
-        .with_label("lambda-pipeline-depth-test-gpu")
-        .build(&instance, None)
-        .ok();
-      if built.is_some() {
-        return built;
-      }
-
-      let fallback = GpuBuilder::new()
-        .with_label("lambda-pipeline-depth-test-gpu-fallback")
-        .force_fallback(true)
-        .build(&instance, None)
-        .ok();
-
-      if fallback.is_none()
-        && crate::render::gpu::require_gpu_adapter_for_tests()
-      {
-        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-      }
-
-      return fallback;
-    }
-
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = create_test_gpu("lambda-pipeline-depth-test") else {
       return;
     };
 
@@ -935,11 +904,7 @@ mod tests {
         Properties,
         Usage,
       },
-      gpu::{
-        Gpu,
-        GpuBuilder,
-      },
-      instance::InstanceBuilder,
+      gpu::create_test_gpu,
       render_pass::RenderPassBuilder,
       shader::{
         ShaderBuilder,
@@ -957,34 +922,7 @@ mod tests {
       },
     };
 
-    fn create_test_gpu() -> Option<Gpu> {
-      let instance = InstanceBuilder::new()
-        .with_label("lambda-pipeline-test-instance")
-        .build();
-      let built = GpuBuilder::new()
-        .with_label("lambda-pipeline-test-gpu")
-        .build(&instance, None)
-        .ok();
-      if built.is_some() {
-        return built;
-      }
-
-      let fallback = GpuBuilder::new()
-        .with_label("lambda-pipeline-test-gpu-fallback")
-        .force_fallback(true)
-        .build(&instance, None)
-        .ok();
-
-      if fallback.is_none()
-        && crate::render::gpu::require_gpu_adapter_for_tests()
-      {
-        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-      }
-
-      return fallback;
-    }
-
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = create_test_gpu("lambda-pipeline-test") else {
       return;
     };
 

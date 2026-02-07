@@ -262,6 +262,42 @@ pub(crate) fn require_gpu_adapter_for_tests() -> bool {
   );
 }
 
+#[cfg(test)]
+pub(crate) fn create_test_gpu(label_base: &str) -> Option<Gpu> {
+  let instance = super::instance::InstanceBuilder::new()
+    .with_label(&format!("{}-instance", label_base))
+    .build();
+  return create_test_gpu_with_instance(&instance, label_base);
+}
+
+#[cfg(test)]
+pub(crate) fn create_test_gpu_with_instance(
+  instance: &Instance,
+  label_base: &str,
+) -> Option<Gpu> {
+  let built = GpuBuilder::new()
+    .with_label(&format!("{}-gpu", label_base))
+    .build(instance, None)
+    .ok();
+  if built.is_some() {
+    return built;
+  }
+
+  let fallback = GpuBuilder::new()
+    .with_label(&format!("{}-gpu-fallback", label_base))
+    .force_fallback(true)
+    .build(instance, None)
+    .ok();
+
+  if fallback.is_none() && require_gpu_adapter_for_tests() {
+    panic!(
+      "No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)"
+    );
+  }
+
+  return fallback;
+}
+
 // ---------------------------------------------------------------------------
 // GpuBuildError
 // ---------------------------------------------------------------------------

@@ -1170,20 +1170,9 @@ mod tests {
     let instance = instance::InstanceBuilder::new()
       .with_label("lambda-render-mod-test-instance")
       .build();
-    let gpu = gpu::GpuBuilder::new()
-      .with_label("lambda-render-mod-test-gpu")
-      .build(&instance, None)
-      .or_else(|_| {
-        gpu::GpuBuilder::new()
-          .with_label("lambda-render-mod-test-gpu-fallback")
-          .force_fallback(true)
-          .build(&instance, None)
-      })
-      .ok();
-    let Some(gpu) = gpu else {
-      if crate::render::gpu::require_gpu_adapter_for_tests() {
-        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-      }
+    let Some(gpu) =
+      gpu::create_test_gpu_with_instance(&instance, "lambda-render-mod-test")
+    else {
       return;
     };
 
@@ -1358,20 +1347,9 @@ mod tests {
     let instance = instance::InstanceBuilder::new()
       .with_label("lambda-render-mod-test-instance-2")
       .build();
-    let gpu = gpu::GpuBuilder::new()
-      .with_label("lambda-render-mod-test-gpu-2")
-      .build(&instance, None)
-      .or_else(|_| {
-        gpu::GpuBuilder::new()
-          .with_label("lambda-render-mod-test-gpu-2-fallback")
-          .force_fallback(true)
-          .build(&instance, None)
-      })
-      .ok();
-    let Some(gpu) = gpu else {
-      if crate::render::gpu::require_gpu_adapter_for_tests() {
-        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-      }
+    let Some(gpu) =
+      gpu::create_test_gpu_with_instance(&instance, "lambda-render-mod-test-2")
+    else {
       return;
     };
 
@@ -1462,7 +1440,6 @@ mod tests {
         RenderCommand,
       },
       encoder::CommandEncoder,
-      gpu::GpuBuilder,
       instance::InstanceBuilder,
       pipeline::RenderPipelineBuilder,
       shader::{
@@ -1538,20 +1515,10 @@ mod tests {
     let instance = InstanceBuilder::new()
       .with_label("lambda-render-context-e2e-instance")
       .build();
-    let gpu = GpuBuilder::new()
-      .with_label("lambda-render-context-e2e-gpu")
-      .build(&instance, None)
-      .or_else(|_| {
-        GpuBuilder::new()
-          .with_label("lambda-render-context-e2e-gpu-fallback")
-          .force_fallback(true)
-          .build(&instance, None)
-      })
-      .ok();
-    let Some(gpu) = gpu else {
-      if crate::render::gpu::require_gpu_adapter_for_tests() {
-        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-      }
+    let Some(gpu) = gpu::create_test_gpu_with_instance(
+      &instance,
+      "lambda-render-context-e2e",
+    ) else {
       return;
     };
 

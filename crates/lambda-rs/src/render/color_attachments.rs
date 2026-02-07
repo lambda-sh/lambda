@@ -125,50 +125,19 @@ impl<'view> RenderColorAttachments<'view> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::render::{
-    gpu::{
-      Gpu,
-      GpuBuilder,
-    },
-    instance::InstanceBuilder,
-    texture::{
-      ColorAttachmentTextureBuilder,
-      TextureBuilder,
-      TextureFormat,
-    },
+  use crate::render::texture::{
+    ColorAttachmentTextureBuilder,
+    TextureBuilder,
+    TextureFormat,
   };
-
-  fn create_test_gpu() -> Option<Gpu> {
-    let instance = InstanceBuilder::new()
-      .with_label("lambda-color-attachments-test-instance")
-      .build();
-    let built = GpuBuilder::new()
-      .with_label("lambda-color-attachments-test-gpu")
-      .build(&instance, None)
-      .ok();
-    if built.is_some() {
-      return built;
-    }
-
-    let fallback = GpuBuilder::new()
-      .with_label("lambda-color-attachments-test-gpu-fallback")
-      .force_fallback(true)
-      .build(&instance, None)
-      .ok();
-
-    if fallback.is_none() && crate::render::gpu::require_gpu_adapter_for_tests()
-    {
-      panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-    }
-
-    return fallback;
-  }
 
   /// Ensures `for_surface_pass` produces no color attachments when color output
   /// is disabled.
   #[test]
   fn for_surface_pass_returns_empty_when_color_disabled() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-color-attachments-test")
+    else {
       return;
     };
 
@@ -188,7 +157,9 @@ mod tests {
   /// can be passed through to the platform render pass builder.
   #[test]
   fn for_offscreen_pass_builds_single_sample_color_attachment() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-color-attachments-test")
+    else {
       return;
     };
 
@@ -207,7 +178,9 @@ mod tests {
   /// Builds an MSAA offscreen attachment list with a resolve target.
   #[test]
   fn for_offscreen_pass_builds_msaa_color_attachment() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-color-attachments-test")
+    else {
       return;
     };
 
@@ -235,7 +208,9 @@ mod tests {
   /// MSAA view.
   #[test]
   fn for_offscreen_pass_panics_when_msaa_view_missing() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-color-attachments-test")
+    else {
       return;
     };
 

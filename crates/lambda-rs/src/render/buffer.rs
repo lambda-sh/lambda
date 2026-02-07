@@ -426,37 +426,6 @@ impl BufferBuilder {
 mod tests {
   use super::*;
 
-  fn create_test_gpu() -> Option<Gpu> {
-    use crate::render::{
-      gpu::GpuBuilder,
-      instance::InstanceBuilder,
-    };
-
-    let instance = InstanceBuilder::new()
-      .with_label("lambda-buffer-test-instance")
-      .build();
-    let built = GpuBuilder::new()
-      .with_label("lambda-buffer-test-gpu")
-      .build(&instance, None)
-      .ok();
-    if built.is_some() {
-      return built;
-    }
-
-    let fallback = GpuBuilder::new()
-      .with_label("lambda-buffer-test-gpu-fallback")
-      .force_fallback(true)
-      .build(&instance, None)
-      .ok();
-
-    if fallback.is_none() && crate::render::gpu::require_gpu_adapter_for_tests()
-    {
-      panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-    }
-
-    return fallback;
-  }
-
   /// Rejects constructing a buffer with a logical length of zero elements.
   #[test]
   fn resolve_length_rejects_zero() {
@@ -542,7 +511,8 @@ mod tests {
   /// wired to the platform API.
   #[test]
   fn buffer_write_value_and_slice_paths_are_callable() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-buffer-test")
+    else {
       return;
     };
 
@@ -563,7 +533,8 @@ mod tests {
   /// Builds a typed uniform buffer wrapper and performs an update write.
   #[test]
   fn uniform_buffer_wrapper_builds_and_writes() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-buffer-test")
+    else {
       return;
     };
 

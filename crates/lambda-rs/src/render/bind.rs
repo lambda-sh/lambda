@@ -73,11 +73,7 @@ mod tests {
       Properties,
       Usage,
     },
-    gpu::{
-      Gpu,
-      GpuBuilder,
-    },
-    instance::InstanceBuilder,
+    gpu::create_test_gpu,
     texture::{
       SamplerBuilder,
       TextureBuilder,
@@ -85,32 +81,6 @@ mod tests {
       ViewDimension,
     },
   };
-
-  fn create_test_gpu() -> Option<Gpu> {
-    let instance = InstanceBuilder::new()
-      .with_label("lambda-bind-test-instance")
-      .build();
-    let built = GpuBuilder::new()
-      .with_label("lambda-bind-test-gpu")
-      .build(&instance, None)
-      .ok();
-    if built.is_some() {
-      return built;
-    }
-
-    let fallback = GpuBuilder::new()
-      .with_label("lambda-bind-test-gpu-fallback")
-      .force_fallback(true)
-      .build(&instance, None)
-      .ok();
-
-    if fallback.is_none() && crate::render::gpu::require_gpu_adapter_for_tests()
-    {
-      panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
-    }
-
-    return fallback;
-  }
 
   /// Ensures engine-facing shader stage visibility flags map to the platform
   /// wgpu visibility flags.
@@ -143,7 +113,7 @@ mod tests {
   #[test]
   #[cfg(debug_assertions)]
   fn bind_group_layout_builder_rejects_duplicate_binding() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = create_test_gpu("lambda-bind-test") else {
       return;
     };
 
@@ -161,7 +131,7 @@ mod tests {
   /// dynamic offset counts at bind time.
   #[test]
   fn bind_group_layout_counts_dynamic_uniforms() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = create_test_gpu("lambda-bind-test") else {
       return;
     };
 
@@ -176,7 +146,7 @@ mod tests {
   /// Ensures building a bind group without providing a layout fails loudly.
   #[test]
   fn bind_group_builder_requires_layout() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = create_test_gpu("lambda-bind-test") else {
       return;
     };
 
@@ -189,7 +159,7 @@ mod tests {
   /// Ensures a bind group exposes the same dynamic binding count as its layout.
   #[test]
   fn bind_group_dynamic_binding_count_matches_layout() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = create_test_gpu("lambda-bind-test") else {
       return;
     };
 
@@ -220,7 +190,7 @@ mod tests {
   /// sampled texture, sampler) to validate layout/view dimension compatibility.
   #[test]
   fn bind_group_supports_textures_and_samplers() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = create_test_gpu("lambda-bind-test") else {
       return;
     };
 
@@ -259,7 +229,7 @@ mod tests {
   #[test]
   #[cfg(debug_assertions)]
   fn bind_group_layout_rejects_duplicate_binding_across_resource_kinds() {
-    let Some(gpu) = create_test_gpu() else {
+    let Some(gpu) = create_test_gpu("lambda-bind-test") else {
       return;
     };
 
