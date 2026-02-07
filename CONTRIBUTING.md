@@ -72,6 +72,8 @@ When adding or modifying features:
 - Update rustdoc comments for public APIs.
 - Add or update examples in `crates/lambda-rs/examples/`.
 - Create or update specifications in `docs/specs/` for significant changes.
+  - Add new specs to `docs/specs/README.md` and group them by feature area.
+  - Place new specs under a matching subdirectory (for example, `docs/specs/rendering/`).
 - Follow the documentation tone and style guidelines in `AGENTS.md`.
 
 ## Questions and Discussions

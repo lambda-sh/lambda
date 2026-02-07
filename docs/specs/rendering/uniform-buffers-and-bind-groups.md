@@ -3,7 +3,7 @@ title: "Uniform Buffers and Bind Groups"
 document_id: "ubo-spec-2025-10-11"
 status: "living"
 created: "2025-10-11T00:00:00Z"
-last_updated: "2026-02-05T23:05:40Z"
+last_updated: "2026-02-07T00:00:00Z"
 version: "0.5.1"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
@@ -275,7 +275,7 @@ RC::SetBindGroup { set: 0, group: dyn_group_id, dynamic_offsets: offsets };
   - [x] Dynamic offset alignment/count checks — crates/lambda-rs/src/render/validation.rs
 - Performance
   - [x] Recommendations documented (this section)
-  - [x] Dynamic offsets example provided — docs/specs/uniform-buffers-and-bind-groups.md
+  - [x] Dynamic offsets example provided — docs/specs/rendering/uniform-buffers-and-bind-groups.md
 - Documentation and Examples
   - [x] Spec updated (this document)
   - [x] Example added — demos/render/src/bin/uniform_buffer_triangle.rs
