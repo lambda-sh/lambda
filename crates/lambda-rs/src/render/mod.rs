@@ -256,12 +256,10 @@ fn resolve_surface_present_mode(
   builder_mode: Option<PresentMode>,
   window_vsync: bool,
 ) -> targets::surface::PresentMode {
-  let requested = builder_mode.unwrap_or_else(|| {
-    if window_vsync {
-      PresentMode::Vsync
-    } else {
-      PresentMode::Immediate
-    }
+  let requested = builder_mode.unwrap_or(if window_vsync {
+    PresentMode::Vsync
+  } else {
+    PresentMode::Immediate
   });
 
   return match requested {
