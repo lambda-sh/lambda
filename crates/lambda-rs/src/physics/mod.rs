@@ -208,3 +208,145 @@ fn validate_gravity(gravity: [f32; 2]) -> Result<(), PhysicsWorld2DError> {
 
   return Ok(());
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn world_builds_with_defaults() {
+    let world = PhysicsWorld2DBuilder::new().build().unwrap();
+
+    assert_eq!(world.gravity(), [0.0, -9.81]);
+    assert_eq!(world.timestep_seconds(), 1.0 / 60.0);
+
+    assert_eq!(world.backend.gravity(), [0.0, -9.81]);
+    assert_eq!(world.backend.timestep_seconds(), 1.0 / 60.0);
+
+    return;
+  }
+
+  #[test]
+  fn world_builds_with_custom_config() {
+    let world = PhysicsWorld2DBuilder::new()
+      .with_gravity(1.0, 2.0)
+      .with_timestep_seconds(0.5)
+      .with_substeps(2)
+      .build()
+      .unwrap();
+
+    assert_eq!(world.gravity(), [1.0, 2.0]);
+    assert_eq!(world.timestep_seconds(), 0.5);
+    assert_eq!(world.substeps, 2);
+
+    assert_eq!(world.backend.gravity(), [1.0, 2.0]);
+    assert_eq!(world.backend.timestep_seconds(), 0.25);
+
+    return;
+  }
+
+  #[test]
+  fn build_rejects_non_positive_timestep_seconds() {
+    let error = match PhysicsWorld2DBuilder::new()
+      .with_timestep_seconds(0.0)
+      .build()
+    {
+      Ok(_) => {
+        panic!("expected build() to fail");
+      }
+      Err(error) => error,
+    };
+
+    assert_eq!(
+      error,
+      PhysicsWorld2DError::InvalidTimestepSeconds {
+        timestep_seconds: 0.0,
+      }
+    );
+
+    return;
+  }
+
+  #[test]
+  fn build_rejects_non_finite_timestep_seconds() {
+    let error = match PhysicsWorld2DBuilder::new()
+      .with_timestep_seconds(f32::NAN)
+      .build()
+    {
+      Ok(_) => {
+        panic!("expected build() to fail");
+      }
+      Err(error) => error,
+    };
+
+    match error {
+      PhysicsWorld2DError::InvalidTimestepSeconds { timestep_seconds } => {
+        assert!(timestep_seconds.is_nan());
+      }
+      _ => {
+        panic!("expected InvalidTimestepSeconds, got: {error:?}");
+      }
+    }
+
+    return;
+  }
+
+  #[test]
+  fn build_rejects_zero_substeps() {
+    let error = match PhysicsWorld2DBuilder::new().with_substeps(0).build() {
+      Ok(_) => {
+        panic!("expected build() to fail");
+      }
+      Err(error) => error,
+    };
+
+    assert_eq!(error, PhysicsWorld2DError::InvalidSubsteps { substeps: 0 });
+
+    return;
+  }
+
+  #[test]
+  fn build_rejects_non_finite_gravity() {
+    let error = match PhysicsWorld2DBuilder::new()
+      .with_gravity(f32::INFINITY, 0.0)
+      .build()
+    {
+      Ok(_) => {
+        panic!("expected build() to fail");
+      }
+      Err(error) => error,
+    };
+
+    assert_eq!(
+      error,
+      PhysicsWorld2DError::InvalidGravity {
+        x: f32::INFINITY,
+        y: 0.0,
+      }
+    );
+
+    return;
+  }
+
+  #[test]
+  fn step_does_not_panic_for_empty_world() {
+    let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
+    world.step();
+
+    return;
+  }
+
+  #[test]
+  fn step_uses_substep_timestep_seconds() {
+    let mut world = PhysicsWorld2DBuilder::new()
+      .with_timestep_seconds(1.0)
+      .with_substeps(4)
+      .build()
+      .unwrap();
+
+    world.step();
+    assert_eq!(world.backend.timestep_seconds(), 0.25);
+
+    return;
+  }
+}
