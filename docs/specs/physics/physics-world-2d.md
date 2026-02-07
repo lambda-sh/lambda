@@ -3,13 +3,13 @@ title: "2D Physics World"
 document_id: "physics-world-2d-2026-02-06"
 status: "draft"
 created: "2026-02-06T23:02:06Z"
-last_updated: "2026-02-07T01:28:28Z"
-version: "0.1.2"
+last_updated: "2026-02-07T20:58:44Z"
+version: "0.1.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "d9ae52363df035954079bf2ebdc194d18281862d"
+repo_commit: "203550db159ade4ff4a3b71b775c619eb278b3f1"
 owners: ["lambda-sh"]
 reviewers: ["engine"]
 tags: ["spec", "physics", "2d", "lambda-rs", "platform"]
