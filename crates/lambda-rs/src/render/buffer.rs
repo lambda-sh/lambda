@@ -441,6 +441,7 @@ mod tests {
       .ok();
   }
 
+  /// Rejects constructing a buffer with a logical length of zero elements.
   #[test]
   fn resolve_length_rejects_zero() {
     let builder = BufferBuilder::new();
@@ -448,6 +449,7 @@ mod tests {
     assert!(result.is_err());
   }
 
+  /// Ensures builder labels are stored for later propagation/debugging.
   #[test]
   fn label_is_recorded_on_builder() {
     let builder = BufferBuilder::new().with_label("buffer-test");
@@ -456,6 +458,7 @@ mod tests {
     assert_eq!(builder.label.as_deref(), Some("buffer-test"));
   }
 
+  /// Rejects length computations that would overflow `usize`.
   #[test]
   fn resolve_length_rejects_overflow() {
     let builder = BufferBuilder::new();
@@ -463,6 +466,7 @@ mod tests {
     assert!(result.is_err());
   }
 
+  /// Confirms `value_as_bytes` uses native-endian byte order and size.
   #[test]
   fn value_as_bytes_matches_native_bytes() {
     let value: u32 = 0x1122_3344;
@@ -470,6 +474,7 @@ mod tests {
     assert_eq!(value_as_bytes(&value), expected.as_slice());
   }
 
+  /// Confirms `slice_as_bytes` flattens a typed slice to the native bytes.
   #[test]
   fn slice_as_bytes_matches_native_bytes() {
     let values: [u16; 3] = [0x1122, 0x3344, 0x5566];
@@ -480,18 +485,22 @@ mod tests {
     assert_eq!(slice_as_bytes(&values).unwrap(), expected.as_slice());
   }
 
+  /// Ensures converting an empty slice to bytes yields an empty output slice.
   #[test]
   fn slice_as_bytes_empty_is_empty() {
     let values: [u32; 0] = [];
     assert_eq!(slice_as_bytes(&values).unwrap(), &[]);
   }
 
+  /// Rejects byte length computations that would overflow `usize`.
   #[test]
   fn checked_byte_len_rejects_overflow() {
     let result = checked_byte_len(usize::MAX, 2);
     assert!(result.is_err());
   }
 
+  /// Validates default flags and bitwise-OR behavior for buffer usage and
+  /// memory properties.
   #[test]
   fn usage_and_properties_support_defaults_and_bit_ops() {
     let default_usage = Usage::default();
@@ -504,6 +513,7 @@ mod tests {
     assert!(!Properties::DEVICE_LOCAL.cpu_visible());
   }
 
+  /// Confirms `BufferType` stays a small Copy enum and is `Debug`-printable.
   #[test]
   fn buffer_type_is_copy_and_debug() {
     let t = BufferType::Uniform;
@@ -512,6 +522,8 @@ mod tests {
     assert!(matches!(copied, BufferType::Uniform));
   }
 
+  /// Exercises the GPU-backed write helpers to ensure they are callable and
+  /// wired to the platform API.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn buffer_write_value_and_slice_paths_are_callable() {
@@ -531,6 +543,7 @@ mod tests {
       .expect("write slice");
   }
 
+  /// Builds a typed uniform buffer wrapper and performs an update write.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn uniform_buffer_wrapper_builds_and_writes() {

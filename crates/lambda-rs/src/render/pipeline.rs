@@ -692,6 +692,7 @@ impl RenderPipelineBuilder {
 mod tests {
   use super::*;
 
+  /// Ensures vertex step modes map to the platform vertex step modes.
   #[test]
   fn engine_step_mode_maps_to_platform_step_mode() {
     let per_vertex = to_platform_step_mode(VertexStepMode::PerVertex);
@@ -707,6 +708,7 @@ mod tests {
     ));
   }
 
+  /// Ensures depth compare functions map to the platform compare functions.
   #[test]
   fn compare_function_maps_to_platform() {
     assert!(matches!(
@@ -719,6 +721,7 @@ mod tests {
     ));
   }
 
+  /// Ensures culling mode configuration maps to the platform culling modes.
   #[test]
   fn culling_mode_maps_to_platform() {
     assert!(matches!(
@@ -731,12 +734,15 @@ mod tests {
     ));
   }
 
+  /// Ensures invalid MSAA sample counts are clamped/fallen back to `1`.
   #[test]
   fn pipeline_builder_invalid_sample_count_falls_back_to_one() {
     let builder = RenderPipelineBuilder::new().with_multi_sample(3);
     assert_eq!(builder.sample_count, 1);
   }
 
+  /// Builds a pipeline with depth+stencil enabled and both per-vertex and
+  /// per-instance buffers, covering format upgrade and instance slot tracking.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn pipeline_builds_with_depth_stencil_and_instance_layout() {
@@ -900,6 +906,8 @@ mod tests {
     assert_eq!(pipeline.per_instance_slots().len(), 2);
   }
 
+  /// Ensures pipeline construction aligns its MSAA sample count to the render
+  /// pass sample count to avoid target incompatibility.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn pipeline_build_aligns_sample_count_to_render_pass() {

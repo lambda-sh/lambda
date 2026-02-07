@@ -136,6 +136,8 @@ impl VertexBuilder {
 mod test {
   use super::*;
 
+  /// Ensures `VertexBuilder` defaults and chained setters produce the expected
+  /// `Vertex` output.
   #[test]
   fn vertex_building() {
     let mut vertex = VertexBuilder::new();

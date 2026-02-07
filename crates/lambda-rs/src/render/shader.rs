@@ -95,6 +95,8 @@ impl Shader {
 mod tests {
   use super::*;
 
+  /// Compiles a minimal inline shader and verifies the compiled SPIR‑V is
+  /// accessible via both borrowing and owned accessors.
   #[test]
   fn shader_builder_compiles_source_and_exposes_binary() {
     let source = r#"
@@ -119,6 +121,7 @@ mod tests {
     assert!(matches!(shader.virtual_shader().kind(), ShaderKind::Vertex));
   }
 
+  /// Compiles a shader from a file path and validates the output is non-empty.
   #[test]
   fn shader_builder_compiles_file_shader() {
     let vert_path = format!(

@@ -376,6 +376,7 @@ impl std::fmt::Display for WindowSurfaceError {
 mod tests {
   use super::*;
 
+  /// Ensures present mode conversions to/from the platform are lossless.
   #[test]
   fn present_mode_round_trips_through_platform() {
     let modes = [
@@ -394,6 +395,8 @@ mod tests {
     }
   }
 
+  /// Ensures each platform surface error maps to the corresponding engine
+  /// surface error variant.
   #[test]
   fn surface_error_maps_platform_variants() {
     assert!(matches!(
@@ -418,6 +421,7 @@ mod tests {
     assert!(matches!(other, SurfaceError::Other(_)));
   }
 
+  /// Ensures window surface errors are displayed using the underlying message.
   #[test]
   fn window_surface_error_is_displayed() {
     let error =

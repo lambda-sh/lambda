@@ -158,6 +158,7 @@ mod tests {
   use super::MeshBuilder;
   use crate::render::vertex::Vertex;
 
+  /// Confirms a newly constructed mesh builder starts with no vertices.
   #[test]
   fn mesh_building() {
     let mesh = MeshBuilder::new();
@@ -165,6 +166,8 @@ mod tests {
     assert_eq!(mesh.vertices.len(), 0);
   }
 
+  /// Ensures capacity resizing and subsequent vertex pushes are reflected in
+  /// the built mesh.
   #[test]
   fn mesh_builder_capacity_and_attributes_are_applied() {
     let mut builder = MeshBuilder::new();
@@ -181,6 +184,8 @@ mod tests {
     assert_eq!(mesh.vertices().len(), 3);
   }
 
+  /// Validates the OBJ loader path parses a minimal triangle and produces the
+  /// expected vertex + attribute counts.
   #[test]
   fn mesh_build_from_obj_parses_vertices() {
     use std::{

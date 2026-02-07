@@ -81,6 +81,8 @@ impl ViewportBuilder {
 mod tests {
   use super::*;
 
+  /// Ensures negative viewport coordinates are clamped to zero to avoid
+  /// underflow when converting into unsigned pixel coordinates.
   #[test]
   fn viewport_builder_clamps_negative_coordinates() {
     let viewport = ViewportBuilder::new()
@@ -92,6 +94,8 @@ mod tests {
     assert_eq!(viewport.height, 4);
   }
 
+  /// Ensures helper methods return the expected tuple forms used by the
+  /// platform viewport/scissor APIs.
   #[test]
   fn viewport_helpers_return_expected_tuples() {
     let viewport = Viewport {

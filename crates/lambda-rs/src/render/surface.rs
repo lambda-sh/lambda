@@ -197,6 +197,7 @@ impl From<platform_surface::SurfaceError> for SurfaceError {
 mod tests {
   use super::*;
 
+  /// Ensures present mode conversions to/from the platform are lossless.
   #[test]
   fn present_mode_round_trips_through_platform() {
     let modes = [
@@ -215,6 +216,8 @@ mod tests {
     }
   }
 
+  /// Ensures each platform surface error maps to the corresponding engine
+  /// surface error variant.
   #[test]
   fn surface_error_maps_platform_variants() {
     assert!(matches!(
@@ -240,6 +243,8 @@ mod tests {
     assert!(matches!(other, SurfaceError::Other(_)));
   }
 
+  /// Ensures surface configuration fields are preserved when mapping from the
+  /// platform configuration type.
   #[test]
   fn surface_config_from_platform_maps_fields() {
     let platform_config = platform_surface::SurfaceConfig {

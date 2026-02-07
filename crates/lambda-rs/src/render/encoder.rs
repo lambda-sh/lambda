@@ -783,12 +783,16 @@ mod tests {
     return (vs, fs);
   }
 
+  /// Ensures the `Display` implementation for `RenderPassError` forwards the
+  /// underlying message without modification.
   #[test]
   fn render_pass_error_display_is_passthrough() {
     let err = RenderPassError::NoPipeline("oops".to_string());
     assert_eq!(err.to_string(), "oops");
   }
 
+  /// Validates the encoder reports an error when a draw is issued before
+  /// setting a pipeline (when validation is enabled).
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn render_pass_encoder_draw_requires_pipeline_when_validation_enabled() {
@@ -839,6 +843,8 @@ mod tests {
     let _ = encoder.finish();
   }
 
+  /// In debug builds, checks the engine's pipeline/pass compatibility checks
+  /// fire before provoking underlying wgpu validation errors.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn render_pass_encoder_validates_pipeline_compatibility_in_debug() {
@@ -901,6 +907,8 @@ mod tests {
     let _ = encoder.finish();
   }
 
+  /// Exercises the common command encoding path (viewport/scissor/pipeline),
+  /// plus validation branches for bind group dynamic offsets and index buffers.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn render_pass_encoder_encodes_commands_and_validates_index_buffers() {

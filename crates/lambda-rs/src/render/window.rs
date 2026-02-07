@@ -132,6 +132,7 @@ mod tests {
 
   use super::*;
 
+  /// Ensures `WindowBuilder` initializes with stable, sensible defaults.
   #[test]
   fn window_builder_defaults_are_sensible() {
     let builder = WindowBuilder::new();
@@ -140,6 +141,7 @@ mod tests {
     assert!(builder.vsync);
   }
 
+  /// Ensures the fluent builder setters update the stored window properties.
   #[test]
   fn window_builder_allows_overriding_properties() {
     let builder = WindowBuilder::new()
@@ -152,6 +154,8 @@ mod tests {
     assert!(!builder.vsync);
   }
 
+  /// Best-effort window construction smoke test for environments that support
+  /// window creation (skips on macOS test threads and in headless runners).
   #[test]
   #[cfg(not(target_os = "macos"))]
   fn window_build_is_best_effort_in_headless_envs() {

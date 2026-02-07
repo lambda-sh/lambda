@@ -357,6 +357,8 @@ mod tests {
       .ok();
   }
 
+  /// Ensures the builder rejects attempts to build without configuring a color
+  /// attachment.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn build_rejects_missing_color_attachment() {
@@ -369,6 +371,8 @@ mod tests {
     );
   }
 
+  /// Ensures unsupported MSAA sample counts are rejected with an explicit
+  /// error rather than silently falling back.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn build_rejects_unsupported_sample_count() {
@@ -385,6 +389,8 @@ mod tests {
     );
   }
 
+  /// Ensures the resolve texture can be bound for sampling and also used as a
+  /// render attachment (required for render-to-texture workflows).
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn resolve_texture_supports_sampling_and_render_attachment() {
@@ -431,6 +437,8 @@ mod tests {
     gpu.platform().submit(std::iter::once(buffer));
   }
 
+  /// Ensures MSAA offscreen targets use compatible sample counts across color
+  /// and depth attachments so they can be encoded into a single render pass.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn msaa_target_depth_attachment_matches_sample_count() {

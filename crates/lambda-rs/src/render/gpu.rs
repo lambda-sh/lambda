@@ -299,6 +299,7 @@ impl std::error::Error for GpuBuildError {}
 mod tests {
   use super::*;
 
+  /// Ensures `GpuLimits` correctly copies all platform limit fields.
   #[test]
   fn gpu_limits_from_platform_maps_fields() {
     let platform_limits = platform::gpu::GpuLimits {
@@ -317,6 +318,7 @@ mod tests {
     assert_eq!(limits.min_uniform_buffer_offset_alignment, 256);
   }
 
+  /// Ensures `GpuBuildError` string formatting stays user-actionable.
   #[test]
   fn gpu_build_error_display_messages_are_actionable() {
     assert_eq!(
@@ -331,6 +333,8 @@ mod tests {
     assert_eq!(create_failed.to_string(), "Device creation failed: boom");
   }
 
+  /// Ensures platform `RequestDevice` errors map into the engine-facing error
+  /// type without losing the underlying message.
   #[test]
   fn gpu_build_error_from_platform_maps_request_device() {
     let platform_error =

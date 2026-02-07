@@ -646,6 +646,8 @@ impl SamplerBuilder {
 mod tests {
   use super::*;
 
+  /// Ensures texture formats round-trip to/from the platform and report the
+  /// expected bytes-per-pixel and sRGB classification.
   #[test]
   fn texture_format_round_trips_through_platform() {
     let formats = [
@@ -666,6 +668,7 @@ mod tests {
     assert!(!TextureFormat::Rgba8Unorm.is_srgb());
   }
 
+  /// Ensures depth formats map to the platform depth formats.
   #[test]
   fn depth_format_maps_to_platform() {
     assert!(matches!(
@@ -682,6 +685,7 @@ mod tests {
     ));
   }
 
+  /// Ensures view dimensions map to the platform view dimension types.
   #[test]
   fn view_dimension_maps_to_platform() {
     assert!(matches!(
@@ -694,6 +698,7 @@ mod tests {
     ));
   }
 
+  /// Ensures sampler-related enums map correctly to the platform enums.
   #[test]
   fn sampler_modes_map_to_platform() {
     assert!(matches!(
@@ -719,6 +724,7 @@ mod tests {
     ));
   }
 
+  /// Ensures texture usage flags support bit ops and `contains` checks.
   #[test]
   fn texture_usages_support_bit_ops_and_contains() {
     let mut usages = TextureUsages::empty();
@@ -732,6 +738,7 @@ mod tests {
     assert!(combined.contains(TextureUsages::COPY_DST));
   }
 
+  /// Ensures `for_render_target` toggles the internal render-target usage flag.
   #[test]
   fn texture_builder_marks_render_target_usage() {
     let builder =
@@ -740,12 +747,15 @@ mod tests {
     assert!(builder.is_render_target);
   }
 
+  /// Ensures depth texture builders clamp invalid sample counts to `1`.
   #[test]
   fn depth_texture_builder_clamps_sample_count() {
     let builder = DepthTextureBuilder::new().with_sample_count(0);
     assert_eq!(builder.sample_count, 1);
   }
 
+  /// Ensures textures with invalid dimensions fail during build with an
+  /// actionable error message.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn texture_builder_rejects_invalid_dimensions() {
@@ -776,6 +786,8 @@ mod tests {
     assert_eq!(err, "Invalid texture dimensions");
   }
 
+  /// Ensures the 3D texture builder selects the platform 3D creation path when
+  /// the configured depth is greater than `1`.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn texture_builder_builds_3d_texture_path() {

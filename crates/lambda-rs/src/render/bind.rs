@@ -96,6 +96,8 @@ mod tests {
       .ok();
   }
 
+  /// Ensures engine-facing shader stage visibility flags map to the platform
+  /// wgpu visibility flags.
   #[test]
   fn binding_visibility_maps_to_platform() {
     assert!(matches!(
@@ -120,6 +122,8 @@ mod tests {
     ));
   }
 
+  /// Rejects duplicated binding indices within a single bind group layout in
+  /// debug builds.
   #[test]
   #[cfg(debug_assertions)]
   #[ignore = "requires a real GPU adapter"]
@@ -136,6 +140,8 @@ mod tests {
     assert!(result.is_err());
   }
 
+  /// Tracks the number of dynamic uniform bindings so callers can validate
+  /// dynamic offset counts at bind time.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn bind_group_layout_counts_dynamic_uniforms() {
@@ -149,6 +155,7 @@ mod tests {
     assert_eq!(layout.dynamic_binding_count(), 1);
   }
 
+  /// Ensures building a bind group without providing a layout fails loudly.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn bind_group_builder_requires_layout() {
@@ -160,6 +167,7 @@ mod tests {
     assert!(result.is_err());
   }
 
+  /// Ensures a bind group exposes the same dynamic binding count as its layout.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn bind_group_dynamic_binding_count_matches_layout() {
@@ -188,6 +196,8 @@ mod tests {
     );
   }
 
+  /// Builds a bind group with multiple resource kinds (2D sampled texture, 3D
+  /// sampled texture, sampler) to validate layout/view dimension compatibility.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn bind_group_supports_textures_and_samplers() {
@@ -223,6 +233,8 @@ mod tests {
     assert_eq!(group.dynamic_binding_count(), 0);
   }
 
+  /// Rejects duplicated binding indices even when the duplicates are across
+  /// different resource kinds (uniform vs sampler) in debug builds.
   #[test]
   #[cfg(debug_assertions)]
   #[ignore = "requires a real GPU adapter"]

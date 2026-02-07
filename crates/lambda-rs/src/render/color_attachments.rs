@@ -148,6 +148,8 @@ mod tests {
       .ok();
   }
 
+  /// Ensures `for_surface_pass` produces no color attachments when color output
+  /// is disabled.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn for_surface_pass_returns_empty_when_color_disabled() {
@@ -165,6 +167,8 @@ mod tests {
     let _ = attachments.as_platform_attachments_mut();
   }
 
+  /// Builds a single-sample offscreen attachment list (no MSAA) and ensures it
+  /// can be passed through to the platform render pass builder.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn for_offscreen_pass_builds_single_sample_color_attachment() {
@@ -182,6 +186,7 @@ mod tests {
     let _ = attachments.as_platform_attachments_mut();
   }
 
+  /// Builds an MSAA offscreen attachment list with a resolve target.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn for_offscreen_pass_builds_msaa_color_attachment() {
@@ -207,6 +212,8 @@ mod tests {
     let _ = attachments.as_platform_attachments_mut();
   }
 
+  /// Validates the builder rejects MSAA configurations that omit the required
+  /// MSAA view.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn for_offscreen_pass_panics_when_msaa_view_missing() {

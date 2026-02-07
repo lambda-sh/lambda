@@ -339,18 +339,22 @@ impl Default for InstanceBuilder {
 mod tests {
   use super::*;
 
+  /// Ensures labels applied in `InstanceBuilder` are preserved on the built
+  /// instance for debugging/profiling.
   #[test]
   fn instance_builder_sets_label() {
     let instance = InstanceBuilder::new().with_label("Test Instance").build();
     assert_eq!(instance.label(), Some("Test Instance"));
   }
 
+  /// Confirms the instance builder can build with default settings.
   #[test]
   fn instance_builder_default_backends() {
     // Just ensure we can build with defaults without panicking
     let _instance = InstanceBuilder::new().build();
   }
 
+  /// Ensures backend flags support bitwise-OR composition.
   #[test]
   fn backends_bitor() {
     let combined = Backends::VULKAN | Backends::METAL;
@@ -359,6 +363,7 @@ mod tests {
     assert_ne!(combined, Backends::METAL);
   }
 
+  /// Ensures instance flag bitfields map to the platform bitflags correctly.
   #[test]
   fn instance_flags_bitor_maps_to_platform() {
     let flags = InstanceFlags::VALIDATION | InstanceFlags::DEBUG;
@@ -370,6 +375,7 @@ mod tests {
     );
   }
 
+  /// Ensures the DX12 shader compiler selection maps to the platform enum.
   #[test]
   fn dx12_compiler_maps_to_platform() {
     assert!(matches!(
@@ -378,6 +384,7 @@ mod tests {
     ));
   }
 
+  /// Ensures the GLES minor version selection maps to the platform enum.
   #[test]
   fn gles_minor_version_maps_to_platform() {
     assert!(matches!(
@@ -398,6 +405,7 @@ mod tests {
     ));
   }
 
+  /// Confirms the `Debug` output includes stable, helpful fields (like label).
   #[test]
   fn instance_debug_includes_label_field() {
     let instance = InstanceBuilder::new().with_label("debug instance").build();
@@ -406,6 +414,8 @@ mod tests {
     assert!(formatted.contains("label"));
   }
 
+  /// Ensures each engine backend constant maps to the corresponding platform
+  /// backend constant.
   #[test]
   fn backends_map_to_platform_constants() {
     assert_eq!(
@@ -427,6 +437,8 @@ mod tests {
     assert_eq!(Backends::GL.to_platform(), platform::instance::Backends::GL);
   }
 
+  /// Smoke-tests the builder with every option set to ensure the fluent API is
+  /// wired correctly.
   #[test]
   fn instance_builder_accepts_all_options() {
     let _instance = InstanceBuilder::new()

@@ -582,6 +582,8 @@ mod tests {
     assert_eq!(resolved, 1);
   }
 
+  /// Clamps depth clear values into the valid `[0, 1]` range used by wgpu depth
+  /// attachments.
   #[test]
   fn with_depth_clear_clamps_to_unit_interval() {
     let builder = RenderPassBuilder::new().with_depth_clear(2.0);
@@ -597,18 +599,21 @@ mod tests {
     );
   }
 
+  /// Ensures invalid MSAA sample counts are sanitized to `1`.
   #[test]
   fn with_multi_sample_invalid_values_fall_back_to_one() {
     let builder = RenderPassBuilder::new().with_multi_sample(3);
     assert_eq!(builder.sample_count, 1);
   }
 
+  /// Ensures callers can explicitly disable color outputs on a render pass.
   #[test]
   fn without_color_disables_color_attachments() {
     let builder = RenderPassBuilder::new().without_color();
     assert!(!builder.use_color);
   }
 
+  /// Ensures overriding color operations updates the stored clear color.
   #[test]
   fn with_color_operations_updates_clear_color() {
     let builder =

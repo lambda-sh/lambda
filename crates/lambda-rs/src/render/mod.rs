@@ -1125,12 +1125,16 @@ mod tests {
   use super::*;
   use crate::render::render_pass;
 
+  /// Ensures the internal attachment predicate returns false when neither depth
+  /// nor stencil operations are configured.
   #[test]
   fn has_depth_attachment_false_when_no_depth_or_stencil() {
     let has_attachment = RenderContext::has_depth_attachment(None, None);
     assert!(!has_attachment);
   }
 
+  /// Ensures depth-only passes are recognized as having a depth/stencil
+  /// attachment.
   #[test]
   fn has_depth_attachment_true_for_depth_only() {
     let depth_ops = Some(render_pass::DepthOperations::default());
@@ -1138,6 +1142,8 @@ mod tests {
     assert!(has_attachment);
   }
 
+  /// Ensures stencil-only passes are recognized as having a depth/stencil
+  /// attachment.
   #[test]
   fn has_depth_attachment_true_for_stencil_only() {
     let stencil_ops = Some(render_pass::StencilOperations::default());
@@ -1145,6 +1151,8 @@ mod tests {
     assert!(has_attachment);
   }
 
+  /// Ensures render context validation rejects references to missing pipelines
+  /// with an actionable error.
   #[test]
   fn immediates_validate_pipeline_exists_rejects_unknown_pipeline() {
     let pipelines: Vec<RenderPipeline> = vec![];
@@ -1153,6 +1161,8 @@ mod tests {
     assert!(err.to_string().contains("Unknown pipeline 7"));
   }
 
+  /// Exercises the core command encoding loop against a real device, covering
+  /// common command variants (viewport/scissor/pipeline/bind group/draw).
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn encode_active_render_pass_commands_executes_common_commands() {
@@ -1328,6 +1338,8 @@ mod tests {
     gpu.submit(std::iter::once(buffer));
   }
 
+  /// Ensures the command encoding loop rejects frames that omit an
+  /// `EndRenderPass` terminator.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn encode_active_render_pass_commands_requires_end_render_pass() {
@@ -1405,6 +1417,8 @@ mod tests {
     assert!(err.to_string().contains("EndRenderPass"));
   }
 
+  /// End-to-end GPU test that renders into both "surface-style" and offscreen
+  /// passes without requiring an actual window/surface.
   #[test]
   #[ignore = "requires a real GPU adapter"]
   fn render_context_builder_renders_surface_and_offscreen_passes() {
