@@ -150,3 +150,6 @@ imgui.ini
 
 # Planning
 docs/plans/
+
+# Coverage reports
+coverage/
