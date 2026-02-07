@@ -1,0 +1,21 @@
+[package]
+name = "lambda-demos-physics"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+lambda-rs = { path = "../../crates/lambda-rs" }
+lambda-rs-logging = { path = "../../crates/lambda-rs-logging" }
+
+[features]
+default = ["physics-2d"]
+physics-2d = ["lambda-rs/physics-2d"]
+validation = ["lambda-rs/render-validation"]
+validation-strict = ["lambda-rs/render-validation-strict"]
+validation-all = ["lambda-rs/render-validation-all"]
+
+[[bin]]
+name = "physics_falling_quad"
+path = "src/bin/physics_falling_quad.rs"
+required-features = ["physics-2d"]
