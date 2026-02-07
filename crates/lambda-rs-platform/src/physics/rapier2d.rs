@@ -35,8 +35,10 @@ impl PhysicsBackend2D {
   pub fn new(gravity: [f32; 2], timestep_seconds: f32) -> Self {
     let gravity_vector = Vector::new(gravity[0], gravity[1]);
 
-    let mut integration_parameters = IntegrationParameters::default();
-    integration_parameters.dt = timestep_seconds;
+    let integration_parameters = IntegrationParameters {
+      dt: timestep_seconds,
+      ..Default::default()
+    };
 
     return Self {
       gravity: gravity_vector,

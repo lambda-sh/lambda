@@ -3,8 +3,8 @@ title: "2D Physics World"
 document_id: "physics-world-2d-2026-02-06"
 status: "draft"
 created: "2026-02-06T23:02:06Z"
-last_updated: "2026-02-06T23:02:06Z"
-version: "0.1.0"
+last_updated: "2026-02-07T01:28:28Z"
+version: "0.1.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
@@ -98,7 +98,7 @@ Data flow
 ```
 application
   └── lambda::physics::PhysicsWorld2D
-        └── lambda_platform::physics2d::<backend> (internal)
+        └── lambda_platform::physics::<backend> (internal)
               └── vendor crate (for example, rapier2d)
 ```
 
@@ -111,9 +111,9 @@ Module layout (new)
 - `crates/lambda-rs/src/physics/mod.rs`
   - Public `PhysicsWorld2D` and `PhysicsWorld2DBuilder`.
   - Public error type(s) for builder validation.
-- `crates/lambda-rs-platform/src/physics2d/mod.rs`
+- `crates/lambda-rs-platform/src/physics/mod.rs`
   - Internal backend wrapper module(s).
-  - No public re-exports to applications.
+  - Applications MUST NOT depend on these types directly.
 
 ### lambda-rs Public API
 

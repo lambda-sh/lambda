@@ -146,6 +146,12 @@ impl PhysicsWorld2DBuilder {
   }
 }
 
+impl Default for PhysicsWorld2DBuilder {
+  fn default() -> Self {
+    return Self::new();
+  }
+}
+
 /// Construction-time configuration errors for `PhysicsWorld2D`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PhysicsWorld2DError {
