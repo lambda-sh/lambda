@@ -29,8 +29,12 @@ impl PhysicsWorld2D {
   /// # Returns
   /// Returns `()` after stepping the simulation.
   pub fn step(&mut self) {
+    let substep_timestep_seconds = self.timestep_seconds / self.substeps as f32;
+
     for _ in 0..self.substeps {
-      self.backend.step();
+      self
+        .backend
+        .step_with_timestep_seconds(substep_timestep_seconds);
     }
 
     return;

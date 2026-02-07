@@ -75,6 +75,19 @@ impl PhysicsBackend2D {
   /// Returns `()` after applying integration and constraint solving for the
   /// configured timestep.
   pub fn step(&mut self) {
+    return self.step_with_timestep_seconds(self.integration_parameters.dt);
+  }
+
+  /// Advances the simulation by the given timestep.
+  ///
+  /// # Arguments
+  /// - `timestep_seconds`: The timestep used for this step.
+  ///
+  /// # Returns
+  /// Returns `()` after applying integration and constraint solving.
+  pub fn step_with_timestep_seconds(&mut self, timestep_seconds: f32) {
+    self.integration_parameters.dt = timestep_seconds;
+
     self.pipeline.step(
       self.gravity,
       &self.integration_parameters,
@@ -89,5 +102,7 @@ impl PhysicsBackend2D {
       &(),
       &(),
     );
+
+    return;
   }
 }
