@@ -54,6 +54,7 @@ jobs:
         run: |
           echo "WGPU_BACKEND=vulkan" >> "$GITHUB_ENV"
           echo "VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json" >> "$GITHUB_ENV"
+          echo "LAMBDA_REQUIRE_GPU_ADAPTER=1" >> "$GITHUB_ENV"
           vulkaninfo --summary || true
 
       - name: Format check

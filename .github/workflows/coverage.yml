@@ -23,6 +23,8 @@ jobs:
   coverage:
     name: Generate code coverage with cargo-llvm-cov
     runs-on: ubuntu-latest
+    env:
+      LAMBDA_REQUIRE_GPU_ADAPTER: "1"
 
     steps:
       - name: Checkout Repository

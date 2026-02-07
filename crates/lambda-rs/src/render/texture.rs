@@ -757,7 +757,6 @@ mod tests {
   /// Ensures textures with invalid dimensions fail during build with an
   /// actionable error message.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn texture_builder_rejects_invalid_dimensions() {
     use crate::render::{
       gpu::{
@@ -767,17 +766,36 @@ mod tests {
       instance::InstanceBuilder,
     };
 
-    fn create_test_gpu() -> Gpu {
+    fn create_test_gpu() -> Option<Gpu> {
       let instance = InstanceBuilder::new()
         .with_label("lambda-texture-test-instance")
         .build();
-      return GpuBuilder::new()
+      let built = GpuBuilder::new()
         .with_label("lambda-texture-test-gpu")
         .build(&instance, None)
-        .expect("requires a real GPU adapter");
+        .ok();
+      if built.is_some() {
+        return built;
+      }
+
+      let fallback = GpuBuilder::new()
+        .with_label("lambda-texture-test-gpu-fallback")
+        .force_fallback(true)
+        .build(&instance, None)
+        .ok();
+
+      if fallback.is_none()
+        && crate::render::gpu::require_gpu_adapter_for_tests()
+      {
+        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+      }
+
+      return fallback;
     }
 
-    let gpu = create_test_gpu();
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let err = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
       .with_size(0, 0)
@@ -789,7 +807,6 @@ mod tests {
   /// Ensures the 3D texture builder selects the platform 3D creation path when
   /// the configured depth is greater than `1`.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn texture_builder_builds_3d_texture_path() {
     use crate::render::{
       gpu::{
@@ -799,17 +816,36 @@ mod tests {
       instance::InstanceBuilder,
     };
 
-    fn create_test_gpu() -> Gpu {
+    fn create_test_gpu() -> Option<Gpu> {
       let instance = InstanceBuilder::new()
         .with_label("lambda-texture-3d-test-instance")
         .build();
-      return GpuBuilder::new()
+      let built = GpuBuilder::new()
         .with_label("lambda-texture-3d-test-gpu")
         .build(&instance, None)
-        .expect("requires a real GPU adapter");
+        .ok();
+      if built.is_some() {
+        return built;
+      }
+
+      let fallback = GpuBuilder::new()
+        .with_label("lambda-texture-3d-test-gpu-fallback")
+        .force_fallback(true)
+        .build(&instance, None)
+        .ok();
+
+      if fallback.is_none()
+        && crate::render::gpu::require_gpu_adapter_for_tests()
+      {
+        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+      }
+
+      return fallback;
     }
 
-    let gpu = create_test_gpu();
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     // 3D texture builder selects the 3D upload path when depth > 1.
     let tex = TextureBuilder::new_3d(TextureFormat::Rgba8Unorm)

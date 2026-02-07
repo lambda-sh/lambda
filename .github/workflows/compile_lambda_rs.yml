@@ -74,6 +74,7 @@ jobs:
           echo "WGPU_BACKEND=vulkan" >> "$GITHUB_ENV"
           # Prefer Mesa's software Vulkan (lavapipe) to ensure headless availability
           echo "VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json" >> "$GITHUB_ENV"
+          echo "LAMBDA_REQUIRE_GPU_ADAPTER=1" >> "$GITHUB_ENV"
           vulkaninfo --summary || true
 
       # Windows runners already include the required toolchain for DX12 builds.

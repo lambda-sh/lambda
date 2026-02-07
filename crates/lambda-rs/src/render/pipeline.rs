@@ -744,7 +744,6 @@ mod tests {
   /// Builds a pipeline with depth+stencil enabled and both per-vertex and
   /// per-instance buffers, covering format upgrade and instance slot tracking.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn pipeline_builds_with_depth_stencil_and_instance_layout() {
     use crate::render::{
       bind::{
@@ -779,17 +778,36 @@ mod tests {
       },
     };
 
-    fn create_test_gpu() -> Gpu {
+    fn create_test_gpu() -> Option<Gpu> {
       let instance = InstanceBuilder::new()
         .with_label("lambda-pipeline-depth-test-instance")
         .build();
-      return GpuBuilder::new()
+      let built = GpuBuilder::new()
         .with_label("lambda-pipeline-depth-test-gpu")
         .build(&instance, None)
-        .expect("requires a real GPU adapter");
+        .ok();
+      if built.is_some() {
+        return built;
+      }
+
+      let fallback = GpuBuilder::new()
+        .with_label("lambda-pipeline-depth-test-gpu-fallback")
+        .force_fallback(true)
+        .build(&instance, None)
+        .ok();
+
+      if fallback.is_none()
+        && crate::render::gpu::require_gpu_adapter_for_tests()
+      {
+        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+      }
+
+      return fallback;
     }
 
-    let gpu = create_test_gpu();
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let mut shaders = ShaderBuilder::new();
     let vs = shaders.build(VirtualShader::Source {
@@ -909,7 +927,6 @@ mod tests {
   /// Ensures pipeline construction aligns its MSAA sample count to the render
   /// pass sample count to avoid target incompatibility.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn pipeline_build_aligns_sample_count_to_render_pass() {
     use crate::render::{
       buffer::{
@@ -940,17 +957,36 @@ mod tests {
       },
     };
 
-    fn create_test_gpu() -> Gpu {
+    fn create_test_gpu() -> Option<Gpu> {
       let instance = InstanceBuilder::new()
         .with_label("lambda-pipeline-test-instance")
         .build();
-      return GpuBuilder::new()
+      let built = GpuBuilder::new()
         .with_label("lambda-pipeline-test-gpu")
         .build(&instance, None)
-        .expect("requires a real GPU adapter");
+        .ok();
+      if built.is_some() {
+        return built;
+      }
+
+      let fallback = GpuBuilder::new()
+        .with_label("lambda-pipeline-test-gpu-fallback")
+        .force_fallback(true)
+        .build(&instance, None)
+        .ok();
+
+      if fallback.is_none()
+        && crate::render::gpu::require_gpu_adapter_for_tests()
+      {
+        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+      }
+
+      return fallback;
     }
 
-    let gpu = create_test_gpu();
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let vert_path = format!(
       "{}/assets/shaders/triangle.vert",

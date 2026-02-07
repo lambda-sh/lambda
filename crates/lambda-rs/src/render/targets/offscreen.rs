@@ -351,18 +351,35 @@ mod tests {
     let instance = InstanceBuilder::new()
       .with_label("lambda-offscreen-target-test-instance")
       .build();
-    return GpuBuilder::new()
+    let built = GpuBuilder::new()
       .with_label("lambda-offscreen-target-test-gpu")
       .build(&instance, None)
       .ok();
+    if built.is_some() {
+      return built;
+    }
+
+    let fallback = GpuBuilder::new()
+      .with_label("lambda-offscreen-target-test-gpu-fallback")
+      .force_fallback(true)
+      .build(&instance, None)
+      .ok();
+
+    if fallback.is_none() && crate::render::gpu::require_gpu_adapter_for_tests()
+    {
+      panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+    }
+
+    return fallback;
   }
 
   /// Ensures the builder rejects attempts to build without configuring a color
   /// attachment.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn build_rejects_missing_color_attachment() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let built = OffscreenTargetBuilder::new().build(&gpu);
     assert_eq!(
@@ -374,9 +391,10 @@ mod tests {
   /// Ensures unsupported MSAA sample counts are rejected with an explicit
   /// error rather than silently falling back.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn build_rejects_unsupported_sample_count() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let built = OffscreenTargetBuilder::new()
       .with_color(texture::TextureFormat::Rgba8Unorm, 1, 1)
@@ -392,9 +410,10 @@ mod tests {
   /// Ensures the resolve texture can be bound for sampling and also used as a
   /// render attachment (required for render-to-texture workflows).
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn resolve_texture_supports_sampling_and_render_attachment() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let target = OffscreenTargetBuilder::new()
       .with_color(texture::TextureFormat::Rgba8Unorm, 4, 4)
@@ -440,9 +459,10 @@ mod tests {
   /// Ensures MSAA offscreen targets use compatible sample counts across color
   /// and depth attachments so they can be encoded into a single render pass.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn msaa_target_depth_attachment_matches_sample_count() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let target = OffscreenTargetBuilder::new()
       .with_color(texture::TextureFormat::Rgba8Unorm, 4, 4)

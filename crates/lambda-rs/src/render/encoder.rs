@@ -750,10 +750,26 @@ mod tests {
     let instance = InstanceBuilder::new()
       .with_label("lambda-encoder-test-instance")
       .build();
-    return GpuBuilder::new()
+    let built = GpuBuilder::new()
       .with_label("lambda-encoder-test-gpu")
       .build(&instance, None)
       .ok();
+    if built.is_some() {
+      return built;
+    }
+
+    let fallback = GpuBuilder::new()
+      .with_label("lambda-encoder-test-gpu-fallback")
+      .force_fallback(true)
+      .build(&instance, None)
+      .ok();
+
+    if fallback.is_none() && crate::render::gpu::require_gpu_adapter_for_tests()
+    {
+      panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+    }
+
+    return fallback;
   }
 
   fn compile_triangle_shaders(
@@ -794,9 +810,10 @@ mod tests {
   /// Validates the encoder reports an error when a draw is issued before
   /// setting a pipeline (when validation is enabled).
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn render_pass_encoder_draw_requires_pipeline_when_validation_enabled() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
       .with_size(4, 4)
@@ -846,7 +863,6 @@ mod tests {
   /// In debug builds, checks the engine's pipeline/pass compatibility checks
   /// fire before provoking underlying wgpu validation errors.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn render_pass_encoder_validates_pipeline_compatibility_in_debug() {
     if !cfg!(debug_assertions) {
       // The explicit pass/pipeline compatibility checks are debug- or
@@ -854,7 +870,9 @@ mod tests {
       return;
     }
 
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let (vs, fs) = compile_triangle_shaders();
 
@@ -910,9 +928,10 @@ mod tests {
   /// Exercises the common command encoding path (viewport/scissor/pipeline),
   /// plus validation branches for bind group dynamic offsets and index buffers.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn render_pass_encoder_encodes_commands_and_validates_index_buffers() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let (vs, fs) = compile_triangle_shaders();
 

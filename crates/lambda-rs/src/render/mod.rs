@@ -1164,7 +1164,6 @@ mod tests {
   /// Exercises the core command encoding loop against a real device, covering
   /// common command variants (viewport/scissor/pipeline/bind group/draw).
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn encode_active_render_pass_commands_executes_common_commands() {
     use lambda_platform::wgpu as platform;
 
@@ -1174,7 +1173,19 @@ mod tests {
     let gpu = gpu::GpuBuilder::new()
       .with_label("lambda-render-mod-test-gpu")
       .build(&instance, None)
-      .expect("requires a real GPU adapter");
+      .or_else(|_| {
+        gpu::GpuBuilder::new()
+          .with_label("lambda-render-mod-test-gpu-fallback")
+          .force_fallback(true)
+          .build(&instance, None)
+      })
+      .ok();
+    let Some(gpu) = gpu else {
+      if crate::render::gpu::require_gpu_adapter_for_tests() {
+        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+      }
+      return;
+    };
 
     let (vs, fs) = {
       let vert_path = format!(
@@ -1341,7 +1352,6 @@ mod tests {
   /// Ensures the command encoding loop rejects frames that omit an
   /// `EndRenderPass` terminator.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn encode_active_render_pass_commands_requires_end_render_pass() {
     use lambda_platform::wgpu as platform;
 
@@ -1351,7 +1361,19 @@ mod tests {
     let gpu = gpu::GpuBuilder::new()
       .with_label("lambda-render-mod-test-gpu-2")
       .build(&instance, None)
-      .expect("requires a real GPU adapter");
+      .or_else(|_| {
+        gpu::GpuBuilder::new()
+          .with_label("lambda-render-mod-test-gpu-2-fallback")
+          .force_fallback(true)
+          .build(&instance, None)
+      })
+      .ok();
+    let Some(gpu) = gpu else {
+      if crate::render::gpu::require_gpu_adapter_for_tests() {
+        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+      }
+      return;
+    };
 
     let pass = render_pass::RenderPassBuilder::new()
       .with_label("lambda-mod-missing-end-pass")
@@ -1420,7 +1442,6 @@ mod tests {
   /// End-to-end GPU test that renders into both "surface-style" and offscreen
   /// passes without requiring an actual window/surface.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn render_context_builder_renders_surface_and_offscreen_passes() {
     use std::num::NonZeroU64;
 
@@ -1520,7 +1541,19 @@ mod tests {
     let gpu = GpuBuilder::new()
       .with_label("lambda-render-context-e2e-gpu")
       .build(&instance, None)
-      .expect("requires a real GPU adapter");
+      .or_else(|_| {
+        GpuBuilder::new()
+          .with_label("lambda-render-context-e2e-gpu-fallback")
+          .force_fallback(true)
+          .build(&instance, None)
+      })
+      .ok();
+    let Some(gpu) = gpu else {
+      if crate::render::gpu::require_gpu_adapter_for_tests() {
+        panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+      }
+      return;
+    };
 
     let config = targets::surface::SurfaceConfig {
       width: 64,

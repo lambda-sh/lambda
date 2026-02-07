@@ -90,10 +90,26 @@ mod tests {
     let instance = InstanceBuilder::new()
       .with_label("lambda-bind-test-instance")
       .build();
-    return GpuBuilder::new()
+    let built = GpuBuilder::new()
       .with_label("lambda-bind-test-gpu")
       .build(&instance, None)
       .ok();
+    if built.is_some() {
+      return built;
+    }
+
+    let fallback = GpuBuilder::new()
+      .with_label("lambda-bind-test-gpu-fallback")
+      .force_fallback(true)
+      .build(&instance, None)
+      .ok();
+
+    if fallback.is_none() && crate::render::gpu::require_gpu_adapter_for_tests()
+    {
+      panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+    }
+
+    return fallback;
   }
 
   /// Ensures engine-facing shader stage visibility flags map to the platform
@@ -126,9 +142,10 @@ mod tests {
   /// debug builds.
   #[test]
   #[cfg(debug_assertions)]
-  #[ignore = "requires a real GPU adapter"]
   fn bind_group_layout_builder_rejects_duplicate_binding() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     // Duplicate binding index 0 across entries should panic in debug builds.
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -143,9 +160,10 @@ mod tests {
   /// Tracks the number of dynamic uniform bindings so callers can validate
   /// dynamic offset counts at bind time.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn bind_group_layout_counts_dynamic_uniforms() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let layout = BindGroupLayoutBuilder::new()
       .with_uniform(0, BindingVisibility::VertexAndFragment)
@@ -157,9 +175,10 @@ mod tests {
 
   /// Ensures building a bind group without providing a layout fails loudly.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn bind_group_builder_requires_layout() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
       let _group = BindGroupBuilder::new().build(&gpu);
@@ -169,9 +188,10 @@ mod tests {
 
   /// Ensures a bind group exposes the same dynamic binding count as its layout.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn bind_group_dynamic_binding_count_matches_layout() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let layout = BindGroupLayoutBuilder::new()
       .with_uniform_dynamic(0, BindingVisibility::VertexAndFragment)
@@ -199,9 +219,10 @@ mod tests {
   /// Builds a bind group with multiple resource kinds (2D sampled texture, 3D
   /// sampled texture, sampler) to validate layout/view dimension compatibility.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn bind_group_supports_textures_and_samplers() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let texture_2d = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
       .with_size(1, 1)
@@ -237,9 +258,10 @@ mod tests {
   /// different resource kinds (uniform vs sampler) in debug builds.
   #[test]
   #[cfg(debug_assertions)]
-  #[ignore = "requires a real GPU adapter"]
   fn bind_group_layout_rejects_duplicate_binding_across_resource_kinds() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
       let _layout = BindGroupLayoutBuilder::new()

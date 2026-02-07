@@ -220,6 +220,16 @@ impl GpuBuilder {
     return self;
   }
 
+  /// Force using a fallback/software adapter when available.
+  ///
+  /// This is useful for CI environments that may provide a virtual adapter but
+  /// not a hardware-backed one. If no fallback adapter exists, build will
+  /// still return `AdapterUnavailable`.
+  pub fn force_fallback(mut self, force: bool) -> Self {
+    self.inner = self.inner.force_fallback(force);
+    return self;
+  }
+
   /// Build the GPU using the provided instance and optional surface.
   ///
   /// The surface is used to ensure the adapter is compatible with
@@ -242,6 +252,14 @@ impl Default for GpuBuilder {
   fn default() -> Self {
     return Self::new();
   }
+}
+
+#[cfg(test)]
+pub(crate) fn require_gpu_adapter_for_tests() -> bool {
+  return matches!(
+    std::env::var("LAMBDA_REQUIRE_GPU_ADAPTER").as_deref(),
+    Ok("1") | Ok("true") | Ok("TRUE")
+  );
 }
 
 // ---------------------------------------------------------------------------

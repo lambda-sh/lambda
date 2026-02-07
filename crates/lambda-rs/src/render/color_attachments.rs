@@ -142,18 +142,35 @@ mod tests {
     let instance = InstanceBuilder::new()
       .with_label("lambda-color-attachments-test-instance")
       .build();
-    return GpuBuilder::new()
+    let built = GpuBuilder::new()
       .with_label("lambda-color-attachments-test-gpu")
       .build(&instance, None)
       .ok();
+    if built.is_some() {
+      return built;
+    }
+
+    let fallback = GpuBuilder::new()
+      .with_label("lambda-color-attachments-test-gpu-fallback")
+      .force_fallback(true)
+      .build(&instance, None)
+      .ok();
+
+    if fallback.is_none() && crate::render::gpu::require_gpu_adapter_for_tests()
+    {
+      panic!("No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)");
+    }
+
+    return fallback;
   }
 
   /// Ensures `for_surface_pass` produces no color attachments when color output
   /// is disabled.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn for_surface_pass_returns_empty_when_color_disabled() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let texture = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
       .with_size(1, 1)
@@ -170,9 +187,10 @@ mod tests {
   /// Builds a single-sample offscreen attachment list (no MSAA) and ensures it
   /// can be passed through to the platform render pass builder.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn for_offscreen_pass_builds_single_sample_color_attachment() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let texture = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
       .with_size(4, 4)
@@ -188,9 +206,10 @@ mod tests {
 
   /// Builds an MSAA offscreen attachment list with a resolve target.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn for_offscreen_pass_builds_msaa_color_attachment() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
       .with_size(4, 4)
@@ -215,9 +234,10 @@ mod tests {
   /// Validates the builder rejects MSAA configurations that omit the required
   /// MSAA view.
   #[test]
-  #[ignore = "requires a real GPU adapter"]
   fn for_offscreen_pass_panics_when_msaa_view_missing() {
-    let gpu = create_test_gpu().expect("requires a real GPU adapter");
+    let Some(gpu) = create_test_gpu() else {
+      return;
+    };
 
     let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
       .with_size(1, 1)
