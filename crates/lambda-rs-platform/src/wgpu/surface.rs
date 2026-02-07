@@ -318,11 +318,23 @@ fn select_present_mode(
     return requested;
   }
 
+  // Note on ordering:
+  // - When callers request non-vsync (Immediate/AutoNoVsync), prefer true
+  //   non-vsync modes (Immediate, AutoNoVsync) over low-latency vsync modes
+  //   (Mailbox). Mailbox still synchronizes presentation to refresh and can
+  //   appear "vsync-like" to users who disable vsync expecting uncapped loops.
   let candidates: &[wgpu::PresentMode] = match requested {
-    wgpu::PresentMode::Immediate | wgpu::PresentMode::AutoNoVsync => &[
+    wgpu::PresentMode::Immediate => &[
+      wgpu::PresentMode::Immediate,
+      wgpu::PresentMode::AutoNoVsync,
+      wgpu::PresentMode::Mailbox,
+      wgpu::PresentMode::Fifo,
+      wgpu::PresentMode::AutoVsync,
+    ],
+    wgpu::PresentMode::AutoNoVsync => &[
+      wgpu::PresentMode::AutoNoVsync,
       wgpu::PresentMode::Immediate,
       wgpu::PresentMode::Mailbox,
-      wgpu::PresentMode::AutoNoVsync,
       wgpu::PresentMode::Fifo,
       wgpu::PresentMode::AutoVsync,
     ],
@@ -336,7 +348,15 @@ fn select_present_mode(
       wgpu::PresentMode::Fifo,
       wgpu::PresentMode::AutoVsync,
     ],
-    wgpu::PresentMode::Fifo | wgpu::PresentMode::AutoVsync => &[
+    wgpu::PresentMode::AutoVsync => &[
+      wgpu::PresentMode::AutoVsync,
+      wgpu::PresentMode::Fifo,
+      wgpu::PresentMode::FifoRelaxed,
+      wgpu::PresentMode::Mailbox,
+      wgpu::PresentMode::Immediate,
+      wgpu::PresentMode::AutoNoVsync,
+    ],
+    wgpu::PresentMode::Fifo => &[
       wgpu::PresentMode::Fifo,
       wgpu::PresentMode::AutoVsync,
       wgpu::PresentMode::FifoRelaxed,
@@ -413,5 +433,40 @@ mod tests {
     let available = &[wgpu::PresentMode::AutoNoVsync, wgpu::PresentMode::Fifo];
     let selected = select_present_mode(wgpu::PresentMode::Immediate, available);
     assert_eq!(selected, wgpu::PresentMode::AutoNoVsync);
+  }
+
+  #[test]
+  fn select_present_mode_prefers_auto_no_vsync_over_mailbox_for_immediate_request(
+  ) {
+    let available = &[
+      wgpu::PresentMode::Mailbox,
+      wgpu::PresentMode::AutoNoVsync,
+      wgpu::PresentMode::Fifo,
+    ];
+    let selected = select_present_mode(wgpu::PresentMode::Immediate, available);
+    assert_eq!(selected, wgpu::PresentMode::AutoNoVsync);
+  }
+
+  #[test]
+  fn select_present_mode_prefers_auto_no_vsync_when_requested() {
+    let available = &[
+      wgpu::PresentMode::Immediate,
+      wgpu::PresentMode::AutoNoVsync,
+      wgpu::PresentMode::Fifo,
+    ];
+    let selected =
+      select_present_mode(wgpu::PresentMode::AutoNoVsync, available);
+    assert_eq!(selected, wgpu::PresentMode::AutoNoVsync);
+  }
+
+  #[test]
+  fn select_present_mode_prefers_auto_vsync_when_requested() {
+    let available = &[
+      wgpu::PresentMode::Fifo,
+      wgpu::PresentMode::AutoVsync,
+      wgpu::PresentMode::Immediate,
+    ];
+    let selected = select_present_mode(wgpu::PresentMode::AutoVsync, available);
+    assert_eq!(selected, wgpu::PresentMode::AutoVsync);
   }
 }
