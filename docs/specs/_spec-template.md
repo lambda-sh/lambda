@@ -17,6 +17,9 @@ tags: ["spec", "<area>"]
 
 # <Specification Title>
 
+Note: Place specifications under the appropriate area folder (for example,
+`docs/specs/rendering/`) and add them to `docs/specs/README.md`.
+
 Summary
 - State the problem and the desired outcome in one paragraph.
 - Include a concise rationale for introducing or changing behavior.
