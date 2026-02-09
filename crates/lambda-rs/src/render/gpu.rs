@@ -220,6 +220,16 @@ impl GpuBuilder {
     return self;
   }
 
+  /// Force using a fallback/software adapter when available.
+  ///
+  /// This is useful for CI environments that may provide a virtual adapter but
+  /// not a hardware-backed one. If no fallback adapter exists, build will
+  /// still return `AdapterUnavailable`.
+  pub fn force_fallback(mut self, force: bool) -> Self {
+    self.inner = self.inner.force_fallback(force);
+    return self;
+  }
+
   /// Build the GPU using the provided instance and optional surface.
   ///
   /// The surface is used to ensure the adapter is compatible with
@@ -242,6 +252,56 @@ impl Default for GpuBuilder {
   fn default() -> Self {
     return Self::new();
   }
+}
+
+#[cfg(test)]
+pub(crate) fn require_gpu_adapter_for_tests() -> bool {
+  return matches!(
+    std::env::var("LAMBDA_REQUIRE_GPU_ADAPTER").as_deref(),
+    Ok("1") | Ok("true") | Ok("TRUE")
+  );
+}
+
+#[cfg(test)]
+pub(crate) fn create_test_gpu(label_base: &str) -> Option<Gpu> {
+  let instance = super::instance::InstanceBuilder::new()
+    .with_label(&format!("{}-instance", label_base))
+    .build();
+  return create_test_gpu_with_instance(&instance, label_base);
+}
+
+#[cfg(test)]
+pub(crate) fn create_test_gpu_with_instance(
+  instance: &Instance,
+  label_base: &str,
+) -> Option<Gpu> {
+  let primary_err = match GpuBuilder::new()
+    .with_label(&format!("{}-gpu", label_base))
+    .build(instance, None)
+  {
+    Ok(gpu) => return Some(gpu),
+    Err(err) => err,
+  };
+
+  let fallback_err = match GpuBuilder::new()
+    .with_label(&format!("{}-gpu-fallback", label_base))
+    .force_fallback(true)
+    .build(instance, None)
+  {
+    Ok(gpu) => return Some(gpu),
+    Err(err) => err,
+  };
+
+  if require_gpu_adapter_for_tests() {
+    panic!(
+      "No GPU adapter available for tests (label_base={}).\nPrimary adapter attempt: {}\nFallback adapter attempt: {}\n(Set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)",
+      label_base,
+      primary_err,
+      fallback_err,
+    );
+  }
+
+  return None;
 }
 
 // ---------------------------------------------------------------------------
@@ -294,3 +354,54 @@ impl std::fmt::Display for GpuBuildError {
 }
 
 impl std::error::Error for GpuBuildError {}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// Ensures `GpuLimits` correctly copies all platform limit fields.
+  #[test]
+  fn gpu_limits_from_platform_maps_fields() {
+    let platform_limits = platform::gpu::GpuLimits {
+      max_uniform_buffer_binding_size: 1024,
+      max_bind_groups: 4,
+      max_vertex_buffers: 8,
+      max_vertex_attributes: 16,
+      min_uniform_buffer_offset_alignment: 256,
+    };
+
+    let limits = GpuLimits::from_platform(platform_limits);
+    assert_eq!(limits.max_uniform_buffer_binding_size, 1024);
+    assert_eq!(limits.max_bind_groups, 4);
+    assert_eq!(limits.max_vertex_buffers, 8);
+    assert_eq!(limits.max_vertex_attributes, 16);
+    assert_eq!(limits.min_uniform_buffer_offset_alignment, 256);
+  }
+
+  /// Ensures `GpuBuildError` string formatting stays user-actionable.
+  #[test]
+  fn gpu_build_error_display_messages_are_actionable() {
+    assert_eq!(
+      GpuBuildError::AdapterUnavailable.to_string(),
+      "No compatible GPU adapter found"
+    );
+
+    let missing = GpuBuildError::MissingFeatures("missing".to_string());
+    assert_eq!(missing.to_string(), "missing");
+
+    let create_failed = GpuBuildError::DeviceCreationFailed("boom".to_string());
+    assert_eq!(create_failed.to_string(), "Device creation failed: boom");
+  }
+
+  /// Ensures platform `RequestDevice` errors map into the engine-facing error
+  /// type without losing the underlying message.
+  #[test]
+  fn gpu_build_error_from_platform_maps_request_device() {
+    let platform_error =
+      platform::gpu::GpuBuildError::RequestDevice("device error".to_string());
+    let mapped = GpuBuildError::from_platform(platform_error);
+
+    assert!(matches!(mapped, GpuBuildError::DeviceCreationFailed(_)));
+    assert!(mapped.to_string().contains("device error"));
+  }
+}

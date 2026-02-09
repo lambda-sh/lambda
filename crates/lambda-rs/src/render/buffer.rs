@@ -500,6 +500,7 @@ impl BufferBuilder {
 mod tests {
   use super::*;
 
+  /// Rejects constructing a buffer with a logical length of zero elements.
   #[test]
   // Ensures callers get a clear engine-level error instead of a wgpu
   // validation panic when attempting CPU writes to a device-local buffer.
@@ -539,6 +540,7 @@ mod tests {
     assert!(result.is_err());
   }
 
+  /// Ensures builder labels are stored for later propagation/debugging.
   #[test]
   // Verifies `with_label` stores the label on the builder so it can be applied
   // to the underlying platform buffer for debugging/profiling.
@@ -549,6 +551,7 @@ mod tests {
     assert_eq!(builder.label.as_deref(), Some("buffer-test"));
   }
 
+  /// Rejects length computations that would overflow `usize`.
   #[test]
   // Ensures buffer size math guards against integer overflow when resolving
   // byte lengths from element size and element count.
@@ -558,6 +561,7 @@ mod tests {
     assert!(result.is_err());
   }
 
+  /// Confirms `value_as_bytes` uses native-endian byte order and size.
   #[test]
   // Confirms `value_as_bytes` produces the same byte representation as the
   // native `to_ne_bytes` conversion for POD values.
@@ -567,6 +571,7 @@ mod tests {
     assert_eq!(value_as_bytes(&value), expected.as_slice());
   }
 
+  /// Confirms `slice_as_bytes` flattens a typed slice to the native bytes.
   #[test]
   // Confirms `slice_as_bytes` produces the same byte layout as concatenating
   // each element's native-endian bytes in order.
@@ -579,6 +584,7 @@ mod tests {
     assert_eq!(slice_as_bytes(&values).unwrap(), expected.as_slice());
   }
 
+  /// Ensures converting an empty slice to bytes yields an empty output slice.
   #[test]
   // Ensures the empty slice case works and does not error or return junk data.
   fn slice_as_bytes_empty_is_empty() {
@@ -586,11 +592,74 @@ mod tests {
     assert_eq!(slice_as_bytes(&values).unwrap(), &[]);
   }
 
+  /// Rejects byte length computations that would overflow `usize`.
   #[test]
   // Ensures the shared byte-length helper rejects overflows rather than
   // silently wrapping and producing undersized buffers/slices.
   fn checked_byte_len_rejects_overflow() {
     let result = checked_byte_len(usize::MAX, 2);
     assert!(result.is_err());
+  }
+
+  /// Validates default flags and bitwise-OR behavior for buffer usage and
+  /// memory properties.
+  #[test]
+  fn usage_and_properties_support_defaults_and_bit_ops() {
+    let default_usage = Usage::default();
+    let _ = default_usage.to_platform();
+
+    let combined = Usage::VERTEX | Usage::INDEX;
+    let _ = combined.to_platform();
+
+    assert!(Properties::default().cpu_visible());
+    assert!(!Properties::DEVICE_LOCAL.cpu_visible());
+  }
+
+  /// Confirms `BufferType` stays a small Copy enum and is `Debug`-printable.
+  #[test]
+  fn buffer_type_is_copy_and_debug() {
+    let t = BufferType::Uniform;
+    let _ = format!("{:?}", t);
+    let copied = t;
+    assert!(matches!(copied, BufferType::Uniform));
+  }
+
+  /// Exercises the GPU-backed write helpers to ensure they are callable and
+  /// wired to the platform API.
+  #[test]
+  fn buffer_write_value_and_slice_paths_are_callable() {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-buffer-test")
+    else {
+      return;
+    };
+
+    let buffer = BufferBuilder::new()
+      .with_label("lambda-buffer-write-test")
+      .with_usage(Usage::UNIFORM)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Uniform)
+      .build(&gpu, vec![0_u32; 16])
+      .expect("build uniform buffer");
+
+    buffer.write_value(&gpu, 0, &0x1122_3344_u32);
+    buffer
+      .write_slice(&gpu, 0, &[1_u32, 2_u32, 3_u32])
+      .expect("write slice");
+  }
+
+  /// Builds a typed uniform buffer wrapper and performs an update write.
+  #[test]
+  fn uniform_buffer_wrapper_builds_and_writes() {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-buffer-test")
+    else {
+      return;
+    };
+
+    let initial = 7_u32;
+    let ubo =
+      UniformBuffer::new(&gpu, &initial, Some("lambda-ubo-test")).unwrap();
+    ubo.write(&gpu, &9_u32);
+
+    let _ = ubo.raw();
   }
 }

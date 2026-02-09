@@ -3,8 +3,8 @@ title: "Specifications Index"
 document_id: "specs-index-2026-02-07"
 status: "living"
 created: "2026-02-07T00:00:00Z"
-last_updated: "2026-02-07T00:00:00Z"
-version: "0.1.0"
+last_updated: "2026-02-07T20:58:44Z"
+version: "0.1.1"
 owners: ["lambda-sh"]
 reviewers: ["engine"]
 tags: ["index", "specs", "docs"]
@@ -27,6 +27,10 @@ tags: ["index", "specs", "docs"]
 ## Runtime / Events
 
 - Component Event Handling — [runtime/component-event-handling.md](runtime/component-event-handling.md)
+
+## Physics
+
+- 2D Physics World — [physics/physics-world-2d.md](physics/physics-world-2d.md)
 
 ## Templates
 

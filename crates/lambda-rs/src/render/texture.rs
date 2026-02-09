@@ -646,6 +646,99 @@ impl SamplerBuilder {
 mod tests {
   use super::*;
 
+  /// Ensures texture formats round-trip to/from the platform and report the
+  /// expected bytes-per-pixel and sRGB classification.
+  #[test]
+  fn texture_format_round_trips_through_platform() {
+    let formats = [
+      TextureFormat::Rgba8Unorm,
+      TextureFormat::Rgba8UnormSrgb,
+      TextureFormat::Bgra8Unorm,
+      TextureFormat::Bgra8UnormSrgb,
+    ];
+
+    for fmt in formats {
+      let platform = fmt.to_platform();
+      let back = TextureFormat::from_platform(platform).expect("round trip");
+      assert_eq!(back, fmt);
+      assert_eq!(fmt.bytes_per_pixel(), 4);
+    }
+
+    assert!(TextureFormat::Rgba8UnormSrgb.is_srgb());
+    assert!(!TextureFormat::Rgba8Unorm.is_srgb());
+  }
+
+  /// Ensures depth formats map to the platform depth formats.
+  #[test]
+  fn depth_format_maps_to_platform() {
+    assert!(matches!(
+      DepthFormat::Depth32Float.to_platform(),
+      platform::DepthFormat::Depth32Float
+    ));
+    assert!(matches!(
+      DepthFormat::Depth24Plus.to_platform(),
+      platform::DepthFormat::Depth24Plus
+    ));
+    assert!(matches!(
+      DepthFormat::Depth24PlusStencil8.to_platform(),
+      platform::DepthFormat::Depth24PlusStencil8
+    ));
+  }
+
+  /// Ensures view dimensions map to the platform view dimension types.
+  #[test]
+  fn view_dimension_maps_to_platform() {
+    assert!(matches!(
+      ViewDimension::D2.to_platform(),
+      platform::ViewDimension::TwoDimensional
+    ));
+    assert!(matches!(
+      ViewDimension::D3.to_platform(),
+      platform::ViewDimension::ThreeDimensional
+    ));
+  }
+
+  /// Ensures sampler-related enums map correctly to the platform enums.
+  #[test]
+  fn sampler_modes_map_to_platform() {
+    assert!(matches!(
+      FilterMode::Nearest.to_platform(),
+      platform::FilterMode::Nearest
+    ));
+    assert!(matches!(
+      FilterMode::Linear.to_platform(),
+      platform::FilterMode::Linear
+    ));
+
+    assert!(matches!(
+      AddressMode::ClampToEdge.to_platform(),
+      platform::AddressMode::ClampToEdge
+    ));
+    assert!(matches!(
+      AddressMode::Repeat.to_platform(),
+      platform::AddressMode::Repeat
+    ));
+    assert!(matches!(
+      AddressMode::MirrorRepeat.to_platform(),
+      platform::AddressMode::MirrorRepeat
+    ));
+  }
+
+  /// Ensures texture usage flags support bit ops and `contains` checks.
+  #[test]
+  fn texture_usages_support_bit_ops_and_contains() {
+    let mut usages = TextureUsages::empty();
+    assert!(!usages.contains(TextureUsages::RENDER_ATTACHMENT));
+
+    usages |= TextureUsages::RENDER_ATTACHMENT;
+    assert!(usages.contains(TextureUsages::RENDER_ATTACHMENT));
+
+    let combined = TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST;
+    assert!(combined.contains(TextureUsages::TEXTURE_BINDING));
+    assert!(combined.contains(TextureUsages::COPY_DST));
+  }
+
+  /// Ensures `for_render_target` toggles the internal render-target usage flag.
   #[test]
   fn texture_builder_marks_render_target_usage() {
     let builder =
@@ -654,9 +747,44 @@ mod tests {
     assert!(builder.is_render_target);
   }
 
+  /// Ensures depth texture builders clamp invalid sample counts to `1`.
   #[test]
   fn depth_texture_builder_clamps_sample_count() {
     let builder = DepthTextureBuilder::new().with_sample_count(0);
     assert_eq!(builder.sample_count, 1);
+  }
+
+  /// Ensures textures with invalid dimensions fail during build with an
+  /// actionable error message.
+  #[test]
+  fn texture_builder_rejects_invalid_dimensions() {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-texture-test")
+    else {
+      return;
+    };
+
+    let err = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(0, 0)
+      .build(&gpu)
+      .expect_err("invalid dimensions should error");
+    assert_eq!(err, "Invalid texture dimensions");
+  }
+
+  /// Ensures the 3D texture builder selects the platform 3D creation path when
+  /// the configured depth is greater than `1`.
+  #[test]
+  fn texture_builder_builds_3d_texture_path() {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-texture-3d-test")
+    else {
+      return;
+    };
+
+    // 3D texture builder selects the 3D upload path when depth > 1.
+    let tex = TextureBuilder::new_3d(TextureFormat::Rgba8Unorm)
+      .with_size_3d(2, 2, 2)
+      .build(&gpu)
+      .expect("build 3d texture");
+    let _ = tex.platform_texture();
   }
 }

@@ -76,3 +76,38 @@ impl ViewportBuilder {
     }
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// Ensures negative viewport coordinates are clamped to zero to avoid
+  /// underflow when converting into unsigned pixel coordinates.
+  #[test]
+  fn viewport_builder_clamps_negative_coordinates() {
+    let viewport = ViewportBuilder::new()
+      .with_coordinates(-10, -20)
+      .build(3, 4);
+    assert_eq!(viewport.x, 0);
+    assert_eq!(viewport.y, 0);
+    assert_eq!(viewport.width, 3);
+    assert_eq!(viewport.height, 4);
+  }
+
+  /// Ensures helper methods return the expected tuple forms used by the
+  /// platform viewport/scissor APIs.
+  #[test]
+  fn viewport_helpers_return_expected_tuples() {
+    let viewport = Viewport {
+      x: 1,
+      y: 2,
+      width: 3,
+      height: 4,
+      min_depth: 0.25,
+      max_depth: 0.75,
+    };
+
+    assert_eq!(viewport.viewport_f32(), (1.0, 2.0, 3.0, 4.0, 0.25, 0.75));
+    assert_eq!(viewport.scissor_u32(), (1, 2, 3, 4));
+  }
+}

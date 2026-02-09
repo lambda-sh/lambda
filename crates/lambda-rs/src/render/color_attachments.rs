@@ -121,3 +121,113 @@ impl<'view> RenderColorAttachments<'view> {
     return attachments;
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::render::texture::{
+    ColorAttachmentTextureBuilder,
+    TextureBuilder,
+    TextureFormat,
+  };
+
+  /// Ensures `for_surface_pass` produces no color attachments when color output
+  /// is disabled.
+  #[test]
+  fn for_surface_pass_returns_empty_when_color_disabled() {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-color-attachments-test")
+    else {
+      return;
+    };
+
+    let texture = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(1, 1)
+      .for_render_target()
+      .build(&gpu)
+      .expect("build resolve texture");
+
+    let view = texture.view_ref();
+    let mut attachments =
+      RenderColorAttachments::for_surface_pass(false, 1, None, view);
+    let _ = attachments.as_platform_attachments_mut();
+  }
+
+  /// Builds a single-sample offscreen attachment list (no MSAA) and ensures it
+  /// can be passed through to the platform render pass builder.
+  #[test]
+  fn for_offscreen_pass_builds_single_sample_color_attachment() {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-color-attachments-test")
+    else {
+      return;
+    };
+
+    let texture = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(4, 4)
+      .for_render_target()
+      .build(&gpu)
+      .expect("build resolve texture");
+
+    let view = texture.view_ref();
+    let mut attachments =
+      RenderColorAttachments::for_offscreen_pass(true, 1, None, view);
+    let _ = attachments.as_platform_attachments_mut();
+  }
+
+  /// Builds an MSAA offscreen attachment list with a resolve target.
+  #[test]
+  fn for_offscreen_pass_builds_msaa_color_attachment() {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-color-attachments-test")
+    else {
+      return;
+    };
+
+    let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(4, 4)
+      .for_render_target()
+      .build(&gpu)
+      .expect("build resolve texture");
+
+    let msaa = ColorAttachmentTextureBuilder::new(TextureFormat::Rgba8Unorm)
+      .with_size(4, 4)
+      .with_sample_count(4)
+      .build(&gpu);
+
+    let mut attachments = RenderColorAttachments::for_offscreen_pass(
+      true,
+      4,
+      Some(msaa.view_ref()),
+      resolve.view_ref(),
+    );
+    let _ = attachments.as_platform_attachments_mut();
+  }
+
+  /// Validates the builder rejects MSAA configurations that omit the required
+  /// MSAA view.
+  #[test]
+  fn for_offscreen_pass_panics_when_msaa_view_missing() {
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-color-attachments-test")
+    else {
+      return;
+    };
+
+    let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(1, 1)
+      .for_render_target()
+      .build(&gpu)
+      .expect("build resolve texture");
+
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+      let _ = RenderColorAttachments::for_offscreen_pass(
+        true,
+        4,
+        None,
+        resolve.view_ref(),
+      );
+    }));
+    assert!(result.is_err());
+  }
+}

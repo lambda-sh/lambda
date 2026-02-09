@@ -89,6 +89,11 @@ render-validation-encoder = []
 render-validation-instancing = []
 render-validation-render-targets = []
 
+# --------------------------------- PHYSICS -----------------------------------
+
+# Umbrella features (disabled by default)
+physics-2d = ["lambda-rs-platform/physics-2d"]
+
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------
 

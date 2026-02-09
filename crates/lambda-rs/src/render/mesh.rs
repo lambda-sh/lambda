@@ -155,10 +155,63 @@ impl MeshBuilder {
 
 #[cfg(test)]
 mod tests {
+  use super::MeshBuilder;
+  use crate::render::vertex::Vertex;
+
+  /// Confirms a newly constructed mesh builder starts with no vertices.
   #[test]
   fn mesh_building() {
-    let mesh = super::MeshBuilder::new();
+    let mesh = MeshBuilder::new();
 
     assert_eq!(mesh.vertices.len(), 0);
+  }
+
+  /// Ensures capacity resizing and subsequent vertex pushes are reflected in
+  /// the built mesh.
+  #[test]
+  fn mesh_builder_capacity_and_attributes_are_applied() {
+    let mut builder = MeshBuilder::new();
+    builder.with_capacity(2);
+    assert_eq!(builder.vertices.len(), 2);
+
+    builder.with_vertex(Vertex {
+      position: [1.0, 2.0, 3.0],
+      normal: [0.0, 1.0, 0.0],
+      color: [0.5, 0.5, 0.5],
+    });
+
+    let mesh = builder.build();
+    assert_eq!(mesh.vertices().len(), 3);
+  }
+
+  /// Validates the OBJ loader path parses a minimal triangle and produces the
+  /// expected vertex + attribute counts.
+  #[test]
+  fn mesh_build_from_obj_parses_vertices() {
+    use std::fs;
+
+    // Minimal OBJ with one triangle, normals, and texture coordinates.
+    let obj = r#"
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 0.0 1.0 0.0
+vt 0.0 0.0
+vt 1.0 0.0
+vt 0.0 1.0
+vn 0.0 0.0 1.0
+f 1/1/1 2/2/1 3/3/1
+"#;
+
+    let mut path = std::env::temp_dir();
+    path.push("lambda_mesh_test.obj");
+    fs::write(&path, obj).expect("write temp obj");
+
+    let builder = super::MeshBuilder::new();
+    let mesh = builder
+      .build_from_obj(path.to_str().expect("temp path must be valid utf-8"));
+
+    // The platform loader expands the face into vertices.
+    assert_eq!(mesh.vertices().len(), 3);
+    assert_eq!(mesh.attributes().len(), 3);
   }
 }

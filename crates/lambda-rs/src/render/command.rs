@@ -130,6 +130,7 @@ pub enum RenderCommand {
 mod tests {
   use super::IndexFormat;
 
+  /// Ensures engine-facing index formats map to platform wgpu index formats.
   #[test]
   fn index_format_maps_to_platform() {
     let u16_platform = IndexFormat::Uint16.to_platform();

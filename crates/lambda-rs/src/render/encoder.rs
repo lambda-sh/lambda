@@ -692,3 +692,361 @@ impl std::fmt::Display for RenderPassError {
 }
 
 impl std::error::Error for RenderPassError {}
+
+#[cfg(test)]
+pub(crate) fn new_render_pass_encoder_for_tests<'pass>(
+  encoder: &'pass mut platform::command::CommandEncoder,
+  pass: &'pass RenderPass,
+  destination_info: RenderPassDestinationInfo,
+  color_attachments: &'pass mut RenderColorAttachments<'pass>,
+  depth_texture: Option<&'pass DepthTexture>,
+) -> RenderPassEncoder<'pass> {
+  return RenderPassEncoder::new(
+    encoder,
+    pass,
+    destination_info,
+    color_attachments,
+    depth_texture,
+  );
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::render::{
+    bind::{
+      BindGroupBuilder,
+      BindGroupLayoutBuilder,
+      BindingVisibility,
+    },
+    buffer::{
+      BufferBuilder,
+      BufferType,
+      Properties,
+      Usage,
+    },
+    pipeline::RenderPipelineBuilder,
+    render_pass::RenderPassBuilder,
+    shader::{
+      ShaderBuilder,
+      ShaderKind,
+      VirtualShader,
+    },
+    texture::{
+      DepthFormat,
+      DepthTextureBuilder,
+      TextureBuilder,
+      TextureFormat,
+    },
+    viewport::Viewport,
+  };
+
+  fn compile_triangle_shaders(
+  ) -> (crate::render::shader::Shader, crate::render::shader::Shader) {
+    let vert_path = format!(
+      "{}/assets/shaders/triangle.vert",
+      env!("CARGO_MANIFEST_DIR")
+    );
+    let frag_path = format!(
+      "{}/assets/shaders/triangle.frag",
+      env!("CARGO_MANIFEST_DIR")
+    );
+
+    let mut builder = ShaderBuilder::new();
+    let vs = builder.build(VirtualShader::File {
+      path: vert_path,
+      kind: ShaderKind::Vertex,
+      name: "triangle-vert".to_string(),
+      entry_point: "main".to_string(),
+    });
+    let fs = builder.build(VirtualShader::File {
+      path: frag_path,
+      kind: ShaderKind::Fragment,
+      name: "triangle-frag".to_string(),
+      entry_point: "main".to_string(),
+    });
+    return (vs, fs);
+  }
+
+  /// Ensures the `Display` implementation for `RenderPassError` forwards the
+  /// underlying message without modification.
+  #[test]
+  fn render_pass_error_display_is_passthrough() {
+    let err = RenderPassError::NoPipeline("oops".to_string());
+    assert_eq!(err.to_string(), "oops");
+  }
+
+  /// Validates the encoder reports an error when a draw is issued before
+  /// setting a pipeline (when validation is enabled).
+  #[test]
+  fn render_pass_encoder_draw_requires_pipeline_when_validation_enabled() {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-encoder-test")
+    else {
+      return;
+    };
+
+    let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(4, 4)
+      .for_render_target()
+      .build(&gpu)
+      .expect("build resolve texture");
+
+    let pass = RenderPassBuilder::new()
+      .with_label("no-pipeline-pass")
+      .build(&gpu, TextureFormat::Rgba8Unorm, DepthFormat::Depth24Plus);
+
+    let mut encoder = platform::command::CommandEncoder::new(
+      gpu.platform(),
+      Some("lambda-no-pipeline-encoder"),
+    );
+
+    let mut attachments = RenderColorAttachments::for_offscreen_pass(
+      pass.uses_color(),
+      pass.sample_count(),
+      None,
+      resolve.view_ref(),
+    );
+
+    let mut rp = RenderPassEncoder::new(
+      &mut encoder,
+      &pass,
+      RenderPassDestinationInfo {
+        color_format: Some(TextureFormat::Rgba8Unorm),
+        depth_format: None,
+      },
+      &mut attachments,
+      None,
+    );
+
+    let result = rp.draw(0..3, 0..1);
+    if cfg!(any(debug_assertions, feature = "render-validation-encoder")) {
+      let err = result.expect_err("draw must error without a pipeline");
+      assert!(matches!(err, RenderPassError::NoPipeline(_)));
+    } else {
+      result.expect("draw ok without validation");
+    }
+
+    drop(rp);
+    let _ = encoder.finish();
+  }
+
+  /// In debug builds, checks the engine's pipeline/pass compatibility checks
+  /// fire before provoking underlying wgpu validation errors.
+  #[test]
+  fn render_pass_encoder_validates_pipeline_compatibility_in_debug() {
+    if !cfg!(debug_assertions) {
+      // The explicit pass/pipeline compatibility checks are debug- or
+      // feature-gated; don't attempt to provoke wgpu validation in release.
+      return;
+    }
+
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-encoder-test")
+    else {
+      return;
+    };
+
+    let (vs, fs) = compile_triangle_shaders();
+
+    let pass = RenderPassBuilder::new()
+      .with_label("depth-only-pass")
+      .without_color()
+      .with_depth()
+      .build(&gpu, TextureFormat::Rgba8Unorm, DepthFormat::Depth24Plus);
+
+    let pipeline = RenderPipelineBuilder::new()
+      .with_label("color-pipeline")
+      .build(
+        &gpu,
+        TextureFormat::Rgba8Unorm,
+        DepthFormat::Depth24Plus,
+        &pass,
+        &vs,
+        Some(&fs),
+      );
+
+    let mut encoder = platform::command::CommandEncoder::new(
+      gpu.platform(),
+      Some("lambda-pass-compat-encoder"),
+    );
+
+    let mut attachments = RenderColorAttachments::new();
+    let depth_texture = DepthTextureBuilder::new()
+      .with_label("lambda-pass-compat-depth")
+      .with_size(1, 1)
+      .with_format(DepthFormat::Depth24Plus)
+      .build(&gpu);
+
+    let mut rp = RenderPassEncoder::new(
+      &mut encoder,
+      &pass,
+      RenderPassDestinationInfo {
+        color_format: None,
+        depth_format: Some(DepthFormat::Depth24Plus),
+      },
+      &mut attachments,
+      Some(&depth_texture),
+    );
+
+    let err = rp
+      .set_pipeline(&pipeline)
+      .expect_err("pipeline with color targets must be incompatible");
+    assert!(matches!(err, RenderPassError::PipelineIncompatible(_)));
+
+    drop(rp);
+    let _ = encoder.finish();
+  }
+
+  /// Exercises the common command encoding path (viewport/scissor/pipeline),
+  /// plus validation branches for bind group dynamic offsets and index buffers.
+  #[test]
+  fn render_pass_encoder_encodes_commands_and_validates_index_buffers() {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-encoder-test")
+    else {
+      return;
+    };
+
+    let (vs, fs) = compile_triangle_shaders();
+
+    let pass = RenderPassBuilder::new().with_label("basic-pass").build(
+      &gpu,
+      TextureFormat::Rgba8Unorm,
+      DepthFormat::Depth24Plus,
+    );
+
+    let pipeline = RenderPipelineBuilder::new()
+      .with_label("basic-pipeline")
+      .build(
+        &gpu,
+        TextureFormat::Rgba8Unorm,
+        DepthFormat::Depth24Plus,
+        &pass,
+        &vs,
+        Some(&fs),
+      );
+
+    let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(4, 4)
+      .for_render_target()
+      .build(&gpu)
+      .expect("build resolve texture");
+
+    let mut encoder = platform::command::CommandEncoder::new(
+      gpu.platform(),
+      Some("lambda-encode-commands-encoder"),
+    );
+
+    let mut attachments = RenderColorAttachments::for_offscreen_pass(
+      pass.uses_color(),
+      pass.sample_count(),
+      None,
+      resolve.view_ref(),
+    );
+
+    let mut rp = RenderPassEncoder::new(
+      &mut encoder,
+      &pass,
+      RenderPassDestinationInfo {
+        color_format: Some(TextureFormat::Rgba8Unorm),
+        depth_format: None,
+      },
+      &mut attachments,
+      None,
+    );
+
+    let viewport = Viewport {
+      x: 0,
+      y: 0,
+      width: 4,
+      height: 4,
+      min_depth: 0.0,
+      max_depth: 1.0,
+    };
+    rp.set_viewport(&viewport);
+    rp.set_scissor(&viewport);
+
+    rp.set_pipeline(&pipeline).expect("set pipeline");
+
+    // Bind group validation: dynamic binding count mismatch.
+    let layout = BindGroupLayoutBuilder::new()
+      .with_uniform_dynamic(0, BindingVisibility::VertexAndFragment)
+      .build(&gpu);
+
+    let uniform = BufferBuilder::new()
+      .with_label("encoder-test-uniform")
+      .with_usage(Usage::UNIFORM)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Uniform)
+      .build(&gpu, vec![0u32; 4])
+      .expect("build uniform buffer");
+
+    let group = BindGroupBuilder::new()
+      .with_layout(&layout)
+      .with_uniform(0, &uniform, 0, None)
+      .build(&gpu);
+
+    let err = rp
+      .set_bind_group(
+        0,
+        &group,
+        &[],
+        gpu.limit_min_uniform_buffer_offset_alignment(),
+      )
+      .expect_err("dynamic offsets must be provided");
+    assert!(matches!(err, RenderPassError::Validation(_)));
+
+    // Index buffer validation should catch wrong logical type and stride when enabled.
+    let vertex_buffer = BufferBuilder::new()
+      .with_label("encoder-test-vertex")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(&gpu, vec![0u32; 4])
+      .expect("build vertex buffer");
+
+    let bad_type = rp.set_index_buffer(&vertex_buffer, IndexFormat::Uint16);
+    if cfg!(any(debug_assertions, feature = "render-validation-encoder")) {
+      assert!(matches!(bad_type, Err(RenderPassError::Validation(_))));
+    } else {
+      assert!(bad_type.is_ok());
+    }
+
+    let bad_stride = BufferBuilder::new()
+      .with_label("encoder-test-index-bad-stride")
+      .with_usage(Usage::INDEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Index)
+      .build(&gpu, vec![0u8; 8])
+      .expect("build index buffer");
+
+    let bad_stride = rp.set_index_buffer(&bad_stride, IndexFormat::Uint16);
+    if cfg!(any(debug_assertions, feature = "render-validation-encoder")) {
+      assert!(matches!(bad_stride, Err(RenderPassError::Validation(_))));
+    } else {
+      assert!(bad_stride.is_ok());
+    }
+
+    let index_buffer = BufferBuilder::new()
+      .with_label("encoder-test-index")
+      .with_usage(Usage::INDEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Index)
+      .build(&gpu, vec![0u16, 1u16, 2u16])
+      .expect("build index buffer");
+
+    rp.set_index_buffer(&index_buffer, IndexFormat::Uint16)
+      .expect("set index buffer");
+
+    rp.draw(0..3, 0..1).expect("draw");
+
+    let indexed = rp.draw_indexed(0..4, 0, 0..1);
+    if cfg!(any(debug_assertions, feature = "render-validation-encoder")) {
+      assert!(matches!(indexed, Err(RenderPassError::Validation(_))));
+    } else {
+      assert!(indexed.is_ok());
+    }
+
+    drop(rp);
+    let cb = encoder.finish();
+    gpu.submit(std::iter::once(cb));
+  }
+}
