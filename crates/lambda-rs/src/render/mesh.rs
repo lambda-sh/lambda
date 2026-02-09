@@ -188,10 +188,7 @@ mod tests {
   /// expected vertex + attribute counts.
   #[test]
   fn mesh_build_from_obj_parses_vertices() {
-    use std::{
-      fs,
-      path::PathBuf,
-    };
+    use std::fs;
 
     // Minimal OBJ with one triangle, normals, and texture coordinates.
     let obj = r#"
@@ -205,7 +202,7 @@ vn 0.0 0.0 1.0
 f 1/1/1 2/2/1 3/3/1
 "#;
 
-    let mut path = PathBuf::from(std::env::temp_dir());
+    let mut path = std::env::temp_dir();
     path.push("lambda_mesh_test.obj");
     fs::write(&path, obj).expect("write temp obj");
 

@@ -562,41 +562,52 @@ impl RenderContext {
       return Ok(());
     }
 
-    let requires_surface = commands.iter().any(|cmd| match cmd {
-      RenderCommand::BeginRenderPass { .. } => true,
-      RenderCommand::BeginRenderPassTo {
-        destination: RenderDestination::Surface,
-        ..
-      } => true,
-      _ => false,
+    // Determine whether this command list needs access to the presentation
+    // surface. We only acquire a surface frame when a surface-backed pass is
+    // requested; offscreen-only command lists can render without a window.
+    let requires_surface = commands.iter().any(|cmd| {
+      return matches!(
+        cmd,
+        RenderCommand::BeginRenderPass { .. }
+          | RenderCommand::BeginRenderPassTo {
+            destination: RenderDestination::Surface,
+            ..
+          }
+      );
     });
 
     let mut frame = if requires_surface {
-      Some(
-        match {
-          let surface = self.surface.as_mut().ok_or_else(|| {
-            RenderError::Configuration(
-              "No surface attached to RenderContext".to_string(),
-            )
-          })?;
-          surface.acquire_frame()
-        } {
-          Ok(frame) => frame,
-          Err(err) => match err {
-            targets::surface::SurfaceError::Lost
-            | targets::surface::SurfaceError::Outdated => {
-              self.reconfigure_surface(self.size)?;
-              let surface = self.surface.as_mut().ok_or_else(|| {
-                RenderError::Configuration(
-                  "No surface attached to RenderContext".to_string(),
-                )
-              })?;
-              surface.acquire_frame().map_err(RenderError::Surface)?
-            }
-            _ => return Err(RenderError::Surface(err)),
-          },
+      // Acquire exactly one surface frame up-front and reuse its `TextureView`
+      // for all surface-backed render passes in this command list. The acquired
+      // frame is presented after encoding completes.
+      //
+      // If acquisition fails due to surface loss/outdated config, attempt to
+      // reconfigure the surface to the current context size and retry once.
+      let acquired = {
+        let surface = self.surface.as_mut().ok_or_else(|| {
+          RenderError::Configuration(
+            "No surface attached to RenderContext".to_string(),
+          )
+        })?;
+        surface.acquire_frame()
+      };
+
+      Some(match acquired {
+        Ok(frame) => frame,
+        Err(err) => match err {
+          targets::surface::SurfaceError::Lost
+          | targets::surface::SurfaceError::Outdated => {
+            self.reconfigure_surface(self.size)?;
+            let surface = self.surface.as_mut().ok_or_else(|| {
+              RenderError::Configuration(
+                "No surface attached to RenderContext".to_string(),
+              )
+            })?;
+            surface.acquire_frame().map_err(RenderError::Surface)?
+          }
+          _ => return Err(RenderError::Surface(err)),
         },
-      )
+      })
     } else {
       None
     };
