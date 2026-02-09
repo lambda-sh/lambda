@@ -3,8 +3,8 @@ title: "Specifications Index"
 document_id: "specs-index-2026-02-07"
 status: "living"
 created: "2026-02-07T00:00:00Z"
-last_updated: "2026-02-07T20:58:44Z"
-version: "0.1.1"
+last_updated: "2026-02-09T00:00:00Z"
+version: "0.1.2"
 owners: ["lambda-sh"]
 reviewers: ["engine"]
 tags: ["index", "specs", "docs"]
@@ -23,6 +23,7 @@ tags: ["index", "specs", "docs"]
 
 - Audio Devices — [audio/audio-devices.md](audio/audio-devices.md)
 - Audio File Loading — [audio/audio-file-loading.md](audio/audio-file-loading.md)
+- Sound Playback and Transport Controls — [audio/sound-playback.md](audio/sound-playback.md)
 
 ## Runtime / Events
 
