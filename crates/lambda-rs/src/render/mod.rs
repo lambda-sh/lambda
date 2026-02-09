@@ -190,17 +190,8 @@ impl RenderContextBuilder {
       })?;
 
     let size = window.dimensions();
-    let requested_present_mode = present_mode.unwrap_or_else(|| {
-      if window.vsync_requested() {
-        return PresentMode::Vsync;
-      }
-      return PresentMode::Immediate;
-    });
-    let platform_present_mode = match requested_present_mode {
-      PresentMode::Vsync => targets::surface::PresentMode::Fifo,
-      PresentMode::Immediate => targets::surface::PresentMode::Immediate,
-      PresentMode::Mailbox => targets::surface::PresentMode::Mailbox,
-    };
+    let platform_present_mode =
+      resolve_surface_present_mode(present_mode, window.vsync_requested());
     surface
       .configure_with_defaults(
         &gpu,
@@ -259,6 +250,23 @@ impl RenderContextBuilder {
 
     return Ok(render_context);
   }
+}
+
+fn resolve_surface_present_mode(
+  builder_mode: Option<PresentMode>,
+  window_vsync: bool,
+) -> targets::surface::PresentMode {
+  let requested = builder_mode.unwrap_or(if window_vsync {
+    PresentMode::Vsync
+  } else {
+    PresentMode::Immediate
+  });
+
+  return match requested {
+    PresentMode::Vsync => targets::surface::PresentMode::Fifo,
+    PresentMode::Immediate => targets::surface::PresentMode::Immediate,
+    PresentMode::Mailbox => targets::surface::PresentMode::Mailbox,
+  };
 }
 
 /// High‑level rendering context for a single window.
@@ -2032,5 +2040,23 @@ mod tests {
     // Resize exercises headless depth/MSAA rebuild paths without touching a surface.
     render_context.resize(32, 32);
     assert_eq!(render_context.surface_size(), (32, 32));
+  }
+
+  #[test]
+  fn present_mode_defaults_to_window_vsync_true() {
+    let mode = resolve_surface_present_mode(None, true);
+    assert_eq!(mode, targets::surface::PresentMode::Fifo);
+  }
+
+  #[test]
+  fn present_mode_defaults_to_window_vsync_false() {
+    let mode = resolve_surface_present_mode(None, false);
+    assert_eq!(mode, targets::surface::PresentMode::Immediate);
+  }
+
+  #[test]
+  fn present_mode_builder_override_wins_over_window_setting() {
+    let mode = resolve_surface_present_mode(Some(PresentMode::Vsync), false);
+    assert_eq!(mode, targets::surface::PresentMode::Fifo);
   }
 }
