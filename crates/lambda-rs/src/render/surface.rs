@@ -192,3 +192,77 @@ impl From<platform_surface::SurfaceError> for SurfaceError {
     };
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// Ensures present mode conversions to/from the platform are lossless.
+  #[test]
+  fn present_mode_round_trips_through_platform() {
+    let modes = [
+      PresentMode::Fifo,
+      PresentMode::FifoRelaxed,
+      PresentMode::Immediate,
+      PresentMode::Mailbox,
+      PresentMode::AutoVsync,
+      PresentMode::AutoNoVsync,
+    ];
+
+    for mode in modes {
+      let platform = mode.to_platform();
+      let back = PresentMode::from_platform(platform);
+      assert_eq!(back, mode);
+    }
+  }
+
+  /// Ensures each platform surface error maps to the corresponding engine
+  /// surface error variant.
+  #[test]
+  fn surface_error_maps_platform_variants() {
+    assert!(matches!(
+      SurfaceError::from(platform_surface::SurfaceError::Lost),
+      SurfaceError::Lost
+    ));
+    assert!(matches!(
+      SurfaceError::from(platform_surface::SurfaceError::Outdated),
+      SurfaceError::Outdated
+    ));
+    assert!(matches!(
+      SurfaceError::from(platform_surface::SurfaceError::OutOfMemory),
+      SurfaceError::OutOfMemory
+    ));
+    assert!(matches!(
+      SurfaceError::from(platform_surface::SurfaceError::Timeout),
+      SurfaceError::Timeout
+    ));
+
+    let other = SurfaceError::from(platform_surface::SurfaceError::Other(
+      "opaque".to_string(),
+    ));
+    assert!(matches!(other, SurfaceError::Other(_)));
+  }
+
+  /// Ensures surface configuration fields are preserved when mapping from the
+  /// platform configuration type.
+  #[test]
+  fn surface_config_from_platform_maps_fields() {
+    let platform_config = platform_surface::SurfaceConfig {
+      width: 640,
+      height: 480,
+      format: lambda_platform::wgpu::texture::TextureFormat::BGRA8_UNORM_SRGB,
+      present_mode: platform_surface::PresentMode::Fifo,
+      usage: lambda_platform::wgpu::texture::TextureUsages::RENDER_ATTACHMENT
+        | lambda_platform::wgpu::texture::TextureUsages::TEXTURE_BINDING,
+      view_formats: vec![],
+    };
+
+    let config = SurfaceConfig::from_platform(&platform_config);
+    assert_eq!(config.width, 640);
+    assert_eq!(config.height, 480);
+    assert_eq!(config.present_mode, PresentMode::Fifo);
+    assert!(config
+      .usage
+      .contains(crate::render::texture::TextureUsages::RENDER_ATTACHMENT));
+  }
+}

@@ -104,11 +104,13 @@ pub fn validate_instance_bindings(
 mod tests {
   use super::*;
 
+  /// Ensures `align_up` is a no-op when alignment is zero.
   #[test]
   fn align_up_noop_on_zero_align() {
     assert_eq!(align_up(13, 0), 13);
   }
 
+  /// Ensures `align_up` rounds values up to the next alignment multiple.
   #[test]
   fn align_up_rounds_to_multiple() {
     assert_eq!(align_up(0, 256), 0);
@@ -118,6 +120,8 @@ mod tests {
     assert_eq!(align_up(257, 256), 512);
   }
 
+  /// Validates dynamic uniform offset validation checks both count and
+  /// alignment, and returns actionable error messages.
   #[test]
   fn validate_dynamic_offsets_count_and_alignment() {
     // Correct count and alignment
@@ -136,12 +140,16 @@ mod tests {
     assert!(err.contains("not 256-byte aligned"));
   }
 
+  /// Ensures instance ranges with start <= end are accepted (including empty
+  /// ranges).
   #[test]
   fn validate_instance_range_accepts_valid_ranges() {
     assert!(validate_instance_range("Draw", &(0..1)).is_ok());
     assert!(validate_instance_range("DrawIndexed", &(2..2)).is_ok());
   }
 
+  /// Ensures instance ranges with start > end are rejected with a detailed
+  /// error.
   #[test]
   fn validate_instance_range_rejects_negative_length() {
     let start = 5_u32;
@@ -151,6 +159,8 @@ mod tests {
     assert!(err.contains("Draw instance range start 5 is greater than end 1"));
   }
 
+  /// Ensures instance binding validation passes when all per-instance slots
+  /// are bound.
   #[test]
   fn validate_instance_bindings_accepts_bound_slots() {
     let per_instance_slots = vec![true, false, true];
@@ -166,6 +176,8 @@ mod tests {
     .is_ok());
   }
 
+  /// Ensures instance binding validation reports missing per-instance vertex
+  /// buffer slots.
   #[test]
   fn validate_instance_bindings_rejects_missing_slot() {
     let per_instance_slots = vec![true, false, true];

@@ -316,10 +316,6 @@ mod tests {
   use lambda_platform::wgpu as platform;
 
   use super::*;
-  use crate::render::{
-    gpu::GpuBuilder,
-    instance::InstanceBuilder,
-  };
 
   /// Fails when the builder has a zero dimension.
   #[test]
@@ -347,21 +343,14 @@ mod tests {
     assert_eq!(builder.sample_count, 1);
   }
 
-  fn create_test_gpu() -> Option<Gpu> {
-    let instance = InstanceBuilder::new()
-      .with_label("lambda-offscreen-target-test-instance")
-      .build();
-    return GpuBuilder::new()
-      .with_label("lambda-offscreen-target-test-gpu")
-      .build(&instance, None)
-      .ok();
-  }
-
+  /// Ensures the builder rejects attempts to build without configuring a color
+  /// attachment.
   #[test]
   fn build_rejects_missing_color_attachment() {
-    let gpu = match create_test_gpu() {
-      Some(gpu) => gpu,
-      None => return,
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-offscreen-target-test")
+    else {
+      return;
     };
 
     let built = OffscreenTargetBuilder::new().build(&gpu);
@@ -371,11 +360,14 @@ mod tests {
     );
   }
 
+  /// Ensures unsupported MSAA sample counts are rejected with an explicit
+  /// error rather than silently falling back.
   #[test]
   fn build_rejects_unsupported_sample_count() {
-    let gpu = match create_test_gpu() {
-      Some(gpu) => gpu,
-      None => return,
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-offscreen-target-test")
+    else {
+      return;
     };
 
     let built = OffscreenTargetBuilder::new()
@@ -389,11 +381,14 @@ mod tests {
     );
   }
 
+  /// Ensures the resolve texture can be bound for sampling and also used as a
+  /// render attachment (required for render-to-texture workflows).
   #[test]
   fn resolve_texture_supports_sampling_and_render_attachment() {
-    let gpu = match create_test_gpu() {
-      Some(gpu) => gpu,
-      None => return,
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-offscreen-target-test")
+    else {
+      return;
     };
 
     let target = OffscreenTargetBuilder::new()
@@ -437,11 +432,14 @@ mod tests {
     gpu.platform().submit(std::iter::once(buffer));
   }
 
+  /// Ensures MSAA offscreen targets use compatible sample counts across color
+  /// and depth attachments so they can be encoded into a single render pass.
   #[test]
   fn msaa_target_depth_attachment_matches_sample_count() {
-    let gpu = match create_test_gpu() {
-      Some(gpu) => gpu,
-      None => return,
+    let Some(gpu) =
+      crate::render::gpu::create_test_gpu("lambda-offscreen-target-test")
+    else {
+      return;
     };
 
     let target = OffscreenTargetBuilder::new()

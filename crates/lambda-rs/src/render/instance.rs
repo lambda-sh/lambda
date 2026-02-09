@@ -339,23 +339,114 @@ impl Default for InstanceBuilder {
 mod tests {
   use super::*;
 
+  /// Ensures labels applied in `InstanceBuilder` are preserved on the built
+  /// instance for debugging/profiling.
   #[test]
   fn instance_builder_sets_label() {
     let instance = InstanceBuilder::new().with_label("Test Instance").build();
     assert_eq!(instance.label(), Some("Test Instance"));
   }
 
+  /// Confirms the instance builder can build with default settings.
   #[test]
   fn instance_builder_default_backends() {
     // Just ensure we can build with defaults without panicking
     let _instance = InstanceBuilder::new().build();
   }
 
+  /// Ensures backend flags support bitwise-OR composition.
   #[test]
   fn backends_bitor() {
     let combined = Backends::VULKAN | Backends::METAL;
     // Verify the operation doesn't panic and produces a valid result
     assert_ne!(combined, Backends::VULKAN);
     assert_ne!(combined, Backends::METAL);
+  }
+
+  /// Ensures instance flag bitfields map to the platform bitflags correctly.
+  #[test]
+  fn instance_flags_bitor_maps_to_platform() {
+    let flags = InstanceFlags::VALIDATION | InstanceFlags::DEBUG;
+    let platform = flags.to_platform();
+    assert_eq!(
+      platform,
+      platform::instance::InstanceFlags::VALIDATION
+        | platform::instance::InstanceFlags::DEBUG
+    );
+  }
+
+  /// Ensures the DX12 shader compiler selection maps to the platform enum.
+  #[test]
+  fn dx12_compiler_maps_to_platform() {
+    assert!(matches!(
+      Dx12Compiler::Fxc.to_platform(),
+      platform::instance::Dx12Compiler::Fxc
+    ));
+  }
+
+  /// Ensures the GLES minor version selection maps to the platform enum.
+  #[test]
+  fn gles_minor_version_maps_to_platform() {
+    assert!(matches!(
+      Gles3MinorVersion::Automatic.to_platform(),
+      platform::instance::Gles3MinorVersion::Automatic
+    ));
+    assert!(matches!(
+      Gles3MinorVersion::Version0.to_platform(),
+      platform::instance::Gles3MinorVersion::Version0
+    ));
+    assert!(matches!(
+      Gles3MinorVersion::Version1.to_platform(),
+      platform::instance::Gles3MinorVersion::Version1
+    ));
+    assert!(matches!(
+      Gles3MinorVersion::Version2.to_platform(),
+      platform::instance::Gles3MinorVersion::Version2
+    ));
+  }
+
+  /// Confirms the `Debug` output includes stable, helpful fields (like label).
+  #[test]
+  fn instance_debug_includes_label_field() {
+    let instance = InstanceBuilder::new().with_label("debug instance").build();
+    let formatted = format!("{:?}", instance);
+    assert!(formatted.contains("Instance"));
+    assert!(formatted.contains("label"));
+  }
+
+  /// Ensures each engine backend constant maps to the corresponding platform
+  /// backend constant.
+  #[test]
+  fn backends_map_to_platform_constants() {
+    assert_eq!(
+      Backends::PRIMARY.to_platform(),
+      platform::instance::Backends::PRIMARY
+    );
+    assert_eq!(
+      Backends::VULKAN.to_platform(),
+      platform::instance::Backends::VULKAN
+    );
+    assert_eq!(
+      Backends::METAL.to_platform(),
+      platform::instance::Backends::METAL
+    );
+    assert_eq!(
+      Backends::DX12.to_platform(),
+      platform::instance::Backends::DX12
+    );
+    assert_eq!(Backends::GL.to_platform(), platform::instance::Backends::GL);
+  }
+
+  /// Smoke-tests the builder with every option set to ensure the fluent API is
+  /// wired correctly.
+  #[test]
+  fn instance_builder_accepts_all_options() {
+    let _instance = InstanceBuilder::new()
+      .with_label("options")
+      .with_backends(Backends::VULKAN | Backends::METAL)
+      .with_flags(InstanceFlags::VALIDATION | InstanceFlags::DEBUG)
+      .with_dx12_shader_compiler(Dx12Compiler::Fxc)
+      .with_gles_minor_version(Gles3MinorVersion::Version2)
+      .build();
   }
 }

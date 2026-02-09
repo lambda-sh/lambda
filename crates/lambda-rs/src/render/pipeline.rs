@@ -692,6 +692,7 @@ impl RenderPipelineBuilder {
 mod tests {
   use super::*;
 
+  /// Ensures vertex step modes map to the platform vertex step modes.
   #[test]
   fn engine_step_mode_maps_to_platform_step_mode() {
     let per_vertex = to_platform_step_mode(VertexStepMode::PerVertex);
@@ -705,5 +706,289 @@ mod tests {
       per_instance,
       platform_pipeline::VertexStepMode::Instance
     ));
+  }
+
+  /// Ensures depth compare functions map to the platform compare functions.
+  #[test]
+  fn compare_function_maps_to_platform() {
+    assert!(matches!(
+      CompareFunction::Less.to_platform(),
+      platform_pipeline::CompareFunction::Less
+    ));
+    assert!(matches!(
+      CompareFunction::Always.to_platform(),
+      platform_pipeline::CompareFunction::Always
+    ));
+  }
+
+  /// Ensures culling mode configuration maps to the platform culling modes.
+  #[test]
+  fn culling_mode_maps_to_platform() {
+    assert!(matches!(
+      CullingMode::None.to_platform(),
+      platform_pipeline::CullingMode::None
+    ));
+    assert!(matches!(
+      CullingMode::Back.to_platform(),
+      platform_pipeline::CullingMode::Back
+    ));
+  }
+
+  /// Ensures invalid MSAA sample counts are clamped/fallen back to `1`.
+  #[test]
+  fn pipeline_builder_invalid_sample_count_falls_back_to_one() {
+    let builder = RenderPipelineBuilder::new().with_multi_sample(3);
+    assert_eq!(builder.sample_count, 1);
+  }
+
+  /// Builds a pipeline with depth+stencil enabled and both per-vertex and
+  /// per-instance buffers, covering format upgrade and instance slot tracking.
+  #[test]
+  fn pipeline_builds_with_depth_stencil_and_instance_layout() {
+    use crate::render::{
+      bind::{
+        BindGroupLayoutBuilder,
+        BindingVisibility,
+      },
+      buffer::{
+        BufferBuilder,
+        BufferType,
+        Properties,
+        Usage,
+      },
+      gpu::create_test_gpu,
+      render_pass::RenderPassBuilder,
+      shader::{
+        ShaderBuilder,
+        ShaderKind,
+        VirtualShader,
+      },
+      texture::{
+        DepthFormat,
+        TextureFormat,
+      },
+      vertex::{
+        ColorFormat,
+        VertexAttribute,
+        VertexElement,
+      },
+    };
+
+    let Some(gpu) = create_test_gpu("lambda-pipeline-depth-test") else {
+      return;
+    };
+
+    let mut shaders = ShaderBuilder::new();
+    let vs = shaders.build(VirtualShader::Source {
+      source: r#"
+        #version 450
+        #extension GL_ARB_separate_shader_objects : enable
+        layout(location = 0) in vec3 a_pos;
+        layout(location = 1) in vec3 a_inst;
+        void main() { gl_Position = vec4(a_pos + a_inst * 0.0, 1.0); }
+      "#
+      .to_string(),
+      kind: ShaderKind::Vertex,
+      name: "lambda-pipeline-depth-vs".to_string(),
+      entry_point: "main".to_string(),
+    });
+    let fs = shaders.build(VirtualShader::Source {
+      source: r#"
+        #version 450
+        #extension GL_ARB_separate_shader_objects : enable
+        layout(location = 0) out vec4 fragment_color;
+        void main() { fragment_color = vec4(1.0); }
+      "#
+      .to_string(),
+      kind: ShaderKind::Fragment,
+      name: "lambda-pipeline-depth-fs".to_string(),
+      entry_point: "main".to_string(),
+    });
+
+    let pass = RenderPassBuilder::new()
+      .with_label("lambda-pipeline-depth-pass")
+      .with_depth()
+      .with_stencil()
+      .build(&gpu, TextureFormat::Rgba8Unorm, DepthFormat::Depth24Plus);
+
+    let layout = BindGroupLayoutBuilder::new()
+      .with_uniform(0, BindingVisibility::VertexAndFragment)
+      .build(&gpu);
+
+    let vertex_buffer = BufferBuilder::new()
+      .with_label("lambda-pipeline-depth-vertex")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(&gpu, vec![[0.0_f32; 3]; 3])
+      .expect("build vertex buffer");
+
+    let instance_buffer = BufferBuilder::new()
+      .with_label("lambda-pipeline-depth-instance")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(&gpu, vec![[0.0_f32; 3]; 1])
+      .expect("build instance buffer");
+
+    let attrs_pos = vec![VertexAttribute {
+      location: 0,
+      offset: 0,
+      element: VertexElement {
+        format: ColorFormat::Rgb32Sfloat,
+        offset: 0,
+      },
+    }];
+    let attrs_inst = vec![VertexAttribute {
+      location: 1,
+      offset: 0,
+      element: VertexElement {
+        format: ColorFormat::Rgb32Sfloat,
+        offset: 0,
+      },
+    }];
+
+    let stencil = StencilState {
+      front: StencilFaceState {
+        compare: CompareFunction::Always,
+        fail_op: StencilOperation::Keep,
+        depth_fail_op: StencilOperation::Keep,
+        pass_op: StencilOperation::Replace,
+      },
+      back: StencilFaceState {
+        compare: CompareFunction::Always,
+        fail_op: StencilOperation::Keep,
+        depth_fail_op: StencilOperation::Keep,
+        pass_op: StencilOperation::Replace,
+      },
+      read_mask: 0xff,
+      write_mask: 0xff,
+    };
+
+    // Intentionally request a mismatched depth format; build should align to the pass.
+    let pipeline = RenderPipelineBuilder::new()
+      .with_label("lambda-pipeline-depth-pipeline")
+      .with_layouts(&[&layout])
+      .with_buffer(vertex_buffer, attrs_pos)
+      .with_instance_buffer(instance_buffer, attrs_inst)
+      .with_depth_format(DepthFormat::Depth32Float)
+      .with_depth_compare(CompareFunction::Less)
+      .with_depth_write(true)
+      .with_stencil(stencil)
+      .build(
+        &gpu,
+        TextureFormat::Rgba8Unorm,
+        DepthFormat::Depth24Plus,
+        &pass,
+        &vs,
+        Some(&fs),
+      );
+
+    assert!(pipeline.expects_depth_stencil());
+    assert!(pipeline.uses_stencil());
+    assert_eq!(
+      pipeline.depth_format(),
+      Some(DepthFormat::Depth24PlusStencil8)
+    );
+    assert_eq!(pipeline.per_instance_slots().len(), 2);
+  }
+
+  /// Ensures pipeline construction aligns its MSAA sample count to the render
+  /// pass sample count to avoid target incompatibility.
+  #[test]
+  fn pipeline_build_aligns_sample_count_to_render_pass() {
+    use crate::render::{
+      buffer::{
+        BufferBuilder,
+        BufferType,
+        Properties,
+        Usage,
+      },
+      gpu::create_test_gpu,
+      render_pass::RenderPassBuilder,
+      shader::{
+        ShaderBuilder,
+        ShaderKind,
+        VirtualShader,
+      },
+      texture::{
+        DepthFormat,
+        TextureFormat,
+      },
+      vertex::{
+        ColorFormat,
+        VertexAttribute,
+        VertexElement,
+      },
+    };
+
+    let Some(gpu) = create_test_gpu("lambda-pipeline-test") else {
+      return;
+    };
+
+    let vert_path = format!(
+      "{}/assets/shaders/triangle.vert",
+      env!("CARGO_MANIFEST_DIR")
+    );
+    let frag_path = format!(
+      "{}/assets/shaders/triangle.frag",
+      env!("CARGO_MANIFEST_DIR")
+    );
+    let mut shaders = ShaderBuilder::new();
+    let vs = shaders.build(VirtualShader::File {
+      path: vert_path,
+      kind: ShaderKind::Vertex,
+      name: "triangle-vert".to_string(),
+      entry_point: "main".to_string(),
+    });
+    let fs = shaders.build(VirtualShader::File {
+      path: frag_path,
+      kind: ShaderKind::Fragment,
+      name: "triangle-frag".to_string(),
+      entry_point: "main".to_string(),
+    });
+
+    let pass = RenderPassBuilder::new()
+      .with_label("pipeline-sample-align-pass")
+      .with_multi_sample(4)
+      .build(&gpu, TextureFormat::Rgba8Unorm, DepthFormat::Depth24Plus);
+
+    let vertex_buffer = BufferBuilder::new()
+      .with_label("pipeline-test-vertex-buffer")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(&gpu, vec![[0.0_f32; 3]; 4])
+      .expect("build vertex buffer");
+
+    let attributes = vec![VertexAttribute {
+      location: 0,
+      offset: 0,
+      element: VertexElement {
+        format: ColorFormat::Rgb32Sfloat,
+        offset: 0,
+      },
+    }];
+
+    // Intentionally request a different sample count; build should align to the pass.
+    let pipeline = RenderPipelineBuilder::new()
+      .with_label("pipeline-sample-align-pipeline")
+      .with_multi_sample(1)
+      .with_buffer(vertex_buffer, attributes)
+      .build(
+        &gpu,
+        TextureFormat::Rgba8Unorm,
+        DepthFormat::Depth24Plus,
+        &pass,
+        &vs,
+        Some(&fs),
+      );
+
+    assert_eq!(pipeline.sample_count(), 4);
+    assert!(pipeline.has_color_targets());
+    assert_eq!(
+      pipeline.color_target_format(),
+      Some(TextureFormat::Rgba8Unorm)
+    );
   }
 }
