@@ -119,11 +119,15 @@ impl Default for Properties {
 /// - Writing is performed via the device queue using `write_value` or by
 ///   creating CPU‑visible buffers and re‑building with new contents when
 ///   appropriate.
+/// - `write_*` operations require the buffer to be created with
+///   `Properties::CPU_VISIBLE`. Use `try_write_*` variants if you want to
+///   handle this as an error rather than panicking.
 #[derive(Debug)]
 pub struct Buffer {
   buffer: Rc<platform_buffer::Buffer>,
   stride: u64,
   buffer_type: BufferType,
+  cpu_visible: bool,
 }
 
 impl Buffer {
@@ -144,12 +148,41 @@ impl Buffer {
     return self.buffer_type;
   }
 
+  /// Whether this buffer supports CPU-side queue writes (`write_*`).
+  pub fn cpu_visible(&self) -> bool {
+    return self.cpu_visible;
+  }
+
+  fn validate_cpu_write(&self) -> Result<(), &'static str> {
+    return validate_cpu_write_supported(self.cpu_visible);
+  }
+
   /// Write a single plain-old-data value into this buffer at the specified
   /// byte offset. This is intended for updating uniform buffer contents from
   /// the CPU. The `data` type must implement `PlainOldData`.
+  ///
+  /// # Panics
+  /// Panics if the buffer was not created with `Properties::CPU_VISIBLE`.
   pub fn write_value<T: PlainOldData>(&self, gpu: &Gpu, offset: u64, data: &T) {
+    self
+      .try_write_value(gpu, offset, data)
+      .expect("Buffer::write_value requires a CPU-visible buffer. Create the buffer with `.with_properties(Properties::CPU_VISIBLE)` or use `try_write_value` to handle the error.");
+  }
+
+  /// Fallible variant of [`Buffer::write_value`].
+  ///
+  /// Returns an error if the buffer was not created with
+  /// `Properties::CPU_VISIBLE`.
+  pub fn try_write_value<T: PlainOldData>(
+    &self,
+    gpu: &Gpu,
+    offset: u64,
+    data: &T,
+  ) -> Result<(), &'static str> {
+    self.validate_cpu_write()?;
     let bytes = value_as_bytes(data);
-    self.write_bytes(gpu, offset, bytes);
+    self.buffer.write_bytes(gpu.platform(), offset, bytes);
+    return Ok(());
   }
 
   /// Write raw bytes into this buffer at the specified byte offset.
@@ -162,8 +195,28 @@ impl Buffer {
   /// let raw_data: &[u8] = load_binary_data();
   /// buffer.write_bytes(render_context.gpu(), 0, raw_data);
   /// ```
+  ///
+  /// # Panics
+  /// Panics if the buffer was not created with `Properties::CPU_VISIBLE`.
   pub fn write_bytes(&self, gpu: &Gpu, offset: u64, data: &[u8]) {
+    self
+      .try_write_bytes(gpu, offset, data)
+      .expect("Buffer::write_bytes requires a CPU-visible buffer. Create the buffer with `.with_properties(Properties::CPU_VISIBLE)` or use `try_write_bytes` to handle the error.");
+  }
+
+  /// Fallible variant of [`Buffer::write_bytes`].
+  ///
+  /// Returns an error if the buffer was not created with
+  /// `Properties::CPU_VISIBLE`.
+  pub fn try_write_bytes(
+    &self,
+    gpu: &Gpu,
+    offset: u64,
+    data: &[u8],
+  ) -> Result<(), &'static str> {
+    self.validate_cpu_write()?;
     self.buffer.write_bytes(gpu.platform(), offset, data);
+    return Ok(());
   }
 
   /// Write a slice of plain-old-data values into this buffer at the
@@ -187,10 +240,20 @@ impl Buffer {
     offset: u64,
     data: &[T],
   ) -> Result<(), &'static str> {
+    self.validate_cpu_write()?;
     let bytes = slice_as_bytes(data)?;
-    self.write_bytes(gpu, offset, bytes);
+    self.buffer.write_bytes(gpu.platform(), offset, bytes);
     return Ok(());
   }
+}
+
+fn validate_cpu_write_supported(cpu_visible: bool) -> Result<(), &'static str> {
+  if !cpu_visible {
+    return Err(
+      "Buffer was not created with Properties::CPU_VISIBLE, so CPU writes are not supported. Recreate the buffer with `.with_properties(Properties::CPU_VISIBLE)`.",
+    );
+  }
+  return Ok(());
 }
 
 fn value_as_bytes<T: PlainOldData>(data: &T) -> &[u8] {
@@ -394,6 +457,7 @@ impl BufferBuilder {
       buffer: Rc::new(buffer),
       stride: element_size as u64,
       buffer_type: self.buffer_type,
+      cpu_visible: self.properties.cpu_visible(),
     });
   }
 
@@ -437,17 +501,38 @@ mod tests {
   use super::*;
 
   #[test]
+  // Ensures callers get a clear engine-level error instead of a wgpu
+  // validation panic when attempting CPU writes to a device-local buffer.
+  fn validate_cpu_write_supported_rejects_non_cpu_visible() {
+    let result = validate_cpu_write_supported(false);
+    assert!(result.is_err());
+  }
+
+  #[test]
+  // Verifies CPU-visible buffers are accepted for `write_*` operations.
+  fn validate_cpu_write_supported_accepts_cpu_visible() {
+    let result = validate_cpu_write_supported(true);
+    assert!(result.is_ok());
+  }
+
+  #[test]
+  // Confirms `Properties::default()` is now device-local to avoid placing
+  // static buffers in CPU-visible memory by accident.
   fn properties_default_is_device_local() {
     assert!(!Properties::default().cpu_visible());
   }
 
   #[test]
+  // Confirms `BufferBuilder::new()` inherits the default properties so buffer
+  // residency matches `Properties::default()`.
   fn buffer_builder_defaults_to_device_local_properties() {
     let builder = BufferBuilder::new();
     assert!(!builder.properties.cpu_visible());
   }
 
   #[test]
+  // Validates that zero-length buffers are rejected even when size is inferred
+  // from the provided data.
   fn resolve_length_rejects_zero() {
     let builder = BufferBuilder::new();
     let result = builder.resolve_length(std::mem::size_of::<u32>(), 0);
@@ -455,6 +540,8 @@ mod tests {
   }
 
   #[test]
+  // Verifies `with_label` stores the label on the builder so it can be applied
+  // to the underlying platform buffer for debugging/profiling.
   fn label_is_recorded_on_builder() {
     let builder = BufferBuilder::new().with_label("buffer-test");
     // Indirect check: validate the internal label is stored on the builder.
@@ -463,6 +550,8 @@ mod tests {
   }
 
   #[test]
+  // Ensures buffer size math guards against integer overflow when resolving
+  // byte lengths from element size and element count.
   fn resolve_length_rejects_overflow() {
     let builder = BufferBuilder::new();
     let result = builder.resolve_length(usize::MAX, 2);
@@ -470,6 +559,8 @@ mod tests {
   }
 
   #[test]
+  // Confirms `value_as_bytes` produces the same byte representation as the
+  // native `to_ne_bytes` conversion for POD values.
   fn value_as_bytes_matches_native_bytes() {
     let value: u32 = 0x1122_3344;
     let expected = value.to_ne_bytes();
@@ -477,6 +568,8 @@ mod tests {
   }
 
   #[test]
+  // Confirms `slice_as_bytes` produces the same byte layout as concatenating
+  // each element's native-endian bytes in order.
   fn slice_as_bytes_matches_native_bytes() {
     let values: [u16; 3] = [0x1122, 0x3344, 0x5566];
     let mut expected: Vec<u8> = Vec::new();
@@ -487,12 +580,15 @@ mod tests {
   }
 
   #[test]
+  // Ensures the empty slice case works and does not error or return junk data.
   fn slice_as_bytes_empty_is_empty() {
     let values: [u32; 0] = [];
     assert_eq!(slice_as_bytes(&values).unwrap(), &[]);
   }
 
   #[test]
+  // Ensures the shared byte-length helper rejects overflows rather than
+  // silently wrapping and producing undersized buffers/slices.
   fn checked_byte_len_rejects_overflow() {
     let result = checked_byte_len(usize::MAX, 2);
     assert!(result.is_err());
