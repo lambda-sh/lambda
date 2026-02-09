@@ -53,7 +53,22 @@ jobs:
       - name: Configure Vulkan for headless CI
         run: |
           echo "WGPU_BACKEND=vulkan" >> "$GITHUB_ENV"
-          echo "VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json" >> "$GITHUB_ENV"
+          # Prefer Mesa's software Vulkan (lavapipe) for headless availability.
+          # The exact ICD filename can differ across Ubuntu images, so discover it.
+          LVP_ICD="$(
+            if [[ -d /usr/share/vulkan/icd.d ]]; then
+              find /usr/share/vulkan/icd.d -maxdepth 1 -type f \
+                \( -name '*lvp_icd*.json' -o -name '*lavapipe*.json' \) \
+                -print 2>/dev/null | head -n1
+            fi
+          )"
+          if [[ -z "$LVP_ICD" ]]; then
+            echo "lavapipe Vulkan ICD not found under /usr/share/vulkan/icd.d" >&2
+            ls -la /usr/share/vulkan/icd.d || true
+          else
+            echo "Using lavapipe ICD: $LVP_ICD"
+            echo "VK_ICD_FILENAMES=$LVP_ICD" >> "$GITHUB_ENV"
+          fi
           echo "LAMBDA_REQUIRE_GPU_ADAPTER=1" >> "$GITHUB_ENV"
           vulkaninfo --summary || true
 

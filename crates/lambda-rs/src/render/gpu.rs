@@ -275,27 +275,33 @@ pub(crate) fn create_test_gpu_with_instance(
   instance: &Instance,
   label_base: &str,
 ) -> Option<Gpu> {
-  let built = GpuBuilder::new()
+  let primary_err = match GpuBuilder::new()
     .with_label(&format!("{}-gpu", label_base))
     .build(instance, None)
-    .ok();
-  if built.is_some() {
-    return built;
-  }
+  {
+    Ok(gpu) => return Some(gpu),
+    Err(err) => err,
+  };
 
-  let fallback = GpuBuilder::new()
+  let fallback_err = match GpuBuilder::new()
     .with_label(&format!("{}-gpu-fallback", label_base))
     .force_fallback(true)
     .build(instance, None)
-    .ok();
+  {
+    Ok(gpu) => return Some(gpu),
+    Err(err) => err,
+  };
 
-  if fallback.is_none() && require_gpu_adapter_for_tests() {
+  if require_gpu_adapter_for_tests() {
     panic!(
-      "No GPU adapter available for tests (set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)"
+      "No GPU adapter available for tests (label_base={}).\nPrimary adapter attempt: {}\nFallback adapter attempt: {}\n(Set LAMBDA_REQUIRE_GPU_ADAPTER=0 to allow skipping)",
+      label_base,
+      primary_err,
+      fallback_err,
     );
   }
 
-  return fallback;
+  return None;
 }
 
 // ---------------------------------------------------------------------------
