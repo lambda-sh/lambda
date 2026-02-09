@@ -56,6 +56,9 @@ impl WindowBuilder {
   ///
   /// This value is consumed when building a `RenderContext` if no explicit
   /// present mode is provided to `RenderContextBuilder`.
+  ///
+  /// Disabling vsync is best‑effort; the final present mode depends on the
+  /// platform and adapter surface capabilities.
   pub fn with_vsync(mut self, vsync: bool) -> Self {
     self.vsync = vsync;
     return self;
