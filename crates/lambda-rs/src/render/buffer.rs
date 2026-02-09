@@ -500,50 +500,44 @@ impl BufferBuilder {
 mod tests {
   use super::*;
 
-  /// Rejects constructing a buffer with a logical length of zero elements.
+  /// Rejects CPU-side writes for buffers not created with
+  /// `Properties::CPU_VISIBLE` (prevents wgpu validation panics).
   #[test]
-  // Ensures callers get a clear engine-level error instead of a wgpu
-  // validation panic when attempting CPU writes to a device-local buffer.
   fn validate_cpu_write_supported_rejects_non_cpu_visible() {
     let result = validate_cpu_write_supported(false);
     assert!(result.is_err());
   }
 
+  /// Accepts CPU-side writes for buffers created with `Properties::CPU_VISIBLE`.
   #[test]
-  // Verifies CPU-visible buffers are accepted for `write_*` operations.
   fn validate_cpu_write_supported_accepts_cpu_visible() {
     let result = validate_cpu_write_supported(true);
     assert!(result.is_ok());
   }
 
+  /// Confirms `Properties::default()` is `DEVICE_LOCAL` (not CPU-visible).
   #[test]
-  // Confirms `Properties::default()` is now device-local to avoid placing
-  // static buffers in CPU-visible memory by accident.
   fn properties_default_is_device_local() {
     assert!(!Properties::default().cpu_visible());
   }
 
+  /// Confirms `BufferBuilder::new()` inherits the default properties.
   #[test]
-  // Confirms `BufferBuilder::new()` inherits the default properties so buffer
-  // residency matches `Properties::default()`.
   fn buffer_builder_defaults_to_device_local_properties() {
     let builder = BufferBuilder::new();
     assert!(!builder.properties.cpu_visible());
   }
 
+  /// Validates that size resolution rejects creating a zero-length buffer.
   #[test]
-  // Validates that zero-length buffers are rejected even when size is inferred
-  // from the provided data.
   fn resolve_length_rejects_zero() {
     let builder = BufferBuilder::new();
     let result = builder.resolve_length(std::mem::size_of::<u32>(), 0);
     assert!(result.is_err());
   }
 
-  /// Ensures builder labels are stored for later propagation/debugging.
+  /// Ensures `with_label` stores the label on the builder.
   #[test]
-  // Verifies `with_label` stores the label on the builder so it can be applied
-  // to the underlying platform buffer for debugging/profiling.
   fn label_is_recorded_on_builder() {
     let builder = BufferBuilder::new().with_label("buffer-test");
     // Indirect check: validate the internal label is stored on the builder.
@@ -551,30 +545,25 @@ mod tests {
     assert_eq!(builder.label.as_deref(), Some("buffer-test"));
   }
 
-  /// Rejects length computations that would overflow `usize`.
+  /// Rejects length computations that would overflow `usize` when converting
+  /// element counts/sizes to byte sizes.
   #[test]
-  // Ensures buffer size math guards against integer overflow when resolving
-  // byte lengths from element size and element count.
   fn resolve_length_rejects_overflow() {
     let builder = BufferBuilder::new();
     let result = builder.resolve_length(usize::MAX, 2);
     assert!(result.is_err());
   }
 
-  /// Confirms `value_as_bytes` uses native-endian byte order and size.
+  /// Confirms `value_as_bytes` matches the native byte representation.
   #[test]
-  // Confirms `value_as_bytes` produces the same byte representation as the
-  // native `to_ne_bytes` conversion for POD values.
   fn value_as_bytes_matches_native_bytes() {
     let value: u32 = 0x1122_3344;
     let expected = value.to_ne_bytes();
     assert_eq!(value_as_bytes(&value), expected.as_slice());
   }
 
-  /// Confirms `slice_as_bytes` flattens a typed slice to the native bytes.
+  /// Confirms `slice_as_bytes` matches the expected concatenated native bytes.
   #[test]
-  // Confirms `slice_as_bytes` produces the same byte layout as concatenating
-  // each element's native-endian bytes in order.
   fn slice_as_bytes_matches_native_bytes() {
     let values: [u16; 3] = [0x1122, 0x3344, 0x5566];
     let mut expected: Vec<u8> = Vec::new();
@@ -586,7 +575,6 @@ mod tests {
 
   /// Ensures converting an empty slice to bytes yields an empty output slice.
   #[test]
-  // Ensures the empty slice case works and does not error or return junk data.
   fn slice_as_bytes_empty_is_empty() {
     let values: [u32; 0] = [];
     assert_eq!(slice_as_bytes(&values).unwrap(), &[]);
@@ -594,8 +582,6 @@ mod tests {
 
   /// Rejects byte length computations that would overflow `usize`.
   #[test]
-  // Ensures the shared byte-length helper rejects overflows rather than
-  // silently wrapping and producing undersized buffers/slices.
   fn checked_byte_len_rejects_overflow() {
     let result = checked_byte_len(usize::MAX, 2);
     assert!(result.is_err());
@@ -611,7 +597,7 @@ mod tests {
     let combined = Usage::VERTEX | Usage::INDEX;
     let _ = combined.to_platform();
 
-    assert!(Properties::default().cpu_visible());
+    assert!(!Properties::default().cpu_visible());
     assert!(!Properties::DEVICE_LOCAL.cpu_visible());
   }
 

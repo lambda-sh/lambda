@@ -2366,7 +2366,7 @@ checksum = "e7b05ce9599a62eec9f6b761cf32647ab1dee43477b5c00ff9221a4b7cb80c4b"
 dependencies = [
  "approx",
  "arrayvec",
- "bitflags 2.9.0",
+ "bitflags 2.10.0",
  "downcast-rs 2.0.2",
  "either",
  "ena",
@@ -2651,7 +2651,7 @@ dependencies = [
  "approx",
  "arrayvec",
  "bit-vec",
- "bitflags 2.9.0",
+ "bitflags 2.10.0",
  "downcast-rs 2.0.2",
  "glamx",
  "log",
