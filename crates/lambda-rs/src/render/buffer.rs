@@ -81,8 +81,13 @@ impl Default for Usage {
 /// Buffer allocation properties that control residency and CPU visibility.
 #[derive(Clone, Copy, Debug)]
 ///
-/// Use `CPU_VISIBLE` for frequently updated data (e.g., uniform uploads).
-/// Prefer `DEVICE_LOCAL` for static geometry uploaded once.
+/// Use `CPU_VISIBLE` for buffers you plan to update from the CPU using
+/// `Buffer::write_*` (this enables `wgpu::Queue::write_buffer` by adding the
+/// required `COPY_DST` usage).
+///
+/// Prefer `DEVICE_LOCAL` for static geometry uploaded once and never modified.
+/// This is typically the best default for vertex and index buffers on discrete
+/// GPUs, where CPU-visible memory may live in system RAM rather than VRAM.
 pub struct Properties {
   cpu_visible: bool,
 }
@@ -101,7 +106,7 @@ impl Properties {
 
 impl Default for Properties {
   fn default() -> Self {
-    Properties::CPU_VISIBLE
+    Properties::DEVICE_LOCAL
   }
 }
 
@@ -287,7 +292,7 @@ impl<T: PlainOldData> UniformBuffer<T> {
 /// let vertices: Vec<Vertex> = build_vertices();
 /// let vb = BufferBuilder::new()
 ///   .with_usage(Usage::VERTEX)
-///   .with_properties(Properties::DEVICE_LOCAL)
+///   // Defaults to `Properties::DEVICE_LOCAL` (recommended for static geometry).
 ///   .with_buffer_type(BufferType::Vertex)
 ///   .build(render_context, vertices)
 ///   .unwrap();
@@ -308,11 +313,16 @@ impl Default for BufferBuilder {
 
 impl BufferBuilder {
   /// Creates a new buffer builder of type vertex.
+  ///
+  /// Defaults:
+  /// - `usage`: `Usage::VERTEX`
+  /// - `properties`: `Properties::DEVICE_LOCAL`
+  /// - `buffer_type`: `BufferType::Vertex`
   pub fn new() -> Self {
     Self {
       buffer_length: 0,
       usage: Usage::VERTEX,
-      properties: Properties::CPU_VISIBLE,
+      properties: Properties::default(),
       buffer_type: BufferType::Vertex,
       label: None,
     }
@@ -396,7 +406,7 @@ impl BufferBuilder {
     return builder
       .with_length(std::mem::size_of_val(mesh.vertices()))
       .with_usage(Usage::VERTEX)
-      .with_properties(Properties::CPU_VISIBLE)
+      .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Vertex)
       .build(gpu, mesh.vertices().to_vec());
   }
@@ -425,6 +435,17 @@ impl BufferBuilder {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn properties_default_is_device_local() {
+    assert!(!Properties::default().cpu_visible());
+  }
+
+  #[test]
+  fn buffer_builder_defaults_to_device_local_properties() {
+    let builder = BufferBuilder::new();
+    assert!(!builder.properties.cpu_visible());
+  }
 
   #[test]
   fn resolve_length_rejects_zero() {
