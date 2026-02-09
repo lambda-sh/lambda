@@ -4,12 +4,12 @@ document_id: "tutorials-index-2025-10-17"
 status: "living"
 created: "2025-10-17T00:20:00Z"
 last_updated: "2026-02-07T00:00:00Z"
-version: "0.7.1"
+version: "0.8.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "bc2ca687922db601998e7e5a0c0b2e870c857be1"
+repo_commit: "4b0c5abf6743788596177b3c10c3214db20ad6b1"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["index", "tutorials", "docs"]
@@ -39,8 +39,17 @@ This index lists tutorials that teach specific `lambda-rs` tasks through complet
 
 Browse all tutorials under `rendering/`.
 
+## Physics
+
+### Basics
+
+- Physics 2D: Falling Quad (Kinematic) — [physics/basics/falling-quad-kinematic.md](physics/basics/falling-quad-kinematic.md)
+
+Browse all tutorials under `physics/`.
+
 Changelog
 
+- 0.8.0 (2026-02-07): Add physics tutorial section and first physics demo.
 - 0.7.1 (2026-02-07): Group tutorials by feature area in the index.
 - 0.7.0 (2026-01-05): Rename push constants tutorial to immediates for wgpu v28; update metadata.
 - 0.6.0 (2025-12-29): Add offscreen post tutorial; update metadata and commit.

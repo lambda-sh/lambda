@@ -29,6 +29,7 @@ symphonia = { version = "=0.5.5", optional = true, default-features = false, fea
   "wav",
   "pcm",
 ] }
+rapier2d = { version = "=0.32.0", optional = true }
 
 # Force windows crate to 0.62 to unify wgpu-hal and gpu-allocator dependencies.
 # Both crates support this version range, but Cargo may resolve to different
@@ -65,3 +66,8 @@ audio = ["audio-device", "audio-decode-wav", "audio-decode-vorbis"]
 audio-device = ["dep:cpal"]
 audio-decode-wav = ["dep:symphonia"]
 audio-decode-vorbis = ["dep:symphonia"]
+
+# --------------------------------- PHYSICS -----------------------------------
+
+# Umbrella features (disabled by default)
+physics-2d = ["dep:rapier2d"]

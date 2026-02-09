@@ -11,6 +11,7 @@ members = [
   "tools/lambda_audio",
   # Demo crates (not built by default; see `default-members`).
   "demos/audio",
+  "demos/physics",
   "demos/render",
   "demos/minimal",
 ]

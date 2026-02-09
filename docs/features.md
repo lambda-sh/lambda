@@ -3,16 +3,16 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-02-02T01:40:30Z"
-version: "0.1.13"
+last_updated: "2026-02-06T23:33:29Z"
+version: "0.1.14"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "bdb9575ccdc3431ee9991fbb786bda017dcd3777"
+repo_commit: "d9ae52363df035954079bf2ebdc194d18281862d"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
-tags: ["guide", "features", "validation", "cargo", "audio"]
+tags: ["guide", "features", "validation", "cargo", "audio", "physics"]
 ---
 
 ## Overview
@@ -81,6 +81,14 @@ Audio
   Vorbis decode support for `SoundBuffer`. This feature enables
   `lambda-rs-platform/audio-decode-vorbis` internally. Runtime cost is incurred
   at load time only (decode + allocation).
+
+Physics
+- `physics-2d` (umbrella, disabled by default): enables the 2D physics world
+  APIs (for example, `lambda::physics::PhysicsWorld2D`). This feature enables
+  the platform physics backend via `lambda-rs-platform/physics-2d`
+  (currently backed by `rapier2d =0.32.0`). Expected runtime cost depends on
+  simulation workload; no runtime cost is incurred unless a physics world is
+  constructed and stepped.
 
 Render validation
 
@@ -154,7 +162,14 @@ Audio
   Vorbis decoding helpers in `lambda_platform::audio::symphonia` backed by
   `symphonia =0.5.5`.
 
+Physics
+- `physics-2d` (umbrella, disabled by default): enables the internal 2D physics
+  backend (currently backed by `rapier2d =0.32.0`). Applications MUST NOT
+  depend on `rapier2d` directly via this crate.
+
 ## Changelog
+- 0.1.14 (2026-02-06): Document 2D physics feature flags in `lambda-rs` and
+  `lambda-rs-platform`.
 - 0.1.13 (2026-02-02): Document `SoundBuffer` decode features for WAV and OGG
   Vorbis in `lambda-rs` and the corresponding platform decode features.
 - 0.1.11 (2026-01-30): Make `lambda-rs` audio features opt-in by default.

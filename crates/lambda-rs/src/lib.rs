@@ -29,6 +29,9 @@ pub mod util;
 ))]
 pub mod audio;
 
+#[cfg(feature = "physics-2d")]
+pub mod physics;
+
 /// The logging module provides a simple logging interface for Lambda
 /// applications.
 pub use logging;

@@ -23,3 +23,6 @@ pub mod winit;
   feature = "audio-decode-vorbis"
 ))]
 pub mod audio;
+
+#[cfg(feature = "physics-2d")]
+pub mod physics;
