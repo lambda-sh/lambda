@@ -81,8 +81,13 @@ impl Default for Usage {
 /// Buffer allocation properties that control residency and CPU visibility.
 #[derive(Clone, Copy, Debug)]
 ///
-/// Use `CPU_VISIBLE` for frequently updated data (e.g., uniform uploads).
-/// Prefer `DEVICE_LOCAL` for static geometry uploaded once.
+/// Use `CPU_VISIBLE` for buffers you plan to update from the CPU using
+/// `Buffer::write_*` (this enables `wgpu::Queue::write_buffer` by adding the
+/// required `COPY_DST` usage).
+///
+/// Prefer `DEVICE_LOCAL` for static geometry uploaded once and never modified.
+/// This is typically the best default for vertex and index buffers on discrete
+/// GPUs, where CPU-visible memory may live in system RAM rather than VRAM.
 pub struct Properties {
   cpu_visible: bool,
 }
@@ -101,7 +106,7 @@ impl Properties {
 
 impl Default for Properties {
   fn default() -> Self {
-    Properties::CPU_VISIBLE
+    Properties::DEVICE_LOCAL
   }
 }
 
@@ -114,11 +119,15 @@ impl Default for Properties {
 /// - Writing is performed via the device queue using `write_value` or by
 ///   creating CPU‑visible buffers and re‑building with new contents when
 ///   appropriate.
+/// - `write_*` operations require the buffer to be created with
+///   `Properties::CPU_VISIBLE`. Use `try_write_*` variants if you want to
+///   handle this as an error rather than panicking.
 #[derive(Debug)]
 pub struct Buffer {
   buffer: Rc<platform_buffer::Buffer>,
   stride: u64,
   buffer_type: BufferType,
+  cpu_visible: bool,
 }
 
 impl Buffer {
@@ -139,12 +148,41 @@ impl Buffer {
     return self.buffer_type;
   }
 
+  /// Whether this buffer supports CPU-side queue writes (`write_*`).
+  pub fn cpu_visible(&self) -> bool {
+    return self.cpu_visible;
+  }
+
+  fn validate_cpu_write(&self) -> Result<(), &'static str> {
+    return validate_cpu_write_supported(self.cpu_visible);
+  }
+
   /// Write a single plain-old-data value into this buffer at the specified
   /// byte offset. This is intended for updating uniform buffer contents from
   /// the CPU. The `data` type must implement `PlainOldData`.
+  ///
+  /// # Panics
+  /// Panics if the buffer was not created with `Properties::CPU_VISIBLE`.
   pub fn write_value<T: PlainOldData>(&self, gpu: &Gpu, offset: u64, data: &T) {
+    self
+      .try_write_value(gpu, offset, data)
+      .expect("Buffer::write_value requires a CPU-visible buffer. Create the buffer with `.with_properties(Properties::CPU_VISIBLE)` or use `try_write_value` to handle the error.");
+  }
+
+  /// Fallible variant of [`Buffer::write_value`].
+  ///
+  /// Returns an error if the buffer was not created with
+  /// `Properties::CPU_VISIBLE`.
+  pub fn try_write_value<T: PlainOldData>(
+    &self,
+    gpu: &Gpu,
+    offset: u64,
+    data: &T,
+  ) -> Result<(), &'static str> {
+    self.validate_cpu_write()?;
     let bytes = value_as_bytes(data);
-    self.write_bytes(gpu, offset, bytes);
+    self.buffer.write_bytes(gpu.platform(), offset, bytes);
+    return Ok(());
   }
 
   /// Write raw bytes into this buffer at the specified byte offset.
@@ -157,8 +195,28 @@ impl Buffer {
   /// let raw_data: &[u8] = load_binary_data();
   /// buffer.write_bytes(render_context.gpu(), 0, raw_data);
   /// ```
+  ///
+  /// # Panics
+  /// Panics if the buffer was not created with `Properties::CPU_VISIBLE`.
   pub fn write_bytes(&self, gpu: &Gpu, offset: u64, data: &[u8]) {
+    self
+      .try_write_bytes(gpu, offset, data)
+      .expect("Buffer::write_bytes requires a CPU-visible buffer. Create the buffer with `.with_properties(Properties::CPU_VISIBLE)` or use `try_write_bytes` to handle the error.");
+  }
+
+  /// Fallible variant of [`Buffer::write_bytes`].
+  ///
+  /// Returns an error if the buffer was not created with
+  /// `Properties::CPU_VISIBLE`.
+  pub fn try_write_bytes(
+    &self,
+    gpu: &Gpu,
+    offset: u64,
+    data: &[u8],
+  ) -> Result<(), &'static str> {
+    self.validate_cpu_write()?;
     self.buffer.write_bytes(gpu.platform(), offset, data);
+    return Ok(());
   }
 
   /// Write a slice of plain-old-data values into this buffer at the
@@ -182,10 +240,20 @@ impl Buffer {
     offset: u64,
     data: &[T],
   ) -> Result<(), &'static str> {
+    self.validate_cpu_write()?;
     let bytes = slice_as_bytes(data)?;
-    self.write_bytes(gpu, offset, bytes);
+    self.buffer.write_bytes(gpu.platform(), offset, bytes);
     return Ok(());
   }
+}
+
+fn validate_cpu_write_supported(cpu_visible: bool) -> Result<(), &'static str> {
+  if !cpu_visible {
+    return Err(
+      "Buffer was not created with Properties::CPU_VISIBLE, so CPU writes are not supported. Recreate the buffer with `.with_properties(Properties::CPU_VISIBLE)`.",
+    );
+  }
+  return Ok(());
 }
 
 fn value_as_bytes<T: PlainOldData>(data: &T) -> &[u8] {
@@ -287,7 +355,7 @@ impl<T: PlainOldData> UniformBuffer<T> {
 /// let vertices: Vec<Vertex> = build_vertices();
 /// let vb = BufferBuilder::new()
 ///   .with_usage(Usage::VERTEX)
-///   .with_properties(Properties::DEVICE_LOCAL)
+///   // Defaults to `Properties::DEVICE_LOCAL` (recommended for static geometry).
 ///   .with_buffer_type(BufferType::Vertex)
 ///   .build(render_context, vertices)
 ///   .unwrap();
@@ -308,11 +376,16 @@ impl Default for BufferBuilder {
 
 impl BufferBuilder {
   /// Creates a new buffer builder of type vertex.
+  ///
+  /// Defaults:
+  /// - `usage`: `Usage::VERTEX`
+  /// - `properties`: `Properties::DEVICE_LOCAL`
+  /// - `buffer_type`: `BufferType::Vertex`
   pub fn new() -> Self {
     Self {
       buffer_length: 0,
       usage: Usage::VERTEX,
-      properties: Properties::CPU_VISIBLE,
+      properties: Properties::default(),
       buffer_type: BufferType::Vertex,
       label: None,
     }
@@ -384,6 +457,7 @@ impl BufferBuilder {
       buffer: Rc::new(buffer),
       stride: element_size as u64,
       buffer_type: self.buffer_type,
+      cpu_visible: self.properties.cpu_visible(),
     });
   }
 
@@ -396,7 +470,7 @@ impl BufferBuilder {
     return builder
       .with_length(std::mem::size_of_val(mesh.vertices()))
       .with_usage(Usage::VERTEX)
-      .with_properties(Properties::CPU_VISIBLE)
+      .with_properties(Properties::DEVICE_LOCAL)
       .with_buffer_type(BufferType::Vertex)
       .build(gpu, mesh.vertices().to_vec());
   }
@@ -426,7 +500,35 @@ impl BufferBuilder {
 mod tests {
   use super::*;
 
-  /// Rejects constructing a buffer with a logical length of zero elements.
+  /// Rejects CPU-side writes for buffers not created with
+  /// `Properties::CPU_VISIBLE` (prevents wgpu validation panics).
+  #[test]
+  fn validate_cpu_write_supported_rejects_non_cpu_visible() {
+    let result = validate_cpu_write_supported(false);
+    assert!(result.is_err());
+  }
+
+  /// Accepts CPU-side writes for buffers created with `Properties::CPU_VISIBLE`.
+  #[test]
+  fn validate_cpu_write_supported_accepts_cpu_visible() {
+    let result = validate_cpu_write_supported(true);
+    assert!(result.is_ok());
+  }
+
+  /// Confirms `Properties::default()` is `DEVICE_LOCAL` (not CPU-visible).
+  #[test]
+  fn properties_default_is_device_local() {
+    assert!(!Properties::default().cpu_visible());
+  }
+
+  /// Confirms `BufferBuilder::new()` inherits the default properties.
+  #[test]
+  fn buffer_builder_defaults_to_device_local_properties() {
+    let builder = BufferBuilder::new();
+    assert!(!builder.properties.cpu_visible());
+  }
+
+  /// Validates that size resolution rejects creating a zero-length buffer.
   #[test]
   fn resolve_length_rejects_zero() {
     let builder = BufferBuilder::new();
@@ -434,7 +536,7 @@ mod tests {
     assert!(result.is_err());
   }
 
-  /// Ensures builder labels are stored for later propagation/debugging.
+  /// Ensures `with_label` stores the label on the builder.
   #[test]
   fn label_is_recorded_on_builder() {
     let builder = BufferBuilder::new().with_label("buffer-test");
@@ -443,7 +545,8 @@ mod tests {
     assert_eq!(builder.label.as_deref(), Some("buffer-test"));
   }
 
-  /// Rejects length computations that would overflow `usize`.
+  /// Rejects length computations that would overflow `usize` when converting
+  /// element counts/sizes to byte sizes.
   #[test]
   fn resolve_length_rejects_overflow() {
     let builder = BufferBuilder::new();
@@ -451,7 +554,7 @@ mod tests {
     assert!(result.is_err());
   }
 
-  /// Confirms `value_as_bytes` uses native-endian byte order and size.
+  /// Confirms `value_as_bytes` matches the native byte representation.
   #[test]
   fn value_as_bytes_matches_native_bytes() {
     let value: u32 = 0x1122_3344;
@@ -459,7 +562,7 @@ mod tests {
     assert_eq!(value_as_bytes(&value), expected.as_slice());
   }
 
-  /// Confirms `slice_as_bytes` flattens a typed slice to the native bytes.
+  /// Confirms `slice_as_bytes` matches the expected concatenated native bytes.
   #[test]
   fn slice_as_bytes_matches_native_bytes() {
     let values: [u16; 3] = [0x1122, 0x3344, 0x5566];
@@ -494,7 +597,7 @@ mod tests {
     let combined = Usage::VERTEX | Usage::INDEX;
     let _ = combined.to_platform();
 
-    assert!(Properties::default().cpu_visible());
+    assert!(!Properties::default().cpu_visible());
     assert!(!Properties::DEVICE_LOCAL.cpu_visible());
   }
 
