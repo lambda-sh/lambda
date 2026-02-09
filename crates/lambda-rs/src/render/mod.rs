@@ -601,7 +601,6 @@ impl RenderContext {
       None
     };
 
-    let view = frame.as_ref().map(|f| f.texture_view());
     let mut encoder =
       CommandEncoder::new(self, "lambda-render-command-encoder");
 
@@ -612,12 +611,15 @@ impl RenderContext {
           render_pass,
           viewport,
         } => {
-          let view = view.ok_or_else(|| {
-            RenderError::Configuration(
-              "Surface render pass requested but no surface is attached"
-                .to_string(),
-            )
-          })?;
+          let view = frame
+            .as_ref()
+            .ok_or_else(|| {
+              RenderError::Configuration(
+                "Surface render pass requested but no surface is attached"
+                  .to_string(),
+              )
+            })?
+            .texture_view();
           self.encode_surface_render_pass(
             &mut encoder,
             &mut command_iter,
@@ -632,12 +634,15 @@ impl RenderContext {
           destination,
         } => match destination {
           RenderDestination::Surface => {
-            let view = view.ok_or_else(|| {
-              RenderError::Configuration(
-                "Surface render pass requested but no surface is attached"
-                  .to_string(),
-              )
-            })?;
+            let view = frame
+              .as_ref()
+              .ok_or_else(|| {
+                RenderError::Configuration(
+                  "Surface render pass requested but no surface is attached"
+                    .to_string(),
+                )
+              })?
+              .texture_view();
             self.encode_surface_render_pass(
               &mut encoder,
               &mut command_iter,
