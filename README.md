@@ -130,7 +130,7 @@ Coming soon.
 Start with the tutorials to build features step by step:
 
 * Tutorials index: [docs/tutorials/](./docs/tutorials/)
-* Uniform Buffers: Build a Spinning Triangle: [docs/tutorials/uniform-buffers.md](./docs/tutorials/uniform-buffers.md)
+* Uniform Buffers: Build a Spinning Triangle: [docs/tutorials/rendering/resources/uniform-buffers.md](./docs/tutorials/rendering/resources/uniform-buffers.md)
 
 ## Examples <a name="examples"></a>
 
