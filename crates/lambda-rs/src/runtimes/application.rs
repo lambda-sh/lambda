@@ -2,7 +2,10 @@
 //! provides a window and a render context which can be used to render
 //! both 2D and 3D graphics to the screen.
 
-use std::time::Instant;
+use std::time::{
+  Duration,
+  Instant,
+};
 
 use lambda_platform::winit::{
   winit_exports::{
@@ -191,6 +194,18 @@ impl Runtime<(), String> for ApplicationRuntime {
   fn run(self) -> Result<(), String> {
     let name = self.name;
     let event_loop_policy = self.event_loop_policy;
+    let frame_warn_threshold: Option<Duration> = match event_loop_policy {
+      EventLoopPolicy::Poll => Some(Duration::from_millis(32)),
+      EventLoopPolicy::Wait => None,
+      EventLoopPolicy::WaitUntil { target_fps } if target_fps > 0 => {
+        // Compute an expected frame interval (1 / FPS) and warn only if the
+        // observed frame time exceeds it by a slack factor (25%) to avoid
+        // spamming on small scheduling jitter.
+        let expected_secs = 1.0 / target_fps as f64;
+        Some(Duration::from_secs_f64(expected_secs * 1.25))
+      }
+      EventLoopPolicy::WaitUntil { .. } => None,
+    };
     let mut event_loop = LoopBuilder::new().build();
     let window = self.window_builder.build(&mut event_loop);
     let mut component_stack = self.component_stack;
@@ -378,14 +393,19 @@ impl Runtime<(), String> for ApplicationRuntime {
               active_render_context.render(commands);
             }
 
-            // Warn if frames dropped below 32 ms (30 fps).
-            if event_loop_policy != EventLoopPolicy::Wait
-              && duration.as_millis() > 32
-            {
-              logging::warn!(
-                "Frame took too long to render: {:?} ms",
-                duration.as_millis()
-              );
+            // Warn if the time between frames significantly exceeds the expected
+            // interval for the selected event loop policy.
+            //
+            // - Poll: uses a fixed 32 ms threshold (~30 fps).
+            // - WaitUntil: uses a threshold derived from the target FPS.
+            // - Wait: disabled (duration includes idle sleep time).
+            if let Some(threshold) = frame_warn_threshold {
+              if *duration > threshold {
+                logging::warn!(
+                  "Frame took too long to render: {:?} ms",
+                  duration.as_millis()
+                );
+              }
             }
 
             None
