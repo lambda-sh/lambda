@@ -35,12 +35,13 @@ with-wgpu-gl=["with-wgpu", "lambda-rs-platform/wgpu-with-gl"]
 # ---------------------------------- AUDIO ------------------------------------
 
 # Umbrella features
-audio = ["audio-output-device", "audio-sound-buffer"]
+audio = ["audio-output-device", "audio-sound-buffer", "audio-playback"]
 
 # Granular feature flags
 audio-output-device = ["lambda-rs-platform/audio-device"]
 audio-sound-buffer-wav = ["lambda-rs-platform/audio-decode-wav"]
 audio-sound-buffer-vorbis = ["lambda-rs-platform/audio-decode-vorbis"]
+audio-playback = ["audio-output-device", "audio-sound-buffer"]
 
 # Umbrella feature
 audio-sound-buffer = [
