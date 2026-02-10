@@ -1,5 +1,10 @@
 //! Winit wrapper to easily construct cross platform windows
 
+use std::time::{
+  Duration,
+  Instant,
+};
+
 use winit::{
   dpi::{
     LogicalSize,
@@ -42,6 +47,24 @@ pub mod winit_exports {
       PhysicalKey,
     },
   };
+}
+
+/// Control flow policy for the winit event loop.
+///
+/// Lambda defaults to [`EventLoopPolicy::Poll`] for backwards compatibility.
+/// Applications that don't require continuous updates (e.g., editors/tools)
+/// should prefer [`EventLoopPolicy::Wait`] to reduce CPU usage when idle.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EventLoopPolicy {
+  /// Continuous polling for games and real-time applications.
+  Poll,
+  /// Sleep until events arrive; ideal for tools and editors.
+  Wait,
+  /// Sleep until the next frame deadline to target a fixed update rate.
+  ///
+  /// Note: this is not a frame-pacing / vsync guarantee; it only controls how
+  /// long the event loop waits between wakeups.
+  WaitUntil { target_fps: u32 },
 }
 
 /// LoopBuilder - Putting this here for consistency.
@@ -228,14 +251,62 @@ impl<E: 'static + std::fmt::Debug> Loop<E> {
   }
 
   /// Uses the winit event loop to run forever
-  pub fn run_forever<Callback>(self, mut callback: Callback)
+  pub fn run_forever<Callback>(self, callback: Callback)
   where
     Callback: 'static + FnMut(Event<E>, &EventLoopWindowTarget<E>),
   {
+    self.run_forever_with_policy(EventLoopPolicy::Poll, callback);
+  }
+
+  /// Uses the winit event loop to run forever with the provided control-flow
+  /// policy.
+  pub fn run_forever_with_policy<Callback>(
+    self,
+    policy: EventLoopPolicy,
+    mut callback: Callback,
+  ) where
+    Callback: 'static + FnMut(Event<E>, &EventLoopWindowTarget<E>),
+  {
+    let frame_interval = match policy {
+      EventLoopPolicy::WaitUntil { target_fps } if target_fps > 0 => {
+        Some(Duration::from_secs_f64(1.0 / target_fps as f64))
+      }
+      _ => None,
+    };
+    let mut next_frame_deadline: Option<Instant> = None;
+
     self
       .event_loop
       .run(move |event, target| {
-        target.set_control_flow(ControlFlow::Poll);
+        match policy {
+          EventLoopPolicy::Poll => {
+            target.set_control_flow(ControlFlow::Poll);
+          }
+          EventLoopPolicy::Wait => {
+            target.set_control_flow(ControlFlow::Wait);
+          }
+          EventLoopPolicy::WaitUntil { target_fps: 0 } => {
+            target.set_control_flow(ControlFlow::Wait);
+          }
+          EventLoopPolicy::WaitUntil { .. } => {
+            let now = Instant::now();
+            let interval = frame_interval.unwrap_or(Duration::from_secs(1));
+
+            let deadline = match next_frame_deadline {
+              Some(mut deadline) => {
+                while deadline <= now {
+                  deadline += interval;
+                }
+                deadline
+              }
+              None => now + interval,
+            };
+
+            next_frame_deadline = Some(deadline);
+            target.set_control_flow(ControlFlow::WaitUntil(deadline));
+          }
+        }
+
         callback(event, target);
       })
       .expect("Event loop terminated unexpectedly");

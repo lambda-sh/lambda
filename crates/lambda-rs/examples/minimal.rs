@@ -7,11 +7,15 @@
 use lambda::{
   render::PresentMode,
   runtime::start_runtime,
-  runtimes::ApplicationRuntimeBuilder,
+  runtimes::{
+    ApplicationRuntimeBuilder,
+    EventLoopPolicy,
+  },
 };
 
 fn main() {
   let runtime = ApplicationRuntimeBuilder::new("Minimal Demo application")
+    .with_event_loop_policy(EventLoopPolicy::Wait)
     .with_window_configured_as(move |window_builder| {
       return window_builder
         .with_dimensions(800, 600)

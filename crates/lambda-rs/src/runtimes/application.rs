@@ -12,6 +12,7 @@ use lambda_platform::winit::{
     PhysicalKey as WinitPhysicalKey,
     WindowEvent as WinitWindowEvent,
   },
+  EventLoopPolicy,
   LoopBuilder,
 };
 use logging;
@@ -52,6 +53,7 @@ pub struct ApplicationRuntimeBuilder {
   app_name: String,
   render_context_builder: RenderContextBuilder,
   window_builder: WindowBuilder,
+  event_loop_policy: EventLoopPolicy,
   components: Vec<Box<dyn Component<ComponentResult, String>>>,
 }
 
@@ -62,6 +64,7 @@ impl ApplicationRuntimeBuilder {
       app_name: app_name.to_string(),
       render_context_builder: RenderContextBuilder::new(app_name),
       window_builder: WindowBuilder::new(),
+      event_loop_policy: EventLoopPolicy::Poll,
       components: Vec::new(),
     };
   }
@@ -95,6 +98,16 @@ impl ApplicationRuntimeBuilder {
     return self;
   }
 
+  /// Set the winit event loop control-flow policy.
+  ///
+  /// - [`EventLoopPolicy::Poll`]: Continuous updates, highest CPU usage, lowest latency
+  /// - [`EventLoopPolicy::Wait`]: Sleep until events arrive, minimal CPU usage when idle
+  /// - [`EventLoopPolicy::WaitUntil`]: Wake at a fixed cadence (best effort)
+  pub fn with_event_loop_policy(mut self, policy: EventLoopPolicy) -> Self {
+    self.event_loop_policy = policy;
+    return self;
+  }
+
   /// Attach a component to the current runnable.
   pub fn with_component<
     T: Default + Component<ComponentResult, String> + 'static,
@@ -116,6 +129,7 @@ impl ApplicationRuntimeBuilder {
       name: self.app_name,
       render_context_builder: self.render_context_builder,
       window_builder: self.window_builder,
+      event_loop_policy: self.event_loop_policy,
       component_stack: self.components,
     }
   }
@@ -127,6 +141,7 @@ pub struct ApplicationRuntime {
   name: String,
   render_context_builder: RenderContextBuilder,
   window_builder: WindowBuilder,
+  event_loop_policy: EventLoopPolicy,
   component_stack: Vec<Box<dyn Component<ComponentResult, String>>>,
 }
 
@@ -175,6 +190,7 @@ impl Runtime<(), String> for ApplicationRuntime {
   /// else relevant to the runtime.
   fn run(self) -> Result<(), String> {
     let name = self.name;
+    let event_loop_policy = self.event_loop_policy;
     let mut event_loop = LoopBuilder::new().build();
     let window = self.window_builder.build(&mut event_loop);
     let mut component_stack = self.component_stack;
@@ -197,269 +213,271 @@ impl Runtime<(), String> for ApplicationRuntime {
     let mut current_frame = Instant::now();
     let mut runtime_result: Box<Result<(), String>> = Box::new(Ok(()));
 
-    event_loop.run_forever(move |event, target| {
-      let mapped_event: Option<Events> = match event {
-        WinitEvent::WindowEvent { event, .. } => match event {
-          WinitWindowEvent::CloseRequested => {
-            // Issue a Shutdown event to deallocate resources and clean up.
-            target.exit();
-            Some(Events::Runtime {
-              event: RuntimeEvent::Shutdown,
-              issued_at: Instant::now(),
-            })
-          }
-          WinitWindowEvent::Resized(dims) => {
-            active_render_context
-              .as_mut()
-              .unwrap()
-              .resize(dims.width, dims.height);
+    event_loop.run_forever_with_policy(
+      event_loop_policy,
+      move |event, target| {
+        let mapped_event: Option<Events> = match event {
+          WinitEvent::WindowEvent { event, .. } => match event {
+            WinitWindowEvent::CloseRequested => {
+              // Issue a Shutdown event to deallocate resources and clean up.
+              target.exit();
+              Some(Events::Runtime {
+                event: RuntimeEvent::Shutdown,
+                issued_at: Instant::now(),
+              })
+            }
+            WinitWindowEvent::Resized(dims) => {
+              active_render_context
+                .as_mut()
+                .unwrap()
+                .resize(dims.width, dims.height);
 
-            Some(Events::Window {
-              event: WindowEvent::Resize {
-                width: dims.width,
-                height: dims.height,
+              Some(Events::Window {
+                event: WindowEvent::Resize {
+                  width: dims.width,
+                  height: dims.height,
+                },
+                issued_at: Instant::now(),
+              })
+            }
+            WinitWindowEvent::ScaleFactorChanged { .. } => None,
+            WinitWindowEvent::Moved(_) => None,
+            WinitWindowEvent::Destroyed => None,
+            WinitWindowEvent::DroppedFile(_) => None,
+            WinitWindowEvent::HoveredFile(_) => None,
+            WinitWindowEvent::HoveredFileCancelled => None,
+            // Character input is delivered via IME; ignore here for now
+            WinitWindowEvent::Focused(_) => None,
+            WinitWindowEvent::KeyboardInput {
+              event: key_event,
+              is_synthetic,
+              ..
+            } => match (key_event.state, is_synthetic) {
+              (ElementState::Pressed, false) => {
+                let (scan_code, virtual_key) = match key_event.physical_key {
+                  WinitPhysicalKey::Code(code) => (0, Some(code)),
+                  _ => (0, None),
+                };
+                Some(Events::Keyboard {
+                  event: Key::Pressed {
+                    scan_code,
+                    virtual_key,
+                  },
+                  issued_at: Instant::now(),
+                })
+              }
+              (ElementState::Released, false) => {
+                let (scan_code, virtual_key) = match key_event.physical_key {
+                  WinitPhysicalKey::Code(code) => (0, Some(code)),
+                  _ => (0, None),
+                };
+                Some(Events::Keyboard {
+                  event: Key::Released {
+                    scan_code,
+                    virtual_key,
+                  },
+                  issued_at: Instant::now(),
+                })
+              }
+              _ => None,
+            },
+            WinitWindowEvent::ModifiersChanged(_) => None,
+            WinitWindowEvent::CursorMoved {
+              device_id: _,
+              position,
+            } => Some(Events::Mouse {
+              event: Mouse::Moved {
+                x: position.x,
+                y: position.y,
+                dx: 0.0,
+                dy: 0.0,
+                device_id: 0,
               },
               issued_at: Instant::now(),
-            })
-          }
-          WinitWindowEvent::ScaleFactorChanged { .. } => None,
-          WinitWindowEvent::Moved(_) => None,
-          WinitWindowEvent::Destroyed => None,
-          WinitWindowEvent::DroppedFile(_) => None,
-          WinitWindowEvent::HoveredFile(_) => None,
-          WinitWindowEvent::HoveredFileCancelled => None,
-          // Character input is delivered via IME; ignore here for now
-          WinitWindowEvent::Focused(_) => None,
-          WinitWindowEvent::KeyboardInput {
-            event: key_event,
-            is_synthetic,
-            ..
-          } => match (key_event.state, is_synthetic) {
-            (ElementState::Pressed, false) => {
-              let (scan_code, virtual_key) = match key_event.physical_key {
-                WinitPhysicalKey::Code(code) => (0, Some(code)),
-                _ => (0, None),
-              };
-              Some(Events::Keyboard {
-                event: Key::Pressed {
-                  scan_code,
-                  virtual_key,
-                },
+            }),
+            WinitWindowEvent::CursorEntered { device_id: _ } => {
+              Some(Events::Mouse {
+                event: Mouse::EnteredWindow { device_id: 0 },
                 issued_at: Instant::now(),
               })
             }
-            (ElementState::Released, false) => {
-              let (scan_code, virtual_key) = match key_event.physical_key {
-                WinitPhysicalKey::Code(code) => (0, Some(code)),
-                _ => (0, None),
-              };
-              Some(Events::Keyboard {
-                event: Key::Released {
-                  scan_code,
-                  virtual_key,
-                },
+            WinitWindowEvent::CursorLeft { device_id: _ } => {
+              Some(Events::Mouse {
+                event: Mouse::LeftWindow { device_id: 0 },
                 issued_at: Instant::now(),
               })
             }
+            WinitWindowEvent::MouseWheel {
+              device_id: _,
+              delta: _,
+              phase: _,
+            } => Some(Events::Mouse {
+              event: Mouse::Scrolled { device_id: 0 },
+              issued_at: Instant::now(),
+            }),
+            WinitWindowEvent::MouseInput {
+              device_id: _,
+              state,
+              button,
+            } => {
+              // Map winit button to our button type
+              let button = match button {
+                MouseButton::Left => Button::Left,
+                MouseButton::Right => Button::Right,
+                MouseButton::Middle => Button::Middle,
+                MouseButton::Other(other) => Button::Other(other),
+                MouseButton::Back => Button::Other(8),
+                MouseButton::Forward => Button::Other(9),
+              };
+
+              let event = match state {
+                ElementState::Pressed => Mouse::Pressed {
+                  button,
+                  x: 0.0,
+                  y: 0.0,
+                  device_id: 0,
+                },
+                ElementState::Released => Mouse::Released {
+                  button,
+                  x: 0.0,
+                  y: 0.0,
+                  device_id: 0,
+                },
+              };
+
+              Some(Events::Mouse {
+                event,
+                issued_at: Instant::now(),
+              })
+            }
+            WinitWindowEvent::TouchpadPressure { .. } => None,
+            WinitWindowEvent::AxisMotion { .. } => None,
+            WinitWindowEvent::Touch(_) => None,
+            WinitWindowEvent::ThemeChanged(_) => None,
             _ => None,
           },
-          WinitWindowEvent::ModifiersChanged(_) => None,
-          WinitWindowEvent::CursorMoved {
-            device_id: _,
-            position,
-          } => Some(Events::Mouse {
-            event: Mouse::Moved {
-              x: position.x,
-              y: position.y,
-              dx: 0.0,
-              dy: 0.0,
-              device_id: 0,
-            },
-            issued_at: Instant::now(),
-          }),
-          WinitWindowEvent::CursorEntered { device_id: _ } => {
-            Some(Events::Mouse {
-              event: Mouse::EnteredWindow { device_id: 0 },
-              issued_at: Instant::now(),
-            })
-          }
-          WinitWindowEvent::CursorLeft { device_id: _ } => {
-            Some(Events::Mouse {
-              event: Mouse::LeftWindow { device_id: 0 },
-              issued_at: Instant::now(),
-            })
-          }
-          WinitWindowEvent::MouseWheel {
-            device_id: _,
-            delta: _,
-            phase: _,
-          } => Some(Events::Mouse {
-            event: Mouse::Scrolled { device_id: 0 },
-            issued_at: Instant::now(),
-          }),
-          WinitWindowEvent::MouseInput {
-            device_id: _,
-            state,
-            button,
-          } => {
-            // Map winit button to our button type
-            let button = match button {
-              MouseButton::Left => Button::Left,
-              MouseButton::Right => Button::Right,
-              MouseButton::Middle => Button::Middle,
-              MouseButton::Other(other) => Button::Other(other),
-              MouseButton::Back => Button::Other(8),
-              MouseButton::Forward => Button::Other(9),
-            };
+          WinitEvent::AboutToWait => {
+            let last_frame = current_frame;
+            current_frame = Instant::now();
+            let duration = &current_frame.duration_since(last_frame);
 
-            let event = match state {
-              ElementState::Pressed => Mouse::Pressed {
-                button,
-                x: 0.0,
-                y: 0.0,
-                device_id: 0,
-              },
-              ElementState::Released => Mouse::Released {
-                button,
-                x: 0.0,
-                y: 0.0,
-                device_id: 0,
-              },
-            };
-
-            Some(Events::Mouse {
-              event,
-              issued_at: Instant::now(),
-            })
-          }
-          WinitWindowEvent::TouchpadPressure { .. } => None,
-          WinitWindowEvent::AxisMotion { .. } => None,
-          WinitWindowEvent::Touch(_) => None,
-          WinitWindowEvent::ThemeChanged(_) => None,
-          _ => None,
-        },
-        WinitEvent::AboutToWait => {
-          let last_frame = current_frame;
-          current_frame = Instant::now();
-          let duration = &current_frame.duration_since(last_frame);
-
-          let active_render_context = active_render_context
-            .as_mut()
-            .expect("Couldn't get the active render context. ");
-          for component in &mut component_stack {
-            let update_result = component.on_update(duration);
-            if let Err(error) = update_result {
-              logging::error!("{}", error);
-              publisher.publish_event(Events::Runtime {
-                event: RuntimeEvent::ComponentPanic { message: error },
-                issued_at: Instant::now(),
-              });
-              continue;
+            let active_render_context = active_render_context
+              .as_mut()
+              .expect("Couldn't get the active render context. ");
+            for component in &mut component_stack {
+              let update_result = component.on_update(duration);
+              if let Err(error) = update_result {
+                logging::error!("{}", error);
+                publisher.publish_event(Events::Runtime {
+                  event: RuntimeEvent::ComponentPanic { message: error },
+                  issued_at: Instant::now(),
+                });
+                continue;
+              }
+              let commands = component.on_render(active_render_context);
+              active_render_context.render(commands);
             }
-            let commands = component.on_render(active_render_context);
-            active_render_context.render(commands);
-          }
 
-          // Warn if frames dropped below 32 ms (30 fps).
-          match duration.as_millis() > 32 {
-            true => {
+            // Warn if frames dropped below 32 ms (30 fps).
+            if event_loop_policy != EventLoopPolicy::Wait
+              && duration.as_millis() > 32
+            {
               logging::warn!(
                 "Frame took too long to render: {:?} ms",
                 duration.as_millis()
               );
             }
-            false => {
-              // Disable until frametimes can be determined via monitor
-              // std::thread::sleep(std::time::Duration::from_millis(16 - duration.as_millis() as u64));
-            }
-          }
 
-          None
-        }
-        // Redraw requests are handled implicitly when AboutToWait fires; ignore explicit requests
-        WinitEvent::NewEvents(_) => None,
-        WinitEvent::DeviceEvent {
-          device_id: _,
-          event: _,
-        } => None,
-        WinitEvent::UserEvent(lambda_event) => match lambda_event {
-          Events::Runtime {
-            event,
-            issued_at: _,
-          } => match event {
-            RuntimeEvent::Initialized => {
-              logging::debug!(
-                "Initializing all of the components for the runtime: {}",
-                name
-              );
-              for component in &mut component_stack {
-                let attach_result =
-                  component.on_attach(active_render_context.as_mut().unwrap());
-                if let Err(error) = attach_result {
-                  logging::error!("{}", error);
-                  publisher.publish_event(Events::Runtime {
-                    event: RuntimeEvent::ComponentPanic { message: error },
-                    issued_at: Instant::now(),
-                  });
+            None
+          }
+          // Redraw requests are handled implicitly when AboutToWait fires; ignore explicit requests
+          WinitEvent::NewEvents(_) => None,
+          WinitEvent::DeviceEvent {
+            device_id: _,
+            event: _,
+          } => None,
+          WinitEvent::UserEvent(lambda_event) => match lambda_event {
+            Events::Runtime {
+              event,
+              issued_at: _,
+            } => match event {
+              RuntimeEvent::Initialized => {
+                logging::debug!(
+                  "Initializing all of the components for the runtime: {}",
+                  name
+                );
+                for component in &mut component_stack {
+                  let attach_result = component
+                    .on_attach(active_render_context.as_mut().unwrap());
+                  if let Err(error) = attach_result {
+                    logging::error!("{}", error);
+                    publisher.publish_event(Events::Runtime {
+                      event: RuntimeEvent::ComponentPanic { message: error },
+                      issued_at: Instant::now(),
+                    });
+                  }
                 }
+                None
               }
-              None
-            }
-            RuntimeEvent::Shutdown => {
-              for component in &mut component_stack {
-                let detach_result =
-                  component.on_detach(active_render_context.as_mut().unwrap());
-                if let Err(error) = detach_result {
-                  logging::error!("{}", error);
-                  publisher.publish_event(Events::Runtime {
-                    event: RuntimeEvent::ComponentPanic { message: error },
-                    issued_at: Instant::now(),
-                  });
+              RuntimeEvent::Shutdown => {
+                for component in &mut component_stack {
+                  let detach_result = component
+                    .on_detach(active_render_context.as_mut().unwrap());
+                  if let Err(error) = detach_result {
+                    logging::error!("{}", error);
+                    publisher.publish_event(Events::Runtime {
+                      event: RuntimeEvent::ComponentPanic { message: error },
+                      issued_at: Instant::now(),
+                    });
+                  }
                 }
+                *runtime_result = Ok(());
+                None
               }
-              *runtime_result = Ok(());
-              None
-            }
-            RuntimeEvent::ComponentPanic { message } => {
-              *runtime_result = Err(message);
-              None
-            }
+              RuntimeEvent::ComponentPanic { message } => {
+                *runtime_result = Err(message);
+                None
+              }
+            },
+            _ => None,
           },
-          _ => None,
-        },
-        WinitEvent::Suspended => None,
-        WinitEvent::Resumed => None,
-        WinitEvent::MemoryWarning => None,
-        // No RedrawEventsCleared in winit 0.29
-        WinitEvent::LoopExiting => {
-          active_render_context
-            .take()
-            .expect("[ERROR] The render API has been already taken.")
-            .destroy();
+          WinitEvent::Suspended => None,
+          WinitEvent::Resumed => None,
+          WinitEvent::MemoryWarning => None,
+          // No RedrawEventsCleared in winit 0.29
+          WinitEvent::LoopExiting => {
+            active_render_context
+              .take()
+              .expect("[ERROR] The render API has been already taken.")
+              .destroy();
 
-          logging::info!("All resources were successfully deleted.");
-          None
-        }
-      };
+            logging::info!("All resources were successfully deleted.");
+            None
+          }
+        };
 
-      if let Some(event) = mapped_event {
-        logging::trace!("Sending event: {:?} to all components", event);
+        if let Some(event) = mapped_event {
+          logging::trace!("Sending event: {:?} to all components", event);
 
-        let event_mask = event.mask();
-        for component in &mut component_stack {
-          let event_result =
-            dispatch_event_to_component(&event, event_mask, component.as_mut());
+          let event_mask = event.mask();
+          for component in &mut component_stack {
+            let event_result = dispatch_event_to_component(
+              &event,
+              event_mask,
+              component.as_mut(),
+            );
 
-          if let Err(error) = event_result {
-            logging::error!("{}", error);
-            publisher.publish_event(Events::Runtime {
-              event: RuntimeEvent::ComponentPanic { message: error },
-              issued_at: Instant::now(),
-            });
+            if let Err(error) = event_result {
+              logging::error!("{}", error);
+              publisher.publish_event(Events::Runtime {
+                event: RuntimeEvent::ComponentPanic { message: error },
+                issued_at: Instant::now(),
+              });
+            }
           }
         }
-      }
-    });
+      },
+    );
     return Ok(());
   }
 
