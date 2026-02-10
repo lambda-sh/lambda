@@ -186,6 +186,17 @@ fn dispatch_event_to_component(
   }
 }
 
+const MAX_TARGET_FPS: u32 = 1000;
+
+fn div_ceil_u64(numerator: u64, denominator: u64) -> u64 {
+  let div = numerator / denominator;
+  let rem = numerator % denominator;
+  if rem == 0 {
+    return div;
+  }
+  return div + 1;
+}
+
 impl Runtime<(), String> for ApplicationRuntime {
   type Component = Box<dyn Component<ComponentResult, String>>;
   /// Runs the event loop for the Application Runtime which takes ownership
@@ -201,8 +212,10 @@ impl Runtime<(), String> for ApplicationRuntime {
         // Compute an expected frame interval (1 / FPS) and warn only if the
         // observed frame time exceeds it by a slack factor (25%) to avoid
         // spamming on small scheduling jitter.
-        let expected_secs = 1.0 / target_fps as f64;
-        Some(Duration::from_secs_f64(expected_secs * 1.25))
+        let clamped_fps = target_fps.min(MAX_TARGET_FPS) as u64;
+        let nanos_per_frame = div_ceil_u64(1_000_000_000, clamped_fps);
+        let expected_interval = Duration::from_nanos(nanos_per_frame);
+        Some(expected_interval.mul_f64(1.25))
       }
       EventLoopPolicy::WaitUntil { .. } => None,
     };

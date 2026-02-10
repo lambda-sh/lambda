@@ -67,6 +67,32 @@ pub enum EventLoopPolicy {
   WaitUntil { target_fps: u32 },
 }
 
+const MAX_TARGET_FPS: u32 = 1000;
+
+fn div_ceil_u64(numerator: u64, denominator: u64) -> u64 {
+  let div = numerator / denominator;
+  let rem = numerator % denominator;
+  if rem == 0 {
+    return div;
+  }
+  return div + 1;
+}
+
+fn frame_interval_for_target_fps(target_fps: u32) -> Option<Duration> {
+  if target_fps == 0 {
+    return None;
+  }
+
+  // Clamp to a sane max to avoid impractically small intervals (which can
+  // busy-loop or require large catch-up work after sleeps).
+  let clamped_fps = target_fps.min(MAX_TARGET_FPS) as u64;
+
+  // Compute a non-zero interval in integer nanoseconds (ceil to ensure at
+  // least 1ns).
+  let nanos_per_frame = div_ceil_u64(1_000_000_000, clamped_fps);
+  return Some(Duration::from_nanos(nanos_per_frame));
+}
+
 /// LoopBuilder - Putting this here for consistency.
 pub struct LoopBuilder;
 
@@ -268,8 +294,8 @@ impl<E: 'static + std::fmt::Debug> Loop<E> {
     Callback: 'static + FnMut(Event<E>, &EventLoopWindowTarget<E>),
   {
     let frame_interval = match policy {
-      EventLoopPolicy::WaitUntil { target_fps } if target_fps > 0 => {
-        Some(Duration::from_secs_f64(1.0 / target_fps as f64))
+      EventLoopPolicy::WaitUntil { target_fps } => {
+        frame_interval_for_target_fps(target_fps)
       }
       _ => None,
     };
@@ -292,14 +318,10 @@ impl<E: 'static + std::fmt::Debug> Loop<E> {
             let now = Instant::now();
             let interval = frame_interval.unwrap_or(Duration::from_secs(1));
 
+            // Guarantee the deadline always advances and stays in the future.
             let deadline = match next_frame_deadline {
-              Some(mut deadline) => {
-                while deadline <= now {
-                  deadline += interval;
-                }
-                deadline
-              }
-              None => now + interval,
+              Some(deadline) if deadline > now => deadline,
+              _ => now + interval,
             };
 
             next_frame_deadline = Some(deadline);
