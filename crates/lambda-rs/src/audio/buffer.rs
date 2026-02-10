@@ -1,6 +1,9 @@
 #![allow(clippy::needless_return)]
 
-use std::path::Path;
+use std::{
+  path::Path,
+  sync::Arc,
+};
 
 use crate::audio::AudioError;
 
@@ -8,7 +11,7 @@ use crate::audio::AudioError;
 /// playback.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SoundBuffer {
-  samples: Vec<f32>,
+  samples: Arc<[f32]>,
   sample_rate: u32,
   channels: u16,
 }
@@ -139,7 +142,7 @@ impl SoundBuffer {
     }
 
     return Ok(Self {
-      samples: decoded.samples,
+      samples: decoded.samples.into(),
       sample_rate: decoded.sample_rate,
       channels: decoded.channels,
     });
@@ -187,7 +190,7 @@ impl SoundBuffer {
     }
 
     return Ok(Self {
-      samples,
+      samples: samples.into(),
       sample_rate,
       channels,
     });
@@ -214,7 +217,7 @@ impl SoundBuffer {
   /// # Returns
   /// A slice of interleaved samples.
   pub fn samples(&self) -> &[f32] {
-    return self.samples.as_slice();
+    return self.samples.as_ref();
   }
 
   /// Return the number of frames in this buffer.
@@ -281,7 +284,7 @@ mod tests {
   #[test]
   fn duration_seconds_computes_expected_value() {
     let buffer = SoundBuffer {
-      samples: vec![0.0; 48000],
+      samples: vec![0.0; 48000].into(),
       sample_rate: 48000,
       channels: 1,
     };
@@ -294,7 +297,7 @@ mod tests {
   #[test]
   fn frames_returns_zero_when_channels_is_zero() {
     let buffer = SoundBuffer {
-      samples: vec![0.0, 0.0],
+      samples: vec![0.0, 0.0].into(),
       sample_rate: 48_000,
       channels: 0,
     };
