@@ -5,7 +5,17 @@
 //! This module provides a minimal, backend-agnostic playback facade that
 //! supports one active `SoundBuffer` at a time.
 
-use std::sync::Arc;
+use std::{
+  cell::UnsafeCell,
+  mem::MaybeUninit,
+  sync::{
+    atomic::{
+      AtomicUsize,
+      Ordering,
+    },
+    Arc,
+  },
+};
 
 use crate::audio::{
   AudioError,
@@ -14,6 +24,107 @@ use crate::audio::{
 };
 
 const DEFAULT_GAIN_RAMP_FRAMES: usize = 128;
+
+/// A fixed-capacity, single-producer/single-consumer queue.
+///
+/// The queue is designed for real-time audio callbacks:
+/// - `push` and `pop` MUST NOT block.
+/// - `pop` MUST NOT allocate.
+///
+/// # Safety
+/// This type is only sound when used as SPSC (exactly one producer thread and
+/// one consumer thread).
+#[allow(dead_code)]
+struct CommandQueue<T, const CAPACITY: usize> {
+  buffer: [UnsafeCell<MaybeUninit<T>>; CAPACITY],
+  head: AtomicUsize,
+  tail: AtomicUsize,
+}
+
+unsafe impl<T: Send, const CAPACITY: usize> Send for CommandQueue<T, CAPACITY> {}
+unsafe impl<T: Send, const CAPACITY: usize> Sync for CommandQueue<T, CAPACITY> {}
+
+#[allow(dead_code)]
+impl<T, const CAPACITY: usize> CommandQueue<T, CAPACITY> {
+  /// Create a new empty queue.
+  ///
+  /// # Returns
+  /// A queue with a fixed capacity.
+  fn new() -> Self {
+    assert!(CAPACITY > 0, "command queue capacity must be non-zero");
+
+    return Self {
+      buffer: std::array::from_fn(|_| {
+        return UnsafeCell::new(MaybeUninit::uninit());
+      }),
+      head: AtomicUsize::new(0),
+      tail: AtomicUsize::new(0),
+    };
+  }
+
+  /// Attempt to enqueue a value.
+  ///
+  /// # Arguments
+  /// - `value`: The value to enqueue.
+  ///
+  /// # Returns
+  /// `Ok(())` when the value was enqueued. `Err(value)` when the queue is full.
+  fn push(&self, value: T) -> Result<(), T> {
+    let head = self.head.load(Ordering::Acquire);
+    let tail = self.tail.load(Ordering::Relaxed);
+
+    if tail.wrapping_sub(head) >= CAPACITY {
+      return Err(value);
+    }
+
+    let index = tail % CAPACITY;
+    let slot = self.buffer[index].get();
+    unsafe {
+      (&mut *slot).write(value);
+    }
+
+    self.tail.store(tail.wrapping_add(1), Ordering::Release);
+    return Ok(());
+  }
+
+  /// Attempt to dequeue a value.
+  ///
+  /// # Returns
+  /// `Some(value)` when a value is available, otherwise `None`.
+  fn pop(&self) -> Option<T> {
+    let tail = self.tail.load(Ordering::Acquire);
+    let head = self.head.load(Ordering::Relaxed);
+
+    if head == tail {
+      return None;
+    }
+
+    let index = head % CAPACITY;
+    let slot = self.buffer[index].get();
+    let value = unsafe { (&*slot).assume_init_read() };
+
+    self.head.store(head.wrapping_add(1), Ordering::Release);
+    return Some(value);
+  }
+}
+
+impl<T, const CAPACITY: usize> Drop for CommandQueue<T, CAPACITY> {
+  fn drop(&mut self) {
+    let tail = self.tail.load(Ordering::Relaxed);
+    let mut head = self.head.load(Ordering::Relaxed);
+
+    while head != tail {
+      let index = head % CAPACITY;
+      let slot = self.buffer[index].get();
+      unsafe {
+        std::ptr::drop_in_place((&mut *slot).as_mut_ptr());
+      }
+      head = head.wrapping_add(1);
+    }
+
+    return;
+  }
+}
 
 /// A linear gain ramp used to de-click transport transitions.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -304,6 +415,115 @@ impl PlaybackScheduler {
   }
 }
 
+/// Commands produced by `SoundInstance` transport operations.
+#[derive(Debug)]
+#[allow(dead_code)]
+enum PlaybackCommand {
+  SetBuffer(Arc<SoundBuffer>),
+  SetLooping(bool),
+  Play,
+  Pause,
+  Stop,
+  SetActiveInstanceId(u64),
+}
+
+/// A callback-safe controller that drains transport commands and renders audio.
+///
+/// This type is intended to be owned by the platform audio callback closure.
+#[allow(dead_code)]
+struct PlaybackController<const COMMAND_CAPACITY: usize> {
+  command_queue: Arc<CommandQueue<PlaybackCommand, COMMAND_CAPACITY>>,
+  scheduler: PlaybackScheduler,
+  active_instance_id: u64,
+}
+
+#[allow(dead_code)]
+impl<const COMMAND_CAPACITY: usize> PlaybackController<COMMAND_CAPACITY> {
+  /// Create a controller configured for a fixed output channel count.
+  ///
+  /// # Arguments
+  /// - `channels`: Interleaved output channel count.
+  /// - `command_queue`: Shared producer/consumer command queue.
+  ///
+  /// # Returns
+  /// A controller initialized to `Stopped` with no active buffer.
+  fn new(
+    channels: usize,
+    command_queue: Arc<CommandQueue<PlaybackCommand, COMMAND_CAPACITY>>,
+  ) -> Self {
+    return Self::new_with_ramp_frames(
+      channels,
+      DEFAULT_GAIN_RAMP_FRAMES,
+      command_queue,
+    );
+  }
+
+  /// Create a controller with an explicit gain ramp length.
+  ///
+  /// # Arguments
+  /// - `channels`: Interleaved output channel count.
+  /// - `ramp_frames`: Gain ramp length in frames.
+  /// - `command_queue`: Shared producer/consumer command queue.
+  ///
+  /// # Returns
+  /// A controller initialized to `Stopped` with no active buffer.
+  fn new_with_ramp_frames(
+    channels: usize,
+    ramp_frames: usize,
+    command_queue: Arc<CommandQueue<PlaybackCommand, COMMAND_CAPACITY>>,
+  ) -> Self {
+    return Self {
+      command_queue,
+      scheduler: PlaybackScheduler::new_with_ramp_frames(channels, ramp_frames),
+      active_instance_id: 0,
+    };
+  }
+
+  /// Drain any pending transport commands.
+  ///
+  /// # Returns
+  /// `()` after applying all pending commands.
+  fn drain_commands(&mut self) {
+    while let Some(command) = self.command_queue.pop() {
+      match command {
+        PlaybackCommand::SetBuffer(buffer) => {
+          self.scheduler.set_buffer(buffer);
+        }
+        PlaybackCommand::SetLooping(looping) => {
+          self.scheduler.set_looping(looping);
+        }
+        PlaybackCommand::Play => {
+          self.scheduler.play();
+        }
+        PlaybackCommand::Pause => {
+          self.scheduler.pause();
+        }
+        PlaybackCommand::Stop => {
+          self.scheduler.stop();
+        }
+        PlaybackCommand::SetActiveInstanceId(instance_id) => {
+          self.active_instance_id = instance_id;
+        }
+      }
+    }
+
+    return;
+  }
+
+  /// Render audio for a callback tick.
+  ///
+  /// # Arguments
+  /// - `writer`: Real-time writer for the current callback output buffer.
+  ///
+  /// # Returns
+  /// `()` after draining commands and writing the output buffer.
+  fn render(&mut self, writer: &mut dyn AudioOutputWriter) {
+    self.drain_commands();
+    self.scheduler.render(writer);
+    return;
+  }
+}
+
 /// A queryable playback state for a `SoundInstance`.
 ///
 /// This state is observable from the application thread and is intended to
@@ -525,6 +745,37 @@ impl AudioContext {
 mod tests {
   use super::*;
 
+  /// Command queues MUST preserve FIFO ordering.
+  #[test]
+  fn command_queue_preserves_order() {
+    let queue: CommandQueue<u32, 8> = CommandQueue::new();
+
+    queue.push(1).unwrap();
+    queue.push(2).unwrap();
+    queue.push(3).unwrap();
+
+    assert_eq!(queue.pop(), Some(1));
+    assert_eq!(queue.pop(), Some(2));
+    assert_eq!(queue.pop(), Some(3));
+    assert_eq!(queue.pop(), None);
+    return;
+  }
+
+  /// Command queues MUST reject pushes when full.
+  #[test]
+  fn command_queue_rejects_when_full() {
+    let queue: CommandQueue<u32, 2> = CommandQueue::new();
+
+    assert!(queue.push(10).is_ok());
+    assert!(queue.push(11).is_ok());
+    assert!(matches!(queue.push(12), Err(12)));
+
+    assert_eq!(queue.pop(), Some(10));
+    assert_eq!(queue.pop(), Some(11));
+    assert_eq!(queue.pop(), None);
+    return;
+  }
+
   struct TestAudioOutput {
     channels: u16,
     frames: usize,
@@ -710,6 +961,54 @@ mod tests {
     let first = writer.sample(0, 0);
 
     assert!((last - first).abs() <= 1e-6);
+    return;
+  }
+
+  /// Controllers MUST drain queued commands before rendering audio.
+  #[test]
+  fn controller_drains_commands_before_render() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let buffer = make_test_buffer(vec![0.1, 0.2], 1);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer(buffer))
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::SetLooping(true))
+      .unwrap();
+    command_queue.push(PlaybackCommand::Play).unwrap();
+
+    let mut controller =
+      PlaybackController::new_with_ramp_frames(1, 0, command_queue);
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+
+    assert!((writer.sample(0, 0) - 0.1).abs() <= 1e-6);
+    assert!((writer.sample(1, 0) - 0.2).abs() <= 1e-6);
+    assert!((writer.sample(2, 0) - 0.1).abs() <= 1e-6);
+    assert!((writer.sample(3, 0) - 0.2).abs() <= 1e-6);
+    assert_eq!(controller.active_instance_id, 0);
+    return;
+  }
+
+  /// Controllers MUST update the active instance id when commanded.
+  #[test]
+  fn controller_updates_active_instance_id() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+
+    command_queue
+      .push(PlaybackCommand::SetActiveInstanceId(42))
+      .unwrap();
+
+    let mut controller =
+      PlaybackController::new_with_ramp_frames(1, 0, command_queue);
+
+    let mut writer = TestAudioOutput::new(1, 1);
+    controller.render(&mut writer);
+    assert_eq!(controller.active_instance_id, 42);
     return;
   }
 }
