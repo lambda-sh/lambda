@@ -145,6 +145,54 @@ impl SoundBuffer {
     });
   }
 
+  /// Construct a `SoundBuffer` from interleaved samples for unit tests.
+  ///
+  /// # Arguments
+  /// - `samples`: Interleaved samples, `frames * channels` in length.
+  /// - `sample_rate`: Sample rate in Hz.
+  /// - `channels`: Interleaved channel count.
+  ///
+  /// # Returns
+  /// A validated `SoundBuffer` constructed from the provided samples.
+  ///
+  /// # Errors
+  /// Returns [`AudioError::InvalidData`] when the metadata is invalid or when
+  /// the sample vector length is not a multiple of `channels`.
+  #[cfg(test)]
+  pub(crate) fn from_interleaved_samples_for_test(
+    samples: Vec<f32>,
+    sample_rate: u32,
+    channels: u16,
+  ) -> Result<Self, AudioError> {
+    if sample_rate == 0 {
+      return Err(AudioError::InvalidData {
+        details: "test sound buffer sample rate was 0".to_string(),
+      });
+    }
+
+    if channels == 0 {
+      return Err(AudioError::InvalidData {
+        details: "test sound buffer channel count was 0".to_string(),
+      });
+    }
+
+    if samples.len() % channels as usize != 0 {
+      return Err(AudioError::InvalidData {
+        details: format!(
+          "test sound buffer sample length was not divisible by channels (samples={}, channels={})",
+          samples.len(),
+          channels
+        ),
+      });
+    }
+
+    return Ok(Self {
+      samples,
+      sample_rate,
+      channels,
+    });
+  }
+
   /// Return the sample rate in Hz.
   ///
   /// # Returns
