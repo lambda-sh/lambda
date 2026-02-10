@@ -16,14 +16,18 @@ cargo add lambda-rs
 ## First window
 Getting started with lambda is easy. The following example will create a window with the title "Hello lambda!" and a size of 800x600.
 ```rust
-#[macro_use]
 use lambda::{
-  core::runtime::start_runtime,
-  runtimes::ApplicationRuntimeBuilder,
+  runtime::start_runtime,
+  runtimes::{
+    ApplicationRuntimeBuilder,
+    EventLoopPolicy,
+  },
 };
 
 fn main() {
   let runtime = ApplicationRuntimeBuilder::new("Hello lambda!")
+    // Tools/editors should prefer `Wait` to reduce CPU usage when idle.
+    .with_event_loop_policy(EventLoopPolicy::Wait)
     .with_window_configured_as(move |window_builder| {
       return window_builder
         .with_dimensions(800, 600)

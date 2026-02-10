@@ -574,14 +574,14 @@ impl RenderContext {
     // surface. We only acquire a surface frame when a surface-backed pass is
     // requested; offscreen-only command lists can render without a window.
     let requires_surface = commands.iter().any(|cmd| {
-      return matches!(
+      matches!(
         cmd,
         RenderCommand::BeginRenderPass { .. }
           | RenderCommand::BeginRenderPassTo {
             destination: RenderDestination::Surface,
             ..
           }
-      );
+      )
     });
 
     let mut frame = if requires_surface {

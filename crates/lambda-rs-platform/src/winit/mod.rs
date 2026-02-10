@@ -1,5 +1,10 @@
 //! Winit wrapper to easily construct cross platform windows
 
+use std::time::{
+  Duration,
+  Instant,
+};
+
 use winit::{
   dpi::{
     LogicalSize,
@@ -42,6 +47,50 @@ pub mod winit_exports {
       PhysicalKey,
     },
   };
+}
+
+/// Control flow policy for the winit event loop.
+///
+/// Lambda defaults to [`EventLoopPolicy::Poll`] for backwards compatibility.
+/// Applications that don't require continuous updates (e.g., editors/tools)
+/// should prefer [`EventLoopPolicy::Wait`] to reduce CPU usage when idle.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EventLoopPolicy {
+  /// Continuous polling for games and real-time applications.
+  Poll,
+  /// Sleep until events arrive; ideal for tools and editors.
+  Wait,
+  /// Sleep until the next frame deadline to target a fixed update rate.
+  ///
+  /// Note: this is not a frame-pacing / vsync guarantee; it only controls how
+  /// long the event loop waits between wakeups.
+  WaitUntil { target_fps: u32 },
+}
+
+const MAX_TARGET_FPS: u32 = 1000;
+
+fn div_ceil_u64(numerator: u64, denominator: u64) -> u64 {
+  let div = numerator / denominator;
+  let rem = numerator % denominator;
+  if rem == 0 {
+    return div;
+  }
+  return div + 1;
+}
+
+fn frame_interval_for_target_fps(target_fps: u32) -> Option<Duration> {
+  if target_fps == 0 {
+    return None;
+  }
+
+  // Clamp to a sane max to avoid impractically small intervals (which can
+  // busy-loop or require large catch-up work after sleeps).
+  let clamped_fps = target_fps.min(MAX_TARGET_FPS) as u64;
+
+  // Compute a non-zero interval in integer nanoseconds (ceil to ensure at
+  // least 1ns).
+  let nanos_per_frame = div_ceil_u64(1_000_000_000, clamped_fps);
+  return Some(Duration::from_nanos(nanos_per_frame));
 }
 
 /// LoopBuilder - Putting this here for consistency.
@@ -228,14 +277,58 @@ impl<E: 'static + std::fmt::Debug> Loop<E> {
   }
 
   /// Uses the winit event loop to run forever
-  pub fn run_forever<Callback>(self, mut callback: Callback)
+  pub fn run_forever<Callback>(self, callback: Callback)
   where
     Callback: 'static + FnMut(Event<E>, &EventLoopWindowTarget<E>),
   {
+    self.run_forever_with_policy(EventLoopPolicy::Poll, callback);
+  }
+
+  /// Uses the winit event loop to run forever with the provided control-flow
+  /// policy.
+  pub fn run_forever_with_policy<Callback>(
+    self,
+    policy: EventLoopPolicy,
+    mut callback: Callback,
+  ) where
+    Callback: 'static + FnMut(Event<E>, &EventLoopWindowTarget<E>),
+  {
+    let frame_interval = match policy {
+      EventLoopPolicy::WaitUntil { target_fps } => {
+        frame_interval_for_target_fps(target_fps)
+      }
+      _ => None,
+    };
+    let mut next_frame_deadline: Option<Instant> = None;
+
     self
       .event_loop
       .run(move |event, target| {
-        target.set_control_flow(ControlFlow::Poll);
+        match policy {
+          EventLoopPolicy::Poll => {
+            target.set_control_flow(ControlFlow::Poll);
+          }
+          EventLoopPolicy::Wait => {
+            target.set_control_flow(ControlFlow::Wait);
+          }
+          EventLoopPolicy::WaitUntil { target_fps: 0 } => {
+            target.set_control_flow(ControlFlow::Wait);
+          }
+          EventLoopPolicy::WaitUntil { .. } => {
+            let now = Instant::now();
+            let interval = frame_interval.unwrap_or(Duration::from_secs(1));
+
+            // Guarantee the deadline always advances and stays in the future.
+            let deadline = match next_frame_deadline {
+              Some(deadline) if deadline > now => deadline,
+              _ => now + interval,
+            };
+
+            next_frame_deadline = Some(deadline);
+            target.set_control_flow(ControlFlow::WaitUntil(deadline));
+          }
+        }
+
         callback(event, target);
       })
       .expect("Event loop terminated unexpectedly");

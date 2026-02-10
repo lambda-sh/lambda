@@ -6,3 +6,4 @@ pub use application::{
   ApplicationRuntime,
   ApplicationRuntimeBuilder,
 };
+pub use lambda_platform::winit::EventLoopPolicy;
