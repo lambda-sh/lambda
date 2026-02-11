@@ -179,7 +179,7 @@ impl SoundBuffer {
       });
     }
 
-    if samples.len() % channels as usize != 0 {
+    if !samples.len().is_multiple_of(channels as usize) {
       return Err(AudioError::InvalidData {
         details: format!(
           "test sound buffer sample length was not divisible by channels (samples={}, channels={})",
