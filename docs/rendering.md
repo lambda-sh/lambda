@@ -172,9 +172,11 @@ let vbo = BufferBuilder::build_from_mesh(&mesh, &mut render_context)
 Create a pipeline, with optional push constants:
 
 ```rust
-use lambda::render::pipeline::{RenderPipelineBuilder, PipelineStage};
+use lambda::render::pipeline::{BlendMode, RenderPipelineBuilder, PipelineStage};
 
 let pipeline = RenderPipelineBuilder::new()
+  // Pipelines default to opaque (no blending). Opt in for transparent geometry:
+  // .with_blend(BlendMode::AlphaBlending)
   .with_push_constant(PipelineStage::VERTEX, 64) // size in bytes
   .with_buffer(vbo, mesh.attributes().to_vec())
   .build(&mut render_context, &pass, &vs, Some(&fs));
