@@ -42,7 +42,6 @@ const PLAYBACK_COMMAND_CAPACITY: usize = 256;
 /// # Safety
 /// This type is only sound when used as SPSC (exactly one producer thread and
 /// one consumer thread).
-#[allow(dead_code)]
 struct CommandQueue<T, const CAPACITY: usize> {
   buffer: [UnsafeCell<MaybeUninit<T>>; CAPACITY],
   head: AtomicUsize,
@@ -52,7 +51,6 @@ struct CommandQueue<T, const CAPACITY: usize> {
 unsafe impl<T: Send, const CAPACITY: usize> Send for CommandQueue<T, CAPACITY> {}
 unsafe impl<T: Send, const CAPACITY: usize> Sync for CommandQueue<T, CAPACITY> {}
 
-#[allow(dead_code)]
 impl<T, const CAPACITY: usize> CommandQueue<T, CAPACITY> {
   /// Create a new empty queue.
   ///
@@ -219,7 +217,6 @@ impl GainRamp {
 ///
 /// This scheduler is designed to run inside a real-time audio callback and
 /// MUST NOT allocate or block while rendering audio.
-#[allow(dead_code)]
 struct PlaybackScheduler {
   state: PlaybackState,
   looping: bool,
@@ -231,7 +228,6 @@ struct PlaybackScheduler {
   last_frame_samples: [f32; MAX_PLAYBACK_CHANNELS],
 }
 
-#[allow(dead_code)]
 impl PlaybackScheduler {
   /// Create a scheduler configured for a fixed output channel count.
   ///
@@ -240,6 +236,7 @@ impl PlaybackScheduler {
   ///
   /// # Returns
   /// A scheduler initialized to `Stopped` with no buffer.
+  #[allow(dead_code)]
   fn new(channels: usize) -> Self {
     return Self::new_with_ramp_frames(channels, DEFAULT_GAIN_RAMP_FRAMES);
   }
@@ -333,6 +330,7 @@ impl PlaybackScheduler {
   ///
   /// # Returns
   /// The cursor position as an interleaved sample index.
+  #[allow(dead_code)]
   fn cursor_samples(&self) -> usize {
     return self.cursor_samples;
   }
@@ -426,7 +424,6 @@ impl PlaybackScheduler {
 
 /// Commands produced by `SoundInstance` transport operations.
 #[derive(Debug)]
-#[allow(dead_code)]
 enum PlaybackCommand {
   StopCurrent,
   SetBuffer {
@@ -546,14 +543,12 @@ fn playback_state_from_u8(value: u8) -> PlaybackState {
 /// A callback-safe controller that drains transport commands and renders audio.
 ///
 /// This type is intended to be owned by the platform audio callback closure.
-#[allow(dead_code)]
 struct PlaybackController<const COMMAND_CAPACITY: usize> {
   command_queue: Arc<CommandQueue<PlaybackCommand, COMMAND_CAPACITY>>,
   shared_state: Arc<PlaybackSharedState>,
   scheduler: PlaybackScheduler,
 }
 
-#[allow(dead_code)]
 impl<const COMMAND_CAPACITY: usize> PlaybackController<COMMAND_CAPACITY> {
   /// Create a controller configured for a fixed output channel count.
   ///
@@ -563,6 +558,7 @@ impl<const COMMAND_CAPACITY: usize> PlaybackController<COMMAND_CAPACITY> {
   ///
   /// # Returns
   /// A controller initialized to `Stopped` with no active buffer.
+  #[allow(dead_code)]
   fn new(
     channels: usize,
     command_queue: Arc<CommandQueue<PlaybackCommand, COMMAND_CAPACITY>>,
@@ -804,10 +800,6 @@ impl SoundInstance {
 }
 
 /// A playback context owning an output device and one active playback slot.
-///
-/// This type is a placeholder API surface used while sound playback is under
-/// active development. It is expected to become fully functional in a
-/// subsequent change set.
 pub struct AudioContext {
   _output_device: AudioOutputDevice,
   command_queue: Arc<PlaybackCommandQueue>,
@@ -1342,6 +1334,44 @@ mod tests {
     let mut writer = TestAudioOutput::new(1, 1);
     controller.render(&mut writer);
     assert!(writer.max_abs() <= f32::EPSILON);
+    return;
+  }
+
+  /// `SoundInstance` methods MUST be no-ops when the instance is inactive.
+  #[test]
+  fn sound_instance_is_no_op_when_inactive() {
+    let command_queue: Arc<PlaybackCommandQueue> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_state(PlaybackState::Playing);
+
+    let mut instance = SoundInstance {
+      instance_id: 1,
+      command_queue: command_queue.clone(),
+      shared_state: shared_state.clone(),
+    };
+
+    assert_eq!(instance.state(), PlaybackState::Playing);
+    assert!(instance.is_playing());
+    assert!(!instance.is_paused());
+    assert!(!instance.is_stopped());
+
+    shared_state.set_active_instance_id(2);
+    shared_state.set_state(PlaybackState::Paused);
+
+    assert_eq!(instance.state(), PlaybackState::Stopped);
+    assert!(!instance.is_playing());
+    assert!(!instance.is_paused());
+    assert!(instance.is_stopped());
+
+    instance.play();
+    instance.pause();
+    instance.stop();
+    instance.set_looping(true);
+
+    assert!(command_queue.pop().is_none());
     return;
   }
 }
