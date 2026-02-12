@@ -1,136 +1,17 @@
-#![allow(clippy::needless_return)]
+use std::sync::Arc;
 
-//! Single-sound playback and transport controls.
-//!
-//! This module provides a minimal, backend-agnostic playback facade that
-//! supports one active `SoundBuffer` at a time.
-
-use std::{
-  cell::UnsafeCell,
-  mem::MaybeUninit,
-  sync::{
-    atomic::{
-      AtomicU64,
-      AtomicU8,
-      AtomicUsize,
-      Ordering,
-    },
-    Arc,
-  },
+use super::{
+  CommandQueue,
+  PlaybackCommand,
+  PlaybackSharedState,
+  PlaybackState,
+  DEFAULT_GAIN_RAMP_FRAMES,
+  MAX_PLAYBACK_CHANNELS,
 };
-
 use crate::audio::{
-  AudioError,
-  AudioOutputDevice,
-  AudioOutputDeviceBuilder,
   AudioOutputWriter,
   SoundBuffer,
 };
-
-const DEFAULT_GAIN_RAMP_FRAMES: usize = 128;
-const DEFAULT_OUTPUT_SAMPLE_RATE: u32 = 48_000;
-const DEFAULT_OUTPUT_CHANNELS: u16 = 2;
-const MAX_PLAYBACK_CHANNELS: usize = 8;
-const PLAYBACK_COMMAND_CAPACITY: usize = 256;
-
-/// A fixed-capacity, single-producer/single-consumer queue.
-///
-/// The queue is designed for real-time audio callbacks:
-/// - `push` and `pop` MUST NOT block.
-/// - `pop` MUST NOT allocate.
-///
-/// # Safety
-/// This type is only sound when used as SPSC (exactly one producer thread and
-/// one consumer thread).
-struct CommandQueue<T, const CAPACITY: usize> {
-  buffer: [UnsafeCell<MaybeUninit<T>>; CAPACITY],
-  head: AtomicUsize,
-  tail: AtomicUsize,
-}
-
-unsafe impl<T: Send, const CAPACITY: usize> Send for CommandQueue<T, CAPACITY> {}
-unsafe impl<T: Send, const CAPACITY: usize> Sync for CommandQueue<T, CAPACITY> {}
-
-impl<T, const CAPACITY: usize> CommandQueue<T, CAPACITY> {
-  /// Create a new empty queue.
-  ///
-  /// # Returns
-  /// A queue with a fixed capacity.
-  fn new() -> Self {
-    assert!(CAPACITY > 0, "command queue capacity must be non-zero");
-
-    return Self {
-      buffer: std::array::from_fn(|_| {
-        return UnsafeCell::new(MaybeUninit::uninit());
-      }),
-      head: AtomicUsize::new(0),
-      tail: AtomicUsize::new(0),
-    };
-  }
-
-  /// Attempt to enqueue a value.
-  ///
-  /// # Arguments
-  /// - `value`: The value to enqueue.
-  ///
-  /// # Returns
-  /// `Ok(())` when the value was enqueued. `Err(value)` when the queue is full.
-  fn push(&self, value: T) -> Result<(), T> {
-    let head = self.head.load(Ordering::Acquire);
-    let tail = self.tail.load(Ordering::Relaxed);
-
-    if tail.wrapping_sub(head) >= CAPACITY {
-      return Err(value);
-    }
-
-    let index = tail % CAPACITY;
-    let slot = self.buffer[index].get();
-    unsafe {
-      (&mut *slot).write(value);
-    }
-
-    self.tail.store(tail.wrapping_add(1), Ordering::Release);
-    return Ok(());
-  }
-
-  /// Attempt to dequeue a value.
-  ///
-  /// # Returns
-  /// `Some(value)` when a value is available, otherwise `None`.
-  fn pop(&self) -> Option<T> {
-    let tail = self.tail.load(Ordering::Acquire);
-    let head = self.head.load(Ordering::Relaxed);
-
-    if head == tail {
-      return None;
-    }
-
-    let index = head % CAPACITY;
-    let slot = self.buffer[index].get();
-    let value = unsafe { (&*slot).assume_init_read() };
-
-    self.head.store(head.wrapping_add(1), Ordering::Release);
-    return Some(value);
-  }
-}
-
-impl<T, const CAPACITY: usize> Drop for CommandQueue<T, CAPACITY> {
-  fn drop(&mut self) {
-    let tail = self.tail.load(Ordering::Relaxed);
-    let mut head = self.head.load(Ordering::Relaxed);
-
-    while head != tail {
-      let index = head % CAPACITY;
-      let slot = self.buffer[index].get();
-      unsafe {
-        std::ptr::drop_in_place((&mut *slot).as_mut_ptr());
-      }
-      head = head.wrapping_add(1);
-    }
-
-    return;
-  }
-}
 
 /// A linear gain ramp used to de-click transport transitions.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -287,27 +168,35 @@ impl PlaybackScheduler {
     return;
   }
 
-  /// Begin playback, or resume if paused.
+  /// Transition the scheduler to playing.
   ///
   /// # Returns
   /// `()` after updating the transport state.
   fn play(&mut self) {
+    if self.state == PlaybackState::Playing {
+      return;
+    }
+
     self.state = PlaybackState::Playing;
     self.gain.start(1.0, self.ramp_frames);
     return;
   }
 
-  /// Pause playback, preserving the current cursor.
+  /// Transition the scheduler to paused without resetting position.
   ///
   /// # Returns
   /// `()` after updating the transport state.
   fn pause(&mut self) {
+    if self.state != PlaybackState::Playing {
+      return;
+    }
+
     self.state = PlaybackState::Paused;
     self.gain.start(0.0, self.ramp_frames);
     return;
   }
 
-  /// Stop playback and reset the cursor to the start.
+  /// Stop playback and reset position to the start.
   ///
   /// # Returns
   /// `()` after updating the transport state.
@@ -360,13 +249,13 @@ impl PlaybackScheduler {
       return;
     }
 
-    if self.state != PlaybackState::Playing && self.gain.is_silent() {
-      writer.clear();
-      return;
-    }
-
     for frame_index in 0..frames {
       let frame_gain = self.gain.current;
+
+      if self.state != PlaybackState::Playing && self.gain.is_silent() {
+        writer.clear();
+        return;
+      }
 
       if self.state == PlaybackState::Playing {
         let Some(buffer) = self.buffer.as_ref() else {
@@ -422,128 +311,10 @@ impl PlaybackScheduler {
   }
 }
 
-/// Commands produced by `SoundInstance` transport operations.
-#[derive(Debug)]
-enum PlaybackCommand {
-  StopCurrent,
-  SetBuffer {
-    instance_id: u64,
-    buffer: Arc<SoundBuffer>,
-  },
-  SetLooping {
-    instance_id: u64,
-    looping: bool,
-  },
-  Play {
-    instance_id: u64,
-  },
-  Pause {
-    instance_id: u64,
-  },
-  Stop {
-    instance_id: u64,
-  },
-}
-
-type PlaybackCommandQueue =
-  CommandQueue<PlaybackCommand, PLAYBACK_COMMAND_CAPACITY>;
-
-/// Shared, queryable state for the active playback slot.
-struct PlaybackSharedState {
-  active_instance_id: AtomicU64,
-  state: AtomicU8,
-}
-
-impl PlaybackSharedState {
-  /// Create a new shared playback state initialized to `Stopped`.
-  ///
-  /// # Returns
-  /// A shared state container initialized to instance id `0` and `Stopped`.
-  fn new() -> Self {
-    return Self {
-      active_instance_id: AtomicU64::new(0),
-      state: AtomicU8::new(playback_state_to_u8(PlaybackState::Stopped)),
-    };
-  }
-
-  /// Set the active instance id.
-  ///
-  /// # Arguments
-  /// - `instance_id`: The active instance id.
-  ///
-  /// # Returns
-  /// `()` after updating the active instance id.
-  fn set_active_instance_id(&self, instance_id: u64) {
-    self
-      .active_instance_id
-      .store(instance_id, Ordering::Release);
-    return;
-  }
-
-  /// Return the active instance id.
-  ///
-  /// # Returns
-  /// The active instance id.
-  fn active_instance_id(&self) -> u64 {
-    return self.active_instance_id.load(Ordering::Acquire);
-  }
-
-  /// Set the observable playback state.
-  ///
-  /// # Arguments
-  /// - `state`: The state to store.
-  ///
-  /// # Returns
-  /// `()` after updating the stored state.
-  fn set_state(&self, state: PlaybackState) {
-    self
-      .state
-      .store(playback_state_to_u8(state), Ordering::Release);
-    return;
-  }
-
-  /// Return the observable playback state.
-  ///
-  /// # Returns
-  /// The stored playback state.
-  fn state(&self) -> PlaybackState {
-    let value = self.state.load(Ordering::Acquire);
-    return playback_state_from_u8(value);
-  }
-}
-
-fn playback_state_to_u8(state: PlaybackState) -> u8 {
-  match state {
-    PlaybackState::Stopped => {
-      return 0;
-    }
-    PlaybackState::Playing => {
-      return 1;
-    }
-    PlaybackState::Paused => {
-      return 2;
-    }
-  }
-}
-
-fn playback_state_from_u8(value: u8) -> PlaybackState {
-  match value {
-    1 => {
-      return PlaybackState::Playing;
-    }
-    2 => {
-      return PlaybackState::Paused;
-    }
-    _ => {
-      return PlaybackState::Stopped;
-    }
-  }
-}
-
 /// A callback-safe controller that drains transport commands and renders audio.
 ///
 /// This type is intended to be owned by the platform audio callback closure.
-struct PlaybackController<const COMMAND_CAPACITY: usize> {
+pub(super) struct PlaybackController<const COMMAND_CAPACITY: usize> {
   command_queue: Arc<CommandQueue<PlaybackCommand, COMMAND_CAPACITY>>,
   shared_state: Arc<PlaybackSharedState>,
   scheduler: PlaybackScheduler,
@@ -559,7 +330,7 @@ impl<const COMMAND_CAPACITY: usize> PlaybackController<COMMAND_CAPACITY> {
   /// # Returns
   /// A controller initialized to `Stopped` with no active buffer.
   #[allow(dead_code)]
-  fn new(
+  pub(super) fn new(
     channels: usize,
     command_queue: Arc<CommandQueue<PlaybackCommand, COMMAND_CAPACITY>>,
     shared_state: Arc<PlaybackSharedState>,
@@ -581,7 +352,7 @@ impl<const COMMAND_CAPACITY: usize> PlaybackController<COMMAND_CAPACITY> {
   ///
   /// # Returns
   /// A controller initialized to `Stopped` with no active buffer.
-  fn new_with_ramp_frames(
+  pub(super) fn new_with_ramp_frames(
     channels: usize,
     ramp_frames: usize,
     command_queue: Arc<CommandQueue<PlaybackCommand, COMMAND_CAPACITY>>,
@@ -660,7 +431,7 @@ impl<const COMMAND_CAPACITY: usize> PlaybackController<COMMAND_CAPACITY> {
   ///
   /// # Returns
   /// `()` after draining commands and writing the output buffer.
-  fn render(&mut self, writer: &mut dyn AudioOutputWriter) {
+  pub(super) fn render(&mut self, writer: &mut dyn AudioOutputWriter) {
     self.drain_commands();
     self.scheduler.render(writer);
     self.shared_state.set_state(self.scheduler.state());
@@ -668,409 +439,10 @@ impl<const COMMAND_CAPACITY: usize> PlaybackController<COMMAND_CAPACITY> {
   }
 }
 
-/// A queryable playback state for a `SoundInstance`.
-///
-/// This state is observable from the application thread and is intended to
-/// provide basic transport visibility.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PlaybackState {
-  /// The sound is currently playing.
-  Playing,
-  /// The sound is currently paused.
-  Paused,
-  /// The sound is stopped and positioned at the start.
-  Stopped,
-}
-
-/// A lightweight handle controlling the active sound playback slot.
-///
-/// Only the most recently returned `SoundInstance` for an `AudioContext` is
-/// considered active. Calls on inactive instances are no-ops and state queries
-/// report `Stopped`.
-pub struct SoundInstance {
-  instance_id: u64,
-  command_queue: Arc<PlaybackCommandQueue>,
-  shared_state: Arc<PlaybackSharedState>,
-}
-
-impl SoundInstance {
-  fn is_active(&self) -> bool {
-    return self.shared_state.active_instance_id() == self.instance_id;
-  }
-
-  /// Begin playback, or resume if paused.
-  ///
-  /// # Returns
-  /// `()` after updating the requested transport state.
-  pub fn play(&mut self) {
-    if !self.is_active() {
-      return;
-    }
-
-    let _result = self.command_queue.push(PlaybackCommand::Play {
-      instance_id: self.instance_id,
-    });
-    return;
-  }
-
-  /// Pause playback, preserving playback position.
-  ///
-  /// # Returns
-  /// `()` after updating the requested transport state.
-  pub fn pause(&mut self) {
-    if !self.is_active() {
-      return;
-    }
-
-    let _result = self.command_queue.push(PlaybackCommand::Pause {
-      instance_id: self.instance_id,
-    });
-    return;
-  }
-
-  /// Stop playback and reset position to the start of the buffer.
-  ///
-  /// # Returns
-  /// `()` after updating the requested transport state.
-  pub fn stop(&mut self) {
-    if !self.is_active() {
-      return;
-    }
-
-    let _result = self.command_queue.push(PlaybackCommand::Stop {
-      instance_id: self.instance_id,
-    });
-    return;
-  }
-
-  /// Enable or disable looping playback.
-  ///
-  /// # Arguments
-  /// - `looping`: Whether the sound should loop on completion.
-  ///
-  /// # Returns
-  /// `()` after updating the looping flag.
-  pub fn set_looping(&mut self, looping: bool) {
-    if !self.is_active() {
-      return;
-    }
-
-    let _result = self.command_queue.push(PlaybackCommand::SetLooping {
-      instance_id: self.instance_id,
-      looping,
-    });
-    return;
-  }
-
-  /// Query the current state of this instance.
-  ///
-  /// # Returns
-  /// The current transport state.
-  pub fn state(&self) -> PlaybackState {
-    if !self.is_active() {
-      return PlaybackState::Stopped;
-    }
-
-    return self.shared_state.state();
-  }
-
-  /// Convenience query for `state() == PlaybackState::Playing`.
-  ///
-  /// # Returns
-  /// `true` if the instance state is `Playing`.
-  pub fn is_playing(&self) -> bool {
-    return self.state() == PlaybackState::Playing;
-  }
-
-  /// Convenience query for `state() == PlaybackState::Paused`.
-  ///
-  /// # Returns
-  /// `true` if the instance state is `Paused`.
-  pub fn is_paused(&self) -> bool {
-    return self.state() == PlaybackState::Paused;
-  }
-
-  /// Convenience query for `state() == PlaybackState::Stopped`.
-  ///
-  /// # Returns
-  /// `true` if the instance state is `Stopped`.
-  pub fn is_stopped(&self) -> bool {
-    return self.state() == PlaybackState::Stopped;
-  }
-}
-
-/// A playback context owning an output device and one active playback slot.
-pub struct AudioContext {
-  _output_device: AudioOutputDevice,
-  command_queue: Arc<PlaybackCommandQueue>,
-  shared_state: Arc<PlaybackSharedState>,
-  next_instance_id: u64,
-  output_sample_rate: u32,
-  output_channels: u16,
-}
-
-/// Builder for creating an `AudioContext`.
-#[derive(Debug, Clone)]
-pub struct AudioContextBuilder {
-  sample_rate: Option<u32>,
-  channels: Option<u16>,
-  label: Option<String>,
-}
-
-impl AudioContextBuilder {
-  /// Create a builder with engine defaults.
-  ///
-  /// # Returns
-  /// A builder with no explicit configuration requests.
-  pub fn new() -> Self {
-    return Self {
-      sample_rate: None,
-      channels: None,
-      label: None,
-    };
-  }
-
-  /// Request an output sample rate.
-  ///
-  /// # Arguments
-  /// - `rate`: Requested output sample rate in frames per second.
-  ///
-  /// # Returns
-  /// The updated builder.
-  pub fn with_sample_rate(mut self, rate: u32) -> Self {
-    self.sample_rate = Some(rate);
-    return self;
-  }
-
-  /// Request an output channel count.
-  ///
-  /// # Arguments
-  /// - `channels`: Requested interleaved output channel count.
-  ///
-  /// # Returns
-  /// The updated builder.
-  pub fn with_channels(mut self, channels: u16) -> Self {
-    self.channels = Some(channels);
-    return self;
-  }
-
-  /// Attach a label for diagnostics.
-  ///
-  /// # Arguments
-  /// - `label`: A human-readable label used for diagnostics.
-  ///
-  /// # Returns
-  /// The updated builder.
-  pub fn with_label(mut self, label: &str) -> Self {
-    self.label = Some(label.to_string());
-    return self;
-  }
-
-  /// Build an `AudioContext` using the requested configuration.
-  ///
-  /// # Returns
-  /// An initialized audio context handle.
-  ///
-  /// # Errors
-  /// Returns an error if the output device cannot be initialized or if the
-  /// requested configuration is invalid or unsupported.
-  pub fn build(self) -> Result<AudioContext, AudioError> {
-    let sample_rate = self.sample_rate.unwrap_or(DEFAULT_OUTPUT_SAMPLE_RATE);
-    let channels = self.channels.unwrap_or(DEFAULT_OUTPUT_CHANNELS);
-
-    if channels as usize > MAX_PLAYBACK_CHANNELS {
-      return Err(AudioError::InvalidChannels {
-        requested: channels,
-      });
-    }
-
-    let command_queue: Arc<PlaybackCommandQueue> =
-      Arc::new(CommandQueue::new());
-    let shared_state = Arc::new(PlaybackSharedState::new());
-
-    let command_queue_for_callback = command_queue.clone();
-    let shared_state_for_callback = shared_state.clone();
-
-    let mut controller = PlaybackController::new_with_ramp_frames(
-      channels as usize,
-      DEFAULT_GAIN_RAMP_FRAMES,
-      command_queue_for_callback,
-      shared_state_for_callback,
-    );
-
-    let mut output_builder = AudioOutputDeviceBuilder::new()
-      .with_sample_rate(sample_rate)
-      .with_channels(channels);
-
-    if let Some(label) = self.label {
-      output_builder = output_builder.with_label(&label);
-    }
-
-    let output_device = output_builder.build_with_output_callback(
-      move |writer, callback_info| {
-        if callback_info.sample_rate != sample_rate
-          || callback_info.channels != channels
-        {
-          writer.clear();
-          return;
-        }
-
-        controller.render(writer);
-        return;
-      },
-    )?;
-
-    return Ok(AudioContext {
-      _output_device: output_device,
-      command_queue,
-      shared_state,
-      next_instance_id: 1,
-      output_sample_rate: sample_rate,
-      output_channels: channels,
-    });
-  }
-}
-
-impl Default for AudioContextBuilder {
-  fn default() -> Self {
-    return Self::new();
-  }
-}
-
-impl AudioContext {
-  /// Play a decoded `SoundBuffer` through this context.
-  ///
-  /// # Arguments
-  /// - `buffer`: The decoded sound buffer to schedule for playback.
-  ///
-  /// # Returns
-  /// A lightweight `SoundInstance` handle for controlling playback.
-  ///
-  /// # Errors
-  /// Returns [`AudioError::InvalidData`] when the sound buffer does not match
-  /// the output configuration, or when the buffer contains no samples. Returns
-  /// [`AudioError::Platform`] when the internal callback command queue is full.
-  pub fn play_sound(
-    &mut self,
-    buffer: &SoundBuffer,
-  ) -> Result<SoundInstance, AudioError> {
-    if buffer.sample_rate() != self.output_sample_rate {
-      return Err(AudioError::InvalidData {
-        details: format!(
-          "sound buffer sample rate did not match output (buffer_sample_rate={}, output_sample_rate={})",
-          buffer.sample_rate(),
-          self.output_sample_rate
-        ),
-      });
-    }
-
-    if buffer.channels() != self.output_channels {
-      return Err(AudioError::InvalidData {
-        details: format!(
-          "sound buffer channel count did not match output (buffer_channels={}, output_channels={})",
-          buffer.channels(),
-          self.output_channels
-        ),
-      });
-    }
-
-    if buffer.samples().is_empty() {
-      return Err(AudioError::InvalidData {
-        details: "sound buffer contained no samples".to_string(),
-      });
-    }
-
-    let instance_id = self.next_instance_id;
-    self.next_instance_id = self.next_instance_id.wrapping_add(1);
-    if self.next_instance_id == 0 {
-      self.next_instance_id = 1;
-    }
-
-    let previous_instance_id = self.shared_state.active_instance_id();
-    let previous_state = self.shared_state.state();
-    self.shared_state.set_active_instance_id(instance_id);
-    self.shared_state.set_state(PlaybackState::Stopped);
-
-    let shared_buffer = Arc::new(buffer.clone());
-
-    let _result = self.command_queue.push(PlaybackCommand::StopCurrent);
-
-    if self
-      .command_queue
-      .push(PlaybackCommand::SetBuffer {
-        instance_id,
-        buffer: shared_buffer,
-      })
-      .is_err()
-    {
-      self
-        .shared_state
-        .set_active_instance_id(previous_instance_id);
-      self.shared_state.set_state(previous_state);
-      return Err(AudioError::Platform {
-        details: "audio playback command queue was full (SetBuffer)"
-          .to_string(),
-      });
-    }
-
-    if self
-      .command_queue
-      .push(PlaybackCommand::Play { instance_id })
-      .is_err()
-    {
-      self
-        .shared_state
-        .set_active_instance_id(previous_instance_id);
-      self.shared_state.set_state(previous_state);
-      return Err(AudioError::Platform {
-        details: "audio playback command queue was full (Play)".to_string(),
-      });
-    }
-
-    self.shared_state.set_state(PlaybackState::Playing);
-
-    return Ok(SoundInstance {
-      instance_id,
-      command_queue: self.command_queue.clone(),
-      shared_state: self.shared_state.clone(),
-    });
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  /// Command queues MUST preserve FIFO ordering.
-  #[test]
-  fn command_queue_preserves_order() {
-    let queue: CommandQueue<u32, 8> = CommandQueue::new();
-
-    queue.push(1).unwrap();
-    queue.push(2).unwrap();
-    queue.push(3).unwrap();
-
-    assert_eq!(queue.pop(), Some(1));
-    assert_eq!(queue.pop(), Some(2));
-    assert_eq!(queue.pop(), Some(3));
-    assert_eq!(queue.pop(), None);
-    return;
-  }
-
-  /// Command queues MUST reject pushes when full.
-  #[test]
-  fn command_queue_rejects_when_full() {
-    let queue: CommandQueue<u32, 2> = CommandQueue::new();
-
-    assert!(queue.push(10).is_ok());
-    assert!(queue.push(11).is_ok());
-    assert!(matches!(queue.push(12), Err(12)));
-
-    assert_eq!(queue.pop(), Some(10));
-    assert_eq!(queue.pop(), Some(11));
-    assert_eq!(queue.pop(), None);
-    return;
-  }
+  use crate::audio::SoundBuffer;
 
   struct TestAudioOutput {
     channels: u16,
@@ -1334,44 +706,6 @@ mod tests {
     let mut writer = TestAudioOutput::new(1, 1);
     controller.render(&mut writer);
     assert!(writer.max_abs() <= f32::EPSILON);
-    return;
-  }
-
-  /// `SoundInstance` methods MUST be no-ops when the instance is inactive.
-  #[test]
-  fn sound_instance_is_no_op_when_inactive() {
-    let command_queue: Arc<PlaybackCommandQueue> =
-      Arc::new(CommandQueue::new());
-    let shared_state = Arc::new(PlaybackSharedState::new());
-
-    shared_state.set_active_instance_id(1);
-    shared_state.set_state(PlaybackState::Playing);
-
-    let mut instance = SoundInstance {
-      instance_id: 1,
-      command_queue: command_queue.clone(),
-      shared_state: shared_state.clone(),
-    };
-
-    assert_eq!(instance.state(), PlaybackState::Playing);
-    assert!(instance.is_playing());
-    assert!(!instance.is_paused());
-    assert!(!instance.is_stopped());
-
-    shared_state.set_active_instance_id(2);
-    shared_state.set_state(PlaybackState::Paused);
-
-    assert_eq!(instance.state(), PlaybackState::Stopped);
-    assert!(!instance.is_playing());
-    assert!(!instance.is_paused());
-    assert!(instance.is_stopped());
-
-    instance.play();
-    instance.pause();
-    instance.stop();
-    instance.set_looping(true);
-
-    assert!(command_queue.pop().is_none());
     return;
   }
 }
