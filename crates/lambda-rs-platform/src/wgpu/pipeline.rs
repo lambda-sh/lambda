@@ -826,6 +826,23 @@ mod tests {
       BlendMode::PremultipliedAlpha.to_wgpu(),
       Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING)
     );
+    assert_eq!(
+      BlendMode::Additive.to_wgpu(),
+      Some(wgpu::BlendState {
+        color: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::One,
+          dst_factor: wgpu::BlendFactor::One,
+          operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::One,
+          dst_factor: wgpu::BlendFactor::One,
+          operation: wgpu::BlendOperation::Add,
+        },
+      })
+    );
+    let custom = wgpu::BlendState::ALPHA_BLENDING;
+    assert_eq!(BlendMode::Custom(custom).to_wgpu(), Some(custom));
     assert_eq!(BlendMode::None.to_wgpu(), None);
   }
 }
