@@ -415,4 +415,112 @@ mod tests {
     assert!(command_queue.pop().is_none());
     return;
   }
+
+  /// `SoundInstance` MUST enqueue commands when it is the active instance.
+  #[test]
+  fn sound_instance_enqueues_commands_when_active() {
+    let command_queue: Arc<PlaybackCommandQueue> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+
+    shared_state.set_active_instance_id(7);
+    shared_state.set_state(PlaybackState::Stopped);
+
+    let mut instance = SoundInstance {
+      instance_id: 7,
+      command_queue: command_queue.clone(),
+      shared_state: shared_state.clone(),
+    };
+
+    instance.play();
+    instance.pause();
+    instance.set_looping(true);
+    instance.stop();
+
+    assert!(matches!(
+      command_queue.pop(),
+      Some(PlaybackCommand::Play { instance_id: 7 })
+    ));
+    assert!(matches!(
+      command_queue.pop(),
+      Some(PlaybackCommand::Pause { instance_id: 7 })
+    ));
+    assert!(matches!(
+      command_queue.pop(),
+      Some(PlaybackCommand::SetLooping {
+        instance_id: 7,
+        looping: true
+      })
+    ));
+    assert!(matches!(
+      command_queue.pop(),
+      Some(PlaybackCommand::Stop { instance_id: 7 })
+    ));
+    assert!(command_queue.pop().is_none());
+    return;
+  }
+
+  /// `SoundInstance` state queries MUST reflect the shared state when active.
+  #[test]
+  fn sound_instance_state_follows_shared_state_when_active() {
+    let command_queue: Arc<PlaybackCommandQueue> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+
+    shared_state.set_active_instance_id(1);
+
+    let instance = SoundInstance {
+      instance_id: 1,
+      command_queue,
+      shared_state: shared_state.clone(),
+    };
+
+    shared_state.set_state(PlaybackState::Stopped);
+    assert_eq!(instance.state(), PlaybackState::Stopped);
+    assert!(instance.is_stopped());
+    assert!(!instance.is_playing());
+    assert!(!instance.is_paused());
+
+    shared_state.set_state(PlaybackState::Playing);
+    assert_eq!(instance.state(), PlaybackState::Playing);
+    assert!(instance.is_playing());
+    assert!(!instance.is_paused());
+    assert!(!instance.is_stopped());
+
+    shared_state.set_state(PlaybackState::Paused);
+    assert_eq!(instance.state(), PlaybackState::Paused);
+    assert!(!instance.is_playing());
+    assert!(instance.is_paused());
+    assert!(!instance.is_stopped());
+    return;
+  }
+
+  /// The builder MUST reject unsupported channel counts before device init.
+  #[test]
+  fn audio_context_builder_rejects_too_many_channels() {
+    let result = AudioContextBuilder::new()
+      .with_channels((MAX_PLAYBACK_CHANNELS + 1) as u16)
+      .build();
+
+    assert!(matches!(
+      result,
+      Err(AudioError::InvalidChannels { requested })
+        if requested == (MAX_PLAYBACK_CHANNELS + 1) as u16
+    ));
+    return;
+  }
+
+  /// Builder configuration MUST store requested fields.
+  #[test]
+  fn audio_context_builder_stores_configuration() {
+    let builder = AudioContextBuilder::new()
+      .with_sample_rate(48_000)
+      .with_channels(2)
+      .with_label("test-context");
+
+    assert_eq!(builder.sample_rate, Some(48_000));
+    assert_eq!(builder.channels, Some(2));
+    assert_eq!(builder.label.as_deref(), Some("test-context"));
+    return;
+  }
 }
