@@ -75,6 +75,52 @@ impl CullingMode {
   }
 }
 
+/// Blend mode for the (single) color target.
+///
+/// Notes
+/// - Most pipelines are opaque and should use `BlendMode::None` for best
+///   performance, especially on tile-based GPUs.
+/// - This is currently a single blend state for a single color attachment.
+///   Per-attachment blending for MRT is future work.
+#[derive(Clone, Copy, Debug)]
+pub enum BlendMode {
+  /// No blending; replace destination (default).
+  None,
+  /// Standard alpha blending (`src_alpha`, `one_minus_src_alpha`).
+  AlphaBlending,
+  /// Premultiplied alpha blending.
+  PremultipliedAlpha,
+  /// Additive blending (`one`, `one`).
+  Additive,
+  /// Custom blend state.
+  Custom(wgpu::BlendState),
+}
+
+impl BlendMode {
+  fn to_wgpu(self) -> Option<wgpu::BlendState> {
+    return match self {
+      BlendMode::None => None,
+      BlendMode::AlphaBlending => Some(wgpu::BlendState::ALPHA_BLENDING),
+      BlendMode::PremultipliedAlpha => {
+        Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING)
+      }
+      BlendMode::Additive => Some(wgpu::BlendState {
+        color: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::One,
+          dst_factor: wgpu::BlendFactor::One,
+          operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::One,
+          dst_factor: wgpu::BlendFactor::One,
+          operation: wgpu::BlendOperation::Add,
+        },
+      }),
+      BlendMode::Custom(state) => Some(state),
+    };
+  }
+}
+
 /// Description of a single vertex attribute used by a pipeline.
 #[derive(Clone, Copy, Debug)]
 pub struct VertexAttributeDesc {
@@ -488,6 +534,7 @@ pub struct RenderPipelineBuilder<'a> {
   vertex_buffers: Vec<VertexBufferLayoutDesc>,
   cull_mode: CullingMode,
   color_target_format: Option<wgpu::TextureFormat>,
+  blend_mode: BlendMode,
   depth_stencil: Option<wgpu::DepthStencilState>,
   sample_count: u32,
 }
@@ -507,6 +554,7 @@ impl<'a> RenderPipelineBuilder<'a> {
       vertex_buffers: Vec::new(),
       cull_mode: CullingMode::Back,
       color_target_format: None,
+      blend_mode: BlendMode::None,
       depth_stencil: None,
       sample_count: 1,
     };
@@ -562,6 +610,12 @@ impl<'a> RenderPipelineBuilder<'a> {
   /// Set single color target for fragment stage from a texture format.
   pub fn with_color_target(mut self, format: TextureFormat) -> Self {
     self.color_target_format = Some(format.to_wgpu());
+    return self;
+  }
+
+  /// Set the blend mode for the color target. Defaults to `BlendMode::None`.
+  pub fn with_blend(mut self, mode: BlendMode) -> Self {
+    self.blend_mode = mode;
     return self;
   }
 
@@ -672,7 +726,7 @@ impl<'a> RenderPipelineBuilder<'a> {
       match &self.color_target_format {
         Some(fmt) => vec![Some(wgpu::ColorTargetState {
           format: *fmt,
-          blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+          blend: self.blend_mode.to_wgpu(),
           write_mask: wgpu::ColorWrites::ALL,
         })],
         None => Vec::new(),
@@ -754,5 +808,41 @@ mod tests {
       vertex_buffers[0].step_mode,
       VertexStepMode::Vertex
     ));
+  }
+
+  #[test]
+  fn render_pipeline_builder_defaults_to_no_blending() {
+    let builder = RenderPipelineBuilder::new();
+    assert!(matches!(builder.blend_mode, BlendMode::None));
+  }
+
+  #[test]
+  fn blend_mode_maps_to_wgpu_blend_state() {
+    assert_eq!(
+      BlendMode::AlphaBlending.to_wgpu(),
+      Some(wgpu::BlendState::ALPHA_BLENDING)
+    );
+    assert_eq!(
+      BlendMode::PremultipliedAlpha.to_wgpu(),
+      Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING)
+    );
+    assert_eq!(
+      BlendMode::Additive.to_wgpu(),
+      Some(wgpu::BlendState {
+        color: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::One,
+          dst_factor: wgpu::BlendFactor::One,
+          operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::One,
+          dst_factor: wgpu::BlendFactor::One,
+          operation: wgpu::BlendOperation::Add,
+        },
+      })
+    );
+    let custom = wgpu::BlendState::ALPHA_BLENDING;
+    assert_eq!(BlendMode::Custom(custom).to_wgpu(), Some(custom));
+    assert_eq!(BlendMode::None.to_wgpu(), None);
   }
 }

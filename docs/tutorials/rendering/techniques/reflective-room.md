@@ -300,6 +300,7 @@ Draw the floor surface with a translucent tint so the reflection remains visible
 ```rust
 let mut floor_vis = RenderPipelineBuilder::new()
   .with_label("floor-visual")
+  .with_blend(lambda::render::pipeline::BlendMode::AlphaBlending)
   .with_immediate_data(std::mem::size_of::<ImmediateData>() as u32)
   .with_buffer(floor_vertex_buffer, floor_attributes)
   .with_multi_sample(msaa_samples);

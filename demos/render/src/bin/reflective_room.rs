@@ -35,6 +35,7 @@ use lambda::{
       MeshBuilder,
     },
     pipeline::{
+      BlendMode,
       CompareFunction,
       CullingMode,
       RenderPipelineBuilder,
@@ -722,6 +723,7 @@ impl ReflectiveRoomExample {
     let mut floor_builder = RenderPipelineBuilder::new()
       .with_label("floor-visual")
       .with_culling(CullingMode::Back)
+      .with_blend(BlendMode::AlphaBlending)
       .with_immediate_data(immediate_data_size)
       .with_buffer(
         BufferBuilder::new()

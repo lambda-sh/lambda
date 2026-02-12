@@ -119,6 +119,38 @@ impl RenderPipeline {
 /// though wgpu v28 immediates no longer use stage-scoped updates.
 pub use platform_pipeline::PipelineStage;
 
+/// Blend mode for the pipeline's (single) color target.
+///
+/// Notes
+/// - Defaults to `BlendMode::None` (opaque/replace). Opt in to blending for
+///   transparent geometry.
+/// - This is currently a single blend state for a single color attachment.
+///   Per-attachment blending for MRT is future work.
+#[derive(Clone, Copy, Debug)]
+pub enum BlendMode {
+  /// No blending; replace destination (default).
+  None,
+  /// Standard alpha blending.
+  AlphaBlending,
+  /// Premultiplied alpha blending.
+  PremultipliedAlpha,
+  /// Additive blending.
+  Additive,
+}
+
+impl BlendMode {
+  fn to_platform(self) -> platform_pipeline::BlendMode {
+    return match self {
+      BlendMode::None => platform_pipeline::BlendMode::None,
+      BlendMode::AlphaBlending => platform_pipeline::BlendMode::AlphaBlending,
+      BlendMode::PremultipliedAlpha => {
+        platform_pipeline::BlendMode::PremultipliedAlpha
+      }
+      BlendMode::Additive => platform_pipeline::BlendMode::Additive,
+    };
+  }
+}
+
 struct BufferBinding {
   buffer: Rc<Buffer>,
   layout: VertexBufferLayout,
@@ -260,6 +292,7 @@ pub struct RenderPipelineBuilder {
   immediate_data: Vec<std::ops::Range<u32>>,
   bindings: Vec<BufferBinding>,
   culling: CullingMode,
+  blend_mode: BlendMode,
   bind_group_layouts: Vec<bind::BindGroupLayout>,
   label: Option<String>,
   use_depth: bool,
@@ -283,6 +316,7 @@ impl RenderPipelineBuilder {
       immediate_data: Vec::new(),
       bindings: Vec::new(),
       culling: CullingMode::Back,
+      blend_mode: BlendMode::None,
       bind_group_layouts: Vec::new(),
       label: None,
       use_depth: false,
@@ -369,6 +403,14 @@ impl RenderPipelineBuilder {
   /// Configure triangle face culling. Defaults to culling back faces.
   pub fn with_culling(mut self, mode: CullingMode) -> Self {
     self.culling = mode;
+    return self;
+  }
+
+  /// Configure blending for the pipeline's color target.
+  ///
+  /// Defaults to `BlendMode::None` (opaque).
+  pub fn with_blend(mut self, mode: BlendMode) -> Self {
+    self.blend_mode = mode;
     return self;
   }
 
@@ -548,7 +590,8 @@ impl RenderPipelineBuilder {
     let mut rp_builder = platform_pipeline::RenderPipelineBuilder::new()
       .with_label(self.label.as_deref().unwrap_or("lambda-render-pipeline"))
       .with_layout(&pipeline_layout)
-      .with_cull_mode(self.culling.to_platform());
+      .with_cull_mode(self.culling.to_platform())
+      .with_blend(self.blend_mode.to_platform());
 
     for binding in &self.bindings {
       let attributes: Vec<platform_pipeline::VertexAttributeDesc> = binding
@@ -731,6 +774,30 @@ mod tests {
     assert!(matches!(
       CullingMode::Back.to_platform(),
       platform_pipeline::CullingMode::Back
+    ));
+  }
+
+  /// Ensures blend modes default to `None` and map to platform blend modes.
+  #[test]
+  fn blend_mode_defaults_and_maps_to_platform() {
+    let builder = RenderPipelineBuilder::new();
+    assert!(matches!(builder.blend_mode, BlendMode::None));
+
+    assert!(matches!(
+      BlendMode::None.to_platform(),
+      platform_pipeline::BlendMode::None
+    ));
+    assert!(matches!(
+      BlendMode::AlphaBlending.to_platform(),
+      platform_pipeline::BlendMode::AlphaBlending
+    ));
+    assert!(matches!(
+      BlendMode::PremultipliedAlpha.to_platform(),
+      platform_pipeline::BlendMode::PremultipliedAlpha
+    ));
+    assert!(matches!(
+      BlendMode::Additive.to_platform(),
+      platform_pipeline::BlendMode::Additive
     ));
   }
 
