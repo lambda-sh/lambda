@@ -27,3 +27,8 @@ pub mod devices;
 
 #[cfg(feature = "audio-output-device")]
 pub use devices::output::*;
+
+#[cfg(feature = "audio-playback")]
+mod playback;
+#[cfg(feature = "audio-playback")]
+pub use playback::*;

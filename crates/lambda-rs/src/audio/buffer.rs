@@ -1,6 +1,9 @@
 #![allow(clippy::needless_return)]
 
-use std::path::Path;
+use std::{
+  path::Path,
+  sync::Arc,
+};
 
 use crate::audio::AudioError;
 
@@ -8,7 +11,7 @@ use crate::audio::AudioError;
 /// playback.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SoundBuffer {
-  samples: Vec<f32>,
+  samples: Arc<[f32]>,
   sample_rate: u32,
   channels: u16,
 }
@@ -139,9 +142,57 @@ impl SoundBuffer {
     }
 
     return Ok(Self {
-      samples: decoded.samples,
+      samples: decoded.samples.into(),
       sample_rate: decoded.sample_rate,
       channels: decoded.channels,
+    });
+  }
+
+  /// Construct a `SoundBuffer` from interleaved samples for unit tests.
+  ///
+  /// # Arguments
+  /// - `samples`: Interleaved samples, `frames * channels` in length.
+  /// - `sample_rate`: Sample rate in Hz.
+  /// - `channels`: Interleaved channel count.
+  ///
+  /// # Returns
+  /// A validated `SoundBuffer` constructed from the provided samples.
+  ///
+  /// # Errors
+  /// Returns [`AudioError::InvalidData`] when the metadata is invalid or when
+  /// the sample vector length is not a multiple of `channels`.
+  #[cfg(test)]
+  pub(crate) fn from_interleaved_samples_for_test(
+    samples: Vec<f32>,
+    sample_rate: u32,
+    channels: u16,
+  ) -> Result<Self, AudioError> {
+    if sample_rate == 0 {
+      return Err(AudioError::InvalidData {
+        details: "test sound buffer sample rate was 0".to_string(),
+      });
+    }
+
+    if channels == 0 {
+      return Err(AudioError::InvalidData {
+        details: "test sound buffer channel count was 0".to_string(),
+      });
+    }
+
+    if !samples.len().is_multiple_of(channels as usize) {
+      return Err(AudioError::InvalidData {
+        details: format!(
+          "test sound buffer sample length was not divisible by channels (samples={}, channels={})",
+          samples.len(),
+          channels
+        ),
+      });
+    }
+
+    return Ok(Self {
+      samples: samples.into(),
+      sample_rate,
+      channels,
     });
   }
 
@@ -166,7 +217,7 @@ impl SoundBuffer {
   /// # Returns
   /// A slice of interleaved samples.
   pub fn samples(&self) -> &[f32] {
-    return self.samples.as_slice();
+    return self.samples.as_ref();
   }
 
   /// Return the number of frames in this buffer.
@@ -233,7 +284,7 @@ mod tests {
   #[test]
   fn duration_seconds_computes_expected_value() {
     let buffer = SoundBuffer {
-      samples: vec![0.0; 48000],
+      samples: vec![0.0; 48000].into(),
       sample_rate: 48000,
       channels: 1,
     };
@@ -246,7 +297,7 @@ mod tests {
   #[test]
   fn frames_returns_zero_when_channels_is_zero() {
     let buffer = SoundBuffer {
-      samples: vec![0.0, 0.0],
+      samples: vec![0.0, 0.0].into(),
       sample_rate: 48_000,
       channels: 0,
     };

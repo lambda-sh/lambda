@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-02-06T23:33:29Z"
-version: "0.1.14"
+last_updated: "2026-02-10T00:00:00Z"
+version: "0.1.15"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "d9ae52363df035954079bf2ebdc194d18281862d"
+repo_commit: "fa36b760348f7b4a924220885fa88684bded03f6"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo", "audio", "physics"]
@@ -62,7 +62,7 @@ Rendering backends
 Audio
 - `audio` (umbrella, disabled by default): enables audio support by composing
   granular audio features. This umbrella includes `audio-output-device` and
-  `audio-sound-buffer`.
+  `audio-sound-buffer`, and `audio-playback`.
 - `audio-output-device` (granular, disabled by default): enables audio output
   device enumeration and callback-based audio output via `lambda::audio`. This
   feature enables `lambda-rs-platform/audio-device` internally. Expected
@@ -73,6 +73,11 @@ Audio
   `lambda::audio::SoundBuffer` loading APIs by composing the granular decode
   features below. This umbrella has no runtime cost unless a sound file is
   decoded and loaded into memory.
+- `audio-playback` (granular, disabled by default): enables single-sound
+  playback through an `AudioContext` with basic transport controls
+  (`SoundInstance::{play,pause,stop}`), state queries, and looping. This
+  feature composes `audio-output-device` and `audio-sound-buffer` and has no
+  runtime cost unless an `AudioContext` is built and kept alive.
 - `audio-sound-buffer-wav` (granular, disabled by default): enables WAV decode
   support for `SoundBuffer`. This feature enables
   `lambda-rs-platform/audio-decode-wav` internally. Runtime cost is incurred at
@@ -168,6 +173,8 @@ Physics
   depend on `rapier2d` directly via this crate.
 
 ## Changelog
+- 0.1.15 (2026-02-10): Document `audio-playback` in `lambda-rs` and update
+  metadata.
 - 0.1.14 (2026-02-06): Document 2D physics feature flags in `lambda-rs` and
   `lambda-rs-platform`.
 - 0.1.13 (2026-02-02): Document `SoundBuffer` decode features for WAV and OGG
