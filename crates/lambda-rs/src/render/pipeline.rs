@@ -777,6 +777,30 @@ mod tests {
     ));
   }
 
+  /// Ensures blend modes default to `None` and map to platform blend modes.
+  #[test]
+  fn blend_mode_defaults_and_maps_to_platform() {
+    let builder = RenderPipelineBuilder::new();
+    assert!(matches!(builder.blend_mode, BlendMode::None));
+
+    assert!(matches!(
+      BlendMode::None.to_platform(),
+      platform_pipeline::BlendMode::None
+    ));
+    assert!(matches!(
+      BlendMode::AlphaBlending.to_platform(),
+      platform_pipeline::BlendMode::AlphaBlending
+    ));
+    assert!(matches!(
+      BlendMode::PremultipliedAlpha.to_platform(),
+      platform_pipeline::BlendMode::PremultipliedAlpha
+    ));
+    assert!(matches!(
+      BlendMode::Additive.to_platform(),
+      platform_pipeline::BlendMode::Additive
+    ));
+  }
+
   /// Ensures invalid MSAA sample counts are clamped/fallen back to `1`.
   #[test]
   fn pipeline_builder_invalid_sample_count_falls_back_to_one() {
