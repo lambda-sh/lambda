@@ -138,7 +138,7 @@ impl SoundInstance {
 
 /// A playback context owning an output device and one active playback slot.
 pub struct AudioContext {
-  _output_device: AudioOutputDevice,
+  _output_device: Option<AudioOutputDevice>,
   command_queue: Arc<PlaybackCommandQueue>,
   shared_state: Arc<PlaybackSharedState>,
   next_instance_id: u64,
@@ -258,7 +258,7 @@ impl AudioContextBuilder {
     )?;
 
     return Ok(AudioContext {
-      _output_device: output_device,
+      _output_device: Some(output_device),
       command_queue,
       shared_state,
       next_instance_id: 1,
@@ -377,6 +377,37 @@ impl AudioContext {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  fn create_test_context(sample_rate: u32, channels: u16) -> AudioContext {
+    return AudioContext {
+      _output_device: None,
+      command_queue: Arc::new(CommandQueue::new()),
+      shared_state: Arc::new(PlaybackSharedState::new()),
+      next_instance_id: 1,
+      output_sample_rate: sample_rate,
+      output_channels: channels,
+    };
+  }
+
+  fn create_test_sound_buffer(
+    sample_rate: u32,
+    channels: u16,
+    frames: usize,
+  ) -> SoundBuffer {
+    let sample_count = frames * channels as usize;
+    let samples = vec![0.0; sample_count];
+    return SoundBuffer::from_interleaved_samples_for_test(
+      samples,
+      sample_rate,
+      channels,
+    )
+    .expect("test sound buffer must be valid");
+  }
+
+  fn fill_command_queue(queue: &PlaybackCommandQueue) {
+    while queue.push(PlaybackCommand::StopCurrent).is_ok() {}
+    return;
+  }
 
   /// `SoundInstance` methods MUST be no-ops when the instance is inactive.
   #[test]
@@ -521,6 +552,163 @@ mod tests {
     assert_eq!(builder.sample_rate, Some(48_000));
     assert_eq!(builder.channels, Some(2));
     assert_eq!(builder.label.as_deref(), Some("test-context"));
+    return;
+  }
+
+  /// The builder MUST reject invalid sample rates before device selection.
+  #[test]
+  fn audio_context_builder_rejects_invalid_sample_rate() {
+    let result = AudioContextBuilder::new().with_sample_rate(0).build();
+    assert!(matches!(
+      result,
+      Err(AudioError::InvalidSampleRate { requested: 0 })
+    ));
+    return;
+  }
+
+  /// The builder MUST reject invalid channel counts before device selection.
+  #[test]
+  fn audio_context_builder_rejects_invalid_channels() {
+    let result = AudioContextBuilder::new().with_channels(0).build();
+    assert!(matches!(
+      result,
+      Err(AudioError::InvalidChannels { requested: 0 })
+    ));
+    return;
+  }
+
+  /// `play_sound` MUST reject sound buffers with mismatched sample rates.
+  #[test]
+  fn play_sound_rejects_sample_rate_mismatch() {
+    let mut context = create_test_context(48_000, 2);
+    let buffer = create_test_sound_buffer(44_100, 2, 4);
+
+    let result = context.play_sound(&buffer);
+    assert!(matches!(result, Err(AudioError::InvalidData { .. })));
+
+    assert!(context.command_queue.pop().is_none());
+    assert_eq!(context.shared_state.active_instance_id(), 0);
+    assert_eq!(context.shared_state.state(), PlaybackState::Stopped);
+    return;
+  }
+
+  /// `play_sound` MUST reject sound buffers with mismatched channel counts.
+  #[test]
+  fn play_sound_rejects_channel_mismatch() {
+    let mut context = create_test_context(48_000, 2);
+    let buffer = create_test_sound_buffer(48_000, 1, 4);
+
+    let result = context.play_sound(&buffer);
+    assert!(matches!(result, Err(AudioError::InvalidData { .. })));
+
+    assert!(context.command_queue.pop().is_none());
+    assert_eq!(context.shared_state.active_instance_id(), 0);
+    assert_eq!(context.shared_state.state(), PlaybackState::Stopped);
+    return;
+  }
+
+  /// `play_sound` MUST reject empty sound buffers.
+  #[test]
+  fn play_sound_rejects_empty_samples() {
+    let mut context = create_test_context(48_000, 2);
+    let buffer = create_test_sound_buffer(48_000, 2, 0 /* frames */);
+
+    let result = context.play_sound(&buffer);
+    assert!(matches!(result, Err(AudioError::InvalidData { .. })));
+
+    assert!(context.command_queue.pop().is_none());
+    assert_eq!(context.shared_state.active_instance_id(), 0);
+    assert_eq!(context.shared_state.state(), PlaybackState::Stopped);
+    return;
+  }
+
+  /// `play_sound` MUST schedule stop, buffer, then play commands.
+  #[test]
+  fn play_sound_enqueues_commands_and_updates_state() {
+    let mut context = create_test_context(48_000, 2);
+    let buffer = create_test_sound_buffer(48_000, 2, 4);
+
+    let instance = context.play_sound(&buffer).expect("must play sound");
+    assert_eq!(instance.instance_id, 1);
+    assert_eq!(context.shared_state.active_instance_id(), 1);
+    assert_eq!(context.shared_state.state(), PlaybackState::Playing);
+    assert_eq!(instance.state(), PlaybackState::Playing);
+
+    assert!(matches!(
+      context.command_queue.pop(),
+      Some(PlaybackCommand::StopCurrent)
+    ));
+    match context.command_queue.pop() {
+      Some(PlaybackCommand::SetBuffer {
+        instance_id,
+        buffer: scheduled_buffer,
+      }) => {
+        assert_eq!(instance_id, 1);
+        assert_eq!(scheduled_buffer.as_ref(), &buffer);
+      }
+      other => {
+        panic!("expected SetBuffer command, got {other:?}");
+      }
+    }
+    assert!(matches!(
+      context.command_queue.pop(),
+      Some(PlaybackCommand::Play { instance_id: 1 })
+    ));
+    assert!(context.command_queue.pop().is_none());
+    return;
+  }
+
+  /// `play_sound` MUST restore previous state when the queue is full.
+  #[test]
+  fn play_sound_restores_state_when_queue_full_for_set_buffer() {
+    let mut context = create_test_context(48_000, 2);
+    let buffer = create_test_sound_buffer(48_000, 2, 4);
+
+    context.shared_state.set_active_instance_id(9);
+    context.shared_state.set_state(PlaybackState::Paused);
+
+    fill_command_queue(&context.command_queue);
+
+    let result = context.play_sound(&buffer);
+    assert!(matches!(result, Err(AudioError::Platform { .. })));
+
+    assert_eq!(context.shared_state.active_instance_id(), 9);
+    assert_eq!(context.shared_state.state(), PlaybackState::Paused);
+    return;
+  }
+
+  /// `play_sound` MUST restore previous state when play cannot be enqueued.
+  #[test]
+  fn play_sound_restores_state_when_queue_full_for_play() {
+    let mut context = create_test_context(48_000, 2);
+    let buffer = create_test_sound_buffer(48_000, 2, 4);
+
+    context.shared_state.set_active_instance_id(3);
+    context.shared_state.set_state(PlaybackState::Paused);
+
+    fill_command_queue(&context.command_queue);
+    let _first_popped = context.command_queue.pop();
+    let _second_popped = context.command_queue.pop();
+
+    let result = context.play_sound(&buffer);
+    assert!(matches!(result, Err(AudioError::Platform { .. })));
+
+    assert_eq!(context.shared_state.active_instance_id(), 3);
+    assert_eq!(context.shared_state.state(), PlaybackState::Paused);
+    return;
+  }
+
+  /// Instance ids MUST wrap without using id `0`.
+  #[test]
+  fn play_sound_instance_id_wraps_to_one() {
+    let mut context = create_test_context(48_000, 2);
+    context.next_instance_id = u64::MAX;
+
+    let buffer = create_test_sound_buffer(48_000, 2, 4);
+
+    let instance = context.play_sound(&buffer).expect("must play sound");
+    assert_eq!(instance.instance_id, u64::MAX);
+    assert_eq!(context.next_instance_id, 1);
     return;
   }
 }
