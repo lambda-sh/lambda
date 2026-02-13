@@ -22,7 +22,7 @@ repos:
         name: Linting for lambda-rs & tools.
         types: [rust]
       - id: clippy
-        entry: rustup run nightly cargo clippy --workspace --all-targets -- -D warnings
+        entry: cargo clippy --workspace --all-targets -- -D warnings
         language: system
         name: Clippy for lambda-rs & tools.
         pass_filenames: false

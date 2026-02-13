@@ -6,17 +6,33 @@
 use std::{
   error::Error,
   fmt,
+  sync::atomic::{
+    AtomicU32,
+    Ordering,
+  },
 };
 
 use lambda_platform::physics::PhysicsBackend2D;
+
+mod rigid_body_2d;
+
+pub use rigid_body_2d::{
+  RigidBody2D,
+  RigidBody2DBuilder,
+  RigidBody2DError,
+  RigidBodyType,
+};
 
 const DEFAULT_GRAVITY_X: f32 = 0.0;
 const DEFAULT_GRAVITY_Y: f32 = -9.81;
 const DEFAULT_TIMESTEP_SECONDS: f32 = 1.0 / 60.0;
 const DEFAULT_SUBSTEPS: u32 = 1;
 
+static NEXT_WORLD_ID: AtomicU32 = AtomicU32::new(1);
+
 /// A 2D physics simulation world.
 pub struct PhysicsWorld2D {
+  world_id: u32,
   gravity: [f32; 2],
   timestep_seconds: f32,
   substeps: u32,
@@ -136,8 +152,10 @@ impl PhysicsWorld2DBuilder {
     validate_timestep_seconds(substep_timestep_seconds)?;
 
     let backend = PhysicsBackend2D::new(self.gravity, substep_timestep_seconds);
+    let world_id = allocate_world_id();
 
     return Ok(PhysicsWorld2D {
+      world_id,
       gravity: self.gravity,
       timestep_seconds: self.timestep_seconds,
       substeps: self.substeps,
@@ -213,6 +231,15 @@ fn validate_gravity(gravity: [f32; 2]) -> Result<(), PhysicsWorld2DError> {
   }
 
   return Ok(());
+}
+
+fn allocate_world_id() -> u32 {
+  loop {
+    let id = NEXT_WORLD_ID.fetch_add(1, Ordering::Relaxed);
+    if id != 0 {
+      return id;
+    }
+  }
 }
 
 #[cfg(test)]
