@@ -8,6 +8,11 @@ use std::{
   fmt,
 };
 
+use lambda_platform::physics::{
+  RigidBody2DBackendError,
+  RigidBodyType2D,
+};
+
 use super::PhysicsWorld2D;
 
 const DEFAULT_POSITION_X: f32 = 0.0;
@@ -354,10 +359,22 @@ impl RigidBody2DBuilder {
 
     validate_dynamic_mass_for_body_type(self.body_type, self.dynamic_mass_kg)?;
 
+    let backend_body_type = map_body_type_to_backend(self.body_type);
+    let (slot_index, slot_generation) = world
+      .backend
+      .create_rigid_body_2d(
+        backend_body_type,
+        self.position,
+        self.rotation,
+        self.velocity,
+        self.dynamic_mass_kg,
+      )
+      .map_err(map_backend_error)?;
+
     return Ok(RigidBody2D {
       world_id: world.world_id,
-      slot_index: 0,
-      slot_generation: 0,
+      slot_index,
+      slot_generation,
     });
   }
 }
@@ -488,5 +505,129 @@ fn validate_dynamic_mass_for_body_type(
     RigidBodyType::Static | RigidBodyType::Kinematic => {
       return Err(RigidBody2DError::UnsupportedOperation { body_type });
     }
+  }
+}
+
+fn map_body_type_to_backend(body_type: RigidBodyType) -> RigidBodyType2D {
+  match body_type {
+    RigidBodyType::Static => {
+      return RigidBodyType2D::Static;
+    }
+    RigidBodyType::Dynamic => {
+      return RigidBodyType2D::Dynamic;
+    }
+    RigidBodyType::Kinematic => {
+      return RigidBodyType2D::Kinematic;
+    }
+  }
+}
+
+fn map_body_type_from_backend(body_type: RigidBodyType2D) -> RigidBodyType {
+  match body_type {
+    RigidBodyType2D::Static => {
+      return RigidBodyType::Static;
+    }
+    RigidBodyType2D::Dynamic => {
+      return RigidBodyType::Dynamic;
+    }
+    RigidBodyType2D::Kinematic => {
+      return RigidBodyType::Kinematic;
+    }
+  }
+}
+
+fn map_backend_error(error: RigidBody2DBackendError) -> RigidBody2DError {
+  match error {
+    RigidBody2DBackendError::BodyNotFound => {
+      return RigidBody2DError::BodyNotFound;
+    }
+    RigidBody2DBackendError::InvalidPosition { x, y } => {
+      return RigidBody2DError::InvalidPosition { x, y };
+    }
+    RigidBody2DBackendError::InvalidRotation { radians } => {
+      return RigidBody2DError::InvalidRotation { radians };
+    }
+    RigidBody2DBackendError::InvalidVelocity { x, y } => {
+      return RigidBody2DError::InvalidVelocity { x, y };
+    }
+    RigidBody2DBackendError::InvalidForce { x, y } => {
+      return RigidBody2DError::InvalidForce { x, y };
+    }
+    RigidBody2DBackendError::InvalidImpulse { x, y } => {
+      return RigidBody2DError::InvalidImpulse { x, y };
+    }
+    RigidBody2DBackendError::InvalidMassKg { mass_kg } => {
+      return RigidBody2DError::InvalidMassKg { mass_kg };
+    }
+    RigidBody2DBackendError::UnsupportedOperation { body_type } => {
+      return RigidBody2DError::UnsupportedOperation {
+        body_type: map_body_type_from_backend(body_type),
+      };
+    }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::physics::PhysicsWorld2DBuilder;
+
+  #[test]
+  fn builder_inserts_static_body_into_backend() {
+    let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
+
+    let body = RigidBody2DBuilder::new(RigidBodyType::Static)
+      .with_position(1.0, 2.0)
+      .with_rotation(0.5)
+      .with_velocity(100.0, -200.0)
+      .build(&mut world)
+      .unwrap();
+
+    let position = world
+      .backend
+      .rigid_body_position_2d(body.slot_index, body.slot_generation)
+      .unwrap();
+    let rotation = world
+      .backend
+      .rigid_body_rotation_2d(body.slot_index, body.slot_generation)
+      .unwrap();
+
+    assert_eq!(position, [1.0, 2.0]);
+    assert_eq!(rotation, 0.5);
+
+    world.step();
+
+    let position_after_step = world
+      .backend
+      .rigid_body_position_2d(body.slot_index, body.slot_generation)
+      .unwrap();
+    assert_eq!(position_after_step, [1.0, 2.0]);
+
+    return;
+  }
+
+  #[test]
+  fn dynamic_body_moves_under_gravity_after_step() {
+    let mut world = PhysicsWorld2DBuilder::new()
+      .with_gravity(0.0, -1.0)
+      .with_timestep_seconds(1.0)
+      .build()
+      .unwrap();
+
+    let body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
+      .with_position(0.0, 0.0)
+      .with_velocity(0.0, 0.0)
+      .build(&mut world)
+      .unwrap();
+
+    world.step();
+
+    let position_after_step = world
+      .backend
+      .rigid_body_position_2d(body.slot_index, body.slot_generation)
+      .unwrap();
+    assert_eq!(position_after_step, [0.0, -1.0]);
+
+    return;
   }
 }
