@@ -53,6 +53,8 @@ impl PhysicsWorld2D {
         .step_with_timestep_seconds(substep_timestep_seconds);
     }
 
+    self.backend.clear_rigid_body_forces_2d();
+
     return;
   }
 

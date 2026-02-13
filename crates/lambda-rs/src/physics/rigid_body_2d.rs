@@ -723,4 +723,35 @@ mod tests {
 
     return;
   }
+
+  #[test]
+  fn step_clears_accumulated_forces_once_per_outer_step() {
+    let mut world = PhysicsWorld2DBuilder::new()
+      .with_gravity(0.0, 0.0)
+      .with_timestep_seconds(1.0)
+      .with_substeps(2)
+      .build()
+      .unwrap();
+
+    let body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
+      .build(&mut world)
+      .unwrap();
+
+    world
+      .backend
+      .rigid_body_apply_force_2d(
+        body.slot_index,
+        body.slot_generation,
+        [1.0, 0.0],
+      )
+      .unwrap();
+
+    world.step();
+    assert_eq!(body.position(&world).unwrap(), [0.75, 0.0]);
+
+    world.step();
+    assert_eq!(body.position(&world).unwrap(), [1.75, 0.0]);
+
+    return;
+  }
 }
