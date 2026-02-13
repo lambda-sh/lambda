@@ -60,7 +60,12 @@ impl RigidBody2D {
     world: &PhysicsWorld2D,
   ) -> Result<RigidBodyType, RigidBody2DError> {
     self.validate_handle(world)?;
-    return Err(RigidBody2DError::BodyNotFound);
+    let body_type = world
+      .backend
+      .rigid_body_type_2d(self.slot_index, self.slot_generation)
+      .map_err(map_backend_error)?;
+
+    return Ok(map_body_type_from_backend(body_type));
   }
 
   /// Returns the current position, in meters.
@@ -79,7 +84,10 @@ impl RigidBody2D {
     world: &PhysicsWorld2D,
   ) -> Result<[f32; 2], RigidBody2DError> {
     self.validate_handle(world)?;
-    return Err(RigidBody2DError::BodyNotFound);
+    return world
+      .backend
+      .rigid_body_position_2d(self.slot_index, self.slot_generation)
+      .map_err(map_backend_error);
   }
 
   /// Returns the current rotation, in radians.
@@ -98,7 +106,10 @@ impl RigidBody2D {
     world: &PhysicsWorld2D,
   ) -> Result<f32, RigidBody2DError> {
     self.validate_handle(world)?;
-    return Err(RigidBody2DError::BodyNotFound);
+    return world
+      .backend
+      .rigid_body_rotation_2d(self.slot_index, self.slot_generation)
+      .map_err(map_backend_error);
   }
 
   /// Returns the current linear velocity, in meters per second.
@@ -117,7 +128,10 @@ impl RigidBody2D {
     world: &PhysicsWorld2D,
   ) -> Result<[f32; 2], RigidBody2DError> {
     self.validate_handle(world)?;
-    return Err(RigidBody2DError::BodyNotFound);
+    return world
+      .backend
+      .rigid_body_velocity_2d(self.slot_index, self.slot_generation)
+      .map_err(map_backend_error);
   }
 
   /// Sets the position, in meters.
@@ -141,7 +155,10 @@ impl RigidBody2D {
   ) -> Result<(), RigidBody2DError> {
     validate_position(x, y)?;
     self.validate_handle(world)?;
-    return Err(RigidBody2DError::BodyNotFound);
+    return world
+      .backend
+      .rigid_body_set_position_2d(self.slot_index, self.slot_generation, [x, y])
+      .map_err(map_backend_error);
   }
 
   /// Sets the rotation, in radians.
@@ -163,7 +180,14 @@ impl RigidBody2D {
   ) -> Result<(), RigidBody2DError> {
     validate_rotation(radians)?;
     self.validate_handle(world)?;
-    return Err(RigidBody2DError::BodyNotFound);
+    return world
+      .backend
+      .rigid_body_set_rotation_2d(
+        self.slot_index,
+        self.slot_generation,
+        radians,
+      )
+      .map_err(map_backend_error);
   }
 
   /// Sets the linear velocity, in meters per second.
@@ -187,7 +211,14 @@ impl RigidBody2D {
   ) -> Result<(), RigidBody2DError> {
     validate_velocity(vx, vy)?;
     self.validate_handle(world)?;
-    return Err(RigidBody2DError::BodyNotFound);
+    return world
+      .backend
+      .rigid_body_set_velocity_2d(
+        self.slot_index,
+        self.slot_generation,
+        [vx, vy],
+      )
+      .map_err(map_backend_error);
   }
 
   /// Applies a force, in Newtons, at the center of mass.
@@ -573,7 +604,7 @@ mod tests {
   use crate::physics::PhysicsWorld2DBuilder;
 
   #[test]
-  fn builder_inserts_static_body_into_backend() {
+  fn static_body_is_queryable_and_does_not_move_on_step() {
     let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
 
     let body = RigidBody2DBuilder::new(RigidBodyType::Static)
@@ -583,25 +614,14 @@ mod tests {
       .build(&mut world)
       .unwrap();
 
-    let position = world
-      .backend
-      .rigid_body_position_2d(body.slot_index, body.slot_generation)
-      .unwrap();
-    let rotation = world
-      .backend
-      .rigid_body_rotation_2d(body.slot_index, body.slot_generation)
-      .unwrap();
-
-    assert_eq!(position, [1.0, 2.0]);
-    assert_eq!(rotation, 0.5);
+    assert_eq!(body.body_type(&world).unwrap(), RigidBodyType::Static);
+    assert_eq!(body.position(&world).unwrap(), [1.0, 2.0]);
+    assert_eq!(body.rotation(&world).unwrap(), 0.5);
+    assert_eq!(body.velocity(&world).unwrap(), [100.0, -200.0]);
 
     world.step();
 
-    let position_after_step = world
-      .backend
-      .rigid_body_position_2d(body.slot_index, body.slot_generation)
-      .unwrap();
-    assert_eq!(position_after_step, [1.0, 2.0]);
+    assert_eq!(body.position(&world).unwrap(), [1.0, 2.0]);
 
     return;
   }
@@ -622,11 +642,84 @@ mod tests {
 
     world.step();
 
-    let position_after_step = world
-      .backend
-      .rigid_body_position_2d(body.slot_index, body.slot_generation)
+    assert_eq!(body.position(&world).unwrap(), [0.0, -1.0]);
+
+    return;
+  }
+
+  #[test]
+  fn setters_are_immediately_observable() {
+    let mut world = PhysicsWorld2DBuilder::new()
+      .with_gravity(0.0, 0.0)
+      .with_timestep_seconds(1.0)
+      .build()
       .unwrap();
-    assert_eq!(position_after_step, [0.0, -1.0]);
+
+    let body = RigidBody2DBuilder::new(RigidBodyType::Kinematic)
+      .with_position(0.0, 0.0)
+      .build(&mut world)
+      .unwrap();
+
+    body.set_position(&mut world, 10.0, 20.0).unwrap();
+    body.set_rotation(&mut world, 0.25).unwrap();
+    body.set_velocity(&mut world, 1.0, 2.0).unwrap();
+
+    assert_eq!(body.position(&world).unwrap(), [10.0, 20.0]);
+    assert_eq!(body.rotation(&world).unwrap(), 0.25);
+    assert_eq!(body.velocity(&world).unwrap(), [1.0, 2.0]);
+
+    world.step();
+    assert_eq!(body.position(&world).unwrap(), [11.0, 22.0]);
+
+    return;
+  }
+
+  #[test]
+  fn handle_world_mismatch_is_reported() {
+    let mut world_a = PhysicsWorld2DBuilder::new().build().unwrap();
+    let world_b = PhysicsWorld2DBuilder::new().build().unwrap();
+
+    let body = RigidBody2DBuilder::new(RigidBodyType::Static)
+      .build(&mut world_a)
+      .unwrap();
+
+    assert_eq!(
+      body.position(&world_b),
+      Err(RigidBody2DError::WorldMismatch)
+    );
+
+    return;
+  }
+
+  #[test]
+  fn handle_body_not_found_is_reported() {
+    let world = PhysicsWorld2DBuilder::new().build().unwrap();
+
+    let body = RigidBody2D {
+      world_id: world.world_id,
+      slot_index: 999,
+      slot_generation: 1,
+    };
+
+    assert_eq!(body.position(&world), Err(RigidBody2DError::BodyNotFound));
+
+    return;
+  }
+
+  #[test]
+  fn static_set_velocity_returns_unsupported_operation() {
+    let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
+
+    let body = RigidBody2DBuilder::new(RigidBodyType::Static)
+      .build(&mut world)
+      .unwrap();
+
+    assert_eq!(
+      body.set_velocity(&mut world, 1.0, 2.0),
+      Err(RigidBody2DError::UnsupportedOperation {
+        body_type: RigidBodyType::Static,
+      })
+    );
 
     return;
   }
