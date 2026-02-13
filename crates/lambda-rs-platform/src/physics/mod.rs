@@ -6,4 +6,8 @@
 
 pub mod rapier2d;
 
-pub use rapier2d::PhysicsBackend2D;
+pub use rapier2d::{
+  PhysicsBackend2D,
+  RigidBody2DBackendError,
+  RigidBodyType2D,
+};
