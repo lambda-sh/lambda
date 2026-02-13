@@ -202,7 +202,8 @@ impl RigidBody2D {
   ///
   /// # Errors
   /// Returns `RigidBody2DError` if the input is invalid, the handle is
-  /// invalid, belongs to a different world, or does not reference a live body.
+  /// invalid, belongs to a different world, the operation is unsupported for
+  /// the body type, or does not reference a live body.
   pub fn set_velocity(
     self,
     world: &mut PhysicsWorld2D,
@@ -233,7 +234,8 @@ impl RigidBody2D {
   ///
   /// # Errors
   /// Returns `RigidBody2DError` if the input is invalid, the handle is
-  /// invalid, belongs to a different world, or does not reference a live body.
+  /// invalid, belongs to a different world, the operation is unsupported for
+  /// the body type, or does not reference a live body.
   pub fn apply_force(
     self,
     world: &mut PhysicsWorld2D,
@@ -242,7 +244,14 @@ impl RigidBody2D {
   ) -> Result<(), RigidBody2DError> {
     validate_force(fx, fy)?;
     self.validate_handle(world)?;
-    return Err(RigidBody2DError::BodyNotFound);
+    return world
+      .backend
+      .rigid_body_apply_force_2d(
+        self.slot_index,
+        self.slot_generation,
+        [fx, fy],
+      )
+      .map_err(map_backend_error);
   }
 
   /// Applies an impulse, in Newton-seconds, at the center of mass.
@@ -257,7 +266,8 @@ impl RigidBody2D {
   ///
   /// # Errors
   /// Returns `RigidBody2DError` if the input is invalid, the handle is
-  /// invalid, belongs to a different world, or does not reference a live body.
+  /// invalid, belongs to a different world, the operation is unsupported for
+  /// the body type, or does not reference a live body.
   pub fn apply_impulse(
     self,
     world: &mut PhysicsWorld2D,
@@ -266,7 +276,14 @@ impl RigidBody2D {
   ) -> Result<(), RigidBody2DError> {
     validate_impulse(ix, iy)?;
     self.validate_handle(world)?;
-    return Err(RigidBody2DError::BodyNotFound);
+    return world
+      .backend
+      .rigid_body_apply_impulse_2d(
+        self.slot_index,
+        self.slot_generation,
+        [ix, iy],
+      )
+      .map_err(map_backend_error);
   }
 
   fn validate_handle(
@@ -737,20 +754,117 @@ mod tests {
       .build(&mut world)
       .unwrap();
 
-    world
-      .backend
-      .rigid_body_apply_force_2d(
-        body.slot_index,
-        body.slot_generation,
-        [1.0, 0.0],
-      )
-      .unwrap();
+    body.apply_force(&mut world, 1.0, 0.0).unwrap();
 
     world.step();
     assert_eq!(body.position(&world).unwrap(), [0.75, 0.0]);
 
     world.step();
     assert_eq!(body.position(&world).unwrap(), [1.75, 0.0]);
+
+    return;
+  }
+
+  #[test]
+  fn apply_force_accumulates_and_respects_dynamic_mass() {
+    let mut world = PhysicsWorld2DBuilder::new()
+      .with_gravity(0.0, 0.0)
+      .with_timestep_seconds(1.0)
+      .build()
+      .unwrap();
+
+    let body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
+      .with_dynamic_mass_kg(2.0)
+      .build(&mut world)
+      .unwrap();
+
+    body.apply_force(&mut world, 2.0, 0.0).unwrap();
+    body.apply_force(&mut world, 2.0, 0.0).unwrap();
+
+    world.step();
+
+    assert_eq!(body.position(&world).unwrap(), [2.0, 0.0]);
+    assert_eq!(body.velocity(&world).unwrap(), [2.0, 0.0]);
+
+    return;
+  }
+
+  #[test]
+  fn apply_impulse_updates_velocity_immediately_for_dynamic_bodies() {
+    let mut world = PhysicsWorld2DBuilder::new()
+      .with_gravity(0.0, 0.0)
+      .with_timestep_seconds(1.0)
+      .build()
+      .unwrap();
+
+    let body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
+      .with_dynamic_mass_kg(2.0)
+      .build(&mut world)
+      .unwrap();
+
+    body.apply_impulse(&mut world, 2.0, 0.0).unwrap();
+    assert_eq!(body.velocity(&world).unwrap(), [1.0, 0.0]);
+
+    world.step();
+    assert_eq!(body.position(&world).unwrap(), [1.0, 0.0]);
+
+    return;
+  }
+
+  #[test]
+  fn non_dynamic_apply_force_returns_unsupported_operation() {
+    let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
+
+    let static_body = RigidBody2DBuilder::new(RigidBodyType::Static)
+      .build(&mut world)
+      .unwrap();
+
+    assert_eq!(
+      static_body.apply_force(&mut world, 1.0, 2.0),
+      Err(RigidBody2DError::UnsupportedOperation {
+        body_type: RigidBodyType::Static,
+      })
+    );
+
+    let kinematic_body = RigidBody2DBuilder::new(RigidBodyType::Kinematic)
+      .build(&mut world)
+      .unwrap();
+
+    assert_eq!(
+      kinematic_body.apply_force(&mut world, 1.0, 2.0),
+      Err(RigidBody2DError::UnsupportedOperation {
+        body_type: RigidBodyType::Kinematic,
+      })
+    );
+
+    return;
+  }
+
+  #[test]
+  fn non_dynamic_apply_impulse_returns_unsupported_operation() {
+    let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
+
+    let static_body = RigidBody2DBuilder::new(RigidBodyType::Static)
+      .build(&mut world)
+      .unwrap();
+
+    assert_eq!(
+      static_body.apply_impulse(&mut world, 1.0, 2.0),
+      Err(RigidBody2DError::UnsupportedOperation {
+        body_type: RigidBodyType::Static,
+      })
+    );
+
+    let kinematic_body = RigidBody2DBuilder::new(RigidBodyType::Kinematic)
+      .build(&mut world)
+      .unwrap();
+
+    assert_eq!(
+      kinematic_body.apply_impulse(&mut world, 1.0, 2.0),
+      Err(RigidBody2DError::UnsupportedOperation {
+        body_type: RigidBodyType::Kinematic,
+      })
+    );
 
     return;
   }
