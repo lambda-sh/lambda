@@ -228,10 +228,11 @@ impl PlaybackScheduler {
   ///
   /// # Arguments
   /// - `writer`: Real-time writer for the current callback output buffer.
+  /// - `master_volume`: Global/master volume scalar applied to all output.
   ///
   /// # Returns
   /// `()` after writing the output buffer.
-  fn render(&mut self, writer: &mut dyn AudioOutputWriter) {
+  fn render(&mut self, writer: &mut dyn AudioOutputWriter, master_volume: f32) {
     let writer_channels = writer.channels() as usize;
     let frames = writer.frames();
 
@@ -251,6 +252,7 @@ impl PlaybackScheduler {
 
     for frame_index in 0..frames {
       let frame_gain = self.gain.current;
+      let output_gain = frame_gain * master_volume;
 
       if self.state != PlaybackState::Playing && self.gain.is_silent() {
         writer.clear();
@@ -286,7 +288,11 @@ impl PlaybackScheduler {
               .copied()
               .unwrap_or(0.0);
             self.last_frame_samples[channel_index] = sample;
-            writer.set_sample(frame_index, channel_index, sample * frame_gain);
+            writer.set_sample(
+              frame_index,
+              channel_index,
+              clip_sample(sample * output_gain),
+            );
           }
 
           self.cursor_samples = frame_end;
@@ -301,7 +307,11 @@ impl PlaybackScheduler {
 
       for channel_index in 0..writer_channels {
         let sample = self.last_frame_samples[channel_index];
-        writer.set_sample(frame_index, channel_index, sample * frame_gain);
+        writer.set_sample(
+          frame_index,
+          channel_index,
+          clip_sample(sample * output_gain),
+        );
       }
 
       self.gain.advance_frame();
@@ -309,6 +319,25 @@ impl PlaybackScheduler {
 
     return;
   }
+}
+
+/// Hard clip a sample into the nominal output range.
+///
+/// This function enforces “clipping awareness” for amplified output:
+/// - values are bounded to `[-1.0, 1.0]`
+/// - non-finite values map to `0.0` to avoid propagating NaNs/Infs downstream
+///
+/// # Arguments
+/// - `sample`: Candidate sample value.
+///
+/// # Returns
+/// A finite, bounded sample suitable for `AudioOutputWriter`.
+fn clip_sample(sample: f32) -> f32 {
+  if !sample.is_finite() {
+    return 0.0;
+  }
+
+  return sample.clamp(-1.0, 1.0);
 }
 
 /// A callback-safe controller that drains transport commands and renders audio.
@@ -433,7 +462,8 @@ impl<const COMMAND_CAPACITY: usize> PlaybackController<COMMAND_CAPACITY> {
   /// `()` after draining commands and writing the output buffer.
   pub(super) fn render(&mut self, writer: &mut dyn AudioOutputWriter) {
     self.drain_commands();
-    self.scheduler.render(writer);
+    let master_volume = self.shared_state.master_volume();
+    self.scheduler.render(writer, master_volume);
     self.shared_state.set_state(self.scheduler.state());
     return;
   }
@@ -522,17 +552,17 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 8);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
 
     assert_eq!(scheduler.state(), PlaybackState::Stopped);
     assert_eq!(scheduler.cursor_samples(), 0);
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
     assert!(writer.max_abs() <= 0.5);
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
     assert!(writer.max_abs() <= f32::EPSILON);
     return;
   }
@@ -548,17 +578,17 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
 
     let cursor_before_pause = scheduler.cursor_samples();
     scheduler.pause();
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
     assert_eq!(scheduler.cursor_samples(), cursor_before_pause);
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
     assert!(writer.max_abs() <= f32::EPSILON);
     return;
   }
@@ -573,7 +603,7 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 8);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
     assert!(scheduler.cursor_samples() > 0);
 
     scheduler.stop();
@@ -581,9 +611,9 @@ mod tests {
     assert_eq!(scheduler.cursor_samples(), 0);
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
     assert!(writer.max_abs() <= f32::EPSILON);
     return;
   }
@@ -599,7 +629,7 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
 
     assert_eq!(scheduler.state(), PlaybackState::Playing);
     assert!((writer.sample(0, 0) - 0.1).abs() <= 1e-6);
@@ -619,13 +649,13 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 8);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
     let last = writer.sample(7, 0);
 
     scheduler.pause();
 
     let mut writer = TestAudioOutput::new(1, 1);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0);
     let first = writer.sample(0, 0);
 
     assert!((last - first).abs() <= 1e-6);
@@ -706,6 +736,113 @@ mod tests {
     let mut writer = TestAudioOutput::new(1, 1);
     controller.render(&mut writer);
     assert!(writer.max_abs() <= f32::EPSILON);
+    return;
+  }
+
+  #[test]
+  /// Master volume `0.0` MUST silence output even while playing.
+  fn controller_applies_master_volume_zero_as_silence() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+    let buffer = make_test_buffer(vec![0.8, 0.8, 0.8, 0.8], 1);
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_master_volume(0.0);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer {
+        instance_id: 1,
+        buffer,
+      })
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::Play { instance_id: 1 })
+      .unwrap();
+
+    let mut controller = PlaybackController::new_with_ramp_frames(
+      1,
+      0,
+      command_queue,
+      shared_state,
+    );
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+    assert!(writer.max_abs() <= f32::EPSILON);
+    return;
+  }
+
+  #[test]
+  /// Master volume MUST linearly scale output samples.
+  fn controller_scales_output_by_master_volume() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+    let buffer = make_test_buffer(vec![0.4, 0.4, 0.4, 0.4], 1);
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_master_volume(0.5);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer {
+        instance_id: 1,
+        buffer,
+      })
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::Play { instance_id: 1 })
+      .unwrap();
+
+    let mut controller = PlaybackController::new_with_ramp_frames(
+      1,
+      0,
+      command_queue,
+      shared_state,
+    );
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+
+    for frame in 0..4 {
+      assert!((writer.sample(frame, 0) - 0.2).abs() <= 1e-6);
+    }
+    return;
+  }
+
+  #[test]
+  /// Gains that amplify beyond unity MUST remain bounded by clipping.
+  fn controller_hard_clips_amplified_output() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+    let buffer = make_test_buffer(vec![0.8, 0.8, 0.8, 0.8], 1);
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_master_volume(2.0);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer {
+        instance_id: 1,
+        buffer,
+      })
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::Play { instance_id: 1 })
+      .unwrap();
+
+    let mut controller = PlaybackController::new_with_ramp_frames(
+      1,
+      0,
+      command_queue,
+      shared_state,
+    );
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+
+    assert!(writer.max_abs() <= 1.0 + 1e-6);
+    assert!(writer.samples.iter().all(|value| value.is_finite()));
     return;
   }
 }

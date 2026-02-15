@@ -275,6 +275,27 @@ impl Default for AudioContextBuilder {
 }
 
 impl AudioContext {
+  /// Set the global/master volume applied to all playback in this context.
+  ///
+  /// # Arguments
+  /// - `volume`: Master volume where `1.0` is normal, `0.0` is silent, and
+  ///   values > `1.0` amplify.
+  ///
+  /// # Returns
+  /// `()` after updating the master volume.
+  pub fn set_master_volume(&mut self, volume: f32) {
+    self.shared_state.set_master_volume(volume);
+    return;
+  }
+
+  /// Return the current global/master volume for this context.
+  ///
+  /// # Returns
+  /// The current master volume.
+  pub fn master_volume(&self) -> f32 {
+    return self.shared_state.master_volume();
+  }
+
   /// Play a decoded `SoundBuffer` through this context.
   ///
   /// # Arguments
@@ -387,6 +408,32 @@ mod tests {
       output_sample_rate: sample_rate,
       output_channels: channels,
     };
+  }
+
+  #[test]
+  /// `AudioContext` master volume MUST default to `1.0`.
+  fn audio_context_master_volume_defaults_to_one() {
+    let context = create_test_context(48_000, 2);
+    assert_eq!(context.master_volume(), 1.0);
+    return;
+  }
+
+  #[test]
+  /// Negative master volume values MUST clamp to silence (`0.0`).
+  fn audio_context_master_volume_clamps_negative_to_zero() {
+    let mut context = create_test_context(48_000, 2);
+    context.set_master_volume(-1.0);
+    assert_eq!(context.master_volume(), 0.0);
+    return;
+  }
+
+  #[test]
+  /// Non-finite master volume values MUST be normalized to `1.0`.
+  fn audio_context_master_volume_treats_nan_as_one() {
+    let mut context = create_test_context(48_000, 2);
+    context.set_master_volume(f32::NAN);
+    assert_eq!(context.master_volume(), 1.0);
+    return;
   }
 
   fn create_test_sound_buffer(
