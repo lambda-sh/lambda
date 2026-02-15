@@ -19,3 +19,8 @@ validation-all = ["lambda-rs/render-validation-all"]
 name = "physics_falling_quad"
 path = "src/bin/physics_falling_quad.rs"
 required-features = ["physics-2d"]
+
+[[bin]]
+name = "physics_rigid_bodies_2d"
+path = "src/bin/physics_rigid_bodies_2d.rs"
+required-features = ["physics-2d"]

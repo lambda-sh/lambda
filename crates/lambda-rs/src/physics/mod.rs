@@ -6,17 +6,33 @@
 use std::{
   error::Error,
   fmt,
+  sync::atomic::{
+    AtomicU64,
+    Ordering,
+  },
 };
 
 use lambda_platform::physics::PhysicsBackend2D;
+
+mod rigid_body_2d;
+
+pub use rigid_body_2d::{
+  RigidBody2D,
+  RigidBody2DBuilder,
+  RigidBody2DError,
+  RigidBodyType,
+};
 
 const DEFAULT_GRAVITY_X: f32 = 0.0;
 const DEFAULT_GRAVITY_Y: f32 = -9.81;
 const DEFAULT_TIMESTEP_SECONDS: f32 = 1.0 / 60.0;
 const DEFAULT_SUBSTEPS: u32 = 1;
 
+static NEXT_WORLD_ID: AtomicU64 = AtomicU64::new(1);
+
 /// A 2D physics simulation world.
 pub struct PhysicsWorld2D {
+  world_id: u64,
   gravity: [f32; 2],
   timestep_seconds: f32,
   substeps: u32,
@@ -36,6 +52,8 @@ impl PhysicsWorld2D {
         .backend
         .step_with_timestep_seconds(substep_timestep_seconds);
     }
+
+    self.backend.clear_rigid_body_forces_2d();
 
     return;
   }
@@ -136,8 +154,10 @@ impl PhysicsWorld2DBuilder {
     validate_timestep_seconds(substep_timestep_seconds)?;
 
     let backend = PhysicsBackend2D::new(self.gravity, substep_timestep_seconds);
+    let world_id = allocate_world_id();
 
     return Ok(PhysicsWorld2D {
+      world_id,
       gravity: self.gravity,
       timestep_seconds: self.timestep_seconds,
       substeps: self.substeps,
@@ -196,6 +216,7 @@ fn validate_timestep_seconds(
   return Ok(());
 }
 
+/// Validates that the configured substep count is non-zero.
 fn validate_substeps(substeps: u32) -> Result<(), PhysicsWorld2DError> {
   if substeps < 1 {
     return Err(PhysicsWorld2DError::InvalidSubsteps { substeps });
@@ -204,6 +225,7 @@ fn validate_substeps(substeps: u32) -> Result<(), PhysicsWorld2DError> {
   return Ok(());
 }
 
+/// Validates that the configured gravity vector is finite.
 fn validate_gravity(gravity: [f32; 2]) -> Result<(), PhysicsWorld2DError> {
   let x = gravity[0];
   let y = gravity[1];
@@ -215,10 +237,21 @@ fn validate_gravity(gravity: [f32; 2]) -> Result<(), PhysicsWorld2DError> {
   return Ok(());
 }
 
+/// Allocates a non-zero unique world identifier.
+fn allocate_world_id() -> u64 {
+  loop {
+    let id = NEXT_WORLD_ID.fetch_add(1, Ordering::Relaxed);
+    if id != 0 {
+      return id;
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
 
+  /// Builds a world using the default builder configuration.
   #[test]
   fn world_builds_with_defaults() {
     let world = PhysicsWorld2DBuilder::new().build().unwrap();
@@ -232,6 +265,7 @@ mod tests {
     return;
   }
 
+  /// Builds a world with custom gravity, timestep, and substeps.
   #[test]
   fn world_builds_with_custom_config() {
     let world = PhysicsWorld2DBuilder::new()
@@ -251,6 +285,7 @@ mod tests {
     return;
   }
 
+  /// Rejects timestep values that are positive but invalid for integration.
   #[test]
   fn build_rejects_non_positive_timestep_seconds() {
     let error = match PhysicsWorld2DBuilder::new()
@@ -273,6 +308,7 @@ mod tests {
     return;
   }
 
+  /// Rejects non-finite timestep values.
   #[test]
   fn build_rejects_non_finite_timestep_seconds() {
     let error = match PhysicsWorld2DBuilder::new()
@@ -297,6 +333,7 @@ mod tests {
     return;
   }
 
+  /// Rejects zero substeps to avoid divide-by-zero in derived substep timestep.
   #[test]
   fn build_rejects_zero_substeps() {
     let error = match PhysicsWorld2DBuilder::new().with_substeps(0).build() {
@@ -311,6 +348,7 @@ mod tests {
     return;
   }
 
+  /// Rejects gravity vectors containing non-finite components.
   #[test]
   fn build_rejects_non_finite_gravity() {
     let error = match PhysicsWorld2DBuilder::new()
@@ -334,6 +372,7 @@ mod tests {
     return;
   }
 
+  /// Ensures stepping an empty world succeeds without panicking.
   #[test]
   fn step_does_not_panic_for_empty_world() {
     let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
@@ -342,6 +381,7 @@ mod tests {
     return;
   }
 
+  /// Ensures `step()` uses the derived substep timestep when substeps are set.
   #[test]
   fn step_uses_substep_timestep_seconds() {
     let mut world = PhysicsWorld2DBuilder::new()
