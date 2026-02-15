@@ -7,7 +7,7 @@ use std::{
   error::Error,
   fmt,
   sync::atomic::{
-    AtomicU32,
+    AtomicU64,
     Ordering,
   },
 };
@@ -28,11 +28,11 @@ const DEFAULT_GRAVITY_Y: f32 = -9.81;
 const DEFAULT_TIMESTEP_SECONDS: f32 = 1.0 / 60.0;
 const DEFAULT_SUBSTEPS: u32 = 1;
 
-static NEXT_WORLD_ID: AtomicU32 = AtomicU32::new(1);
+static NEXT_WORLD_ID: AtomicU64 = AtomicU64::new(1);
 
 /// A 2D physics simulation world.
 pub struct PhysicsWorld2D {
-  world_id: u32,
+  world_id: u64,
   gravity: [f32; 2],
   timestep_seconds: f32,
   substeps: u32,
@@ -238,7 +238,7 @@ fn validate_gravity(gravity: [f32; 2]) -> Result<(), PhysicsWorld2DError> {
 }
 
 /// Allocates a non-zero unique world identifier.
-fn allocate_world_id() -> u32 {
+fn allocate_world_id() -> u64 {
   loop {
     let id = NEXT_WORLD_ID.fetch_add(1, Ordering::Relaxed);
     if id != 0 {

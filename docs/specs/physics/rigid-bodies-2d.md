@@ -168,7 +168,7 @@ pub enum RigidBodyType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RigidBody2D {
   // World identifier used for cross-world validation (implementation detail).
-  world_id: u32,
+  world_id: u64,
   // Body slot index (implementation detail).
   slot_index: u32,
   // Slot generation used for stale-handle detection (implementation detail).

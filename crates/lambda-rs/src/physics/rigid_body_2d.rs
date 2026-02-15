@@ -38,7 +38,7 @@ pub enum RigidBodyType {
 /// the provided world and that the referenced body exists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RigidBody2D {
-  world_id: u32,
+  world_id: u64,
   slot_index: u32,
   slot_generation: u32,
 }
