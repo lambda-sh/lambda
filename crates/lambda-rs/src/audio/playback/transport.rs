@@ -149,6 +149,7 @@ pub(super) struct PlaybackSharedState {
   active_instance_id: AtomicU64,
   state: AtomicU8,
   master_volume_bits: AtomicU32,
+  instance_volume_bits: AtomicU32,
 }
 
 impl PlaybackSharedState {
@@ -161,6 +162,7 @@ impl PlaybackSharedState {
       active_instance_id: AtomicU64::new(0),
       state: AtomicU8::new(playback_state_to_u8(PlaybackState::Stopped)),
       master_volume_bits: AtomicU32::new(1.0_f32.to_bits()),
+      instance_volume_bits: AtomicU32::new(1.0_f32.to_bits()),
     };
   }
 
@@ -231,6 +233,36 @@ impl PlaybackSharedState {
   /// The current master volume.
   pub(super) fn master_volume(&self) -> f32 {
     let bits = self.master_volume_bits.load(Ordering::Acquire);
+    let value = f32::from_bits(bits);
+    return normalize_volume(value);
+  }
+
+  /// Set the per-instance volume for the active playback slot.
+  ///
+  /// This is stored separately from master volume and is intended to model
+  /// `SoundInstance::set_volume` while the playback system supports only one
+  /// active sound at a time.
+  ///
+  /// # Arguments
+  /// - `volume`: Instance volume where `1.0` is normal, `0.0` is silent, and
+  ///   values > `1.0` amplify.
+  ///
+  /// # Returns
+  /// `()` after updating the per-instance volume.
+  pub(super) fn set_instance_volume(&self, volume: f32) {
+    let normalized = normalize_volume(volume);
+    self
+      .instance_volume_bits
+      .store(normalized.to_bits(), Ordering::Release);
+    return;
+  }
+
+  /// Return the per-instance volume for the active playback slot.
+  ///
+  /// # Returns
+  /// The current per-instance volume.
+  pub(super) fn instance_volume(&self) -> f32 {
+    let bits = self.instance_volume_bits.load(Ordering::Acquire);
     let value = f32::from_bits(bits);
     return normalize_volume(value);
   }
