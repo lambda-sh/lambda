@@ -286,6 +286,7 @@ impl RigidBody2D {
       .map_err(map_backend_error);
   }
 
+  /// Validates that this handle is non-zero and belongs to the given world.
   fn validate_handle(
     self,
     world: &PhysicsWorld2D,
@@ -494,6 +495,7 @@ impl fmt::Display for RigidBody2DError {
 
 impl Error for RigidBody2DError {}
 
+/// Validates that the provided translation is finite.
 fn validate_position(x: f32, y: f32) -> Result<(), RigidBody2DError> {
   if !x.is_finite() || !y.is_finite() {
     return Err(RigidBody2DError::InvalidPosition { x, y });
@@ -502,6 +504,7 @@ fn validate_position(x: f32, y: f32) -> Result<(), RigidBody2DError> {
   return Ok(());
 }
 
+/// Validates that the provided rotation is finite.
 fn validate_rotation(radians: f32) -> Result<(), RigidBody2DError> {
   if !radians.is_finite() {
     return Err(RigidBody2DError::InvalidRotation { radians });
@@ -510,6 +513,7 @@ fn validate_rotation(radians: f32) -> Result<(), RigidBody2DError> {
   return Ok(());
 }
 
+/// Validates that the provided linear velocity is finite.
 fn validate_velocity(x: f32, y: f32) -> Result<(), RigidBody2DError> {
   if !x.is_finite() || !y.is_finite() {
     return Err(RigidBody2DError::InvalidVelocity { x, y });
@@ -518,6 +522,7 @@ fn validate_velocity(x: f32, y: f32) -> Result<(), RigidBody2DError> {
   return Ok(());
 }
 
+/// Validates that the provided force vector is finite.
 fn validate_force(x: f32, y: f32) -> Result<(), RigidBody2DError> {
   if !x.is_finite() || !y.is_finite() {
     return Err(RigidBody2DError::InvalidForce { x, y });
@@ -526,6 +531,7 @@ fn validate_force(x: f32, y: f32) -> Result<(), RigidBody2DError> {
   return Ok(());
 }
 
+/// Validates that the provided impulse vector is finite.
 fn validate_impulse(x: f32, y: f32) -> Result<(), RigidBody2DError> {
   if !x.is_finite() || !y.is_finite() {
     return Err(RigidBody2DError::InvalidImpulse { x, y });
@@ -534,6 +540,7 @@ fn validate_impulse(x: f32, y: f32) -> Result<(), RigidBody2DError> {
   return Ok(());
 }
 
+/// Validates that `dynamic_mass_kg` is only used on dynamic bodies and is valid.
 fn validate_dynamic_mass_for_body_type(
   body_type: RigidBodyType,
   dynamic_mass_kg: Option<f32>,
@@ -556,6 +563,7 @@ fn validate_dynamic_mass_for_body_type(
   }
 }
 
+/// Maps a public `RigidBodyType` to the backend representation.
 fn map_body_type_to_backend(body_type: RigidBodyType) -> RigidBodyType2D {
   match body_type {
     RigidBodyType::Static => {
@@ -570,6 +578,7 @@ fn map_body_type_to_backend(body_type: RigidBodyType) -> RigidBodyType2D {
   }
 }
 
+/// Maps a backend `RigidBodyType2D` to the public representation.
 fn map_body_type_from_backend(body_type: RigidBodyType2D) -> RigidBodyType {
   match body_type {
     RigidBodyType2D::Static => {
@@ -584,6 +593,7 @@ fn map_body_type_from_backend(body_type: RigidBodyType2D) -> RigidBodyType {
   }
 }
 
+/// Maps backend rigid body errors into the public `RigidBody2DError` surface.
 fn map_backend_error(error: RigidBody2DBackendError) -> RigidBody2DError {
   match error {
     RigidBody2DBackendError::BodyNotFound => {
@@ -620,6 +630,7 @@ mod tests {
   use super::*;
   use crate::physics::PhysicsWorld2DBuilder;
 
+  /// Ensures static bodies are queryable and remain fixed after stepping.
   #[test]
   fn static_body_is_queryable_and_does_not_move_on_step() {
     let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
@@ -643,6 +654,7 @@ mod tests {
     return;
   }
 
+  /// Ensures dynamic bodies move under gravity after stepping.
   #[test]
   fn dynamic_body_moves_under_gravity_after_step() {
     let mut world = PhysicsWorld2DBuilder::new()
@@ -664,6 +676,7 @@ mod tests {
     return;
   }
 
+  /// Ensures setters mutate state immediately and are reflected during stepping.
   #[test]
   fn setters_are_immediately_observable() {
     let mut world = PhysicsWorld2DBuilder::new()
@@ -691,6 +704,7 @@ mod tests {
     return;
   }
 
+  /// Ensures a body handle cannot be used with a different world.
   #[test]
   fn handle_world_mismatch_is_reported() {
     let mut world_a = PhysicsWorld2DBuilder::new().build().unwrap();
@@ -708,6 +722,7 @@ mod tests {
     return;
   }
 
+  /// Ensures invalid slot indices are reported as `BodyNotFound`.
   #[test]
   fn handle_body_not_found_is_reported() {
     let world = PhysicsWorld2DBuilder::new().build().unwrap();
@@ -723,6 +738,7 @@ mod tests {
     return;
   }
 
+  /// Ensures velocity mutation is rejected on static bodies.
   #[test]
   fn static_set_velocity_returns_unsupported_operation() {
     let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
@@ -741,6 +757,7 @@ mod tests {
     return;
   }
 
+  /// Ensures accumulated forces are applied for all substeps then cleared.
   #[test]
   fn step_clears_accumulated_forces_once_per_outer_step() {
     let mut world = PhysicsWorld2DBuilder::new()
@@ -765,6 +782,8 @@ mod tests {
     return;
   }
 
+  /// Ensures applied forces accumulate and produce less acceleration for higher
+  /// dynamic mass.
   #[test]
   fn apply_force_accumulates_and_respects_dynamic_mass() {
     let mut world = PhysicsWorld2DBuilder::new()
@@ -789,6 +808,7 @@ mod tests {
     return;
   }
 
+  /// Ensures impulses affect velocity immediately and position after stepping.
   #[test]
   fn apply_impulse_updates_velocity_immediately_for_dynamic_bodies() {
     let mut world = PhysicsWorld2DBuilder::new()
@@ -811,6 +831,7 @@ mod tests {
     return;
   }
 
+  /// Ensures applying forces to non-dynamic bodies is rejected.
   #[test]
   fn non_dynamic_apply_force_returns_unsupported_operation() {
     let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
@@ -840,6 +861,7 @@ mod tests {
     return;
   }
 
+  /// Ensures applying impulses to non-dynamic bodies is rejected.
   #[test]
   fn non_dynamic_apply_impulse_returns_unsupported_operation() {
     let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
