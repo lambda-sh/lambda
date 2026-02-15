@@ -150,6 +150,7 @@ pub(super) struct PlaybackSharedState {
   state: AtomicU8,
   master_volume_bits: AtomicU32,
   instance_volume_bits: AtomicU32,
+  instance_pitch_bits: AtomicU32,
 }
 
 impl PlaybackSharedState {
@@ -163,6 +164,7 @@ impl PlaybackSharedState {
       state: AtomicU8::new(playback_state_to_u8(PlaybackState::Stopped)),
       master_volume_bits: AtomicU32::new(1.0_f32.to_bits()),
       instance_volume_bits: AtomicU32::new(1.0_f32.to_bits()),
+      instance_pitch_bits: AtomicU32::new(1.0_f32.to_bits()),
     };
   }
 
@@ -266,6 +268,36 @@ impl PlaybackSharedState {
     let value = f32::from_bits(bits);
     return normalize_volume(value);
   }
+
+  /// Set the per-instance pitch/playback speed for the active playback slot.
+  ///
+  /// Pitch is expressed as a playback rate multiplier:
+  /// - `1.0` is normal speed
+  /// - `0.5` is half speed
+  /// - `2.0` is double speed
+  ///
+  /// # Arguments
+  /// - `pitch`: Requested playback rate multiplier.
+  ///
+  /// # Returns
+  /// `()` after updating the per-instance pitch.
+  pub(super) fn set_instance_pitch(&self, pitch: f32) {
+    let normalized = normalize_pitch(pitch);
+    self
+      .instance_pitch_bits
+      .store(normalized.to_bits(), Ordering::Release);
+    return;
+  }
+
+  /// Return the per-instance pitch/playback speed for the active playback slot.
+  ///
+  /// # Returns
+  /// The current playback rate multiplier.
+  pub(super) fn instance_pitch(&self) -> f32 {
+    let bits = self.instance_pitch_bits.load(Ordering::Acquire);
+    let value = f32::from_bits(bits);
+    return normalize_pitch(value);
+  }
 }
 
 fn playback_state_to_u8(state: PlaybackState) -> u8 {
@@ -322,6 +354,36 @@ fn normalize_volume(volume: f32) -> f32 {
   }
 
   return volume;
+}
+
+/// Normalize a pitch scalar into a safe, deterministic value.
+///
+/// Pitch is used as a playback rate multiplier, so non-positive values would
+/// stall or reverse playback. The public API is infallible, so invalid inputs
+/// are mapped to sensible defaults.
+///
+/// Normalization rules
+/// - Non-finite values (NaN, +/-Inf) map to `1.0`.
+/// - Values <= `0.0` clamp to a small positive epsilon.
+/// - Values > `0.0` are returned unchanged.
+///
+/// # Arguments
+/// - `pitch`: Candidate pitch value.
+///
+/// # Returns
+/// A normalized pitch scalar guaranteed to be finite and > `0.0`.
+fn normalize_pitch(pitch: f32) -> f32 {
+  const PITCH_EPSILON: f32 = 0.001;
+
+  if !pitch.is_finite() {
+    return 1.0;
+  }
+
+  if pitch <= 0.0 {
+    return PITCH_EPSILON;
+  }
+
+  return pitch;
 }
 
 #[cfg(test)]
