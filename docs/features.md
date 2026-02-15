@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-02-10T00:00:00Z"
-version: "0.1.15"
+last_updated: "2026-02-13T20:47:25Z"
+version: "0.1.16"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "fa36b760348f7b4a924220885fa88684bded03f6"
+repo_commit: "c66de56f04d6d3f9866eb8d7e48847f3882aad28"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo", "audio", "physics"]
@@ -89,11 +89,11 @@ Audio
 
 Physics
 - `physics-2d` (umbrella, disabled by default): enables the 2D physics world
-  APIs (for example, `lambda::physics::PhysicsWorld2D`). This feature enables
-  the platform physics backend via `lambda-rs-platform/physics-2d`
-  (currently backed by `rapier2d =0.32.0`). Expected runtime cost depends on
-  simulation workload; no runtime cost is incurred unless a physics world is
-  constructed and stepped.
+  APIs (for example, `lambda::physics::PhysicsWorld2D` and
+  `lambda::physics::RigidBody2D`). This feature enables the platform physics
+  backend via `lambda-rs-platform/physics-2d` (currently backed by `rapier2d`).
+  Expected runtime cost depends on simulation workload; no runtime cost is
+  incurred unless a physics world is constructed, populated, and stepped.
 
 Render validation
 
@@ -169,10 +169,12 @@ Audio
 
 Physics
 - `physics-2d` (umbrella, disabled by default): enables the internal 2D physics
-  backend (currently backed by `rapier2d =0.32.0`). Applications MUST NOT
-  depend on `rapier2d` directly via this crate.
+  backend (currently backed by `rapier2d`). Applications MUST NOT depend on
+  `rapier2d` directly via this crate.
 
 ## Changelog
+- 0.1.16 (2026-02-13): Document 2D rigid bodies under `physics-2d` and update
+  metadata.
 - 0.1.15 (2026-02-10): Document `audio-playback` in `lambda-rs` and update
   metadata.
 - 0.1.14 (2026-02-06): Document 2D physics feature flags in `lambda-rs` and
