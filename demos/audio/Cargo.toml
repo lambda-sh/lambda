@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 lambda-rs = { path = "../../crates/lambda-rs" }
+lambda-rs-args = { path = "../../crates/lambda-rs-args" }
 
 [features]
 default = ["audio"]
