@@ -33,6 +33,11 @@ fn main() {
   let argv: Vec<String> = std::env::args().collect();
   let usage = parser.usage();
 
+  if argv.len() <= 1 {
+    print!("{}", usage);
+    return;
+  }
+
   let parsed = match parser.parse(&argv) {
     Ok(parsed) => parsed,
     Err(ArgsError::HelpRequested(help)) => {
@@ -93,8 +98,12 @@ fn main() {
         std::thread::sleep(Duration::from_millis(duration_ms as u64));
       }
     }
-    Some(("script", _)) | None => {
+    Some(("script", _)) => {
       run_script(&mut context, &mut instance);
+    }
+    None => {
+      eprintln!("No subcommand provided.\n{}", usage);
+      return;
     }
     Some((name, _sub)) => {
       eprintln!("Unknown subcommand: {}\n{}", name, usage);
