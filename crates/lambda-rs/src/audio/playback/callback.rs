@@ -244,6 +244,7 @@ impl PlaybackScheduler {
   ) {
     let writer_channels = writer.channels() as usize;
     let frames = writer.frames();
+    let soft_clip_enabled = master_volume * instance_volume > 1.0;
 
     if writer_channels == 0 || frames == 0 {
       return;
@@ -338,7 +339,7 @@ impl PlaybackScheduler {
               writer.set_sample(
                 frame_index,
                 channel_index,
-                clip_sample(sample * output_gain),
+                clip_sample(sample * output_gain, soft_clip_enabled),
               );
             }
 
@@ -360,7 +361,7 @@ impl PlaybackScheduler {
         writer.set_sample(
           frame_index,
           channel_index,
-          clip_sample(sample * output_gain),
+          clip_sample(sample * output_gain, soft_clip_enabled),
         );
       }
 
@@ -371,23 +372,50 @@ impl PlaybackScheduler {
   }
 }
 
-/// Hard clip a sample into the nominal output range.
+/// Clip a sample into the nominal output range.
 ///
 /// This function enforces “clipping awareness” for amplified output:
 /// - values are bounded to `[-1.0, 1.0]`
 /// - non-finite values map to `0.0` to avoid propagating NaNs/Infs downstream
+/// - when soft clipping is enabled, values in the knee region are gently
+///   compressed before saturating
 ///
 /// # Arguments
 /// - `sample`: Candidate sample value.
+/// - `soft_clip`: Whether to use a soft knee before saturation.
 ///
 /// # Returns
 /// A finite, bounded sample suitable for `AudioOutputWriter`.
-fn clip_sample(sample: f32) -> f32 {
+fn clip_sample(sample: f32, soft_clip: bool) -> f32 {
   if !sample.is_finite() {
     return 0.0;
   }
 
-  return sample.clamp(-1.0, 1.0);
+  if !soft_clip {
+    return sample.clamp(-1.0, 1.0);
+  }
+
+  // Soft knee limiter:
+  // - linear in [-KNEE_START, KNEE_START]
+  // - smoothstep curve from KNEE_START..1.0
+  // - saturates to [-1.0, 1.0] beyond unity
+  const KNEE_START: f32 = 0.95;
+
+  let sign = sample.signum();
+  let x = sample.abs();
+
+  if x <= KNEE_START {
+    return sample;
+  }
+
+  if x >= 1.0 {
+    return sign;
+  }
+
+  let t = (x - KNEE_START) / (1.0 - KNEE_START);
+  let smoothstep = t * t * (3.0 - 2.0 * t);
+  let y = KNEE_START + (1.0 - KNEE_START) * smoothstep;
+  return sign * y;
 }
 
 /// A callback-safe controller that drains transport commands and renders audio.
