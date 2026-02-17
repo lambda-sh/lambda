@@ -724,6 +724,28 @@ mod tests {
     return;
   }
 
+  /// Looping MUST wrap correctly when pitch advances the cursor fractionally.
+  #[test]
+  fn scheduler_looping_wraps_with_fractional_pitch() {
+    let buffer = make_test_buffer(vec![0.0, 1.0], 1);
+
+    let mut scheduler = PlaybackScheduler::new_with_ramp_frames(1, 0);
+    scheduler.set_buffer(buffer);
+    scheduler.set_looping(true);
+    scheduler.play();
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.5);
+
+    assert_eq!(scheduler.state(), PlaybackState::Playing);
+
+    assert!((writer.sample(0, 0) - 0.0).abs() <= 1e-6);
+    assert!((writer.sample(1, 0) - 0.5).abs() <= 1e-6);
+    assert!((writer.sample(2, 0) - 1.0).abs() <= 1e-6);
+    assert!((writer.sample(3, 0) - 0.5).abs() <= 1e-6);
+    return;
+  }
+
   /// Pitch `1.0` MUST reproduce the original sample sequence (no resampling).
   #[test]
   fn scheduler_pitch_one_reproduces_original_sequence() {
