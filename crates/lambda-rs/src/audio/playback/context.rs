@@ -35,6 +35,70 @@ impl SoundInstance {
     return self.shared_state.active_instance_id() == self.instance_id;
   }
 
+  /// Set volume where 1.0 is normal, 0.0 is silent, >1.0 amplifies.
+  ///
+  /// Calls on inactive instances are no-ops.
+  ///
+  /// # Arguments
+  /// - `volume`: The requested volume scalar.
+  ///
+  /// # Returns
+  /// `()` after updating the instance volume.
+  pub fn set_volume(&mut self, volume: f32) {
+    if !self.is_active() {
+      return;
+    }
+
+    self.shared_state.set_instance_volume(volume);
+    return;
+  }
+
+  /// Return the current volume for this instance.
+  ///
+  /// Inactive instances report a default volume of `1.0`.
+  ///
+  /// # Returns
+  /// The current volume scalar.
+  pub fn volume(&self) -> f32 {
+    if !self.is_active() {
+      return 1.0;
+    }
+
+    return self.shared_state.instance_volume();
+  }
+
+  /// Set pitch where 1.0 is normal, 0.5 is half speed, 2.0 is double.
+  ///
+  /// Calls on inactive instances are no-ops.
+  ///
+  /// # Arguments
+  /// - `pitch`: The requested playback rate multiplier.
+  ///
+  /// # Returns
+  /// `()` after updating the instance pitch.
+  pub fn set_pitch(&mut self, pitch: f32) {
+    if !self.is_active() {
+      return;
+    }
+
+    self.shared_state.set_instance_pitch(pitch);
+    return;
+  }
+
+  /// Return the current pitch/playback speed for this instance.
+  ///
+  /// Inactive instances report a default pitch of `1.0`.
+  ///
+  /// # Returns
+  /// The current pitch multiplier.
+  pub fn pitch(&self) -> f32 {
+    if !self.is_active() {
+      return 1.0;
+    }
+
+    return self.shared_state.instance_pitch();
+  }
+
   /// Begin playback, or resume if paused.
   ///
   /// # Returns
@@ -275,6 +339,27 @@ impl Default for AudioContextBuilder {
 }
 
 impl AudioContext {
+  /// Set the global/master volume applied to all playback in this context.
+  ///
+  /// # Arguments
+  /// - `volume`: Master volume where `1.0` is normal, `0.0` is silent, and
+  ///   values > `1.0` amplify.
+  ///
+  /// # Returns
+  /// `()` after updating the master volume.
+  pub fn set_master_volume(&mut self, volume: f32) {
+    self.shared_state.set_master_volume(volume);
+    return;
+  }
+
+  /// Return the current global/master volume for this context.
+  ///
+  /// # Returns
+  /// The current master volume.
+  pub fn master_volume(&self) -> f32 {
+    return self.shared_state.master_volume();
+  }
+
   /// Play a decoded `SoundBuffer` through this context.
   ///
   /// # Arguments
@@ -327,6 +412,8 @@ impl AudioContext {
     let previous_state = self.shared_state.state();
     self.shared_state.set_active_instance_id(instance_id);
     self.shared_state.set_state(PlaybackState::Stopped);
+    self.shared_state.set_instance_volume(1.0);
+    self.shared_state.set_instance_pitch(1.0);
 
     let shared_buffer = Arc::new(buffer.clone());
 
@@ -389,6 +476,32 @@ mod tests {
     };
   }
 
+  #[test]
+  /// `AudioContext` master volume MUST default to `1.0`.
+  fn audio_context_master_volume_defaults_to_one() {
+    let context = create_test_context(48_000, 2);
+    assert_eq!(context.master_volume(), 1.0);
+    return;
+  }
+
+  #[test]
+  /// Negative master volume values MUST clamp to silence (`0.0`).
+  fn audio_context_master_volume_clamps_negative_to_zero() {
+    let mut context = create_test_context(48_000, 2);
+    context.set_master_volume(-1.0);
+    assert_eq!(context.master_volume(), 0.0);
+    return;
+  }
+
+  #[test]
+  /// Non-finite master volume values MUST be normalized to `1.0`.
+  fn audio_context_master_volume_treats_nan_as_one() {
+    let mut context = create_test_context(48_000, 2);
+    context.set_master_volume(f32::NAN);
+    assert_eq!(context.master_volume(), 1.0);
+    return;
+  }
+
   fn create_test_sound_buffer(
     sample_rate: u32,
     channels: u16,
@@ -442,6 +555,8 @@ mod tests {
     instance.pause();
     instance.stop();
     instance.set_looping(true);
+    instance.set_volume(0.25);
+    instance.set_pitch(0.5);
 
     assert!(command_queue.pop().is_none());
     return;
@@ -523,6 +638,120 @@ mod tests {
     assert!(!instance.is_playing());
     assert!(instance.is_paused());
     assert!(!instance.is_stopped());
+    return;
+  }
+
+  /// `SoundInstance::volume` MUST default to `1.0` and normalize invalid values
+  /// while active.
+  #[test]
+  fn sound_instance_volume_defaults_and_clamps_when_active() {
+    let command_queue: Arc<PlaybackCommandQueue> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+
+    shared_state.set_active_instance_id(7);
+
+    let mut instance = SoundInstance {
+      instance_id: 7,
+      command_queue,
+      shared_state,
+    };
+
+    assert_eq!(instance.volume(), 1.0);
+
+    instance.set_volume(2.0);
+    assert_eq!(instance.volume(), 2.0);
+
+    instance.set_volume(-1.0);
+    assert_eq!(instance.volume(), 0.0);
+
+    instance.set_volume(f32::NAN);
+    assert_eq!(instance.volume(), 1.0);
+    return;
+  }
+
+  /// `SoundInstance::set_volume` MUST be a no-op when inactive and
+  /// `SoundInstance::volume` MUST report `1.0`.
+  #[test]
+  fn sound_instance_volume_is_noop_and_defaults_when_inactive() {
+    let command_queue: Arc<PlaybackCommandQueue> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+
+    shared_state.set_active_instance_id(2);
+
+    let mut inactive_instance = SoundInstance {
+      instance_id: 1,
+      command_queue: command_queue.clone(),
+      shared_state: shared_state.clone(),
+    };
+
+    let active_instance = SoundInstance {
+      instance_id: 2,
+      command_queue,
+      shared_state,
+    };
+
+    inactive_instance.set_volume(0.0);
+    assert_eq!(inactive_instance.volume(), 1.0);
+    assert_eq!(active_instance.volume(), 1.0);
+    return;
+  }
+
+  /// `SoundInstance::pitch` MUST default to `1.0` and normalize invalid values
+  /// while active.
+  #[test]
+  fn sound_instance_pitch_defaults_and_clamps_when_active() {
+    let command_queue: Arc<PlaybackCommandQueue> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+
+    shared_state.set_active_instance_id(7);
+
+    let mut instance = SoundInstance {
+      instance_id: 7,
+      command_queue,
+      shared_state,
+    };
+
+    assert_eq!(instance.pitch(), 1.0);
+
+    instance.set_pitch(2.0);
+    assert_eq!(instance.pitch(), 2.0);
+
+    instance.set_pitch(0.0);
+    assert!(instance.pitch() > 0.0);
+
+    instance.set_pitch(f32::NAN);
+    assert_eq!(instance.pitch(), 1.0);
+    return;
+  }
+
+  /// `SoundInstance::set_pitch` MUST be a no-op when inactive and
+  /// `SoundInstance::pitch` MUST report `1.0`.
+  #[test]
+  fn sound_instance_pitch_is_noop_and_defaults_when_inactive() {
+    let command_queue: Arc<PlaybackCommandQueue> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+
+    shared_state.set_active_instance_id(2);
+
+    let mut inactive_instance = SoundInstance {
+      instance_id: 1,
+      command_queue: command_queue.clone(),
+      shared_state: shared_state.clone(),
+    };
+
+    let active_instance = SoundInstance {
+      instance_id: 2,
+      command_queue,
+      shared_state,
+    };
+
+    inactive_instance.set_pitch(0.5);
+    assert_eq!(inactive_instance.pitch(), 1.0);
+    assert_eq!(active_instance.pitch(), 1.0);
     return;
   }
 
@@ -655,6 +884,34 @@ mod tests {
       Some(PlaybackCommand::Play { instance_id: 1 })
     ));
     assert!(context.command_queue.pop().is_none());
+    return;
+  }
+
+  /// `play_sound` MUST reset per-instance volume to `1.0` for the new instance.
+  #[test]
+  fn play_sound_resets_instance_volume() {
+    let mut context = create_test_context(48_000, 2);
+    let buffer = create_test_sound_buffer(48_000, 2, 4);
+
+    context.shared_state.set_active_instance_id(1);
+    context.shared_state.set_instance_volume(0.25);
+
+    let instance = context.play_sound(&buffer).expect("must play sound");
+    assert_eq!(instance.volume(), 1.0);
+    return;
+  }
+
+  /// `play_sound` MUST reset per-instance pitch to `1.0` for the new instance.
+  #[test]
+  fn play_sound_resets_instance_pitch() {
+    let mut context = create_test_context(48_000, 2);
+    let buffer = create_test_sound_buffer(48_000, 2, 4);
+
+    context.shared_state.set_active_instance_id(1);
+    context.shared_state.set_instance_pitch(0.5);
+
+    let instance = context.play_sound(&buffer).expect("must play sound");
+    assert_eq!(instance.pitch(), 1.0);
     return;
   }
 

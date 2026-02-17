@@ -3,13 +3,13 @@ title: "Sound Playback and Transport Controls"
 document_id: "audio-sound-playback-2026-02-09"
 status: "draft"
 created: "2026-02-09T00:00:00Z"
-last_updated: "2026-02-09T00:10:00Z"
-version: "0.1.1"
+last_updated: "2026-02-15T00:00:00Z"
+version: "0.1.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "e1150369fb5024e47d4b8a19c116c16f8fb9abad"
+repo_commit: "6f96052fae896a095b658f29af1eff96e5aaa348"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "audio", "lambda-rs"]
@@ -65,12 +65,12 @@ Rationale
 
 ### Non-Goals
 
-- Volume control.
-- Pitch/speed control.
+- Volume control (see `docs/specs/audio/sound-instance-gain-and-pitch.md`).
+- Pitch/speed control (see `docs/specs/audio/sound-instance-gain-and-pitch.md`).
 - Spatial audio.
 - Multiple simultaneous sounds.
 - Streaming decode (disk-backed or incremental decode).
-- Resampling or general channel remapping.
+- General-purpose resampling or channel remapping (beyond pitch control).
 
 ## Terminology
 

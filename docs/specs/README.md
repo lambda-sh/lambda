@@ -3,7 +3,7 @@ title: "Specifications Index"
 document_id: "specs-index-2026-02-07"
 status: "living"
 created: "2026-02-07T00:00:00Z"
-last_updated: "2026-02-12T23:03:52Z"
+last_updated: "2026-02-15T00:00:00Z"
 version: "0.1.3"
 repo_commit: "6f96052fae896a095b658f29af1eff96e5aaa348"
 owners: ["lambda-sh"]
@@ -25,6 +25,7 @@ tags: ["index", "specs", "docs"]
 - Audio Devices — [audio/audio-devices.md](audio/audio-devices.md)
 - Audio File Loading — [audio/audio-file-loading.md](audio/audio-file-loading.md)
 - Sound Playback and Transport Controls — [audio/sound-playback.md](audio/sound-playback.md)
+- Sound Instance Gain and Pitch Controls — [audio/sound-instance-gain-and-pitch.md](audio/sound-instance-gain-and-pitch.md)
 
 ## Runtime / Events
 

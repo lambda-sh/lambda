@@ -1554,6 +1554,7 @@ name = "lambda-demos-audio"
 version = "0.1.0"
 dependencies = [
  "lambda-rs",
+ "lambda-rs-args",
 ]
 
 [[package]]

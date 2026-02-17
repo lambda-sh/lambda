@@ -3,6 +3,7 @@ use std::{
   mem::MaybeUninit,
   sync::{
     atomic::{
+      AtomicU32,
       AtomicU64,
       AtomicU8,
       AtomicUsize,
@@ -147,6 +148,9 @@ pub(super) type PlaybackCommandQueue =
 pub(super) struct PlaybackSharedState {
   active_instance_id: AtomicU64,
   state: AtomicU8,
+  master_volume_bits: AtomicU32,
+  instance_volume_bits: AtomicU32,
+  instance_pitch_bits: AtomicU32,
 }
 
 impl PlaybackSharedState {
@@ -158,6 +162,9 @@ impl PlaybackSharedState {
     return Self {
       active_instance_id: AtomicU64::new(0),
       state: AtomicU8::new(playback_state_to_u8(PlaybackState::Stopped)),
+      master_volume_bits: AtomicU32::new(1.0_f32.to_bits()),
+      instance_volume_bits: AtomicU32::new(1.0_f32.to_bits()),
+      instance_pitch_bits: AtomicU32::new(1.0_f32.to_bits()),
     };
   }
 
@@ -205,6 +212,92 @@ impl PlaybackSharedState {
     let value = self.state.load(Ordering::Acquire);
     return playback_state_from_u8(value);
   }
+
+  /// Set the global/master volume.
+  ///
+  /// # Arguments
+  /// - `volume`: Master volume where `1.0` is normal, `0.0` is silent, and
+  ///   values > `1.0` amplify.
+  ///
+  /// # Returns
+  /// `()` after updating the master volume.
+  pub(super) fn set_master_volume(&self, volume: f32) {
+    let normalized = normalize_volume(volume);
+    self
+      .master_volume_bits
+      .store(normalized.to_bits(), Ordering::Release);
+    return;
+  }
+
+  /// Return the global/master volume.
+  ///
+  /// # Returns
+  /// The current master volume.
+  pub(super) fn master_volume(&self) -> f32 {
+    let bits = self.master_volume_bits.load(Ordering::Acquire);
+    let value = f32::from_bits(bits);
+    return normalize_volume(value);
+  }
+
+  /// Set the per-instance volume for the active playback slot.
+  ///
+  /// This is stored separately from master volume and is intended to model
+  /// `SoundInstance::set_volume` while the playback system supports only one
+  /// active sound at a time.
+  ///
+  /// # Arguments
+  /// - `volume`: Instance volume where `1.0` is normal, `0.0` is silent, and
+  ///   values > `1.0` amplify.
+  ///
+  /// # Returns
+  /// `()` after updating the per-instance volume.
+  pub(super) fn set_instance_volume(&self, volume: f32) {
+    let normalized = normalize_volume(volume);
+    self
+      .instance_volume_bits
+      .store(normalized.to_bits(), Ordering::Release);
+    return;
+  }
+
+  /// Return the per-instance volume for the active playback slot.
+  ///
+  /// # Returns
+  /// The current per-instance volume.
+  pub(super) fn instance_volume(&self) -> f32 {
+    let bits = self.instance_volume_bits.load(Ordering::Acquire);
+    let value = f32::from_bits(bits);
+    return normalize_volume(value);
+  }
+
+  /// Set the per-instance pitch/playback speed for the active playback slot.
+  ///
+  /// Pitch is expressed as a playback rate multiplier:
+  /// - `1.0` is normal speed
+  /// - `0.5` is half speed
+  /// - `2.0` is double speed
+  ///
+  /// # Arguments
+  /// - `pitch`: Requested playback rate multiplier.
+  ///
+  /// # Returns
+  /// `()` after updating the per-instance pitch.
+  pub(super) fn set_instance_pitch(&self, pitch: f32) {
+    let normalized = normalize_pitch(pitch);
+    self
+      .instance_pitch_bits
+      .store(normalized.to_bits(), Ordering::Release);
+    return;
+  }
+
+  /// Return the per-instance pitch/playback speed for the active playback slot.
+  ///
+  /// # Returns
+  /// The current playback rate multiplier.
+  pub(super) fn instance_pitch(&self) -> f32 {
+    let bits = self.instance_pitch_bits.load(Ordering::Acquire);
+    let value = f32::from_bits(bits);
+    return normalize_pitch(value);
+  }
 }
 
 fn playback_state_to_u8(state: PlaybackState) -> u8 {
@@ -233,6 +326,64 @@ fn playback_state_from_u8(value: u8) -> PlaybackState {
       return PlaybackState::Stopped;
     }
   }
+}
+
+/// Normalize a volume scalar into a safe, deterministic value.
+///
+/// This helper is used for both per-instance and master volume normalization.
+/// The public API is infallible, so invalid inputs are mapped to sensible
+/// defaults.
+///
+/// Normalization rules
+/// - Non-finite values (NaN, +/-Inf) map to `1.0`.
+/// - Negative values clamp to `0.0`.
+/// - Values >= `0.0` are returned unchanged (including values > `1.0`).
+///
+/// # Arguments
+/// - `volume`: Candidate volume value.
+///
+/// # Returns
+/// A normalized volume scalar.
+fn normalize_volume(volume: f32) -> f32 {
+  if !volume.is_finite() {
+    return 1.0;
+  }
+
+  if volume < 0.0 {
+    return 0.0;
+  }
+
+  return volume;
+}
+
+/// Normalize a pitch scalar into a safe, deterministic value.
+///
+/// Pitch is used as a playback rate multiplier, so non-positive values would
+/// stall or reverse playback. The public API is infallible, so invalid inputs
+/// are mapped to sensible defaults.
+///
+/// Normalization rules
+/// - Non-finite values (NaN, +/-Inf) map to `1.0`.
+/// - Values <= `0.0` clamp to a small positive epsilon.
+/// - Values > `0.0` are returned unchanged.
+///
+/// # Arguments
+/// - `pitch`: Candidate pitch value.
+///
+/// # Returns
+/// A normalized pitch scalar guaranteed to be finite and > `0.0`.
+fn normalize_pitch(pitch: f32) -> f32 {
+  const PITCH_EPSILON: f32 = 0.001;
+
+  if !pitch.is_finite() {
+    return 1.0;
+  }
+
+  if pitch <= 0.0 {
+    return PITCH_EPSILON;
+  }
+
+  return pitch;
 }
 
 #[cfg(test)]

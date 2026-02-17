@@ -101,7 +101,7 @@ impl GainRamp {
 struct PlaybackScheduler {
   state: PlaybackState,
   looping: bool,
-  cursor_samples: usize,
+  cursor_frames: f32,
   channels: usize,
   ramp_frames: usize,
   gain: GainRamp,
@@ -134,7 +134,7 @@ impl PlaybackScheduler {
     return Self {
       state: PlaybackState::Stopped,
       looping: false,
-      cursor_samples: 0,
+      cursor_frames: 0.0,
       channels,
       ramp_frames,
       gain: GainRamp::silent(),
@@ -152,7 +152,7 @@ impl PlaybackScheduler {
   /// `()` after updating the active buffer.
   fn set_buffer(&mut self, buffer: Arc<SoundBuffer>) {
     self.buffer = Some(buffer);
-    self.cursor_samples = 0;
+    self.cursor_frames = 0.0;
     return;
   }
 
@@ -202,7 +202,7 @@ impl PlaybackScheduler {
   /// `()` after updating the transport state.
   fn stop(&mut self) {
     self.state = PlaybackState::Stopped;
-    self.cursor_samples = 0;
+    self.cursor_frames = 0.0;
     self.gain.start(0.0, self.ramp_frames);
     return;
   }
@@ -221,19 +221,30 @@ impl PlaybackScheduler {
   /// The cursor position as an interleaved sample index.
   #[allow(dead_code)]
   fn cursor_samples(&self) -> usize {
-    return self.cursor_samples;
+    let frames = self.cursor_frames.floor().max(0.0) as usize;
+    return frames.saturating_mul(self.channels);
   }
 
   /// Render audio for a callback tick into an output writer.
   ///
   /// # Arguments
   /// - `writer`: Real-time writer for the current callback output buffer.
+  /// - `master_volume`: Global/master volume scalar applied to all output.
+  /// - `instance_volume`: Per-instance volume scalar for the active slot.
+  /// - `instance_pitch`: Per-instance pitch/playback speed scalar.
   ///
   /// # Returns
   /// `()` after writing the output buffer.
-  fn render(&mut self, writer: &mut dyn AudioOutputWriter) {
+  fn render(
+    &mut self,
+    writer: &mut dyn AudioOutputWriter,
+    master_volume: f32,
+    instance_volume: f32,
+    instance_pitch: f32,
+  ) {
     let writer_channels = writer.channels() as usize;
     let frames = writer.frames();
+    let soft_clip_enabled = master_volume * instance_volume > 1.0;
 
     if writer_channels == 0 || frames == 0 {
       return;
@@ -251,6 +262,7 @@ impl PlaybackScheduler {
 
     for frame_index in 0..frames {
       let frame_gain = self.gain.current;
+      let output_gain = frame_gain * master_volume * instance_volume;
 
       if self.state != PlaybackState::Playing && self.gain.is_silent() {
         writer.clear();
@@ -267,41 +279,90 @@ impl PlaybackScheduler {
         };
 
         let samples = buffer.samples();
-        let mut frame_start = self.cursor_samples;
-        let mut frame_end = frame_start.saturating_add(writer_channels);
+        let total_frames = buffer.frames();
 
-        if frame_end > samples.len()
-          && self.looping
-          && samples.len() >= writer_channels
-        {
-          self.cursor_samples = 0;
-          frame_start = 0;
-          frame_end = writer_channels;
-        }
+        let mut should_stop = false;
 
-        if frame_end <= samples.len() {
-          for channel_index in 0..writer_channels {
-            let sample = samples
-              .get(frame_start.saturating_add(channel_index))
-              .copied()
-              .unwrap_or(0.0);
-            self.last_frame_samples[channel_index] = sample;
-            writer.set_sample(frame_index, channel_index, sample * frame_gain);
+        if total_frames == 0 {
+          should_stop = true;
+        } else {
+          let total_frames_f32 = total_frames as f32;
+
+          if self.cursor_frames >= total_frames_f32 {
+            if self.looping {
+              self.cursor_frames =
+                self.cursor_frames.rem_euclid(total_frames_f32);
+            } else {
+              should_stop = true;
+            }
           }
 
-          self.cursor_samples = frame_end;
-          self.gain.advance_frame();
-          continue;
+          if !should_stop {
+            // When playback continues, we resample the buffer at a fractional
+            // frame cursor:
+            //
+            // - `cursor_frame_position` is the current playback position in
+            //   frames (not interleaved samples).
+            // - `frame_index0` is the base frame index: floor(cursor).
+            // - `frame_lerp_t` is the fractional part in `[0.0, 1.0)`.
+            // - `frame_index1` is the next frame used for interpolation. If
+            //   the cursor is on the last frame:
+            //   - when looping, wrap to frame `0`
+            //   - otherwise, reuse `frame_index0` (hold the last sample)
+            //
+            // Each output frame is produced by linear interpolation between
+            // the two source frames, then applying gain and clipping.
+            let cursor_frame_position = self.cursor_frames.max(0.0);
+            let frame_index0 = cursor_frame_position.floor() as usize;
+            let frame_lerp_t = cursor_frame_position - frame_index0 as f32;
+            let frame_index1 = if frame_index0.saturating_add(1) < total_frames
+            {
+              frame_index0 + 1
+            } else if self.looping {
+              0
+            } else {
+              frame_index0
+            };
+
+            for channel_index in 0..writer_channels {
+              let s0_index = frame_index0
+                .saturating_mul(writer_channels)
+                .saturating_add(channel_index);
+              let s1_index = frame_index1
+                .saturating_mul(writer_channels)
+                .saturating_add(channel_index);
+              let s0 = samples.get(s0_index).copied().unwrap_or(0.0);
+              let s1 = samples.get(s1_index).copied().unwrap_or(s0);
+              let sample = s0 + (s1 - s0) * frame_lerp_t;
+
+              self.last_frame_samples[channel_index] = sample;
+              writer.set_sample(
+                frame_index,
+                channel_index,
+                clip_sample(sample * output_gain, soft_clip_enabled),
+              );
+            }
+
+            self.cursor_frames = cursor_frame_position + instance_pitch;
+            self.gain.advance_frame();
+            continue;
+          }
         }
 
-        self.state = PlaybackState::Stopped;
-        self.cursor_samples = 0;
-        self.gain.start(0.0, self.ramp_frames);
+        if should_stop {
+          self.state = PlaybackState::Stopped;
+          self.cursor_frames = 0.0;
+          self.gain.start(0.0, self.ramp_frames);
+        }
       }
 
       for channel_index in 0..writer_channels {
         let sample = self.last_frame_samples[channel_index];
-        writer.set_sample(frame_index, channel_index, sample * frame_gain);
+        writer.set_sample(
+          frame_index,
+          channel_index,
+          clip_sample(sample * output_gain, soft_clip_enabled),
+        );
       }
 
       self.gain.advance_frame();
@@ -309,6 +370,52 @@ impl PlaybackScheduler {
 
     return;
   }
+}
+
+/// Clip a sample into the nominal output range.
+///
+/// This function enforces “clipping awareness” for amplified output:
+/// - values are bounded to `[-1.0, 1.0]`
+/// - non-finite values map to `0.0` to avoid propagating NaNs/Infs downstream
+/// - when soft clipping is enabled, values in the knee region are gently
+///   compressed before saturating
+///
+/// # Arguments
+/// - `sample`: Candidate sample value.
+/// - `soft_clip`: Whether to use a soft knee before saturation.
+///
+/// # Returns
+/// A finite, bounded sample suitable for `AudioOutputWriter`.
+fn clip_sample(sample: f32, soft_clip: bool) -> f32 {
+  if !sample.is_finite() {
+    return 0.0;
+  }
+
+  if !soft_clip {
+    return sample.clamp(-1.0, 1.0);
+  }
+
+  // Soft knee limiter:
+  // - linear in [-KNEE_START, KNEE_START]
+  // - smoothstep curve from KNEE_START..1.0
+  // - saturates to [-1.0, 1.0] beyond unity
+  const KNEE_START: f32 = 0.95;
+
+  let sign = sample.signum();
+  let x = sample.abs();
+
+  if x <= KNEE_START {
+    return sample;
+  }
+
+  if x >= 1.0 {
+    return sign;
+  }
+
+  let t = (x - KNEE_START) / (1.0 - KNEE_START);
+  let smoothstep = t * t * (3.0 - 2.0 * t);
+  let y = KNEE_START + (1.0 - KNEE_START) * smoothstep;
+  return sign * y;
 }
 
 /// A callback-safe controller that drains transport commands and renders audio.
@@ -433,7 +540,15 @@ impl<const COMMAND_CAPACITY: usize> PlaybackController<COMMAND_CAPACITY> {
   /// `()` after draining commands and writing the output buffer.
   pub(super) fn render(&mut self, writer: &mut dyn AudioOutputWriter) {
     self.drain_commands();
-    self.scheduler.render(writer);
+    let master_volume = self.shared_state.master_volume();
+    let instance_volume = self.shared_state.instance_volume();
+    let instance_pitch = self.shared_state.instance_pitch();
+    self.scheduler.render(
+      writer,
+      master_volume,
+      instance_volume,
+      instance_pitch,
+    );
     self.shared_state.set_state(self.scheduler.state());
     return;
   }
@@ -522,17 +637,17 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 8);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
 
     assert_eq!(scheduler.state(), PlaybackState::Stopped);
     assert_eq!(scheduler.cursor_samples(), 0);
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
     assert!(writer.max_abs() <= 0.5);
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
     assert!(writer.max_abs() <= f32::EPSILON);
     return;
   }
@@ -548,17 +663,17 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
 
     let cursor_before_pause = scheduler.cursor_samples();
     scheduler.pause();
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
     assert_eq!(scheduler.cursor_samples(), cursor_before_pause);
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
     assert!(writer.max_abs() <= f32::EPSILON);
     return;
   }
@@ -573,7 +688,7 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 8);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
     assert!(scheduler.cursor_samples() > 0);
 
     scheduler.stop();
@@ -581,9 +696,9 @@ mod tests {
     assert_eq!(scheduler.cursor_samples(), 0);
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
     assert!(writer.max_abs() <= f32::EPSILON);
     return;
   }
@@ -599,13 +714,91 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 4);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
 
     assert_eq!(scheduler.state(), PlaybackState::Playing);
     assert!((writer.sample(0, 0) - 0.1).abs() <= 1e-6);
     assert!((writer.sample(1, 0) - 0.2).abs() <= 1e-6);
     assert!((writer.sample(2, 0) - 0.1).abs() <= 1e-6);
     assert!((writer.sample(3, 0) - 0.2).abs() <= 1e-6);
+    return;
+  }
+
+  /// Looping MUST wrap correctly when pitch advances the cursor fractionally.
+  #[test]
+  fn scheduler_looping_wraps_with_fractional_pitch() {
+    let buffer = make_test_buffer(vec![0.0, 1.0], 1);
+
+    let mut scheduler = PlaybackScheduler::new_with_ramp_frames(1, 0);
+    scheduler.set_buffer(buffer);
+    scheduler.set_looping(true);
+    scheduler.play();
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.5);
+
+    assert_eq!(scheduler.state(), PlaybackState::Playing);
+
+    assert!((writer.sample(0, 0) - 0.0).abs() <= 1e-6);
+    assert!((writer.sample(1, 0) - 0.5).abs() <= 1e-6);
+    assert!((writer.sample(2, 0) - 1.0).abs() <= 1e-6);
+    assert!((writer.sample(3, 0) - 0.5).abs() <= 1e-6);
+    return;
+  }
+
+  /// Pitch `1.0` MUST reproduce the original sample sequence (no resampling).
+  #[test]
+  fn scheduler_pitch_one_reproduces_original_sequence() {
+    let buffer = make_test_buffer(vec![0.1, 0.2, 0.3, 0.4], 1);
+
+    let mut scheduler = PlaybackScheduler::new_with_ramp_frames(1, 0);
+    scheduler.set_buffer(buffer);
+    scheduler.play();
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
+
+    assert!((writer.sample(0, 0) - 0.1).abs() <= 1e-6);
+    assert!((writer.sample(1, 0) - 0.2).abs() <= 1e-6);
+    assert!((writer.sample(2, 0) - 0.3).abs() <= 1e-6);
+    assert!((writer.sample(3, 0) - 0.4).abs() <= 1e-6);
+    return;
+  }
+
+  /// Pitch `2.0` MUST advance twice as fast (every other input frame).
+  #[test]
+  fn scheduler_pitch_two_advances_twice_as_fast() {
+    let buffer = make_test_buffer(vec![0.0, 0.2, 0.4, 0.6, 0.8, 1.0], 1);
+
+    let mut scheduler = PlaybackScheduler::new_with_ramp_frames(1, 0);
+    scheduler.set_buffer(buffer);
+    scheduler.play();
+
+    let mut writer = TestAudioOutput::new(1, 3);
+    scheduler.render(&mut writer, 1.0, 1.0, 2.0);
+
+    assert!((writer.sample(0, 0) - 0.0).abs() <= 1e-6);
+    assert!((writer.sample(1, 0) - 0.4).abs() <= 1e-6);
+    assert!((writer.sample(2, 0) - 0.8).abs() <= 1e-6);
+    return;
+  }
+
+  /// Pitch `0.5` MUST advance half as fast using linear interpolation.
+  #[test]
+  fn scheduler_pitch_half_interpolates_between_frames() {
+    let buffer = make_test_buffer(vec![0.0, 0.2, 0.4, 0.6], 1);
+
+    let mut scheduler = PlaybackScheduler::new_with_ramp_frames(1, 0);
+    scheduler.set_buffer(buffer);
+    scheduler.play();
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    scheduler.render(&mut writer, 1.0, 1.0, 0.5);
+
+    assert!((writer.sample(0, 0) - 0.0).abs() <= 1e-6);
+    assert!((writer.sample(1, 0) - 0.1).abs() <= 1e-6);
+    assert!((writer.sample(2, 0) - 0.2).abs() <= 1e-6);
+    assert!((writer.sample(3, 0) - 0.3).abs() <= 1e-6);
     return;
   }
 
@@ -619,13 +812,13 @@ mod tests {
     scheduler.play();
 
     let mut writer = TestAudioOutput::new(1, 8);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
     let last = writer.sample(7, 0);
 
     scheduler.pause();
 
     let mut writer = TestAudioOutput::new(1, 1);
-    scheduler.render(&mut writer);
+    scheduler.render(&mut writer, 1.0, 1.0, 1.0);
     let first = writer.sample(0, 0);
 
     assert!((last - first).abs() <= 1e-6);
@@ -706,6 +899,220 @@ mod tests {
     let mut writer = TestAudioOutput::new(1, 1);
     controller.render(&mut writer);
     assert!(writer.max_abs() <= f32::EPSILON);
+    return;
+  }
+
+  #[test]
+  /// Master volume `0.0` MUST silence output even while playing.
+  fn controller_applies_master_volume_zero_as_silence() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+    let buffer = make_test_buffer(vec![0.8, 0.8, 0.8, 0.8], 1);
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_master_volume(0.0);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer {
+        instance_id: 1,
+        buffer,
+      })
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::Play { instance_id: 1 })
+      .unwrap();
+
+    let mut controller = PlaybackController::new_with_ramp_frames(
+      1,
+      0,
+      command_queue,
+      shared_state,
+    );
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+    assert!(writer.max_abs() <= f32::EPSILON);
+    return;
+  }
+
+  #[test]
+  /// Master volume MUST linearly scale output samples.
+  fn controller_scales_output_by_master_volume() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+    let buffer = make_test_buffer(vec![0.4, 0.4, 0.4, 0.4], 1);
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_master_volume(0.5);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer {
+        instance_id: 1,
+        buffer,
+      })
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::Play { instance_id: 1 })
+      .unwrap();
+
+    let mut controller = PlaybackController::new_with_ramp_frames(
+      1,
+      0,
+      command_queue,
+      shared_state,
+    );
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+
+    for frame in 0..4 {
+      assert!((writer.sample(frame, 0) - 0.2).abs() <= 1e-6);
+    }
+    return;
+  }
+
+  #[test]
+  /// Gains that amplify beyond unity MUST remain bounded by clipping.
+  fn controller_hard_clips_amplified_output() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+    let buffer = make_test_buffer(vec![0.8, 0.8, 0.8, 0.8], 1);
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_master_volume(2.0);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer {
+        instance_id: 1,
+        buffer,
+      })
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::Play { instance_id: 1 })
+      .unwrap();
+
+    let mut controller = PlaybackController::new_with_ramp_frames(
+      1,
+      0,
+      command_queue,
+      shared_state,
+    );
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+
+    assert!(writer.max_abs() <= 1.0 + 1e-6);
+    assert!(writer.samples.iter().all(|value| value.is_finite()));
+    return;
+  }
+
+  #[test]
+  /// Instance volume `0.0` MUST silence output even while playing.
+  fn controller_applies_instance_volume_zero_as_silence() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+    let buffer = make_test_buffer(vec![0.8, 0.8, 0.8, 0.8], 1);
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_instance_volume(0.0);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer {
+        instance_id: 1,
+        buffer,
+      })
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::Play { instance_id: 1 })
+      .unwrap();
+
+    let mut controller = PlaybackController::new_with_ramp_frames(
+      1,
+      0,
+      command_queue,
+      shared_state,
+    );
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+    assert!(writer.max_abs() <= f32::EPSILON);
+    return;
+  }
+
+  #[test]
+  /// Instance volume MUST linearly scale output samples.
+  fn controller_scales_output_by_instance_volume() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+    let buffer = make_test_buffer(vec![0.4, 0.4, 0.4, 0.4], 1);
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_instance_volume(0.5);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer {
+        instance_id: 1,
+        buffer,
+      })
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::Play { instance_id: 1 })
+      .unwrap();
+
+    let mut controller = PlaybackController::new_with_ramp_frames(
+      1,
+      0,
+      command_queue,
+      shared_state,
+    );
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+
+    for frame in 0..4 {
+      assert!((writer.sample(frame, 0) - 0.2).abs() <= 1e-6);
+    }
+    return;
+  }
+
+  #[test]
+  /// Amplified per-instance gain MUST remain bounded by clipping.
+  fn controller_hard_clips_amplified_instance_volume() {
+    let command_queue: Arc<CommandQueue<PlaybackCommand, 16>> =
+      Arc::new(CommandQueue::new());
+    let shared_state = Arc::new(PlaybackSharedState::new());
+    let buffer = make_test_buffer(vec![0.8, 0.8, 0.8, 0.8], 1);
+
+    shared_state.set_active_instance_id(1);
+    shared_state.set_instance_volume(2.0);
+
+    command_queue
+      .push(PlaybackCommand::SetBuffer {
+        instance_id: 1,
+        buffer,
+      })
+      .unwrap();
+    command_queue
+      .push(PlaybackCommand::Play { instance_id: 1 })
+      .unwrap();
+
+    let mut controller = PlaybackController::new_with_ramp_frames(
+      1,
+      0,
+      command_queue,
+      shared_state,
+    );
+
+    let mut writer = TestAudioOutput::new(1, 4);
+    controller.render(&mut writer);
+
+    assert!(writer.max_abs() <= 1.0 + 1e-6);
+    assert!(writer.samples.iter().all(|value| value.is_finite()));
     return;
   }
 }
