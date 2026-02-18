@@ -82,9 +82,7 @@ impl Error for RigidBody2DBackendError {}
 #[derive(Debug, Clone, Copy)]
 struct RigidBodySlot2D {
   body_type: RigidBodyType2D,
-  position: [f32; 2],
-  rotation: f32,
-  velocity: [f32; 2],
+  rapier_handle: RigidBodyHandle,
   force_accumulator: [f32; 2],
   dynamic_mass_kg: f32,
   generation: u32,
@@ -172,11 +170,20 @@ impl PhysicsBackend2D {
     let slot_index = self.rigid_body_slots_2d.len() as u32;
     let slot_generation = 1;
 
+    let rapier_body =
+      build_rapier_rigid_body(body_type, position, rotation, velocity, mass_kg);
+    let rapier_handle = self.bodies.insert(rapier_body);
+
+    if body_type == RigidBodyType2D::Dynamic {
+      let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
+        return Err(RigidBody2DBackendError::BodyNotFound);
+      };
+      rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
+    }
+
     self.rigid_body_slots_2d.push(RigidBodySlot2D {
       body_type,
-      position,
-      rotation,
-      velocity,
+      rapier_handle,
       force_accumulator: [0.0, 0.0],
       dynamic_mass_kg: mass_kg,
       generation: slot_generation,
@@ -201,8 +208,8 @@ impl PhysicsBackend2D {
     slot_index: u32,
     slot_generation: u32,
   ) -> Result<RigidBodyType2D, RigidBody2DBackendError> {
-    let body = self.rigid_body_2d(slot_index, slot_generation)?;
-    return Ok(body.body_type);
+    let body_slot = self.rigid_body_slot_2d(slot_index, slot_generation)?;
+    return Ok(body_slot.body_type);
   }
 
   /// Returns the current position for the referenced body.
@@ -221,8 +228,9 @@ impl PhysicsBackend2D {
     slot_index: u32,
     slot_generation: u32,
   ) -> Result<[f32; 2], RigidBody2DBackendError> {
-    let body = self.rigid_body_2d(slot_index, slot_generation)?;
-    return Ok(body.position);
+    let rapier_body = self.rapier_rigid_body_2d(slot_index, slot_generation)?;
+    let translation = rapier_body.translation();
+    return Ok([translation.x, translation.y]);
   }
 
   /// Returns the current rotation for the referenced body.
@@ -241,8 +249,8 @@ impl PhysicsBackend2D {
     slot_index: u32,
     slot_generation: u32,
   ) -> Result<f32, RigidBody2DBackendError> {
-    let body = self.rigid_body_2d(slot_index, slot_generation)?;
-    return Ok(body.rotation);
+    let rapier_body = self.rapier_rigid_body_2d(slot_index, slot_generation)?;
+    return Ok(rapier_body.rotation().angle());
   }
 
   /// Returns the current linear velocity for the referenced body.
@@ -261,8 +269,9 @@ impl PhysicsBackend2D {
     slot_index: u32,
     slot_generation: u32,
   ) -> Result<[f32; 2], RigidBody2DBackendError> {
-    let body = self.rigid_body_2d(slot_index, slot_generation)?;
-    return Ok(body.velocity);
+    let rapier_body = self.rapier_rigid_body_2d(slot_index, slot_generation)?;
+    let velocity = rapier_body.linvel();
+    return Ok([velocity.x, velocity.y]);
   }
 
   /// Sets the current position for the referenced body.
@@ -285,8 +294,9 @@ impl PhysicsBackend2D {
     position: [f32; 2],
   ) -> Result<(), RigidBody2DBackendError> {
     validate_position(position[0], position[1])?;
-    let body = self.rigid_body_2d_mut(slot_index, slot_generation)?;
-    body.position = position;
+    let rapier_body =
+      self.rapier_rigid_body_2d_mut(slot_index, slot_generation)?;
+    rapier_body.set_translation(Vector::new(position[0], position[1]), true);
     return Ok(());
   }
 
@@ -310,8 +320,9 @@ impl PhysicsBackend2D {
     rotation: f32,
   ) -> Result<(), RigidBody2DBackendError> {
     validate_rotation(rotation)?;
-    let body = self.rigid_body_2d_mut(slot_index, slot_generation)?;
-    body.rotation = rotation;
+    let rapier_body =
+      self.rapier_rigid_body_2d_mut(slot_index, slot_generation)?;
+    rapier_body.set_rotation(Rotation::new(rotation), true);
     return Ok(());
   }
 
@@ -336,19 +347,20 @@ impl PhysicsBackend2D {
     velocity: [f32; 2],
   ) -> Result<(), RigidBody2DBackendError> {
     validate_velocity(velocity[0], velocity[1])?;
-    let body = self.rigid_body_2d_mut(slot_index, slot_generation)?;
+    let (body_type, rapier_handle) = {
+      let body_slot = self.rigid_body_slot_2d(slot_index, slot_generation)?;
+      (body_slot.body_type, body_slot.rapier_handle)
+    };
 
-    match body.body_type {
-      RigidBodyType2D::Static => {
-        return Err(RigidBody2DBackendError::UnsupportedOperation {
-          body_type: body.body_type,
-        });
-      }
-      RigidBodyType2D::Dynamic | RigidBodyType2D::Kinematic => {
-        body.velocity = velocity;
-        return Ok(());
-      }
+    if body_type == RigidBodyType2D::Static {
+      return Err(RigidBody2DBackendError::UnsupportedOperation { body_type });
     }
+
+    let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
+      return Err(RigidBody2DBackendError::BodyNotFound);
+    };
+    rapier_body.set_linvel(Vector::new(velocity[0], velocity[1]), true);
+    return Ok(());
   }
 
   /// Applies a force, in Newtons, at the center of mass.
@@ -372,7 +384,7 @@ impl PhysicsBackend2D {
     force: [f32; 2],
   ) -> Result<(), RigidBody2DBackendError> {
     validate_force(force[0], force[1])?;
-    let body = self.rigid_body_2d_mut(slot_index, slot_generation)?;
+    let body = self.rigid_body_slot_2d_mut(slot_index, slot_generation)?;
 
     if body.body_type != RigidBodyType2D::Dynamic {
       return Err(RigidBody2DBackendError::UnsupportedOperation {
@@ -407,16 +419,26 @@ impl PhysicsBackend2D {
     impulse: [f32; 2],
   ) -> Result<(), RigidBody2DBackendError> {
     validate_impulse(impulse[0], impulse[1])?;
-    let body = self.rigid_body_2d_mut(slot_index, slot_generation)?;
+    let (body_type, rapier_handle, dynamic_mass_kg) = {
+      let body_slot = self.rigid_body_slot_2d(slot_index, slot_generation)?;
+      (
+        body_slot.body_type,
+        body_slot.rapier_handle,
+        body_slot.dynamic_mass_kg,
+      )
+    };
 
-    if body.body_type != RigidBodyType2D::Dynamic {
-      return Err(RigidBody2DBackendError::UnsupportedOperation {
-        body_type: body.body_type,
-      });
+    if body_type != RigidBodyType2D::Dynamic {
+      return Err(RigidBody2DBackendError::UnsupportedOperation { body_type });
     }
 
-    body.velocity[0] += impulse[0] / body.dynamic_mass_kg;
-    body.velocity[1] += impulse[1] / body.dynamic_mass_kg;
+    let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
+      return Err(RigidBody2DBackendError::BodyNotFound);
+    };
+    let current_velocity = rapier_body.linvel();
+    let impulse_velocity_delta =
+      Vector::new(impulse[0] / dynamic_mass_kg, impulse[1] / dynamic_mass_kg);
+    rapier_body.set_linvel(current_velocity + impulse_velocity_delta, true);
 
     return Ok(());
   }
@@ -426,8 +448,17 @@ impl PhysicsBackend2D {
   /// # Returns
   /// Returns `()` after clearing force accumulators.
   pub fn clear_rigid_body_forces_2d(&mut self) {
-    for body in &mut self.rigid_body_slots_2d {
-      body.force_accumulator = [0.0, 0.0];
+    for index in 0..self.rigid_body_slots_2d.len() {
+      let rapier_handle = {
+        let body_slot = &mut self.rigid_body_slots_2d[index];
+        body_slot.force_accumulator = [0.0, 0.0];
+        body_slot.rapier_handle
+      };
+
+      let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
+        continue;
+      };
+      rapier_body.reset_forces(true);
     }
 
     return;
@@ -468,10 +499,13 @@ impl PhysicsBackend2D {
   pub fn step_with_timestep_seconds(&mut self, timestep_seconds: f32) {
     self.integration_parameters.dt = timestep_seconds;
 
-    self.step_rigid_bodies_2d(timestep_seconds);
+    // `lambda-rs` defines fixed, symplectic-Euler integration semantics for
+    // gravity and explicit forces across substeps. Rapier is stepped with
+    // zero gravity so it only contributes constraint and collision impulses.
+    self.integrate_external_forces_2d(timestep_seconds);
 
     self.pipeline.step(
-      self.gravity,
+      Vector::ZERO,
       &self.integration_parameters,
       &mut self.islands,
       &mut self.broad_phase,
@@ -488,7 +522,7 @@ impl PhysicsBackend2D {
     return;
   }
 
-  fn rigid_body_2d(
+  fn rigid_body_slot_2d(
     &self,
     slot_index: u32,
     slot_generation: u32,
@@ -504,7 +538,7 @@ impl PhysicsBackend2D {
     return Ok(body);
   }
 
-  fn rigid_body_2d_mut(
+  fn rigid_body_slot_2d_mut(
     &mut self,
     slot_index: u32,
     slot_generation: u32,
@@ -521,32 +555,107 @@ impl PhysicsBackend2D {
     return Ok(body);
   }
 
-  fn step_rigid_bodies_2d(&mut self, timestep_seconds: f32) {
-    let gravity = [self.gravity.x, self.gravity.y];
+  fn rapier_rigid_body_2d(
+    &self,
+    slot_index: u32,
+    slot_generation: u32,
+  ) -> Result<&RigidBody, RigidBody2DBackendError> {
+    let body_slot = self.rigid_body_slot_2d(slot_index, slot_generation)?;
+    let Some(rapier_body) = self.bodies.get(body_slot.rapier_handle) else {
+      return Err(RigidBody2DBackendError::BodyNotFound);
+    };
 
-    for body in &mut self.rigid_body_slots_2d {
-      match body.body_type {
-        RigidBodyType2D::Static => {}
-        RigidBodyType2D::Kinematic => {
-          body.position[0] += body.velocity[0] * timestep_seconds;
-          body.position[1] += body.velocity[1] * timestep_seconds;
-        }
-        RigidBodyType2D::Dynamic => {
-          let acceleration_x =
-            gravity[0] + (body.force_accumulator[0] / body.dynamic_mass_kg);
-          let acceleration_y =
-            gravity[1] + (body.force_accumulator[1] / body.dynamic_mass_kg);
+    return Ok(rapier_body);
+  }
 
-          body.velocity[0] += acceleration_x * timestep_seconds;
-          body.velocity[1] += acceleration_y * timestep_seconds;
+  fn rapier_rigid_body_2d_mut(
+    &mut self,
+    slot_index: u32,
+    slot_generation: u32,
+  ) -> Result<&mut RigidBody, RigidBody2DBackendError> {
+    let rapier_handle = {
+      let body_slot = self.rigid_body_slot_2d(slot_index, slot_generation)?;
+      body_slot.rapier_handle
+    };
 
-          body.position[0] += body.velocity[0] * timestep_seconds;
-          body.position[1] += body.velocity[1] * timestep_seconds;
-        }
+    let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
+      return Err(RigidBody2DBackendError::BodyNotFound);
+    };
+
+    return Ok(rapier_body);
+  }
+
+  fn integrate_external_forces_2d(&mut self, timestep_seconds: f32) {
+    for index in 0..self.rigid_body_slots_2d.len() {
+      let (body_type, rapier_handle, force_accumulator, dynamic_mass_kg) = {
+        let body_slot = &self.rigid_body_slots_2d[index];
+        (
+          body_slot.body_type,
+          body_slot.rapier_handle,
+          body_slot.force_accumulator,
+          body_slot.dynamic_mass_kg,
+        )
+      };
+
+      if body_type != RigidBodyType2D::Dynamic {
+        continue;
       }
+
+      let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
+        continue;
+      };
+
+      let gravity_acceleration = self.gravity;
+      let acceleration_x =
+        gravity_acceleration.x + (force_accumulator[0] / dynamic_mass_kg);
+      let acceleration_y =
+        gravity_acceleration.y + (force_accumulator[1] / dynamic_mass_kg);
+
+      let current_velocity = rapier_body.linvel();
+      let new_velocity = Vector::new(
+        current_velocity.x + acceleration_x * timestep_seconds,
+        current_velocity.y + acceleration_y * timestep_seconds,
+      );
+      rapier_body.set_linvel(new_velocity, true);
     }
 
     return;
+  }
+}
+
+fn build_rapier_rigid_body(
+  body_type: RigidBodyType2D,
+  position: [f32; 2],
+  rotation: f32,
+  velocity: [f32; 2],
+  dynamic_mass_kg: f32,
+) -> RigidBodyBuilder {
+  let translation = Vector::new(position[0], position[1]);
+  let linear_velocity = Vector::new(velocity[0], velocity[1]);
+
+  match body_type {
+    RigidBodyType2D::Static => {
+      return RigidBodyBuilder::fixed()
+        .translation(translation)
+        .rotation(rotation)
+        .linvel(linear_velocity)
+        .lock_rotations();
+    }
+    RigidBodyType2D::Kinematic => {
+      return RigidBodyBuilder::kinematic_velocity_based()
+        .translation(translation)
+        .rotation(rotation)
+        .linvel(linear_velocity)
+        .lock_rotations();
+    }
+    RigidBodyType2D::Dynamic => {
+      return RigidBodyBuilder::dynamic()
+        .translation(translation)
+        .rotation(rotation)
+        .linvel(linear_velocity)
+        .additional_mass(dynamic_mass_kg)
+        .lock_rotations();
+    }
   }
 }
 
@@ -630,6 +739,13 @@ mod tests {
         Some(1.0),
       )
       .unwrap();
+
+    let rapier_handle =
+      backend.rigid_body_slots_2d[slot_index as usize].rapier_handle;
+    let rapier_body = backend.bodies.get(rapier_handle).unwrap();
+    assert_eq!(rapier_body.linear_damping(), 0.0);
+    assert_eq!(rapier_body.gravity_scale(), 1.0);
+    assert_eq!(backend.integration_parameters.dt, 1.0);
 
     backend.step_with_timestep_seconds(1.0);
 
