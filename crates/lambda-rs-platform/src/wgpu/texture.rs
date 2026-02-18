@@ -664,10 +664,8 @@ impl SamplerBuilder {
     max_supported_anisotropy: u16,
   ) -> wgpu::SamplerDescriptor<'_> {
     let max_supported_anisotropy = max_supported_anisotropy.clamp(1, 16);
-    let mut anisotropy_clamp = self
-      .anisotropy_clamp
-      .clamp(1, 16)
-      .min(max_supported_anisotropy);
+    let mut anisotropy_clamp =
+      self.anisotropy_clamp.min(max_supported_anisotropy);
     if anisotropy_clamp > 1
       && !matches!(
         (self.min_filter, self.mag_filter, self.mipmap_filter),
