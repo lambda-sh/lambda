@@ -1182,4 +1182,26 @@ mod tests {
       16
     );
   }
+
+  #[test]
+  fn sampler_builder_anisotropy_is_disabled_when_filters_not_all_linear() {
+    // Default builder uses nearest filters, so anisotropy must be disabled.
+    assert_eq!(
+      SamplerBuilder::new()
+        .with_anisotropy_clamp(8)
+        .to_descriptor(16)
+        .anisotropy_clamp,
+      1
+    );
+
+    // If mipmap filtering isn't linear, anisotropy must be disabled.
+    assert_eq!(
+      SamplerBuilder::new()
+        .linear()
+        .with_anisotropy_clamp(8)
+        .to_descriptor(16)
+        .anisotropy_clamp,
+      1
+    );
+  }
 }
