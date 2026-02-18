@@ -697,15 +697,20 @@ linear; anisotropy disabled.",
 
   /// Create the sampler on the provided device.
   pub fn build(self, gpu: &Gpu) -> Sampler {
+    let requested_anisotropy = self.anisotropy_clamp.clamp(1, 16);
     let downlevel = gpu.adapter().get_downlevel_capabilities();
-    let max_supported_anisotropy = if downlevel
+    let supports_anisotropy = downlevel
       .flags
-      .contains(wgpu::DownlevelFlags::ANISOTROPIC_FILTERING)
-    {
-      16
-    } else {
-      1
-    };
+      .contains(wgpu::DownlevelFlags::ANISOTROPIC_FILTERING);
+    if requested_anisotropy > 1 && !supports_anisotropy {
+      logging::warn!(
+        "Sampler anisotropy requested ({}), but adapter does not report \
+anisotropic filtering support; anisotropy disabled.",
+        requested_anisotropy
+      );
+    }
+
+    let max_supported_anisotropy = if supports_anisotropy { 16 } else { 1 };
     let desc = self.to_descriptor(max_supported_anisotropy);
     let raw = gpu.device().create_sampler(&desc);
     return Sampler {
