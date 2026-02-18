@@ -9,6 +9,7 @@ use lambda::physics::{
   RigidBodyType,
 };
 
+/// Ensures an empty 2D world can be stepped without panicking.
 #[test]
 fn physics_2d_world_smoke_steps_empty_world() {
   let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
@@ -19,6 +20,7 @@ fn physics_2d_world_smoke_steps_empty_world() {
   return;
 }
 
+/// Ensures a dynamic rigid body can be created and advances under gravity.
 #[test]
 fn physics_2d_rigid_body_smoke_builds_and_steps() {
   let mut world = PhysicsWorld2DBuilder::new().build().unwrap();

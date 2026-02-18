@@ -79,12 +79,29 @@ impl fmt::Display for RigidBody2DBackendError {
 
 impl Error for RigidBody2DBackendError {}
 
+/// Stores per-body state that `lambda-rs` tracks alongside Rapier.
+///
+/// This slot exists because `lambda-rs` defines integration semantics that are
+/// stricter than the vendor backend:
+/// - Gravity and explicit force accumulation integrate via symplectic Euler.
+/// - Forces are accumulated and cleared explicitly by the public API.
+/// - Impulses update velocity immediately.
+///
+/// # Invariants
+/// - `rapier_handle` MUST reference a body in `PhysicsBackend2D::bodies`.
+/// - `dynamic_mass_kg` MUST be finite and positive for dynamic bodies.
+/// - `generation` MUST be non-zero and is used to validate handles.
 #[derive(Debug, Clone, Copy)]
 struct RigidBodySlot2D {
+  /// The rigid body's integration mode.
   body_type: RigidBodyType2D,
+  /// The handle to the Rapier rigid body stored in the `RigidBodySet`.
   rapier_handle: RigidBodyHandle,
+  /// Accumulated forces applied by the public API, in Newtons.
   force_accumulator: [f32; 2],
+  /// The mass in kilograms used for manual force and impulse integration.
   dynamic_mass_kg: f32,
+  /// A monotonically increasing counter used to validate stale handles.
   generation: u32,
 }
 
@@ -522,6 +539,18 @@ impl PhysicsBackend2D {
     return;
   }
 
+  /// Returns an immutable reference to a rigid body slot after validation.
+  ///
+  /// # Arguments
+  /// - `slot_index`: The body slot index.
+  /// - `slot_generation`: The slot generation counter.
+  ///
+  /// # Returns
+  /// Returns an immutable reference to the validated `RigidBodySlot2D`.
+  ///
+  /// # Errors
+  /// Returns `RigidBody2DBackendError::BodyNotFound` when the slot is missing
+  /// or the generation does not match.
   fn rigid_body_slot_2d(
     &self,
     slot_index: u32,
@@ -538,6 +567,18 @@ impl PhysicsBackend2D {
     return Ok(body);
   }
 
+  /// Returns a mutable reference to a rigid body slot after validation.
+  ///
+  /// # Arguments
+  /// - `slot_index`: The body slot index.
+  /// - `slot_generation`: The slot generation counter.
+  ///
+  /// # Returns
+  /// Returns a mutable reference to the validated `RigidBodySlot2D`.
+  ///
+  /// # Errors
+  /// Returns `RigidBody2DBackendError::BodyNotFound` when the slot is missing
+  /// or the generation does not match.
   fn rigid_body_slot_2d_mut(
     &mut self,
     slot_index: u32,
@@ -555,6 +596,18 @@ impl PhysicsBackend2D {
     return Ok(body);
   }
 
+  /// Returns an immutable reference to the Rapier rigid body for a slot.
+  ///
+  /// # Arguments
+  /// - `slot_index`: The body slot index.
+  /// - `slot_generation`: The slot generation counter.
+  ///
+  /// # Returns
+  /// Returns an immutable reference to the underlying Rapier `RigidBody`.
+  ///
+  /// # Errors
+  /// Returns `RigidBody2DBackendError::BodyNotFound` when the slot is invalid
+  /// or the Rapier body has been removed.
   fn rapier_rigid_body_2d(
     &self,
     slot_index: u32,
@@ -568,6 +621,18 @@ impl PhysicsBackend2D {
     return Ok(rapier_body);
   }
 
+  /// Returns a mutable reference to the Rapier rigid body for a slot.
+  ///
+  /// # Arguments
+  /// - `slot_index`: The body slot index.
+  /// - `slot_generation`: The slot generation counter.
+  ///
+  /// # Returns
+  /// Returns a mutable reference to the underlying Rapier `RigidBody`.
+  ///
+  /// # Errors
+  /// Returns `RigidBody2DBackendError::BodyNotFound` when the slot is invalid
+  /// or the Rapier body has been removed.
   fn rapier_rigid_body_2d_mut(
     &mut self,
     slot_index: u32,
@@ -585,6 +650,17 @@ impl PhysicsBackend2D {
     return Ok(rapier_body);
   }
 
+  /// Integrates gravity and explicit forces into rigid-body velocity.
+  ///
+  /// This function preserves `lambda-rs` symplectic Euler semantics by
+  /// integrating external accelerations into the current velocity before
+  /// allowing Rapier to solve constraints and apply collision impulses.
+  ///
+  /// # Arguments
+  /// - `timestep_seconds`: The substep duration in seconds.
+  ///
+  /// # Returns
+  /// Returns `()` after applying velocity updates to dynamic bodies.
   fn integrate_external_forces_2d(&mut self, timestep_seconds: f32) {
     for index in 0..self.rigid_body_slots_2d.len() {
       let (body_type, rapier_handle, force_accumulator, dynamic_mass_kg) = {
@@ -623,6 +699,17 @@ impl PhysicsBackend2D {
   }
 }
 
+/// Builds a Rapier rigid body builder with `lambda-rs` invariants applied.
+///
+/// # Arguments
+/// - `body_type`: The integration mode for the rigid body.
+/// - `position`: The initial position in meters.
+/// - `rotation`: The initial rotation in radians.
+/// - `velocity`: The initial linear velocity in meters per second.
+/// - `dynamic_mass_kg`: The mass in kilograms for dynamic bodies.
+///
+/// # Returns
+/// Returns a configured Rapier `RigidBodyBuilder`.
 fn build_rapier_rigid_body(
   body_type: RigidBodyType2D,
   position: [f32; 2],
@@ -659,6 +746,18 @@ fn build_rapier_rigid_body(
   }
 }
 
+/// Validates a 2D position.
+///
+/// # Arguments
+/// - `x`: The X position in meters.
+/// - `y`: The Y position in meters.
+///
+/// # Returns
+/// Returns `()` when the input is finite.
+///
+/// # Errors
+/// Returns `RigidBody2DBackendError::InvalidPosition` when any component is
+/// non-finite.
 fn validate_position(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   if !x.is_finite() || !y.is_finite() {
     return Err(RigidBody2DBackendError::InvalidPosition { x, y });
@@ -667,6 +766,17 @@ fn validate_position(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   return Ok(());
 }
 
+/// Validates a rotation angle.
+///
+/// # Arguments
+/// - `radians`: The rotation in radians.
+///
+/// # Returns
+/// Returns `()` when the input is finite.
+///
+/// # Errors
+/// Returns `RigidBody2DBackendError::InvalidRotation` when the angle is
+/// non-finite.
 fn validate_rotation(radians: f32) -> Result<(), RigidBody2DBackendError> {
   if !radians.is_finite() {
     return Err(RigidBody2DBackendError::InvalidRotation { radians });
@@ -675,6 +785,18 @@ fn validate_rotation(radians: f32) -> Result<(), RigidBody2DBackendError> {
   return Ok(());
 }
 
+/// Validates a 2D linear velocity.
+///
+/// # Arguments
+/// - `x`: The X velocity in meters per second.
+/// - `y`: The Y velocity in meters per second.
+///
+/// # Returns
+/// Returns `()` when the input is finite.
+///
+/// # Errors
+/// Returns `RigidBody2DBackendError::InvalidVelocity` when any component is
+/// non-finite.
 fn validate_velocity(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   if !x.is_finite() || !y.is_finite() {
     return Err(RigidBody2DBackendError::InvalidVelocity { x, y });
@@ -683,6 +805,18 @@ fn validate_velocity(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   return Ok(());
 }
 
+/// Validates a 2D force vector.
+///
+/// # Arguments
+/// - `x`: The X force component in Newtons.
+/// - `y`: The Y force component in Newtons.
+///
+/// # Returns
+/// Returns `()` when the input is finite.
+///
+/// # Errors
+/// Returns `RigidBody2DBackendError::InvalidForce` when any component is
+/// non-finite.
 fn validate_force(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   if !x.is_finite() || !y.is_finite() {
     return Err(RigidBody2DBackendError::InvalidForce { x, y });
@@ -691,6 +825,18 @@ fn validate_force(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   return Ok(());
 }
 
+/// Validates a 2D impulse vector.
+///
+/// # Arguments
+/// - `x`: The X impulse component in Newton-seconds.
+/// - `y`: The Y impulse component in Newton-seconds.
+///
+/// # Returns
+/// Returns `()` when the input is finite.
+///
+/// # Errors
+/// Returns `RigidBody2DBackendError::InvalidImpulse` when any component is
+/// non-finite.
 fn validate_impulse(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   if !x.is_finite() || !y.is_finite() {
     return Err(RigidBody2DBackendError::InvalidImpulse { x, y });
@@ -699,6 +845,19 @@ fn validate_impulse(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   return Ok(());
 }
 
+/// Resolves a dynamic-body mass value from an optional input.
+///
+/// # Arguments
+/// - `body_type`: The integration mode for the rigid body.
+/// - `dynamic_mass_kg`: The requested mass in kilograms for dynamic bodies.
+///
+/// # Returns
+/// Returns a mass value in kilograms.
+///
+/// # Errors
+/// Returns `RigidBody2DBackendError` if:
+/// - A mass is provided for a non-dynamic body.
+/// - A dynamic mass is non-finite or non-positive.
 fn resolve_dynamic_mass_kg(
   body_type: RigidBodyType2D,
   dynamic_mass_kg: Option<f32>,
@@ -726,6 +885,7 @@ fn resolve_dynamic_mass_kg(
 mod tests {
   use super::*;
 
+  /// Verifies that the backend integrates gravity using symplectic Euler.
   #[test]
   fn dynamic_body_integrates_with_symplectic_euler() {
     let mut backend = PhysicsBackend2D::new([0.0, -10.0], 1.0);
@@ -780,6 +940,7 @@ mod tests {
     return;
   }
 
+  /// Verifies that kinematic bodies advance via their linear velocity.
   #[test]
   fn kinematic_body_integrates_using_velocity() {
     let mut backend = PhysicsBackend2D::new([0.0, -10.0], 1.0);
@@ -806,6 +967,7 @@ mod tests {
     return;
   }
 
+  /// Verifies that static bodies remain fixed during stepping.
   #[test]
   fn static_body_does_not_move_during_step() {
     let mut backend = PhysicsBackend2D::new([0.0, -10.0], 1.0);
@@ -832,6 +994,7 @@ mod tests {
     return;
   }
 
+  /// Verifies force accumulation persists until explicitly cleared.
   #[test]
   fn force_accumulates_until_cleared() {
     let mut backend = PhysicsBackend2D::new([0.0, 0.0], 1.0);
@@ -883,6 +1046,7 @@ mod tests {
     return;
   }
 
+  /// Verifies that applying an impulse updates velocity immediately.
   #[test]
   fn impulse_updates_velocity_immediately() {
     let mut backend = PhysicsBackend2D::new([0.0, 0.0], 1.0);
