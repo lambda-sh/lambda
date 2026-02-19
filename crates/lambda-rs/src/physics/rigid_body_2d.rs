@@ -44,6 +44,18 @@ pub struct RigidBody2D {
 }
 
 impl RigidBody2D {
+  /// Returns the backend slot identifiers for this handle.
+  ///
+  /// This function is an internal implementation detail used by other
+  /// `PhysicsWorld2D` APIs (for example, collider attachment) to reference the
+  /// underlying backend storage.
+  ///
+  /// # Returns
+  /// Returns `(slot_index, slot_generation)` for this handle.
+  pub(super) fn backend_slot(self) -> (u32, u32) {
+    return (self.slot_index, self.slot_generation);
+  }
+
   /// Returns the body type.
   ///
   /// # Arguments

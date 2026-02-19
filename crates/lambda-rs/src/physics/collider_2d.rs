@@ -10,6 +10,8 @@ use std::{
   fmt,
 };
 
+use lambda_platform::physics::Collider2DBackendError;
+
 use super::{
   PhysicsWorld2D,
   RigidBody2D,
@@ -304,7 +306,52 @@ impl Collider2DBuilder {
 
     validate_body_handle(world, body)?;
 
-    return Err(Collider2DError::BackendUnsupported);
+    let (body_slot_index, body_slot_generation) = body.backend_slot();
+
+    let (slot_index, slot_generation) = match self.shape {
+      ColliderShape2D::Circle { radius } => world
+        .backend
+        .create_circle_collider_2d(
+          body_slot_index,
+          body_slot_generation,
+          radius,
+          self.local_offset,
+          self.local_rotation,
+          self.material.density(),
+          self.material.friction(),
+          self.material.restitution(),
+        )
+        .map_err(map_backend_error)?,
+      ColliderShape2D::Rectangle {
+        half_width,
+        half_height,
+      } => world
+        .backend
+        .create_rectangle_collider_2d(
+          body_slot_index,
+          body_slot_generation,
+          half_width,
+          half_height,
+          self.local_offset,
+          self.local_rotation,
+          self.material.density(),
+          self.material.friction(),
+          self.material.restitution(),
+        )
+        .map_err(map_backend_error)?,
+      ColliderShape2D::Capsule { .. } => {
+        return Err(Collider2DError::BackendUnsupported);
+      }
+      ColliderShape2D::ConvexPolygon { .. } => {
+        return Err(Collider2DError::BackendUnsupported);
+      }
+    };
+
+    return Ok(Collider2D {
+      world_id: world.world_id,
+      slot_index,
+      slot_generation,
+    });
   }
 
   /// Creates a builder for the given shape with stable defaults.
@@ -480,6 +527,42 @@ fn map_body_error(error: RigidBody2DError) -> Collider2DError {
         "unexpected RigidBody2DError mapping: {other:?}"
       );
       return Collider2DError::BodyNotFound;
+    }
+  }
+}
+
+/// Maps a backend collider error into the public collider error surface.
+fn map_backend_error(error: Collider2DBackendError) -> Collider2DError {
+  match error {
+    Collider2DBackendError::BodyNotFound => {
+      return Collider2DError::BodyNotFound;
+    }
+    Collider2DBackendError::InvalidLocalOffset { x, y } => {
+      return Collider2DError::InvalidLocalOffset { x, y };
+    }
+    Collider2DBackendError::InvalidLocalRotation { radians } => {
+      return Collider2DError::InvalidLocalRotation { radians };
+    }
+    Collider2DBackendError::InvalidCircleRadius { radius } => {
+      return Collider2DError::InvalidCircleRadius { radius };
+    }
+    Collider2DBackendError::InvalidRectangleHalfExtents {
+      half_width,
+      half_height,
+    } => {
+      return Collider2DError::InvalidRectangleHalfExtents {
+        half_width,
+        half_height,
+      };
+    }
+    Collider2DBackendError::InvalidDensity { density } => {
+      return Collider2DError::InvalidDensity { density };
+    }
+    Collider2DBackendError::InvalidFriction { friction } => {
+      return Collider2DError::InvalidFriction { friction };
+    }
+    Collider2DBackendError::InvalidRestitution { restitution } => {
+      return Collider2DError::InvalidRestitution { restitution };
     }
   }
 }

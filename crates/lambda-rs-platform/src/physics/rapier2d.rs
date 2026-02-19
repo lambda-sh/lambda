@@ -79,6 +79,66 @@ impl fmt::Display for RigidBody2DBackendError {
 
 impl Error for RigidBody2DBackendError {}
 
+/// Backend errors for 2D collider operations.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Collider2DBackendError {
+  /// The referenced rigid body was not found.
+  BodyNotFound,
+  /// The provided local offset is invalid.
+  InvalidLocalOffset { x: f32, y: f32 },
+  /// The provided local rotation is invalid.
+  InvalidLocalRotation { radians: f32 },
+  /// The provided circle radius is invalid.
+  InvalidCircleRadius { radius: f32 },
+  /// The provided rectangle half-extents are invalid.
+  InvalidRectangleHalfExtents { half_width: f32, half_height: f32 },
+  /// The provided density is invalid.
+  InvalidDensity { density: f32 },
+  /// The provided friction coefficient is invalid.
+  InvalidFriction { friction: f32 },
+  /// The provided restitution coefficient is invalid.
+  InvalidRestitution { restitution: f32 },
+}
+
+impl fmt::Display for Collider2DBackendError {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::BodyNotFound => {
+        return write!(formatter, "rigid body not found");
+      }
+      Self::InvalidLocalOffset { x, y } => {
+        return write!(formatter, "invalid local_offset: ({x}, {y})");
+      }
+      Self::InvalidLocalRotation { radians } => {
+        return write!(formatter, "invalid local_rotation: {radians}");
+      }
+      Self::InvalidCircleRadius { radius } => {
+        return write!(formatter, "invalid circle radius: {radius}");
+      }
+      Self::InvalidRectangleHalfExtents {
+        half_width,
+        half_height,
+      } => {
+        return write!(
+          formatter,
+          "invalid rectangle half extents: ({half_width}, {half_height})"
+        );
+      }
+      Self::InvalidDensity { density } => {
+        return write!(formatter, "invalid density: {density}");
+      }
+      Self::InvalidFriction { friction } => {
+        return write!(formatter, "invalid friction: {friction}");
+      }
+      Self::InvalidRestitution { restitution } => {
+        return write!(formatter, "invalid restitution: {restitution}");
+      }
+    }
+  }
+}
+
+impl Error for Collider2DBackendError {}
+
 /// Stores per-body state that `lambda-rs` tracks alongside Rapier.
 ///
 /// This slot exists because `lambda-rs` defines integration semantics that are
@@ -105,6 +165,54 @@ struct RigidBodySlot2D {
   generation: u32,
 }
 
+/// Stores per-collider state that `lambda-rs` tracks alongside Rapier.
+///
+/// # Invariants
+/// - `rapier_handle` MUST reference a collider in `PhysicsBackend2D::colliders`.
+/// - `generation` MUST be non-zero and is used to validate stale handles.
+#[derive(Debug, Clone, Copy)]
+struct ColliderSlot2D {
+  /// The handle to the Rapier collider stored in the `ColliderSet`.
+  rapier_handle: ColliderHandle,
+  /// A monotonically increasing counter used to validate stale handles.
+  generation: u32,
+}
+
+/// Applies Lambda collision-material combination rules to solver contacts.
+///
+/// This hook implements backend-agnostic combination semantics without
+/// exposing vendor types to `lambda-rs`:
+/// - `combined_friction = sqrt(friction_a * friction_b)`
+/// - `combined_restitution = max(restitution_a, restitution_b)`
+#[derive(Debug, Clone, Copy)]
+struct ColliderMaterialCombineHooks2D;
+
+impl PhysicsHooks for ColliderMaterialCombineHooks2D {
+  fn modify_solver_contacts(&self, context: &mut ContactModificationContext) {
+    let Some(collider_1) = context.colliders.get(context.collider1) else {
+      return;
+    };
+    let Some(collider_2) = context.colliders.get(context.collider2) else {
+      return;
+    };
+
+    let friction_1 = collider_1.friction();
+    let friction_2 = collider_2.friction();
+    let restitution_1 = collider_1.restitution();
+    let restitution_2 = collider_2.restitution();
+
+    let combined_friction = (friction_1 * friction_2).sqrt();
+    let combined_restitution = restitution_1.max(restitution_2);
+
+    for solver_contact in context.solver_contacts.iter_mut() {
+      solver_contact.friction = combined_friction;
+      solver_contact.restitution = combined_restitution;
+    }
+
+    return;
+  }
+}
+
 /// A 2D physics backend powered by `rapier2d`.
 ///
 /// This type is an internal implementation detail used by `lambda-rs`.
@@ -120,7 +228,9 @@ pub struct PhysicsBackend2D {
   multibody_joints: MultibodyJointSet,
   ccd_solver: CCDSolver,
   pipeline: PhysicsPipeline,
+  material_combine_hooks_2d: ColliderMaterialCombineHooks2D,
   rigid_body_slots_2d: Vec<RigidBodySlot2D>,
+  collider_slots_2d: Vec<ColliderSlot2D>,
 }
 
 impl PhysicsBackend2D {
@@ -152,7 +262,9 @@ impl PhysicsBackend2D {
       multibody_joints: MultibodyJointSet::new(),
       ccd_solver: CCDSolver::new(),
       pipeline: PhysicsPipeline::new(),
+      material_combine_hooks_2d: ColliderMaterialCombineHooks2D,
       rigid_body_slots_2d: Vec::new(),
+      collider_slots_2d: Vec::new(),
     };
   }
 
@@ -203,6 +315,158 @@ impl PhysicsBackend2D {
       rapier_handle,
       force_accumulator: [0.0, 0.0],
       dynamic_mass_kg: mass_kg,
+      generation: slot_generation,
+    });
+
+    return Ok((slot_index, slot_generation));
+  }
+
+  /// Creates and attaches a circle collider to a rigid body.
+  ///
+  /// # Arguments
+  /// - `parent_slot_index`: The rigid body slot index.
+  /// - `parent_slot_generation`: The rigid body slot generation counter.
+  /// - `radius`: The circle radius in meters.
+  /// - `local_offset`: The collider local translation in meters.
+  /// - `local_rotation`: The collider local rotation in radians.
+  /// - `density`: The density in kg/m².
+  /// - `friction`: The friction coefficient (unitless).
+  /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  ///
+  /// # Returns
+  /// Returns a `(slot_index, slot_generation)` pair for the created collider.
+  ///
+  /// # Errors
+  /// Returns `Collider2DBackendError` if any input is invalid or if the parent
+  /// body does not exist.
+  #[allow(clippy::too_many_arguments)]
+  pub fn create_circle_collider_2d(
+    &mut self,
+    parent_slot_index: u32,
+    parent_slot_generation: u32,
+    radius: f32,
+    local_offset: [f32; 2],
+    local_rotation: f32,
+    density: f32,
+    friction: f32,
+    restitution: f32,
+  ) -> Result<(u32, u32), Collider2DBackendError> {
+    validate_local_offset(local_offset[0], local_offset[1])?;
+    validate_local_rotation(local_rotation)?;
+    validate_circle_radius(radius)?;
+    validate_material(density, friction, restitution)?;
+
+    let rapier_parent_handle = {
+      let body_slot = self
+        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
+        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
+      body_slot.rapier_handle
+    };
+
+    if self.bodies.get(rapier_parent_handle).is_none() {
+      return Err(Collider2DBackendError::BodyNotFound);
+    }
+
+    let rapier_collider = ColliderBuilder::ball(radius)
+      .translation(Vector::new(local_offset[0], local_offset[1]))
+      .rotation(local_rotation)
+      .density(density)
+      .friction(friction)
+      .restitution(restitution)
+      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
+      .build();
+
+    let rapier_handle = self.colliders.insert_with_parent(
+      rapier_collider,
+      rapier_parent_handle,
+      &mut self.bodies,
+    );
+
+    if let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) {
+      rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
+    }
+
+    let slot_index = self.collider_slots_2d.len() as u32;
+    let slot_generation = 1;
+    self.collider_slots_2d.push(ColliderSlot2D {
+      rapier_handle,
+      generation: slot_generation,
+    });
+
+    return Ok((slot_index, slot_generation));
+  }
+
+  /// Creates and attaches a rectangle collider to a rigid body.
+  ///
+  /// # Arguments
+  /// - `parent_slot_index`: The rigid body slot index.
+  /// - `parent_slot_generation`: The rigid body slot generation counter.
+  /// - `half_width`: The rectangle half-width in meters.
+  /// - `half_height`: The rectangle half-height in meters.
+  /// - `local_offset`: The collider local translation in meters.
+  /// - `local_rotation`: The collider local rotation in radians.
+  /// - `density`: The density in kg/m².
+  /// - `friction`: The friction coefficient (unitless).
+  /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  ///
+  /// # Returns
+  /// Returns a `(slot_index, slot_generation)` pair for the created collider.
+  ///
+  /// # Errors
+  /// Returns `Collider2DBackendError` if any input is invalid or if the parent
+  /// body does not exist.
+  #[allow(clippy::too_many_arguments)]
+  pub fn create_rectangle_collider_2d(
+    &mut self,
+    parent_slot_index: u32,
+    parent_slot_generation: u32,
+    half_width: f32,
+    half_height: f32,
+    local_offset: [f32; 2],
+    local_rotation: f32,
+    density: f32,
+    friction: f32,
+    restitution: f32,
+  ) -> Result<(u32, u32), Collider2DBackendError> {
+    validate_local_offset(local_offset[0], local_offset[1])?;
+    validate_local_rotation(local_rotation)?;
+    validate_rectangle_half_extents(half_width, half_height)?;
+    validate_material(density, friction, restitution)?;
+
+    let rapier_parent_handle = {
+      let body_slot = self
+        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
+        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
+      body_slot.rapier_handle
+    };
+
+    if self.bodies.get(rapier_parent_handle).is_none() {
+      return Err(Collider2DBackendError::BodyNotFound);
+    }
+
+    let rapier_collider = ColliderBuilder::cuboid(half_width, half_height)
+      .translation(Vector::new(local_offset[0], local_offset[1]))
+      .rotation(local_rotation)
+      .density(density)
+      .friction(friction)
+      .restitution(restitution)
+      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
+      .build();
+
+    let rapier_handle = self.colliders.insert_with_parent(
+      rapier_collider,
+      rapier_parent_handle,
+      &mut self.bodies,
+    );
+
+    if let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) {
+      rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
+    }
+
+    let slot_index = self.collider_slots_2d.len() as u32;
+    let slot_generation = 1;
+    self.collider_slots_2d.push(ColliderSlot2D {
+      rapier_handle,
       generation: slot_generation,
     });
 
@@ -516,6 +780,10 @@ impl PhysicsBackend2D {
   pub fn step_with_timestep_seconds(&mut self, timestep_seconds: f32) {
     self.integration_parameters.dt = timestep_seconds;
 
+    if cfg!(debug_assertions) {
+      self.debug_validate_collider_slots_2d();
+    }
+
     // `lambda-rs` defines fixed, symplectic-Euler integration semantics for
     // gravity and explicit forces across substeps. Rapier is stepped with
     // zero gravity so it only contributes constraint and collision impulses.
@@ -532,7 +800,7 @@ impl PhysicsBackend2D {
       &mut self.impulse_joints,
       &mut self.multibody_joints,
       &mut self.ccd_solver,
-      &(),
+      &self.material_combine_hooks_2d,
       &(),
     );
 
@@ -693,6 +961,25 @@ impl PhysicsBackend2D {
         current_velocity.y + acceleration_y * timestep_seconds,
       );
       rapier_body.set_linvel(new_velocity, true);
+    }
+
+    return;
+  }
+
+  /// Validates that collider slots reference live Rapier colliders.
+  ///
+  /// This debug-only validation reads slot fields to prevent stale-handle
+  /// regressions during backend refactors.
+  ///
+  /// # Returns
+  /// Returns `()` after completing validation.
+  fn debug_validate_collider_slots_2d(&self) {
+    for slot in self.collider_slots_2d.iter() {
+      debug_assert!(slot.generation > 0, "collider slot generation is zero");
+      debug_assert!(
+        self.colliders.get(slot.rapier_handle).is_some(),
+        "collider slot references missing Rapier collider"
+      );
     }
 
     return;
@@ -879,6 +1166,126 @@ fn resolve_dynamic_mass_kg(
   }
 
   return Ok(mass_kg);
+}
+
+/// Validates a collider local offset.
+///
+/// # Arguments
+/// - `x`: The local X translation component in meters.
+/// - `y`: The local Y translation component in meters.
+///
+/// # Returns
+/// Returns `()` when the input is finite.
+///
+/// # Errors
+/// Returns `Collider2DBackendError::InvalidLocalOffset` when any component is
+/// non-finite.
+fn validate_local_offset(x: f32, y: f32) -> Result<(), Collider2DBackendError> {
+  if !x.is_finite() || !y.is_finite() {
+    return Err(Collider2DBackendError::InvalidLocalOffset { x, y });
+  }
+
+  return Ok(());
+}
+
+/// Validates a collider local rotation.
+///
+/// # Arguments
+/// - `radians`: The local rotation in radians.
+///
+/// # Returns
+/// Returns `()` when the input is finite.
+///
+/// # Errors
+/// Returns `Collider2DBackendError::InvalidLocalRotation` when the angle is
+/// non-finite.
+fn validate_local_rotation(radians: f32) -> Result<(), Collider2DBackendError> {
+  if !radians.is_finite() {
+    return Err(Collider2DBackendError::InvalidLocalRotation { radians });
+  }
+
+  return Ok(());
+}
+
+/// Validates a circle radius.
+///
+/// # Arguments
+/// - `radius`: The radius in meters.
+///
+/// # Returns
+/// Returns `()` when `radius` is finite and positive.
+///
+/// # Errors
+/// Returns `Collider2DBackendError::InvalidCircleRadius` when the radius is
+/// non-finite or non-positive.
+fn validate_circle_radius(radius: f32) -> Result<(), Collider2DBackendError> {
+  if !radius.is_finite() || radius <= 0.0 {
+    return Err(Collider2DBackendError::InvalidCircleRadius { radius });
+  }
+
+  return Ok(());
+}
+
+/// Validates rectangle half extents.
+///
+/// # Arguments
+/// - `half_width`: The half-width in meters.
+/// - `half_height`: The half-height in meters.
+///
+/// # Returns
+/// Returns `()` when inputs are finite and positive.
+///
+/// # Errors
+/// Returns `Collider2DBackendError::InvalidRectangleHalfExtents` when inputs
+/// are non-finite or non-positive.
+fn validate_rectangle_half_extents(
+  half_width: f32,
+  half_height: f32,
+) -> Result<(), Collider2DBackendError> {
+  if !half_width.is_finite()
+    || !half_height.is_finite()
+    || half_width <= 0.0
+    || half_height <= 0.0
+  {
+    return Err(Collider2DBackendError::InvalidRectangleHalfExtents {
+      half_width,
+      half_height,
+    });
+  }
+
+  return Ok(());
+}
+
+/// Validates collider material parameters.
+///
+/// # Arguments
+/// - `density`: The density in kg/m².
+/// - `friction`: The friction coefficient (unitless).
+/// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+///
+/// # Returns
+/// Returns `()` when all parameters are finite and within supported bounds.
+///
+/// # Errors
+/// Returns `Collider2DBackendError` if any input is invalid.
+fn validate_material(
+  density: f32,
+  friction: f32,
+  restitution: f32,
+) -> Result<(), Collider2DBackendError> {
+  if !density.is_finite() || density < 0.0 {
+    return Err(Collider2DBackendError::InvalidDensity { density });
+  }
+
+  if !friction.is_finite() || friction < 0.0 {
+    return Err(Collider2DBackendError::InvalidFriction { friction });
+  }
+
+  if !restitution.is_finite() || !(0.0..=1.0).contains(&restitution) {
+    return Err(Collider2DBackendError::InvalidRestitution { restitution });
+  }
+
+  return Ok(());
 }
 
 #[cfg(test)]

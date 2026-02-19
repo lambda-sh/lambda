@@ -3,6 +3,8 @@
 //! These tests validate `lambda-rs` 2D physics behavior through the public API
 //! surface, including cross-crate wiring through `lambda-rs-platform`.
 
+mod colliders;
+
 use lambda::physics::{
   PhysicsWorld2DBuilder,
   RigidBody2DBuilder,
