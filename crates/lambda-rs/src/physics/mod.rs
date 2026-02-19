@@ -14,8 +14,17 @@ use std::{
 
 use lambda_platform::physics::PhysicsBackend2D;
 
+mod collider_2d;
 mod rigid_body_2d;
 
+pub use collider_2d::{
+  Collider2D,
+  Collider2DBuilder,
+  Collider2DError,
+  ColliderMaterial2D,
+  ColliderShape2D,
+  MAX_CONVEX_POLYGON_VERTICES,
+};
 pub use rigid_body_2d::{
   RigidBody2D,
   RigidBody2DBuilder,
