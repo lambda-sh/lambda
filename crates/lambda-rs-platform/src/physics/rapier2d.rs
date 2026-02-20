@@ -92,6 +92,10 @@ pub enum Collider2DBackendError {
   InvalidCircleRadius { radius: f32 },
   /// The provided rectangle half-extents are invalid.
   InvalidRectangleHalfExtents { half_width: f32, half_height: f32 },
+  /// The provided capsule half-height is invalid.
+  InvalidCapsuleHalfHeight { half_height: f32 },
+  /// The provided capsule radius is invalid.
+  InvalidCapsuleRadius { radius: f32 },
   /// The provided density is invalid.
   InvalidDensity { density: f32 },
   /// The provided friction coefficient is invalid.
@@ -123,6 +127,12 @@ impl fmt::Display for Collider2DBackendError {
           formatter,
           "invalid rectangle half extents: ({half_width}, {half_height})"
         );
+      }
+      Self::InvalidCapsuleHalfHeight { half_height } => {
+        return write!(formatter, "invalid capsule half_height: {half_height}");
+      }
+      Self::InvalidCapsuleRadius { radius } => {
+        return write!(formatter, "invalid capsule radius: {radius}");
       }
       Self::InvalidDensity { density } => {
         return write!(formatter, "invalid density: {density}");
@@ -445,6 +455,91 @@ impl PhysicsBackend2D {
     }
 
     let rapier_collider = ColliderBuilder::cuboid(half_width, half_height)
+      .translation(Vector::new(local_offset[0], local_offset[1]))
+      .rotation(local_rotation)
+      .density(density)
+      .friction(friction)
+      .restitution(restitution)
+      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
+      .build();
+
+    let rapier_handle = self.colliders.insert_with_parent(
+      rapier_collider,
+      rapier_parent_handle,
+      &mut self.bodies,
+    );
+
+    if let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) {
+      rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
+    }
+
+    let slot_index = self.collider_slots_2d.len() as u32;
+    let slot_generation = 1;
+    self.collider_slots_2d.push(ColliderSlot2D {
+      rapier_handle,
+      generation: slot_generation,
+    });
+
+    return Ok((slot_index, slot_generation));
+  }
+
+  /// Creates and attaches a capsule collider to a rigid body.
+  ///
+  /// The capsule is aligned with the collider local Y axis.
+  ///
+  /// # Arguments
+  /// - `parent_slot_index`: The rigid body slot index.
+  /// - `parent_slot_generation`: The rigid body slot generation counter.
+  /// - `half_height`: The half-height of the capsule segment in meters.
+  /// - `radius`: The capsule radius in meters.
+  /// - `local_offset`: The collider local translation in meters.
+  /// - `local_rotation`: The collider local rotation in radians.
+  /// - `density`: The density in kg/m².
+  /// - `friction`: The friction coefficient (unitless).
+  /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  ///
+  /// # Returns
+  /// Returns a `(slot_index, slot_generation)` pair for the created collider.
+  ///
+  /// # Errors
+  /// Returns `Collider2DBackendError` if any input is invalid or if the parent
+  /// body does not exist.
+  #[allow(clippy::too_many_arguments)]
+  pub fn create_capsule_collider_2d(
+    &mut self,
+    parent_slot_index: u32,
+    parent_slot_generation: u32,
+    half_height: f32,
+    radius: f32,
+    local_offset: [f32; 2],
+    local_rotation: f32,
+    density: f32,
+    friction: f32,
+    restitution: f32,
+  ) -> Result<(u32, u32), Collider2DBackendError> {
+    validate_local_offset(local_offset[0], local_offset[1])?;
+    validate_local_rotation(local_rotation)?;
+    validate_capsule_dimensions(half_height, radius)?;
+    validate_material(density, friction, restitution)?;
+
+    let rapier_parent_handle = {
+      let body_slot = self
+        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
+        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
+      body_slot.rapier_handle
+    };
+
+    if self.bodies.get(rapier_parent_handle).is_none() {
+      return Err(Collider2DBackendError::BodyNotFound);
+    }
+
+    let rapier_builder = if half_height == 0.0 {
+      ColliderBuilder::ball(radius)
+    } else {
+      ColliderBuilder::capsule_y(half_height, radius)
+    };
+
+    let rapier_collider = rapier_builder
       .translation(Vector::new(local_offset[0], local_offset[1]))
       .rotation(local_rotation)
       .density(density)
@@ -1251,6 +1346,34 @@ fn validate_rectangle_half_extents(
       half_width,
       half_height,
     });
+  }
+
+  return Ok(());
+}
+
+/// Validates capsule dimensions.
+///
+/// # Arguments
+/// - `half_height`: The half-height of the capsule segment in meters.
+/// - `radius`: The capsule radius in meters.
+///
+/// # Returns
+/// Returns `()` when inputs are finite and within supported bounds.
+///
+/// # Errors
+/// Returns `Collider2DBackendError` if any input is invalid.
+fn validate_capsule_dimensions(
+  half_height: f32,
+  radius: f32,
+) -> Result<(), Collider2DBackendError> {
+  if !half_height.is_finite() || half_height < 0.0 {
+    return Err(Collider2DBackendError::InvalidCapsuleHalfHeight {
+      half_height,
+    });
+  }
+
+  if !radius.is_finite() || radius <= 0.0 {
+    return Err(Collider2DBackendError::InvalidCapsuleRadius { radius });
   }
 
   return Ok(());

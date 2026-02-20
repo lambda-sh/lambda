@@ -86,6 +86,46 @@ fn physics_2d_circle_collider_collides_with_ground_rectangle() {
   return;
 }
 
+/// Ensures a dynamic capsule collider collides with a static ground rectangle.
+#[test]
+fn physics_2d_capsule_collider_collides_with_ground_rectangle() {
+  let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
+
+  let ground = RigidBody2DBuilder::new(RigidBodyType::Static)
+    .with_position(0.0, -1.0)
+    .build(&mut world)
+    .unwrap();
+
+  Collider2DBuilder::rectangle(20.0, 0.5)
+    .build(&mut world, ground)
+    .unwrap();
+
+  let body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
+    .with_position(0.0, 4.0)
+    .build(&mut world)
+    .unwrap();
+
+  Collider2DBuilder::capsule(0.75, 0.25)
+    .build(&mut world, body)
+    .unwrap();
+
+  step_world(&mut world, DEFAULT_STEP_COUNT);
+
+  let position = body.position(&world).unwrap();
+  let velocity = body.velocity(&world).unwrap();
+
+  assert_in_range("x", position[0], -0.05, 0.05);
+
+  // Ground top is at `-1.0 + 0.5 = -0.5`, and the capsule rests when its
+  // bottom reaches that plane. The capsule vertical extent from center to
+  // bottom is `half_height + radius = 0.75 + 0.25 = 1.0`, so the body center
+  // should settle near `y = -0.5 + 1.0 = 0.5`.
+  assert_in_range("y", position[1], 0.35, 0.70);
+  assert_in_range("vy_abs", velocity[1].abs(), 0.0, 0.50);
+
+  return;
+}
+
 /// Ensures rectangle collider local rotation affects contact response.
 ///
 /// This test compares a flat platform to a sloped platform created by applying

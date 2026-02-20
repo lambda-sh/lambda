@@ -339,9 +339,23 @@ impl Collider2DBuilder {
           self.material.restitution(),
         )
         .map_err(map_backend_error)?,
-      ColliderShape2D::Capsule { .. } => {
-        return Err(Collider2DError::BackendUnsupported);
-      }
+      ColliderShape2D::Capsule {
+        half_height,
+        radius,
+      } => world
+        .backend
+        .create_capsule_collider_2d(
+          body_slot_index,
+          body_slot_generation,
+          half_height,
+          radius,
+          self.local_offset,
+          self.local_rotation,
+          self.material.density(),
+          self.material.friction(),
+          self.material.restitution(),
+        )
+        .map_err(map_backend_error)?,
       ColliderShape2D::ConvexPolygon { .. } => {
         return Err(Collider2DError::BackendUnsupported);
       }
@@ -554,6 +568,12 @@ fn map_backend_error(error: Collider2DBackendError) -> Collider2DError {
         half_width,
         half_height,
       };
+    }
+    Collider2DBackendError::InvalidCapsuleHalfHeight { half_height } => {
+      return Collider2DError::InvalidCapsuleHalfHeight { half_height };
+    }
+    Collider2DBackendError::InvalidCapsuleRadius { radius } => {
+      return Collider2DError::InvalidCapsuleRadius { radius };
     }
     Collider2DBackendError::InvalidDensity { density } => {
       return Collider2DError::InvalidDensity { density };
