@@ -356,9 +356,19 @@ impl Collider2DBuilder {
           self.material.restitution(),
         )
         .map_err(map_backend_error)?,
-      ColliderShape2D::ConvexPolygon { .. } => {
-        return Err(Collider2DError::BackendUnsupported);
-      }
+      ColliderShape2D::ConvexPolygon { vertices } => world
+        .backend
+        .create_convex_polygon_collider_2d(
+          body_slot_index,
+          body_slot_generation,
+          vertices,
+          self.local_offset,
+          self.local_rotation,
+          self.material.density(),
+          self.material.friction(),
+          self.material.restitution(),
+        )
+        .map_err(map_backend_error)?,
     };
 
     return Ok(Collider2D {
@@ -574,6 +584,15 @@ fn map_backend_error(error: Collider2DBackendError) -> Collider2DError {
     }
     Collider2DBackendError::InvalidCapsuleRadius { radius } => {
       return Collider2DError::InvalidCapsuleRadius { radius };
+    }
+    Collider2DBackendError::InvalidPolygonTooFewVertices { vertex_count } => {
+      return Collider2DError::InvalidPolygonTooFewVertices { vertex_count };
+    }
+    Collider2DBackendError::InvalidPolygonVertex { index, x, y } => {
+      return Collider2DError::InvalidPolygonVertex { index, x, y };
+    }
+    Collider2DBackendError::InvalidPolygonDegenerate => {
+      return Collider2DError::InvalidPolygonZeroArea;
     }
     Collider2DBackendError::InvalidDensity { density } => {
       return Collider2DError::InvalidDensity { density };
@@ -852,12 +871,9 @@ mod tests {
       .unwrap();
 
     let vertices = vec![[0.0, 0.0], [0.0, 1.0], [1.0, 0.0]];
-
-    let error = Collider2DBuilder::polygon(vertices)
+    assert!(Collider2DBuilder::polygon(vertices)
       .build(&mut world, body)
-      .unwrap_err();
-
-    assert_eq!(error, Collider2DError::BackendUnsupported);
+      .is_ok());
 
     return;
   }

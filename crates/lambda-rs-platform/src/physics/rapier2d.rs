@@ -96,6 +96,12 @@ pub enum Collider2DBackendError {
   InvalidCapsuleHalfHeight { half_height: f32 },
   /// The provided capsule radius is invalid.
   InvalidCapsuleRadius { radius: f32 },
+  /// The provided polygon has too few vertices.
+  InvalidPolygonTooFewVertices { vertex_count: usize },
+  /// The provided polygon contains a non-finite vertex.
+  InvalidPolygonVertex { index: usize, x: f32, y: f32 },
+  /// The provided polygon vertices are degenerate.
+  InvalidPolygonDegenerate,
   /// The provided density is invalid.
   InvalidDensity { density: f32 },
   /// The provided friction coefficient is invalid.
@@ -133,6 +139,21 @@ impl fmt::Display for Collider2DBackendError {
       }
       Self::InvalidCapsuleRadius { radius } => {
         return write!(formatter, "invalid capsule radius: {radius}");
+      }
+      Self::InvalidPolygonTooFewVertices { vertex_count } => {
+        return write!(
+          formatter,
+          "invalid polygon vertex_count (too few): {vertex_count}"
+        );
+      }
+      Self::InvalidPolygonVertex { index, x, y } => {
+        return write!(
+          formatter,
+          "invalid polygon vertex at index {index}: ({x}, {y})"
+        );
+      }
+      Self::InvalidPolygonDegenerate => {
+        return write!(formatter, "invalid polygon: degenerate");
       }
       Self::InvalidDensity { density } => {
         return write!(formatter, "invalid density: {density}");
@@ -537,6 +558,94 @@ impl PhysicsBackend2D {
       ColliderBuilder::ball(radius)
     } else {
       ColliderBuilder::capsule_y(half_height, radius)
+    };
+
+    let rapier_collider = rapier_builder
+      .translation(Vector::new(local_offset[0], local_offset[1]))
+      .rotation(local_rotation)
+      .density(density)
+      .friction(friction)
+      .restitution(restitution)
+      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
+      .build();
+
+    let rapier_handle = self.colliders.insert_with_parent(
+      rapier_collider,
+      rapier_parent_handle,
+      &mut self.bodies,
+    );
+
+    if let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) {
+      rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
+    }
+
+    let slot_index = self.collider_slots_2d.len() as u32;
+    let slot_generation = 1;
+    self.collider_slots_2d.push(ColliderSlot2D {
+      rapier_handle,
+      generation: slot_generation,
+    });
+
+    return Ok((slot_index, slot_generation));
+  }
+
+  /// Creates and attaches a convex polygon collider to a rigid body.
+  ///
+  /// The polygon vertices are interpreted as points in collider local space.
+  ///
+  /// # Arguments
+  /// - `parent_slot_index`: The rigid body slot index.
+  /// - `parent_slot_generation`: The rigid body slot generation counter.
+  /// - `vertices`: The polygon vertices in meters.
+  /// - `local_offset`: The collider local translation in meters.
+  /// - `local_rotation`: The collider local rotation in radians.
+  /// - `density`: The density in kg/m².
+  /// - `friction`: The friction coefficient (unitless).
+  /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  ///
+  /// # Returns
+  /// Returns a `(slot_index, slot_generation)` pair for the created collider.
+  ///
+  /// # Errors
+  /// Returns `Collider2DBackendError` if any input is invalid, if the polygon
+  /// is degenerate, or if the parent body does not exist.
+  #[allow(clippy::too_many_arguments)]
+  pub fn create_convex_polygon_collider_2d(
+    &mut self,
+    parent_slot_index: u32,
+    parent_slot_generation: u32,
+    vertices: Vec<[f32; 2]>,
+    local_offset: [f32; 2],
+    local_rotation: f32,
+    density: f32,
+    friction: f32,
+    restitution: f32,
+  ) -> Result<(u32, u32), Collider2DBackendError> {
+    validate_local_offset(local_offset[0], local_offset[1])?;
+    validate_local_rotation(local_rotation)?;
+    validate_convex_polygon_vertices(vertices.as_slice())?;
+    validate_material(density, friction, restitution)?;
+
+    let rapier_parent_handle = {
+      let body_slot = self
+        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
+        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
+      body_slot.rapier_handle
+    };
+
+    if self.bodies.get(rapier_parent_handle).is_none() {
+      return Err(Collider2DBackendError::BodyNotFound);
+    }
+
+    let rapier_vertices: Vec<Vector> = vertices
+      .iter()
+      .map(|vertex| Vector::new(vertex[0], vertex[1]))
+      .collect();
+
+    let Some(rapier_builder) =
+      ColliderBuilder::convex_hull(rapier_vertices.as_slice())
+    else {
+      return Err(Collider2DBackendError::InvalidPolygonDegenerate);
     };
 
     let rapier_collider = rapier_builder
@@ -1374,6 +1483,38 @@ fn validate_capsule_dimensions(
 
   if !radius.is_finite() || radius <= 0.0 {
     return Err(Collider2DBackendError::InvalidCapsuleRadius { radius });
+  }
+
+  return Ok(());
+}
+
+/// Validates convex polygon vertices.
+///
+/// # Arguments
+/// - `vertices`: The polygon vertices in meters.
+///
+/// # Returns
+/// Returns `()` when all vertices are finite and at least three are provided.
+///
+/// # Errors
+/// Returns `Collider2DBackendError` if the vertex list is too small or any
+/// vertex component is non-finite.
+fn validate_convex_polygon_vertices(
+  vertices: &[[f32; 2]],
+) -> Result<(), Collider2DBackendError> {
+  let vertex_count = vertices.len();
+  if vertex_count < 3 {
+    return Err(Collider2DBackendError::InvalidPolygonTooFewVertices {
+      vertex_count,
+    });
+  }
+
+  for (index, vertex) in vertices.iter().enumerate() {
+    let x = vertex[0];
+    let y = vertex[1];
+    if !x.is_finite() || !y.is_finite() {
+      return Err(Collider2DBackendError::InvalidPolygonVertex { index, x, y });
+    }
   }
 
   return Ok(());
