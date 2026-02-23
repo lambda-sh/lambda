@@ -3,13 +3,13 @@ title: "Demo Crates"
 document_id: "demo-crates-readme-2026-02-04"
 status: "draft"
 created: "2026-02-04T00:00:00Z"
-last_updated: "2026-02-05T22:52:14Z"
-version: "0.1.1"
+last_updated: "2026-02-23T00:00:00Z"
+version: "0.1.2"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "544444652b4dc3639f8b3e297e56c302183a7a0b"
+repo_commit: "23b883f8e8509a8fa6343ee55abafb10c4f7a86a"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["demos", "guide"]
@@ -34,6 +34,7 @@ documentation and rustdoc usage.
 demos/
   audio/    # Audio-focused demos (output device, decoding)
   minimal/  # Smallest window + render context demo
+  physics/  # Physics demos (2D rigid bodies, colliders)
   render/   # Rendering demos (validation flags, advanced passes)
 ```
 
@@ -51,6 +52,14 @@ Audio demos (audio support enabled by default):
 cargo run -p lambda-demos-audio --bin sine_wave
 cargo run -p lambda-demos-audio --bin sound_buffer
 cargo run -p lambda-demos-audio --bin play_sound
+```
+
+Physics demos (requires `physics-2d`, enabled by default in the demo crate):
+
+```bash
+cargo run -p lambda-demos-physics --bin physics_falling_quad
+cargo run -p lambda-demos-physics --bin physics_rigid_bodies_2d
+cargo run -p lambda-demos-physics --bin physics_colliders_2d
 ```
 
 Render demos:
