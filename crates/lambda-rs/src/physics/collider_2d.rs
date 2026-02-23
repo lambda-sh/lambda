@@ -236,6 +236,14 @@ impl Collider2DBuilder {
 
   /// Sets the collider density, in kg/m².
   ///
+  /// When attaching a collider with `density > 0.0` to a dynamic body that did
+  /// not explicitly configure mass via `RigidBody2DBuilder::with_dynamic_mass_kg`,
+  /// the body's mass MAY change as mass properties are recomputed from attached
+  /// colliders.
+  ///
+  /// When the owning body explicitly configures mass, collider density MUST
+  /// NOT affect body mass properties.
+  ///
   /// # Arguments
   /// - `density`: The density in kg/m².
   ///
@@ -283,6 +291,9 @@ impl Collider2DBuilder {
   }
 
   /// Attaches the collider to a body and returns a world-scoped handle.
+  ///
+  /// Attaching a collider to a dynamic body that does not explicitly configure
+  /// mass MAY recompute the body's mass properties based on collider density.
   ///
   /// # Arguments
   /// - `world`: The physics world that owns the body.

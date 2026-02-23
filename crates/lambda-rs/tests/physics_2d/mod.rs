@@ -4,6 +4,8 @@
 //! surface, including cross-crate wiring through `lambda-rs-platform`.
 
 mod colliders;
+mod compound_colliders;
+mod materials;
 
 use lambda::physics::{
   PhysicsWorld2DBuilder,

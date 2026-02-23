@@ -180,6 +180,7 @@ impl Error for Collider2DBackendError {}
 ///
 /// # Invariants
 /// - `rapier_handle` MUST reference a body in `PhysicsBackend2D::bodies`.
+/// - `explicit_dynamic_mass_kg` MUST be `Some` only for dynamic bodies.
 /// - `dynamic_mass_kg` MUST be finite and positive for dynamic bodies.
 /// - `generation` MUST be non-zero and is used to validate handles.
 #[derive(Debug, Clone, Copy)]
@@ -190,6 +191,18 @@ struct RigidBodySlot2D {
   rapier_handle: RigidBodyHandle,
   /// Accumulated forces applied by the public API, in Newtons.
   force_accumulator: [f32; 2],
+  /// The explicitly configured body mass in kilograms, if set.
+  ///
+  /// When this value is `Some`, collider density MUST NOT affect body mass
+  /// properties. The backend enforces this by creating attached colliders with
+  /// zero density and using `dynamic_mass_kg` as the body's additional mass.
+  explicit_dynamic_mass_kg: Option<f32>,
+  /// Tracks whether the body has at least one positive-density collider.
+  ///
+  /// This flag supports the spec requirement that bodies with no positive
+  /// density colliders default to `1.0` kg, while bodies with at least one
+  /// positive-density collider compute mass from collider density alone.
+  has_positive_density_colliders: bool,
   /// The mass in kilograms used for manual force and impulse integration.
   dynamic_mass_kg: f32,
   /// A monotonically increasing counter used to validate stale handles.
@@ -325,13 +338,21 @@ impl PhysicsBackend2D {
     validate_rotation(rotation)?;
     validate_velocity(velocity[0], velocity[1])?;
 
-    let mass_kg = resolve_dynamic_mass_kg(body_type, dynamic_mass_kg)?;
+    let explicit_dynamic_mass_kg =
+      resolve_explicit_dynamic_mass_kg(body_type, dynamic_mass_kg)?;
+    let additional_mass_kg =
+      resolve_additional_mass_kg(body_type, explicit_dynamic_mass_kg)?;
 
     let slot_index = self.rigid_body_slots_2d.len() as u32;
     let slot_generation = 1;
 
-    let rapier_body =
-      build_rapier_rigid_body(body_type, position, rotation, velocity, mass_kg);
+    let rapier_body = build_rapier_rigid_body(
+      body_type,
+      position,
+      rotation,
+      velocity,
+      additional_mass_kg,
+    );
     let rapier_handle = self.bodies.insert(rapier_body);
 
     if body_type == RigidBodyType2D::Dynamic {
@@ -341,11 +362,16 @@ impl PhysicsBackend2D {
       rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
     }
 
+    let slot_dynamic_mass_kg =
+      resolve_dynamic_mass_for_slot(body_type, explicit_dynamic_mass_kg);
+
     self.rigid_body_slots_2d.push(RigidBodySlot2D {
       body_type,
       rapier_handle,
       force_accumulator: [0.0, 0.0],
-      dynamic_mass_kg: mass_kg,
+      explicit_dynamic_mass_kg,
+      has_positive_density_colliders: false,
+      dynamic_mass_kg: slot_dynamic_mass_kg,
       generation: slot_generation,
     });
 
@@ -387,21 +413,17 @@ impl PhysicsBackend2D {
     validate_circle_radius(radius)?;
     validate_material(density, friction, restitution)?;
 
-    let rapier_parent_handle = {
-      let body_slot = self
-        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
-        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
-      body_slot.rapier_handle
-    };
-
-    if self.bodies.get(rapier_parent_handle).is_none() {
-      return Err(Collider2DBackendError::BodyNotFound);
-    }
+    let (rapier_parent_handle, rapier_density) = self
+      .prepare_parent_body_for_collider_attachment_2d(
+        parent_slot_index,
+        parent_slot_generation,
+        density,
+      )?;
 
     let rapier_collider = ColliderBuilder::ball(radius)
       .translation(Vector::new(local_offset[0], local_offset[1]))
       .rotation(local_rotation)
-      .density(density)
+      .density(rapier_density)
       .friction(friction)
       .restitution(restitution)
       .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
@@ -413,9 +435,11 @@ impl PhysicsBackend2D {
       &mut self.bodies,
     );
 
-    if let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) {
-      rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
-    }
+    self.recompute_parent_mass_after_collider_attachment_2d(
+      parent_slot_index,
+      parent_slot_generation,
+      rapier_parent_handle,
+    )?;
 
     let slot_index = self.collider_slots_2d.len() as u32;
     let slot_generation = 1;
@@ -464,21 +488,17 @@ impl PhysicsBackend2D {
     validate_rectangle_half_extents(half_width, half_height)?;
     validate_material(density, friction, restitution)?;
 
-    let rapier_parent_handle = {
-      let body_slot = self
-        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
-        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
-      body_slot.rapier_handle
-    };
-
-    if self.bodies.get(rapier_parent_handle).is_none() {
-      return Err(Collider2DBackendError::BodyNotFound);
-    }
+    let (rapier_parent_handle, rapier_density) = self
+      .prepare_parent_body_for_collider_attachment_2d(
+        parent_slot_index,
+        parent_slot_generation,
+        density,
+      )?;
 
     let rapier_collider = ColliderBuilder::cuboid(half_width, half_height)
       .translation(Vector::new(local_offset[0], local_offset[1]))
       .rotation(local_rotation)
-      .density(density)
+      .density(rapier_density)
       .friction(friction)
       .restitution(restitution)
       .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
@@ -490,9 +510,11 @@ impl PhysicsBackend2D {
       &mut self.bodies,
     );
 
-    if let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) {
-      rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
-    }
+    self.recompute_parent_mass_after_collider_attachment_2d(
+      parent_slot_index,
+      parent_slot_generation,
+      rapier_parent_handle,
+    )?;
 
     let slot_index = self.collider_slots_2d.len() as u32;
     let slot_generation = 1;
@@ -543,16 +565,12 @@ impl PhysicsBackend2D {
     validate_capsule_dimensions(half_height, radius)?;
     validate_material(density, friction, restitution)?;
 
-    let rapier_parent_handle = {
-      let body_slot = self
-        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
-        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
-      body_slot.rapier_handle
-    };
-
-    if self.bodies.get(rapier_parent_handle).is_none() {
-      return Err(Collider2DBackendError::BodyNotFound);
-    }
+    let (rapier_parent_handle, rapier_density) = self
+      .prepare_parent_body_for_collider_attachment_2d(
+        parent_slot_index,
+        parent_slot_generation,
+        density,
+      )?;
 
     let rapier_builder = if half_height == 0.0 {
       ColliderBuilder::ball(radius)
@@ -563,7 +581,7 @@ impl PhysicsBackend2D {
     let rapier_collider = rapier_builder
       .translation(Vector::new(local_offset[0], local_offset[1]))
       .rotation(local_rotation)
-      .density(density)
+      .density(rapier_density)
       .friction(friction)
       .restitution(restitution)
       .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
@@ -575,9 +593,11 @@ impl PhysicsBackend2D {
       &mut self.bodies,
     );
 
-    if let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) {
-      rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
-    }
+    self.recompute_parent_mass_after_collider_attachment_2d(
+      parent_slot_index,
+      parent_slot_generation,
+      rapier_parent_handle,
+    )?;
 
     let slot_index = self.collider_slots_2d.len() as u32;
     let slot_generation = 1;
@@ -626,16 +646,12 @@ impl PhysicsBackend2D {
     validate_convex_polygon_vertices(vertices.as_slice())?;
     validate_material(density, friction, restitution)?;
 
-    let rapier_parent_handle = {
-      let body_slot = self
-        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
-        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
-      body_slot.rapier_handle
-    };
-
-    if self.bodies.get(rapier_parent_handle).is_none() {
-      return Err(Collider2DBackendError::BodyNotFound);
-    }
+    let (rapier_parent_handle, rapier_density) = self
+      .prepare_parent_body_for_collider_attachment_2d(
+        parent_slot_index,
+        parent_slot_generation,
+        density,
+      )?;
 
     let rapier_vertices: Vec<Vector> = vertices
       .iter()
@@ -651,7 +667,7 @@ impl PhysicsBackend2D {
     let rapier_collider = rapier_builder
       .translation(Vector::new(local_offset[0], local_offset[1]))
       .rotation(local_rotation)
-      .density(density)
+      .density(rapier_density)
       .friction(friction)
       .restitution(restitution)
       .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
@@ -663,9 +679,11 @@ impl PhysicsBackend2D {
       &mut self.bodies,
     );
 
-    if let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) {
-      rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
-    }
+    self.recompute_parent_mass_after_collider_attachment_2d(
+      parent_slot_index,
+      parent_slot_generation,
+      rapier_parent_handle,
+    )?;
 
     let slot_index = self.collider_slots_2d.len() as u32;
     let slot_generation = 1;
@@ -1170,6 +1188,139 @@ impl PhysicsBackend2D {
     return;
   }
 
+  /// Prepares a parent body for collider attachment and resolves the Rapier
+  /// density value to apply.
+  ///
+  /// This function enforces spec mass semantics:
+  /// - When a dynamic body's mass is explicitly configured, collider density
+  ///   MUST NOT affect mass properties. The returned density is `0.0`.
+  /// - When a dynamic body's mass is not explicitly configured, the backend
+  ///   starts with a `1.0` kg fallback mass. When attaching the first
+  ///   positive-density collider, the fallback mass is removed so the body's
+  ///   mass becomes the sum of collider mass contributions.
+  ///
+  /// # Arguments
+  /// - `parent_slot_index`: The parent rigid body slot index.
+  /// - `parent_slot_generation`: The parent slot generation counter.
+  /// - `requested_density`: The density requested by the public API.
+  ///
+  /// # Returns
+  /// Returns the Rapier body handle and the density to apply to the Rapier
+  /// collider.
+  ///
+  /// # Errors
+  /// Returns `Collider2DBackendError::BodyNotFound` if the parent body is
+  /// missing or the handle is stale.
+  fn prepare_parent_body_for_collider_attachment_2d(
+    &mut self,
+    parent_slot_index: u32,
+    parent_slot_generation: u32,
+    requested_density: f32,
+  ) -> Result<(RigidBodyHandle, f32), Collider2DBackendError> {
+    let (body_type, rapier_handle, explicit_dynamic_mass_kg) = {
+      let body_slot = self
+        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
+        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
+      (
+        body_slot.body_type,
+        body_slot.rapier_handle,
+        body_slot.explicit_dynamic_mass_kg,
+      )
+    };
+
+    if self.bodies.get(rapier_handle).is_none() {
+      return Err(Collider2DBackendError::BodyNotFound);
+    }
+
+    if body_type != RigidBodyType2D::Dynamic {
+      return Ok((rapier_handle, requested_density));
+    }
+
+    if explicit_dynamic_mass_kg.is_some() {
+      return Ok((rapier_handle, 0.0));
+    }
+
+    if requested_density > 0.0 {
+      let should_remove_fallback_mass = {
+        let body_slot = self
+          .rigid_body_slot_2d_mut(parent_slot_index, parent_slot_generation)
+          .map_err(|_| Collider2DBackendError::BodyNotFound)?;
+
+        if body_slot.has_positive_density_colliders {
+          false
+        } else {
+          body_slot.has_positive_density_colliders = true;
+          true
+        }
+      };
+
+      if should_remove_fallback_mass {
+        let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
+          return Err(Collider2DBackendError::BodyNotFound);
+        };
+        rapier_body.set_additional_mass(0.0, true);
+      }
+    }
+
+    return Ok((rapier_handle, requested_density));
+  }
+
+  /// Recomputes mass properties for a parent body after collider attachment.
+  ///
+  /// # Arguments
+  /// - `parent_slot_index`: The parent rigid body slot index.
+  /// - `parent_slot_generation`: The parent slot generation counter.
+  /// - `rapier_parent_handle`: The Rapier body handle.
+  ///
+  /// # Returns
+  /// Returns `()` after recomputing mass properties and updating tracked mass
+  /// used by manual integration.
+  ///
+  /// # Errors
+  /// Returns `Collider2DBackendError::BodyNotFound` if the parent body is
+  /// missing or the handle is stale.
+  fn recompute_parent_mass_after_collider_attachment_2d(
+    &mut self,
+    parent_slot_index: u32,
+    parent_slot_generation: u32,
+    rapier_parent_handle: RigidBodyHandle,
+  ) -> Result<(), Collider2DBackendError> {
+    let (body_type, explicit_dynamic_mass_kg) = {
+      let body_slot = self
+        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
+        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
+      (body_slot.body_type, body_slot.explicit_dynamic_mass_kg)
+    };
+
+    let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) else {
+      return Err(Collider2DBackendError::BodyNotFound);
+    };
+    rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
+
+    if body_type != RigidBodyType2D::Dynamic {
+      return Ok(());
+    }
+
+    if explicit_dynamic_mass_kg.is_some() {
+      return Ok(());
+    }
+
+    let updated_mass_kg = rapier_body.mass();
+    let resolved_mass_kg =
+      if updated_mass_kg.is_finite() && updated_mass_kg > 0.0 {
+        updated_mass_kg
+      } else {
+        1.0
+      };
+
+    let body_slot = self
+      .rigid_body_slot_2d_mut(parent_slot_index, parent_slot_generation)
+      .map_err(|_| Collider2DBackendError::BodyNotFound)?;
+    body_slot.dynamic_mass_kg = resolved_mass_kg;
+
+    return Ok(());
+  }
+
   /// Validates that collider slots reference live Rapier colliders.
   ///
   /// This debug-only validation reads slot fields to prevent stale-handle
@@ -1197,7 +1348,7 @@ impl PhysicsBackend2D {
 /// - `position`: The initial position in meters.
 /// - `rotation`: The initial rotation in radians.
 /// - `velocity`: The initial linear velocity in meters per second.
-/// - `dynamic_mass_kg`: The mass in kilograms for dynamic bodies.
+/// - `additional_mass_kg`: The additional mass in kilograms for dynamic bodies.
 ///
 /// # Returns
 /// Returns a configured Rapier `RigidBodyBuilder`.
@@ -1206,7 +1357,7 @@ fn build_rapier_rigid_body(
   position: [f32; 2],
   rotation: f32,
   velocity: [f32; 2],
-  dynamic_mass_kg: f32,
+  additional_mass_kg: f32,
 ) -> RigidBodyBuilder {
   let translation = Vector::new(position[0], position[1]);
   let linear_velocity = Vector::new(velocity[0], velocity[1]);
@@ -1231,7 +1382,7 @@ fn build_rapier_rigid_body(
         .translation(translation)
         .rotation(rotation)
         .linvel(linear_velocity)
-        .additional_mass(dynamic_mass_kg)
+        .additional_mass(additional_mass_kg)
         .lock_rotations();
     }
   }
@@ -1336,29 +1487,24 @@ fn validate_impulse(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   return Ok(());
 }
 
-/// Resolves a dynamic-body mass value from an optional input.
+/// Resolves the explicitly configured mass for a rigid body.
 ///
 /// # Arguments
 /// - `body_type`: The integration mode for the rigid body.
 /// - `dynamic_mass_kg`: The requested mass in kilograms for dynamic bodies.
 ///
 /// # Returns
-/// Returns a mass value in kilograms.
+/// Returns the explicitly configured dynamic mass.
 ///
 /// # Errors
-/// Returns `RigidBody2DBackendError` if:
-/// - A mass is provided for a non-dynamic body.
-/// - A dynamic mass is non-finite or non-positive.
-fn resolve_dynamic_mass_kg(
+/// Returns `RigidBody2DBackendError` if a mass is provided for a non-dynamic
+/// body, or if the mass is non-finite or non-positive.
+fn resolve_explicit_dynamic_mass_kg(
   body_type: RigidBodyType2D,
   dynamic_mass_kg: Option<f32>,
-) -> Result<f32, RigidBody2DBackendError> {
+) -> Result<Option<f32>, RigidBody2DBackendError> {
   let Some(mass_kg) = dynamic_mass_kg else {
-    if body_type == RigidBodyType2D::Dynamic {
-      return Ok(1.0);
-    }
-
-    return Ok(0.0);
+    return Ok(None);
   };
 
   if body_type != RigidBodyType2D::Dynamic {
@@ -1369,7 +1515,66 @@ fn resolve_dynamic_mass_kg(
     return Err(RigidBody2DBackendError::InvalidMassKg { mass_kg });
   }
 
-  return Ok(mass_kg);
+  return Ok(Some(mass_kg));
+}
+
+/// Resolves the additional mass in kilograms applied when creating a body.
+///
+/// # Arguments
+/// - `body_type`: The rigid body integration mode.
+/// - `explicit_dynamic_mass_kg`: The explicitly configured mass for dynamic
+///   bodies.
+///
+/// # Returns
+/// Returns the additional mass value in kilograms.
+///
+/// # Errors
+/// Returns `RigidBody2DBackendError::InvalidMassKg` if the fallback mass cannot
+/// be represented as a positive finite value.
+fn resolve_additional_mass_kg(
+  body_type: RigidBodyType2D,
+  explicit_dynamic_mass_kg: Option<f32>,
+) -> Result<f32, RigidBody2DBackendError> {
+  if body_type != RigidBodyType2D::Dynamic {
+    return Ok(0.0);
+  }
+
+  if let Some(explicit_mass_kg) = explicit_dynamic_mass_kg {
+    return Ok(explicit_mass_kg);
+  }
+
+  let fallback_mass_kg = 1.0;
+  if !fallback_mass_kg.is_finite() || fallback_mass_kg <= 0.0 {
+    return Err(RigidBody2DBackendError::InvalidMassKg {
+      mass_kg: fallback_mass_kg,
+    });
+  }
+
+  return Ok(fallback_mass_kg);
+}
+
+/// Resolves the tracked slot mass value used by manual integration.
+///
+/// # Arguments
+/// - `body_type`: The rigid body integration mode.
+/// - `explicit_dynamic_mass_kg`: The explicitly configured mass for dynamic
+///   bodies.
+///
+/// # Returns
+/// Returns a slot mass in kilograms.
+fn resolve_dynamic_mass_for_slot(
+  body_type: RigidBodyType2D,
+  explicit_dynamic_mass_kg: Option<f32>,
+) -> f32 {
+  if body_type != RigidBodyType2D::Dynamic {
+    return 0.0;
+  }
+
+  if let Some(explicit_mass_kg) = explicit_dynamic_mass_kg {
+    return explicit_mass_kg;
+  }
+
+  return 1.0;
 }
 
 /// Validates a collider local offset.
