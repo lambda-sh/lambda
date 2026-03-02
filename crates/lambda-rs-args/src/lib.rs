@@ -432,6 +432,7 @@ impl ArgumentParser {
     // Errors are returned, not panicked.
     let mut collecting_values = false;
     let mut last_key: Option<String> = None;
+    let mut next_positional_idx: usize = 0;
 
     let mut parsed_arguments = vec![];
     parsed_arguments.resize(
@@ -459,6 +460,7 @@ impl ArgumentParser {
         let sub_parsed = sub.parse(&argv)?;
         return Ok(ParsedArgs {
           values: vec![],
+          index_by_name: HashMap::new(),
           subcommand: Some((t.to_string(), Box::new(sub_parsed))),
         });
       }
@@ -477,6 +479,7 @@ impl ArgumentParser {
         let sub_parsed = sub.parse(&argv2)?;
         return Ok(ParsedArgs {
           values: vec![],
+          index_by_name: HashMap::new(),
           subcommand: Some((arg_token.to_string(), Box::new(sub_parsed))),
         });
       }
@@ -487,7 +490,11 @@ impl ArgumentParser {
 
       if arg_token == "--" {
         for value in iter.by_ref() {
-          self.assign_next_positional(&mut parsed_arguments, value.as_str())?;
+          self.assign_next_positional(
+            &mut parsed_arguments,
+            value.as_str(),
+            &mut next_positional_idx,
+          )?;
         }
         break;
       }
@@ -753,10 +760,7 @@ impl ArgumentParser {
       }
     }
 
-    Ok(ParsedArgs {
-      values: parsed_arguments,
-      subcommand: None,
-    })
+    Ok(ParsedArgs::new(parsed_arguments, None))
   }
 
   /// Backwards‑compatible panicking API. Prefer `parse` for non‑panicking use.
@@ -884,10 +888,28 @@ impl std::error::Error for ArgsError {}
 #[derive(Debug, Clone)]
 pub struct ParsedArgs {
   values: Vec<ParsedArgument>,
+  index_by_name: HashMap<String, usize>,
   subcommand: Option<(String, Box<ParsedArgs>)>,
 }
 
 impl ParsedArgs {
+  fn new(
+    values: Vec<ParsedArgument>,
+    subcommand: Option<(String, Box<ParsedArgs>)>,
+  ) -> Self {
+    let mut index_by_name: HashMap<String, usize> =
+      HashMap::with_capacity(values.len());
+    for (idx, arg) in values.iter().enumerate() {
+      // Keys should be unique; keep the first occurrence if duplicates exist.
+      index_by_name.entry(arg.name.clone()).or_insert(idx);
+    }
+    Self {
+      values,
+      index_by_name,
+      subcommand,
+    }
+  }
+
   /// Convert into the raw underlying `(name, value)` vector.
   pub fn into_vec(self) -> Vec<ParsedArgument> {
     self.values
@@ -895,81 +917,63 @@ impl ParsedArgs {
 
   /// True if the named argument is present (and not `None`).
   pub fn has(&self, name: &str) -> bool {
-    self
-      .values
-      .iter()
-      .any(|p| p.name == name && !matches!(p.value, ArgumentValue::None))
+    let Some(idx) = self.index_by_name.get(name) else {
+      return false;
+    };
+    return !matches!(self.values[*idx].value, ArgumentValue::None);
   }
 
   /// Get a `String` value by name, if present and typed as string.
   pub fn get_string(&self, name: &str) -> Option<String> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::String(s) => Some(s.clone()),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::String(s) => Some(s.clone()),
+      _ => None,
+    }
   }
 
   /// Get an `i64` value by name, if present and typed as integer.
   pub fn get_i64(&self, name: &str) -> Option<i64> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Integer(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Integer(v) => Some(*v),
+      _ => None,
+    }
   }
 
   /// Get an `f32` value by name, if present and typed as float.
   pub fn get_f32(&self, name: &str) -> Option<f32> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Float(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Float(v) => Some(*v),
+      _ => None,
+    }
   }
 
   /// Get an `f64` value by name, if present and typed as double.
   pub fn get_f64(&self, name: &str) -> Option<f64> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Double(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Double(v) => Some(*v),
+      _ => None,
+    }
   }
 
   /// Get a `bool` value by name, if present and typed as boolean.
   pub fn get_bool(&self, name: &str) -> Option<bool> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Boolean(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Boolean(v) => Some(*v),
+      _ => None,
+    }
   }
 
   pub fn get_count(&self, name: &str) -> Option<i64> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Integer(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Integer(v) => Some(*v),
+      _ => None,
+    }
   }
 
   pub fn subcommand(&self) -> Option<(&str, &ParsedArgs)> {
@@ -1067,6 +1071,17 @@ mod tests {
     let p = parser.parse(&argv(&["--", "a", "b"])).unwrap();
     assert_eq!(p.get_string("input").unwrap(), "a");
     assert_eq!(p.get_string("rest").unwrap(), "b");
+  }
+
+  #[test]
+  fn has_respects_none_and_unknown() {
+    let parser = ArgumentParser::new("app")
+      .with_argument(Argument::new("--opt").with_type(ArgumentType::String))
+      .with_argument(Argument::new("--flag").with_type(ArgumentType::Boolean));
+    let p = parser.parse(&argv(&["--flag"])).unwrap();
+    assert!(p.has("--flag"));
+    assert!(!p.has("--opt"));
+    assert!(!p.has("--does-not-exist"));
   }
 
   #[test]
@@ -1283,17 +1298,22 @@ impl ArgumentParser {
     &mut self,
     out: &mut [ParsedArgument],
     value: &str,
+    next_positional_idx: &mut usize,
   ) -> Result<(), ArgsError> {
-    for pname in self.positionals.clone() {
-      if let Some(entry) = self.args.get_mut(&pname) {
-        if !entry.1 {
-          let parsed = parse_value(&entry.0, value)?;
-          let idx = entry.2;
-          out[idx] = ParsedArgument::new(entry.0.name.as_str(), parsed);
-          entry.1 = true;
-          return Ok(());
-        }
+    while *next_positional_idx < self.positionals.len() {
+      let pname = &self.positionals[*next_positional_idx];
+      *next_positional_idx += 1;
+      let Some(entry) = self.args.get_mut(pname) else {
+        continue;
+      };
+      if entry.1 {
+        continue;
       }
+      let parsed = parse_value(&entry.0, value)?;
+      let idx = entry.2;
+      out[idx] = ParsedArgument::new(entry.0.name.as_str(), parsed);
+      entry.1 = true;
+      return Ok(());
     }
     Err(ArgsError::InvalidValue {
       name: "<positional>".to_string(),
