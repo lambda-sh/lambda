@@ -446,6 +446,8 @@ impl ArgumentParser {
   /// - A required argument is not provided.
   /// - Mutually exclusive or requires relationships are violated.
   ///
+  /// # Behavior
+  ///
   /// - Aliases are resolved during parsing; lookups on `ParsedArgs` use the
   ///   declared argument name (canonical form), not an alias.
   /// - Combined short flags like `-vvv` are supported only for `Count` and
