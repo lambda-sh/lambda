@@ -1071,7 +1071,10 @@ impl ParsedArgs {
   /// Returns a count value by name, if present and typed as integer.
   ///
   /// # Arguments
-  /// - `name`: The declared argument name (for example, `"-v"`).
+  /// - `name`: The declared argument name (for example, `"--verbose"`).
+  ///   If you declared a long flag with an alias (for example, `"--verbose"`
+  ///   with alias `"-v"`), lookups must use `"--verbose"`. Passing `"-v"` is
+  ///   only correct when `"-v"` is the declared name.
   ///
   /// # Returns
   /// Returns `Some(i64)` when the argument exists and is an integer, otherwise
