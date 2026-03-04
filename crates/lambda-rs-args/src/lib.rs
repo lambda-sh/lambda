@@ -440,7 +440,8 @@ impl ArgumentParser {
   /// # Errors
   /// Returns `ArgsError` when:
   /// - `--help` / `-h` is present (`ArgsError::HelpRequested`).
-  /// - An unknown argument is encountered in strict mode.
+  /// - An unknown argument is encountered when `ignore_unknown(false)` (the
+  ///   default) is in effect.
   /// - A value is missing for a value-taking argument.
   /// - A value fails type parsing.
   /// - A required argument is not provided.
