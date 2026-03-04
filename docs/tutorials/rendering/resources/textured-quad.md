@@ -271,10 +271,10 @@ let vertices: [Vertex; 6] = [
   VertexBuilder::new().with_position([-0.5,  0.5, 0.0]).with_normal([0.0, 0.0, 1.0]).with_color([0.0, 1.0, 0.0]).build(), // uv (0,1)
 ];
 
-let mut mesh_builder = MeshBuilder::new();
-vertices.iter().for_each(|v| { mesh_builder.with_vertex(*v); });
-
-let mesh: Mesh = mesh_builder
+let mesh: Mesh = vertices
+  .iter()
+  .copied()
+  .fold(MeshBuilder::new(), |builder, vertex| builder.with_vertex(vertex))
   .with_attributes(vec![
     VertexAttribute { // position @ location 0
       location: 0, offset: 0,

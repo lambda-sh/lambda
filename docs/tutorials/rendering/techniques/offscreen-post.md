@@ -524,12 +524,9 @@ impl OffscreenPostExample {
         .build(),
     ];
 
-    let mut mesh_builder = MeshBuilder::new();
-    for v in vertices {
-      mesh_builder.with_vertex(v);
-    }
-
-    return mesh_builder
+    return vertices
+      .into_iter()
+      .fold(MeshBuilder::new(), |builder, vertex| builder.with_vertex(vertex))
       .with_attributes(vec![
         VertexAttribute {
           location: 0,

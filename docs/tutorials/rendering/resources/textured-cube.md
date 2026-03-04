@@ -265,10 +265,9 @@ add_face( 0.0, -1.0,  0.0, [(-h, -h, -h), ( h, -h, -h), ( h, -h,  h), (-h, -h,  
 add_face( 0.0,  0.0,  1.0, [(-h, -h,  h), ( h, -h,  h), ( h,  h,  h), (-h,  h,  h)]);
 add_face( 0.0,  0.0, -1.0, [( h, -h, -h), (-h, -h, -h), (-h,  h, -h), ( h,  h, -h)]);
 
-let mut mesh_builder = MeshBuilder::new();
-verts.into_iter().for_each(|v| { mesh_builder.with_vertex(v); });
-
-let mesh: Mesh = mesh_builder
+let mesh: Mesh = verts
+  .into_iter()
+  .fold(MeshBuilder::new(), |builder, vertex| builder.with_vertex(vertex))
   .with_attributes(vec![
     VertexAttribute { // position @ location 0
       location: 0, offset: 0,
