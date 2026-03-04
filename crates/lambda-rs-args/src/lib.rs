@@ -427,11 +427,39 @@ impl ArgumentParser {
     out
   }
 
-  /// New non-panicking parser. Prefer this over `compile`.
+  /// Parses a slice of tokens into typed arguments.
+  ///
+  /// # Arguments
+  /// - `args`: Token vector (typically `std::env::args().collect()`). The first
+  ///   token is treated as the executable name and is ignored for parsing.
+  ///
+  /// # Returns
+  /// Returns a `ParsedArgs` containing declared options/flags/positionals (with
+  /// defaults applied) and an optional parsed subcommand.
+  ///
+  /// # Errors
+  /// Returns `ArgsError` when:
+  /// - `--help` / `-h` is present (`ArgsError::HelpRequested`).
+  /// - An unknown argument is encountered when `ignore_unknown(false)` (the
+  ///   default) is in effect.
+  /// - A value is missing for a value-taking argument.
+  /// - A value fails type parsing.
+  /// - A required argument is not provided.
+  /// - Mutually exclusive or requires relationships are violated.
+  ///
+  /// # Behavior
+  ///
+  /// - Aliases are resolved during parsing; lookups on `ParsedArgs` use the
+  ///   declared argument name (canonical form), not an alias.
+  /// - Combined short flags like `-vvv` are supported only for `Count` and
+  ///   `Boolean` arguments.
   pub fn parse(mut self, args: &[String]) -> Result<ParsedArgs, ArgsError> {
     // Errors are returned, not panicked.
     let mut collecting_values = false;
     let mut last_key: Option<String> = None;
+    // Cursor into `self.positionals` so assigning `--` values is O(p) total,
+    // rather than O(p^2) across p positionals.
+    let mut next_positional_idx: usize = 0;
 
     let mut parsed_arguments = vec![];
     parsed_arguments.resize(
@@ -457,10 +485,10 @@ impl ArgumentParser {
         }
         let sub = self.subcommands.remove(t).unwrap();
         let sub_parsed = sub.parse(&argv)?;
-        return Ok(ParsedArgs {
-          values: vec![],
-          subcommand: Some((t.to_string(), Box::new(sub_parsed))),
-        });
+        return Ok(ParsedArgs::new(
+          vec![],
+          Some((t.to_string(), Box::new(sub_parsed))),
+        ));
       }
     }
     while let Some(token) = iter.next() {
@@ -475,10 +503,10 @@ impl ArgumentParser {
         }
         let sub = self.subcommands.remove(arg_token).unwrap();
         let sub_parsed = sub.parse(&argv2)?;
-        return Ok(ParsedArgs {
-          values: vec![],
-          subcommand: Some((arg_token.to_string(), Box::new(sub_parsed))),
-        });
+        return Ok(ParsedArgs::new(
+          vec![],
+          Some((arg_token.to_string(), Box::new(sub_parsed))),
+        ));
       }
 
       if arg_token == "--help" || arg_token == "-h" {
@@ -487,7 +515,11 @@ impl ArgumentParser {
 
       if arg_token == "--" {
         for value in iter.by_ref() {
-          self.assign_next_positional(&mut parsed_arguments, value.as_str())?;
+          self.assign_next_positional(
+            &mut parsed_arguments,
+            value.as_str(),
+            &mut next_positional_idx,
+          )?;
         }
         break;
       }
@@ -753,13 +785,20 @@ impl ArgumentParser {
       }
     }
 
-    Ok(ParsedArgs {
-      values: parsed_arguments,
-      subcommand: None,
-    })
+    Ok(ParsedArgs::new(parsed_arguments, None))
   }
 
   /// Backwards‑compatible panicking API. Prefer `parse` for non‑panicking use.
+  ///
+  /// # Arguments
+  /// - `args`: Token vector (typically `std::env::args().collect()`). The first
+  ///   token is treated as the executable name and is ignored for parsing.
+  ///
+  /// # Returns
+  /// Returns the raw `(name, value)` vector of parsed arguments.
+  ///
+  /// # Panics
+  /// Panics with a formatted `ArgsError` string if parsing fails.
   pub fn compile(self, args: &[String]) -> Vec<ParsedArgument> {
     match self.parse(args) {
       Ok(parsed) => parsed.into_vec(),
@@ -880,98 +919,178 @@ impl fmt::Display for ArgsError {
 
 impl std::error::Error for ArgsError {}
 
-/// Parsed arguments with typed getters and subcommand support.
+/// Parsed arguments with typed getters and optional subcommand support.
+///
+/// `ParsedArgs` is produced by `ArgumentParser::parse`. Lookups are optimized
+/// for runtime usage (O(1) by name) by building an index when parsing
+/// completes.
 #[derive(Debug, Clone)]
 pub struct ParsedArgs {
   values: Vec<ParsedArgument>,
+  /// Lookup table from argument name to its index in `values`.
+  ///
+  /// This allows `has()` and `get_*()` calls to be O(1) instead of scanning
+  /// the full vector on every lookup.
+  index_by_name: HashMap<String, usize>,
   subcommand: Option<(String, Box<ParsedArgs>)>,
 }
 
 impl ParsedArgs {
-  /// Convert into the raw underlying `(name, value)` vector.
+  /// Creates a `ParsedArgs` from raw parsed values.
+  ///
+  /// # Arguments
+  /// - `values`: Parsed arguments, indexed by the parser's internal ordering.
+  /// - `subcommand`: Optional subcommand parse result.
+  ///
+  /// # Returns
+  /// Returns a `ParsedArgs` with an O(1) name index for lookups.
+  fn new(
+    values: Vec<ParsedArgument>,
+    subcommand: Option<(String, Box<ParsedArgs>)>,
+  ) -> Self {
+    let mut index_by_name: HashMap<String, usize> =
+      HashMap::with_capacity(values.len());
+    for (idx, arg) in values.iter().enumerate() {
+      // Keys should be unique; keep the first occurrence if duplicates exist.
+      index_by_name.entry(arg.name.clone()).or_insert(idx);
+    }
+    Self {
+      values,
+      index_by_name,
+      subcommand,
+    }
+  }
+
+  /// Converts into the raw underlying `(name, value)` vector.
+  ///
+  /// # Returns
+  /// Returns the internal parsed argument vector in parser order.
   pub fn into_vec(self) -> Vec<ParsedArgument> {
     self.values
   }
 
-  /// True if the named argument is present (and not `None`).
+  /// Returns `true` if the named argument is present (and not `None`).
+  ///
+  /// # Arguments
+  /// - `name`: The declared argument name (for example, `"--port"` or
+  ///   `"input"`).
+  ///
+  /// # Returns
+  /// Returns `true` when the argument is present and was not parsed as
+  /// `ArgumentValue::None`.
+  ///
+  /// Aliases like `"-p"` are not resolved at lookup time. Use the canonical
+  /// argument name.
   pub fn has(&self, name: &str) -> bool {
-    self
-      .values
-      .iter()
-      .any(|p| p.name == name && !matches!(p.value, ArgumentValue::None))
+    let Some(idx) = self.index_by_name.get(name) else {
+      return false;
+    };
+    return !matches!(self.values[*idx].value, ArgumentValue::None);
   }
 
-  /// Get a `String` value by name, if present and typed as string.
+  /// Returns a `String` value by name, if present and typed as string.
+  ///
+  /// # Arguments
+  /// - `name`: The declared argument name (for example, `"--title"`).
+  ///
+  /// # Returns
+  /// Returns `Some(String)` when the argument exists and is a string, otherwise
+  /// returns `None`.
   pub fn get_string(&self, name: &str) -> Option<String> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::String(s) => Some(s.clone()),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::String(s) => Some(s.clone()),
+      _ => None,
+    }
   }
 
-  /// Get an `i64` value by name, if present and typed as integer.
+  /// Returns an `i64` value by name, if present and typed as integer.
+  ///
+  /// # Arguments
+  /// - `name`: The declared argument name (for example, `"--count"`).
+  ///
+  /// # Returns
+  /// Returns `Some(i64)` when the argument exists and is an integer, otherwise
+  /// returns `None`.
   pub fn get_i64(&self, name: &str) -> Option<i64> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Integer(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Integer(v) => Some(*v),
+      _ => None,
+    }
   }
 
-  /// Get an `f32` value by name, if present and typed as float.
+  /// Returns an `f32` value by name, if present and typed as float.
+  ///
+  /// # Arguments
+  /// - `name`: The declared argument name.
+  ///
+  /// # Returns
+  /// Returns `Some(f32)` when the argument exists and is a float, otherwise
+  /// returns `None`.
   pub fn get_f32(&self, name: &str) -> Option<f32> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Float(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Float(v) => Some(*v),
+      _ => None,
+    }
   }
 
-  /// Get an `f64` value by name, if present and typed as double.
+  /// Returns an `f64` value by name, if present and typed as double.
+  ///
+  /// # Arguments
+  /// - `name`: The declared argument name.
+  ///
+  /// # Returns
+  /// Returns `Some(f64)` when the argument exists and is a double, otherwise
+  /// returns `None`.
   pub fn get_f64(&self, name: &str) -> Option<f64> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Double(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Double(v) => Some(*v),
+      _ => None,
+    }
   }
 
-  /// Get a `bool` value by name, if present and typed as boolean.
+  /// Returns a `bool` value by name, if present and typed as boolean.
+  ///
+  /// # Arguments
+  /// - `name`: The declared argument name (for example, `"--verbose"`).
+  ///
+  /// # Returns
+  /// Returns `Some(bool)` when the argument exists and is a boolean, otherwise
+  /// returns `None`.
   pub fn get_bool(&self, name: &str) -> Option<bool> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Boolean(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Boolean(v) => Some(*v),
+      _ => None,
+    }
   }
 
+  /// Returns a count value by name, if present and typed as integer.
+  ///
+  /// # Arguments
+  /// - `name`: The declared argument name (for example, `"--verbose"`).
+  ///   If you declared a long flag with an alias (for example, `"--verbose"`
+  ///   with alias `"-v"`), lookups must use `"--verbose"`. Passing `"-v"` is
+  ///   only correct when `"-v"` is the declared name.
+  ///
+  /// # Returns
+  /// Returns `Some(i64)` when the argument exists and is an integer, otherwise
+  /// returns `None`.
   pub fn get_count(&self, name: &str) -> Option<i64> {
-    self
-      .values
-      .iter()
-      .find(|p| p.name == name)
-      .and_then(|p| match &p.value {
-        ArgumentValue::Integer(v) => Some(*v),
-        _ => None,
-      })
+    let idx = self.index_by_name.get(name)?;
+    match &self.values[*idx].value {
+      ArgumentValue::Integer(v) => Some(*v),
+      _ => None,
+    }
   }
 
+  /// Returns the parsed subcommand, if present.
+  ///
+  /// # Returns
+  /// Returns `Some((name, args))` when a subcommand was matched during parse.
   pub fn subcommand(&self) -> Option<(&str, &ParsedArgs)> {
     self
       .subcommand
@@ -1067,6 +1186,17 @@ mod tests {
     let p = parser.parse(&argv(&["--", "a", "b"])).unwrap();
     assert_eq!(p.get_string("input").unwrap(), "a");
     assert_eq!(p.get_string("rest").unwrap(), "b");
+  }
+
+  #[test]
+  fn has_respects_none_and_unknown() {
+    let parser = ArgumentParser::new("app")
+      .with_argument(Argument::new("--opt").with_type(ArgumentType::String))
+      .with_argument(Argument::new("--flag").with_type(ArgumentType::Boolean));
+    let p = parser.parse(&argv(&["--flag"])).unwrap();
+    assert!(p.has("--flag"));
+    assert!(!p.has("--opt"));
+    assert!(!p.has("--does-not-exist"));
   }
 
   #[test]
@@ -1279,21 +1409,39 @@ impl ArgumentParser {
     None
   }
 
+  /// Assigns the next positional argument in declaration order.
+  ///
+  /// # Arguments
+  /// - `out`: Output argument storage indexed by the parser's internal order.
+  /// - `value`: Token to assign to the next positional argument.
+  /// - `next_positional_idx`: Cursor into `self.positionals` tracking the next
+  ///   candidate positional to assign.
+  ///
+  /// # Errors
+  /// Returns `ArgsError::InvalidValue` when no remaining positionals exist
+  /// (extra positional arguments).
   fn assign_next_positional(
     &mut self,
     out: &mut [ParsedArgument],
     value: &str,
+    next_positional_idx: &mut usize,
   ) -> Result<(), ArgsError> {
-    for pname in self.positionals.clone() {
-      if let Some(entry) = self.args.get_mut(&pname) {
-        if !entry.1 {
-          let parsed = parse_value(&entry.0, value)?;
-          let idx = entry.2;
-          out[idx] = ParsedArgument::new(entry.0.name.as_str(), parsed);
-          entry.1 = true;
-          return Ok(());
-        }
+    // Assign the next positional in declaration order. `next_positional_idx`
+    // ensures we never rescan previously-considered positionals.
+    while *next_positional_idx < self.positionals.len() {
+      let pname = &self.positionals[*next_positional_idx];
+      *next_positional_idx += 1;
+      let Some(entry) = self.args.get_mut(pname) else {
+        continue;
+      };
+      if entry.1 {
+        continue;
       }
+      let parsed = parse_value(&entry.0, value)?;
+      let idx = entry.2;
+      out[idx] = ParsedArgument::new(entry.0.name.as_str(), parsed);
+      entry.1 = true;
+      return Ok(());
     }
     Err(ArgsError::InvalidValue {
       name: "<positional>".to_string(),
