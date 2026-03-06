@@ -468,12 +468,10 @@ fn on_attach(
       .build(),
   ];
 
-  let mut mesh_builder = MeshBuilder::new();
-  vertices.iter().for_each(|vertex| {
-    mesh_builder.with_vertex(*vertex);
-  });
-
-  let mesh = mesh_builder
+  let mesh = vertices
+    .iter()
+    .copied()
+    .fold(MeshBuilder::new(), |builder, vertex| builder.with_vertex(vertex))
     .with_attributes(vec![
       VertexAttribute {
         location: 0,

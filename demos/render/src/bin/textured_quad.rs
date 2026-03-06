@@ -163,11 +163,12 @@ impl Component<ComponentResult, String> for TexturedQuadExample {
         .build(), // uv (0,1)
     ];
 
-    let mut mesh_builder = MeshBuilder::new();
-    vertices.iter().for_each(|v| {
-      mesh_builder.with_vertex(*v);
-    });
-    let mesh = mesh_builder
+    let mesh = vertices
+      .iter()
+      .copied()
+      .fold(MeshBuilder::new(), |builder, vertex| {
+        return builder.with_vertex(vertex);
+      })
       .with_attributes(vec![
         VertexAttribute {
           location: 0,

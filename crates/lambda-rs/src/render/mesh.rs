@@ -64,7 +64,7 @@ impl MeshBuilder {
 
   /// Allocates memory for the given number of vertices and fills
   /// the mesh with empty vertices.
-  pub fn with_capacity(&mut self, size: usize) -> &mut Self {
+  pub fn with_capacity(mut self, size: usize) -> Self {
     self.vertices.resize(
       size,
       Vertex {
@@ -77,34 +77,32 @@ impl MeshBuilder {
   }
 
   /// Adds a vertex to the mesh.
-  pub fn with_vertex(&mut self, vertex: Vertex) -> &mut Self {
+  pub fn with_vertex(mut self, vertex: Vertex) -> Self {
     self.vertices.push(vertex);
     return self;
   }
 
   /// Specify the attributes of the mesh. This is used to map the vertex data to
   /// the input of the vertex shader.
-  pub fn with_attributes(
-    &mut self,
-    attributes: Vec<VertexAttribute>,
-  ) -> &mut Self {
+  pub fn with_attributes(mut self, attributes: Vec<VertexAttribute>) -> Self {
     self.attributes = attributes;
     return self;
   }
 
   /// Builds a mesh from the vertices and indices that have been added to the
   /// builder and allocates the memory for the mesh on the GPU.
-  pub fn build(&self) -> Mesh {
+  pub fn build(self) -> Mesh {
     return Mesh {
-      vertices: self.vertices.clone(),
-      attributes: self.attributes.clone(),
+      vertices: self.vertices,
+      attributes: self.attributes,
     };
   }
 
   /// Builds a mesh from the vertices of an OBJ file. The mesh will have the same
   /// attributes as the OBJ file and can be allocated on to the GPU with
   /// `BufferBuilder::build_from_mesh`.
-  pub fn build_from_obj(&self, file_path: &str) -> Mesh {
+  pub fn build_from_obj(self, file_path: &str) -> Mesh {
+    let _ = self;
     let obj = load_textured_obj_from_file(file_path);
 
     let vertices = obj
@@ -170,17 +168,16 @@ mod tests {
   /// the built mesh.
   #[test]
   fn mesh_builder_capacity_and_attributes_are_applied() {
-    let mut builder = MeshBuilder::new();
-    builder.with_capacity(2);
+    let builder = MeshBuilder::new().with_capacity(2);
     assert_eq!(builder.vertices.len(), 2);
 
-    builder.with_vertex(Vertex {
-      position: [1.0, 2.0, 3.0],
-      normal: [0.0, 1.0, 0.0],
-      color: [0.5, 0.5, 0.5],
-    });
-
-    let mesh = builder.build();
+    let mesh = builder
+      .with_vertex(Vertex {
+        position: [1.0, 2.0, 3.0],
+        normal: [0.0, 1.0, 0.0],
+        color: [0.5, 0.5, 0.5],
+      })
+      .build();
     assert_eq!(mesh.vertices().len(), 3);
   }
 
