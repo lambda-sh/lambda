@@ -174,14 +174,12 @@ impl Error for Collider2DBackendError {}
 ///
 /// This slot exists because `lambda-rs` defines integration semantics that are
 /// stricter than the vendor backend:
-/// - Gravity and explicit force accumulation integrate via symplectic Euler.
 /// - Forces are accumulated and cleared explicitly by the public API.
 /// - Impulses update velocity immediately.
 ///
 /// # Invariants
 /// - `rapier_handle` MUST reference a body in `PhysicsBackend2D::bodies`.
 /// - `explicit_dynamic_mass_kg` MUST be `Some` only for dynamic bodies.
-/// - `dynamic_mass_kg` MUST be finite and positive for dynamic bodies.
 /// - `generation` MUST be non-zero and is used to validate handles.
 #[derive(Debug, Clone, Copy)]
 struct RigidBodySlot2D {
@@ -195,7 +193,7 @@ struct RigidBodySlot2D {
   ///
   /// When this value is `Some`, collider density MUST NOT affect body mass
   /// properties. The backend enforces this by creating attached colliders with
-  /// zero density and using `dynamic_mass_kg` as the body's additional mass.
+  /// zero density and using the configured value as the body's additional mass.
   explicit_dynamic_mass_kg: Option<f32>,
   /// Tracks whether the body has at least one positive-density collider.
   ///
@@ -203,8 +201,6 @@ struct RigidBodySlot2D {
   /// density colliders default to `1.0` kg, while bodies with at least one
   /// positive-density collider compute mass from collider density alone.
   has_positive_density_colliders: bool,
-  /// The mass in kilograms used for manual force and impulse integration.
-  dynamic_mass_kg: f32,
   /// A monotonically increasing counter used to validate stale handles.
   generation: u32,
 }
@@ -362,16 +358,12 @@ impl PhysicsBackend2D {
       rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
     }
 
-    let slot_dynamic_mass_kg =
-      resolve_dynamic_mass_for_slot(body_type, explicit_dynamic_mass_kg);
-
     self.rigid_body_slots_2d.push(RigidBodySlot2D {
       body_type,
       rapier_handle,
       force_accumulator: [0.0, 0.0],
       explicit_dynamic_mass_kg,
       has_positive_density_colliders: false,
-      dynamic_mass_kg: slot_dynamic_mass_kg,
       generation: slot_generation,
     });
 
@@ -922,13 +914,9 @@ impl PhysicsBackend2D {
     impulse: [f32; 2],
   ) -> Result<(), RigidBody2DBackendError> {
     validate_impulse(impulse[0], impulse[1])?;
-    let (body_type, rapier_handle, dynamic_mass_kg) = {
+    let (body_type, rapier_handle) = {
       let body_slot = self.rigid_body_slot_2d(slot_index, slot_generation)?;
-      (
-        body_slot.body_type,
-        body_slot.rapier_handle,
-        body_slot.dynamic_mass_kg,
-      )
+      (body_slot.body_type, body_slot.rapier_handle)
     };
 
     if body_type != RigidBodyType2D::Dynamic {
@@ -938,10 +926,7 @@ impl PhysicsBackend2D {
     let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
       return Err(RigidBody2DBackendError::BodyNotFound);
     };
-    let current_velocity = rapier_body.linvel();
-    let impulse_velocity_delta =
-      Vector::new(impulse[0] / dynamic_mass_kg, impulse[1] / dynamic_mass_kg);
-    rapier_body.set_linvel(current_velocity + impulse_velocity_delta, true);
+    rapier_body.apply_impulse(Vector::new(impulse[0], impulse[1]), true);
 
     return Ok(());
   }
@@ -1006,13 +991,12 @@ impl PhysicsBackend2D {
       self.debug_validate_collider_slots_2d();
     }
 
-    // `lambda-rs` defines fixed, symplectic-Euler integration semantics for
-    // gravity and explicit forces across substeps. Rapier is stepped with
-    // zero gravity so it only contributes constraint and collision impulses.
-    self.integrate_external_forces_2d(timestep_seconds);
+    // Sync accumulated forces into Rapier so Rapier integrates gravity, forces,
+    // and collision impulses in a single consistent step.
+    self.sync_force_accumulators_2d();
 
     self.pipeline.step(
-      Vector::ZERO,
+      self.gravity,
       &self.integration_parameters,
       &mut self.islands,
       &mut self.broad_phase,
@@ -1140,26 +1124,23 @@ impl PhysicsBackend2D {
     return Ok(rapier_body);
   }
 
-  /// Integrates gravity and explicit forces into rigid-body velocity.
+  /// Syncs accumulated forces into Rapier prior to stepping.
   ///
-  /// This function preserves `lambda-rs` symplectic Euler semantics by
-  /// integrating external accelerations into the current velocity before
-  /// allowing Rapier to solve constraints and apply collision impulses.
-  ///
-  /// # Arguments
-  /// - `timestep_seconds`: The substep duration in seconds.
+  /// `lambda-rs` exposes a force accumulation API that persists forces until
+  /// explicitly cleared. Rapier stores forces on each rigid body. This function
+  /// overwrites Rapier's stored force with the value tracked by `lambda-rs` so
+  /// Rapier can integrate forces and gravity consistently during stepping.
   ///
   /// # Returns
-  /// Returns `()` after applying velocity updates to dynamic bodies.
-  fn integrate_external_forces_2d(&mut self, timestep_seconds: f32) {
+  /// Returns `()` after updating Rapier force state for all dynamic bodies.
+  fn sync_force_accumulators_2d(&mut self) {
     for index in 0..self.rigid_body_slots_2d.len() {
-      let (body_type, rapier_handle, force_accumulator, dynamic_mass_kg) = {
+      let (body_type, rapier_handle, force_accumulator) = {
         let body_slot = &self.rigid_body_slots_2d[index];
         (
           body_slot.body_type,
           body_slot.rapier_handle,
           body_slot.force_accumulator,
-          body_slot.dynamic_mass_kg,
         )
       };
 
@@ -1171,18 +1152,13 @@ impl PhysicsBackend2D {
         continue;
       };
 
-      let gravity_acceleration = self.gravity;
-      let acceleration_x =
-        gravity_acceleration.x + (force_accumulator[0] / dynamic_mass_kg);
-      let acceleration_y =
-        gravity_acceleration.y + (force_accumulator[1] / dynamic_mass_kg);
-
-      let current_velocity = rapier_body.linvel();
-      let new_velocity = Vector::new(
-        current_velocity.x + acceleration_x * timestep_seconds,
-        current_velocity.y + acceleration_y * timestep_seconds,
+      let should_wake =
+        force_accumulator[0] != 0.0 || force_accumulator[1] != 0.0;
+      rapier_body.reset_forces(false);
+      rapier_body.add_force(
+        Vector::new(force_accumulator[0], force_accumulator[1]),
+        should_wake,
       );
-      rapier_body.set_linvel(new_velocity, true);
     }
 
     return;
@@ -1273,50 +1249,21 @@ impl PhysicsBackend2D {
   /// - `rapier_parent_handle`: The Rapier body handle.
   ///
   /// # Returns
-  /// Returns `()` after recomputing mass properties and updating tracked mass
-  /// used by manual integration.
+  /// Returns `()` after recomputing mass properties.
   ///
   /// # Errors
   /// Returns `Collider2DBackendError::BodyNotFound` if the parent body is
   /// missing or the handle is stale.
   fn recompute_parent_mass_after_collider_attachment_2d(
     &mut self,
-    parent_slot_index: u32,
-    parent_slot_generation: u32,
+    _parent_slot_index: u32,
+    _parent_slot_generation: u32,
     rapier_parent_handle: RigidBodyHandle,
   ) -> Result<(), Collider2DBackendError> {
-    let (body_type, explicit_dynamic_mass_kg) = {
-      let body_slot = self
-        .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
-        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
-      (body_slot.body_type, body_slot.explicit_dynamic_mass_kg)
-    };
-
     let Some(rapier_body) = self.bodies.get_mut(rapier_parent_handle) else {
       return Err(Collider2DBackendError::BodyNotFound);
     };
     rapier_body.recompute_mass_properties_from_colliders(&self.colliders);
-
-    if body_type != RigidBodyType2D::Dynamic {
-      return Ok(());
-    }
-
-    if explicit_dynamic_mass_kg.is_some() {
-      return Ok(());
-    }
-
-    let updated_mass_kg = rapier_body.mass();
-    let resolved_mass_kg =
-      if updated_mass_kg.is_finite() && updated_mass_kg > 0.0 {
-        updated_mass_kg
-      } else {
-        1.0
-      };
-
-    let body_slot = self
-      .rigid_body_slot_2d_mut(parent_slot_index, parent_slot_generation)
-      .map_err(|_| Collider2DBackendError::BodyNotFound)?;
-    body_slot.dynamic_mass_kg = resolved_mass_kg;
 
     return Ok(());
   }
@@ -1343,6 +1290,9 @@ impl PhysicsBackend2D {
 
 /// Builds a Rapier rigid body builder with `lambda-rs` invariants applied.
 ///
+/// Bodies created by this backend do not lock the 2D rotation axis. Dynamic
+/// bodies are expected to rotate in response to collisions.
+///
 /// # Arguments
 /// - `body_type`: The integration mode for the rigid body.
 /// - `position`: The initial position in meters.
@@ -1367,23 +1317,20 @@ fn build_rapier_rigid_body(
       return RigidBodyBuilder::fixed()
         .translation(translation)
         .rotation(rotation)
-        .linvel(linear_velocity)
-        .lock_rotations();
+        .linvel(linear_velocity);
     }
     RigidBodyType2D::Kinematic => {
       return RigidBodyBuilder::kinematic_velocity_based()
         .translation(translation)
         .rotation(rotation)
-        .linvel(linear_velocity)
-        .lock_rotations();
+        .linvel(linear_velocity);
     }
     RigidBodyType2D::Dynamic => {
       return RigidBodyBuilder::dynamic()
         .translation(translation)
         .rotation(rotation)
         .linvel(linear_velocity)
-        .additional_mass(additional_mass_kg)
-        .lock_rotations();
+        .additional_mass(additional_mass_kg);
     }
   }
 }
@@ -1551,30 +1498,6 @@ fn resolve_additional_mass_kg(
   }
 
   return Ok(fallback_mass_kg);
-}
-
-/// Resolves the tracked slot mass value used by manual integration.
-///
-/// # Arguments
-/// - `body_type`: The rigid body integration mode.
-/// - `explicit_dynamic_mass_kg`: The explicitly configured mass for dynamic
-///   bodies.
-///
-/// # Returns
-/// Returns a slot mass in kilograms.
-fn resolve_dynamic_mass_for_slot(
-  body_type: RigidBodyType2D,
-  explicit_dynamic_mass_kg: Option<f32>,
-) -> f32 {
-  if body_type != RigidBodyType2D::Dynamic {
-    return 0.0;
-  }
-
-  if let Some(explicit_mass_kg) = explicit_dynamic_mass_kg {
-    return explicit_mass_kg;
-  }
-
-  return 1.0;
 }
 
 /// Validates a collider local offset.

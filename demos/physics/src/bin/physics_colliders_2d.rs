@@ -158,6 +158,7 @@ pub struct Colliders2DDemo {
   physics_accumulator_seconds: f32,
 
   pending_impulse: bool,
+  impulse_cooldown_remaining_seconds: f32,
   density_light_body: RigidBody2D,
   density_heavy_body: RigidBody2D,
 
@@ -481,11 +482,21 @@ impl Component<ComponentResult, String> for Colliders2DDemo {
   }
 
   fn on_keyboard_event(&mut self, event: &Key) -> Result<(), String> {
-    if let Key::Pressed { virtual_key, .. } = event {
-      if virtual_key == &Some(VirtualKey::Space) {
-        self.pending_impulse = true;
-      }
+    let Key::Pressed { virtual_key, .. } = event else {
+      return Ok(());
+    };
+
+    if virtual_key != &Some(VirtualKey::Space) {
+      return Ok(());
     }
+
+    if self.impulse_cooldown_remaining_seconds > 0.0 {
+      return Ok(());
+    }
+
+    self.pending_impulse = true;
+    self.impulse_cooldown_remaining_seconds = 0.25;
+    println!("Space pressed: applying impulse to density demo bodies");
 
     return Ok(());
   }
@@ -494,14 +505,27 @@ impl Component<ComponentResult, String> for Colliders2DDemo {
     &mut self,
     last_frame: &std::time::Duration,
   ) -> Result<ComponentResult, String> {
+    self.impulse_cooldown_remaining_seconds =
+      (self.impulse_cooldown_remaining_seconds - last_frame.as_secs_f32())
+        .max(0.0);
+
     self.physics_accumulator_seconds += last_frame.as_secs_f32();
 
     let timestep_seconds = self.physics_world.timestep_seconds();
 
     while self.physics_accumulator_seconds >= timestep_seconds {
       if self.pending_impulse {
-        let impulse_x_newton_seconds = 0.9;
-        let impulse_y_newton_seconds = 1.0;
+        let impulse_x_newton_seconds = 0.0;
+        let impulse_y_newton_seconds = 1.2;
+
+        self
+          .density_light_body
+          .set_velocity(&mut self.physics_world, 0.0, 0.0)
+          .map_err(|error| error.to_string())?;
+        self
+          .density_heavy_body
+          .set_velocity(&mut self.physics_world, 0.0, 0.0)
+          .map_err(|error| error.to_string())?;
 
         self
           .density_light_body
@@ -565,15 +589,21 @@ impl Component<ComponentResult, String> for Colliders2DDemo {
         .rotation(&self.physics_world)
         .expect("RigidBody2D rotation failed");
 
+      // The clip-space coordinate system used by this demo mirrors Rapier's
+      // angular sign convention on screen. Negating the sampled physics angle
+      // keeps rendered collider orientation aligned with the collision shape
+      // that Rapier is simulating.
+      let visual_body_rotation = -body_rotation;
+
       let rotated_offset =
-        Self::rotate_vector(body_rotation, collider.init.local_offset);
+        Self::rotate_vector(visual_body_rotation, collider.init.local_offset);
 
       let offset = [
         body_position[0] + rotated_offset[0],
         body_position[1] + rotated_offset[1],
       ];
 
-      let rotation = body_rotation + collider.init.local_rotation;
+      let rotation = -(body_rotation + collider.init.local_rotation);
 
       let uniform = ColliderGlobalsUniform {
         offset_rotation: [offset[0], offset[1], rotation, 0.0],
@@ -631,7 +661,7 @@ impl Component<ComponentResult, String> for Colliders2DDemo {
 impl Default for Colliders2DDemo {
   fn default() -> Self {
     let mut physics_world = PhysicsWorld2DBuilder::new()
-      .with_gravity(0.0, -2.2)
+      .with_gravity(0.0, -3.2)
       .with_substeps(4)
       .build()
       .expect("Failed to create PhysicsWorld2D");
@@ -704,6 +734,49 @@ impl Default for Colliders2DDemo {
       tint: [0.18, 0.18, 0.18, 1.0],
     });
 
+    let ceiling_body = RigidBody2DBuilder::new(RigidBodyType::Static)
+      .with_position(0.0, 0.92)
+      .build(&mut physics_world)
+      .expect("Failed to create ceiling body");
+    Collider2DBuilder::rectangle(0.95, 0.03)
+      .with_density(0.0)
+      .with_friction(0.8)
+      .with_restitution(0.0)
+      .build(&mut physics_world, ceiling_body)
+      .expect("Failed to create ceiling collider");
+    collider_inits.push(ColliderRenderInit {
+      body: ceiling_body,
+      shape: ColliderShape2D::Rectangle {
+        half_width: 0.95,
+        half_height: 0.03,
+      },
+      local_offset: [0.0, 0.0],
+      local_rotation: 0.0,
+      tint: [0.18, 0.18, 0.18, 1.0],
+    });
+
+    // Divider keeps the density demo isolated so Space remains visible.
+    let divider_body = RigidBody2DBuilder::new(RigidBodyType::Static)
+      .with_position(0.32, 0.0)
+      .build(&mut physics_world)
+      .expect("Failed to create divider body");
+    Collider2DBuilder::rectangle(0.02, 0.95)
+      .with_density(0.0)
+      .with_friction(0.8)
+      .with_restitution(0.0)
+      .build(&mut physics_world, divider_body)
+      .expect("Failed to create divider collider");
+    collider_inits.push(ColliderRenderInit {
+      body: divider_body,
+      shape: ColliderShape2D::Rectangle {
+        half_width: 0.02,
+        half_height: 0.95,
+      },
+      local_offset: [0.0, 0.0],
+      local_rotation: 0.0,
+      tint: [0.18, 0.18, 0.18, 1.0],
+    });
+
     let ramp_rotation = 0.5_f32;
     let ramp_body = RigidBody2DBuilder::new(RigidBodyType::Static)
       .with_position(-0.45, -0.25)
@@ -712,7 +785,9 @@ impl Default for Colliders2DDemo {
       .expect("Failed to create ramp body");
     Collider2DBuilder::rectangle(0.55, 0.03)
       .with_density(ramp_material.density())
-      .with_friction(ramp_material.friction())
+      // Keep the ramp somewhat slippery so bodies settle on the floor instead
+      // of sticking on the slope for long periods.
+      .with_friction(0.4)
       .with_restitution(ramp_material.restitution())
       .build(&mut physics_world, ramp_body)
       .expect("Failed to create ramp collider");
@@ -733,7 +808,7 @@ impl Default for Colliders2DDemo {
       .build(&mut physics_world)
       .expect("Failed to create bouncy body");
     Collider2DBuilder::circle(0.06)
-      .with_density(1.0)
+      .with_density(110.0)
       .with_friction(0.2)
       .with_restitution(0.95)
       .build(&mut physics_world, bouncy_body)
@@ -751,7 +826,7 @@ impl Default for Colliders2DDemo {
       .build(&mut physics_world)
       .expect("Failed to create dull body");
     Collider2DBuilder::circle(0.06)
-      .with_density(1.0)
+      .with_density(110.0)
       .with_friction(0.2)
       .with_restitution(0.0)
       .build(&mut physics_world, dull_body)
@@ -770,7 +845,7 @@ impl Default for Colliders2DDemo {
       .build(&mut physics_world)
       .expect("Failed to create slippery box body");
     Collider2DBuilder::rectangle(0.07, 0.07)
-      .with_density(1.0)
+      .with_density(100.0)
       .with_friction(0.0)
       .with_restitution(0.0)
       .build(&mut physics_world, slippery_box_body)
@@ -791,7 +866,7 @@ impl Default for Colliders2DDemo {
       .build(&mut physics_world)
       .expect("Failed to create grippy box body");
     Collider2DBuilder::rectangle(0.07, 0.07)
-      .with_density(1.0)
+      .with_density(100.0)
       .with_friction(1.0)
       .with_restitution(0.0)
       .build(&mut physics_world, grippy_box_body)
@@ -813,7 +888,7 @@ impl Default for Colliders2DDemo {
       .build(&mut physics_world)
       .expect("Failed to create capsule body");
     Collider2DBuilder::capsule(0.09, 0.04)
-      .with_density(1.0)
+      .with_density(120.0)
       .with_friction(0.6)
       .with_restitution(0.0)
       .build(&mut physics_world, capsule_body)
@@ -831,13 +906,13 @@ impl Default for Colliders2DDemo {
 
     // Convex polygon demo: a simple triangle.
     let polygon_body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
-      .with_position(0.55, 0.72)
+      .with_position(0.15, 0.72)
       .with_rotation(0.25)
       .build(&mut physics_world)
       .expect("Failed to create polygon body");
     let triangle_vertices = vec![[0.0, 0.1], [-0.09, -0.06], [0.09, -0.06]];
     Collider2DBuilder::polygon(triangle_vertices.clone())
-      .with_density(1.0)
+      .with_density(100.0)
       .with_friction(0.5)
       .with_restitution(0.15)
       .build(&mut physics_world, polygon_body)
@@ -854,12 +929,12 @@ impl Default for Colliders2DDemo {
 
     // Local rotation demo: a thin rectangle rotated in local space.
     let local_rotation_body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
-      .with_position(0.78, 0.55)
+      .with_position(-0.05, 0.55)
       .build(&mut physics_world)
       .expect("Failed to create local rotation body");
     Collider2DBuilder::rectangle(0.11, 0.03)
       .with_local_rotation(0.85)
-      .with_density(1.0)
+      .with_density(100.0)
       .with_friction(0.4)
       .with_restitution(0.1)
       .build(&mut physics_world, local_rotation_body)
@@ -877,16 +952,33 @@ impl Default for Colliders2DDemo {
 
     // Compound collider demo: a dumbbell made of two circles on one body.
     let compound_body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
-      .with_position(0.05, 0.78)
+      .with_position(-0.02, 0.68)
       .build(&mut physics_world)
       .expect("Failed to create compound body");
+
+    Collider2DBuilder::rectangle(0.09, 0.025)
+      .with_density(100.0)
+      .with_friction(0.25)
+      .with_restitution(0.0)
+      .build(&mut physics_world, compound_body)
+      .expect("Failed to create compound center collider");
+    collider_inits.push(ColliderRenderInit {
+      body: compound_body,
+      shape: ColliderShape2D::Rectangle {
+        half_width: 0.09,
+        half_height: 0.025,
+      },
+      local_offset: [0.0, 0.0],
+      local_rotation: 0.0,
+      tint: [0.55, 0.32, 0.72, 1.0],
+    });
 
     for offset_x in [-0.07, 0.07] {
       Collider2DBuilder::circle(0.05)
         .with_offset(offset_x, 0.0)
-        .with_density(1.0)
-        .with_friction(0.4)
-        .with_restitution(0.2)
+        .with_density(100.0)
+        .with_friction(0.25)
+        .with_restitution(0.0)
         .build(&mut physics_world, compound_body)
         .expect("Failed to create compound circle collider");
       collider_inits.push(ColliderRenderInit {
@@ -900,11 +992,11 @@ impl Default for Colliders2DDemo {
 
     // Density demo: same size circles, different density (mass).
     let density_light_body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
-      .with_position(0.45, -0.6)
+      .with_position(0.62, 0.65)
       .build(&mut physics_world)
       .expect("Failed to create density light body");
     Collider2DBuilder::circle(0.06)
-      .with_density(1.0)
+      .with_density(100.0)
       .with_friction(0.0)
       .with_restitution(0.0)
       .build(&mut physics_world, density_light_body)
@@ -918,11 +1010,13 @@ impl Default for Colliders2DDemo {
     });
 
     let density_heavy_body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
-      .with_position(0.65, -0.6)
+      .with_position(0.82, 0.65)
       .build(&mut physics_world)
       .expect("Failed to create density heavy body");
     Collider2DBuilder::circle(0.06)
-      .with_density(8.0)
+      // Keep the mass ratio small enough that a unit impulse produces visible
+      // motion for both bodies.
+      .with_density(250.0)
       .with_friction(0.0)
       .with_restitution(0.0)
       .build(&mut physics_world, density_heavy_body)
@@ -954,6 +1048,7 @@ impl Default for Colliders2DDemo {
       physics_accumulator_seconds: 0.0,
 
       pending_impulse: false,
+      impulse_cooldown_remaining_seconds: 0.0,
       density_light_body,
       density_heavy_body,
 
