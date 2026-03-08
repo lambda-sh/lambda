@@ -79,6 +79,11 @@ pub fn validate_instance_range(
 /// Validate that all per-instance vertex buffer slots have been bound before
 /// issuing a draw that consumes them.
 ///
+/// This helper performs a full scan of `per_instance_slots`. Hot render paths
+/// cache missing instance slots in the encoder and use
+/// [`missing_instance_binding_message`] directly to avoid rescanning on every
+/// draw.
+///
 /// The `pipeline_label` identifies the pipeline in diagnostics. The
 /// `per_instance_slots` slice marks which vertex buffer slots advance once
 /// per instance, while `bound_slots` tracks the vertex buffer slots that
@@ -90,14 +95,26 @@ pub fn validate_instance_bindings(
 ) -> Result<(), String> {
   for (slot, is_instance) in per_instance_slots.iter().enumerate() {
     if *is_instance && !bound_slots.contains(&(slot as u32)) {
-      return Err(format!(
-        "Render pipeline '{}' requires a per-instance vertex buffer bound at slot {} but no BindVertexBuffer command bound that slot in this pass",
+      return Err(missing_instance_binding_message(
         pipeline_label,
-        slot
+        slot as u32,
       ));
     }
   }
   return Ok(());
+}
+
+/// Build the validation error emitted when an instanced pipeline is missing a
+/// required per-instance vertex buffer binding.
+pub fn missing_instance_binding_message(
+  pipeline_label: &str,
+  slot: u32,
+) -> String {
+  return format!(
+    "Render pipeline '{}' requires a per-instance vertex buffer bound at slot {} but no BindVertexBuffer command bound that slot in this pass",
+    pipeline_label,
+    slot
+  );
 }
 
 #[cfg(test)]
@@ -189,5 +206,14 @@ mod tests {
         .expect_err("must error");
     assert!(err.contains("instanced"));
     assert!(err.contains("slot 2"));
+  }
+
+  /// Ensures the shared missing-slot formatter stays stable for cached
+  /// draw-time validation paths.
+  #[test]
+  fn missing_instance_binding_message_mentions_pipeline_and_slot() {
+    let err = missing_instance_binding_message("instanced", 3);
+    assert!(err.contains("instanced"));
+    assert!(err.contains("slot 3"));
   }
 }

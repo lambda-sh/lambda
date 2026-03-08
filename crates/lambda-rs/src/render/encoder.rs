@@ -29,7 +29,10 @@
 //! ```
 
 use std::{
-  collections::HashSet,
+  collections::{
+    BTreeSet,
+    HashSet,
+  },
   ops::Range,
 };
 
@@ -165,6 +168,11 @@ impl std::fmt::Debug for CommandEncoder {
 /// The encoder borrows the command encoder for the duration of the pass and
 /// performs validation on all operations.
 ///
+/// When instancing validation is enabled, the encoder caches which per-instance
+/// vertex buffer slots are still missing for the active pipeline. This keeps
+/// repeated `draw*` validation constant-time even when a pass issues many
+/// draws.
+///
 /// # Type Parameters
 /// * `'pass` - The lifetime of the render pass, tied to the borrowed encoder
 ///   and attachments.
@@ -185,7 +193,11 @@ pub struct RenderPassEncoder<'pass> {
   destination_depth_format: Option<DepthFormat>,
 
   // Validation state (compiled out in release without features)
-  #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
+  #[cfg(any(
+    debug_assertions,
+    feature = "render-validation-encoder",
+    feature = "render-validation-instancing"
+  ))]
   current_pipeline: Option<CurrentPipeline>,
   #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
   bound_index_buffer: Option<BoundIndexBuffer>,
@@ -206,11 +218,15 @@ pub struct RenderPassEncoder<'pass> {
 }
 
 /// Tracks the currently bound pipeline for validation.
-#[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
-#[derive(Clone)]
+#[cfg(any(
+  debug_assertions,
+  feature = "render-validation-encoder",
+  feature = "render-validation-instancing"
+))]
 struct CurrentPipeline {
   label: String,
-  per_instance_slots: Vec<bool>,
+  #[cfg(any(debug_assertions, feature = "render-validation-instancing"))]
+  missing_instance_slots: BTreeSet<u32>,
 }
 
 /// Tracks the currently bound index buffer for validation.
@@ -264,7 +280,11 @@ impl<'pass> RenderPassEncoder<'pass> {
       sample_count: pass.sample_count(),
       destination_color_format: destination_info.color_format,
       destination_depth_format: destination_info.depth_format,
-      #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
+      #[cfg(any(
+        debug_assertions,
+        feature = "render-validation-encoder",
+        feature = "render-validation-instancing"
+      ))]
       current_pipeline: None,
       #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
       bound_index_buffer: None,
@@ -289,6 +309,10 @@ impl<'pass> RenderPassEncoder<'pass> {
   ///
   /// Returns an error if the pipeline is incompatible with the current pass
   /// configuration (e.g., color target mismatch).
+  ///
+  /// When instancing validation is enabled, this also computes the currently
+  /// missing per-instance vertex buffer slots once so subsequent draw
+  /// validation can reuse cached state.
   pub fn set_pipeline(
     &mut self,
     pipeline: &RenderPipeline,
@@ -366,12 +390,31 @@ impl<'pass> RenderPassEncoder<'pass> {
     }
 
     // Track current pipeline for draw validation
-    #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
+    #[cfg(any(
+      debug_assertions,
+      feature = "render-validation-encoder",
+      feature = "render-validation-instancing"
+    ))]
     {
       let label = pipeline.pipeline().label().unwrap_or("unnamed").to_string();
       self.current_pipeline = Some(CurrentPipeline {
         label,
-        per_instance_slots: pipeline.per_instance_slots().clone(),
+        #[cfg(any(
+          debug_assertions,
+          feature = "render-validation-instancing"
+        ))]
+        missing_instance_slots: pipeline
+          .per_instance_slots()
+          .iter()
+          .enumerate()
+          .filter_map(|(slot, is_instance)| {
+            if !is_instance || self.bound_vertex_slots.contains(&(slot as u32))
+            {
+              return None;
+            }
+            Some(slot as u32)
+          })
+          .collect(),
       });
     }
 
@@ -471,10 +514,16 @@ impl<'pass> RenderPassEncoder<'pass> {
   }
 
   /// Bind a vertex buffer to a slot.
+  ///
+  /// When instancing validation is enabled, this updates the cached set of
+  /// missing per-instance slots for the active pipeline.
   pub fn set_vertex_buffer(&mut self, slot: u32, buffer: &Buffer) {
     #[cfg(any(debug_assertions, feature = "render-validation-instancing"))]
     {
       self.bound_vertex_slots.insert(slot);
+      if let Some(current_pipeline) = self.current_pipeline.as_mut() {
+        current_pipeline.missing_instance_slots.remove(&slot);
+      }
     }
 
     self.pass.set_vertex_buffer(slot, buffer.raw());
@@ -547,13 +596,14 @@ impl<'pass> RenderPassEncoder<'pass> {
     #[cfg(any(debug_assertions, feature = "render-validation-instancing"))]
     {
       if let Some(ref pipeline) = self.current_pipeline {
-        validation::validate_instance_bindings(
-          &pipeline.label,
-          &pipeline.per_instance_slots,
-          &self.bound_vertex_slots,
-        )
-        .map_err(RenderPassError::Validation)?;
-
+        if let Some(slot) = pipeline.missing_instance_slots.iter().next() {
+          return Err(RenderPassError::Validation(
+            validation::missing_instance_binding_message(
+              &pipeline.label,
+              *slot,
+            ),
+          ));
+        }
         validation::validate_instance_range("Draw", &instances)
           .map_err(RenderPassError::Validation)?;
       }
@@ -615,13 +665,14 @@ impl<'pass> RenderPassEncoder<'pass> {
     #[cfg(any(debug_assertions, feature = "render-validation-instancing"))]
     {
       if let Some(ref pipeline) = self.current_pipeline {
-        validation::validate_instance_bindings(
-          &pipeline.label,
-          &pipeline.per_instance_slots,
-          &self.bound_vertex_slots,
-        )
-        .map_err(RenderPassError::Validation)?;
-
+        if let Some(slot) = pipeline.missing_instance_slots.iter().next() {
+          return Err(RenderPassError::Validation(
+            validation::missing_instance_binding_message(
+              &pipeline.label,
+              *slot,
+            ),
+          ));
+        }
         validation::validate_instance_range("DrawIndexed", &instances)
           .map_err(RenderPassError::Validation)?;
       }
@@ -738,6 +789,11 @@ mod tests {
       TextureBuilder,
       TextureFormat,
     },
+    vertex::{
+      ColorFormat,
+      VertexAttribute,
+      VertexElement,
+    },
     viewport::Viewport,
   };
 
@@ -766,6 +822,55 @@ mod tests {
       entry_point: "main".to_string(),
     });
     return (vs, fs);
+  }
+
+  /// Build a minimal pipeline that declares one per-instance vertex buffer.
+  ///
+  /// This helper exists for encoder tests that need instancing validation
+  /// without depending on additional render state. The returned pipeline uses
+  /// the shared triangle shaders and declares slot `0` as a per-instance
+  /// buffer so tests can exercise cached instance-slot tracking.
+  ///
+  /// # Arguments
+  /// - `gpu`: The test GPU used to allocate the instance buffer and create the
+  ///   pipeline.
+  /// - `pass`: The render pass the pipeline must be compatible with.
+  ///
+  /// # Returns
+  /// Returns a `RenderPipeline` configured with one per-instance vertex buffer
+  /// bound at slot `0`.
+  fn build_instanced_test_pipeline(
+    gpu: &crate::render::gpu::Gpu,
+    pass: &RenderPass,
+  ) -> RenderPipeline {
+    let (vs, fs) = compile_triangle_shaders();
+    let instance_buffer = BufferBuilder::new()
+      .with_label("encoder-test-instance-layout")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(gpu, vec![[0.0f32; 3]])
+      .expect("build instance layout buffer");
+    let instance_attributes = vec![VertexAttribute {
+      location: 0,
+      offset: 0,
+      element: VertexElement {
+        format: ColorFormat::Rgb32Sfloat,
+        offset: 0,
+      },
+    }];
+
+    return RenderPipelineBuilder::new()
+      .with_label("instanced-pipeline")
+      .with_instance_buffer(instance_buffer, instance_attributes)
+      .build(
+        gpu,
+        TextureFormat::Rgba8Unorm,
+        DepthFormat::Depth24Plus,
+        pass,
+        &vs,
+        Some(&fs),
+      );
   }
 
   /// Ensures the `Display` implementation for `RenderPassError` forwards the
@@ -1044,6 +1149,142 @@ mod tests {
     } else {
       assert!(indexed.is_ok());
     }
+
+    drop(rp);
+    let cb = encoder.finish();
+    gpu.submit(std::iter::once(cb));
+  }
+
+  /// Ensures instancing validation caches missing slots when the pipeline is
+  /// set, then clears them incrementally as matching vertex buffers are bound.
+  #[test]
+  fn render_pass_encoder_tracks_missing_instance_slots_incrementally() {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-encoder-test")
+    else {
+      return;
+    };
+
+    let pass = RenderPassBuilder::new().with_label("instanced-pass").build(
+      &gpu,
+      TextureFormat::Rgba8Unorm,
+      DepthFormat::Depth24Plus,
+    );
+    let pipeline = build_instanced_test_pipeline(&gpu, &pass);
+
+    let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(4, 4)
+      .for_render_target()
+      .build(&gpu)
+      .expect("build resolve texture");
+
+    let mut encoder = platform::command::CommandEncoder::new(
+      gpu.platform(),
+      Some("lambda-instanced-encoder"),
+    );
+
+    let mut attachments = RenderColorAttachments::for_offscreen_pass(
+      pass.uses_color(),
+      pass.sample_count(),
+      None,
+      resolve.view_ref(),
+    );
+
+    let mut rp = RenderPassEncoder::new(
+      &mut encoder,
+      &pass,
+      RenderPassDestinationInfo {
+        color_format: Some(TextureFormat::Rgba8Unorm),
+        depth_format: None,
+      },
+      &mut attachments,
+      None,
+    );
+
+    rp.set_pipeline(&pipeline).expect("set instanced pipeline");
+
+    let missing_before_bind = rp.draw(0..3, 0..1);
+    if cfg!(any(
+      debug_assertions,
+      feature = "render-validation-instancing"
+    )) {
+      let err =
+        missing_before_bind.expect_err("draw must require instance binding");
+      assert!(matches!(err, RenderPassError::Validation(_)));
+      assert!(err.to_string().contains("slot 0"));
+    } else {
+      missing_before_bind.expect("draw ok without instancing validation");
+    }
+
+    let instance_buffer = BufferBuilder::new()
+      .with_label("encoder-test-instance-binding")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(&gpu, vec![[1.0f32; 3]])
+      .expect("build instance binding buffer");
+    rp.set_vertex_buffer(0, &instance_buffer);
+    rp.draw(0..3, 0..1)
+      .expect("draw succeeds after required instance slot is bound");
+
+    drop(rp);
+    let cb = encoder.finish();
+    gpu.submit(std::iter::once(cb));
+  }
+
+  /// Ensures the cached instancing state honors vertex buffers that were bound
+  /// before the active pipeline was selected.
+  #[test]
+  fn render_pass_encoder_instancing_cache_respects_prebound_slots() {
+    let Some(gpu) = crate::render::gpu::create_test_gpu("lambda-encoder-test")
+    else {
+      return;
+    };
+
+    let pass = RenderPassBuilder::new()
+      .with_label("instanced-prebound-pass")
+      .build(&gpu, TextureFormat::Rgba8Unorm, DepthFormat::Depth24Plus);
+    let pipeline = build_instanced_test_pipeline(&gpu, &pass);
+
+    let resolve = TextureBuilder::new_2d(TextureFormat::Rgba8Unorm)
+      .with_size(4, 4)
+      .for_render_target()
+      .build(&gpu)
+      .expect("build resolve texture");
+
+    let mut encoder = platform::command::CommandEncoder::new(
+      gpu.platform(),
+      Some("lambda-instanced-prebound-encoder"),
+    );
+
+    let mut attachments = RenderColorAttachments::for_offscreen_pass(
+      pass.uses_color(),
+      pass.sample_count(),
+      None,
+      resolve.view_ref(),
+    );
+
+    let mut rp = RenderPassEncoder::new(
+      &mut encoder,
+      &pass,
+      RenderPassDestinationInfo {
+        color_format: Some(TextureFormat::Rgba8Unorm),
+        depth_format: None,
+      },
+      &mut attachments,
+      None,
+    );
+
+    let instance_buffer = BufferBuilder::new()
+      .with_label("encoder-test-prebound-instance-buffer")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(&gpu, vec![[1.0f32; 3]])
+      .expect("build prebound instance buffer");
+    rp.set_vertex_buffer(0, &instance_buffer);
+    rp.set_pipeline(&pipeline).expect("set instanced pipeline");
+    rp.draw(0..3, 0..1)
+      .expect("prebound instance slot satisfies cached validation");
 
     drop(rp);
     let cb = encoder.finish();
