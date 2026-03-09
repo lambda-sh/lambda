@@ -186,6 +186,71 @@ fn dispatch_event_to_component(
   }
 }
 
+const EVENT_CATEGORY_COUNT: usize = 5;
+
+/// Maps a single event-category bit to the corresponding listener bucket.
+///
+/// This helper accepts only one of the concrete event category masks produced
+/// by [`Events::mask`]. It returns an error for `EventMask::NONE` or any mask
+/// outside the supported categories so the runtime can surface the invariant
+/// violation without panicking.
+fn event_listener_bucket(event_mask: EventMask) -> Result<usize, String> {
+  if event_mask.contains(EventMask::WINDOW) {
+    return Ok(0);
+  }
+  if event_mask.contains(EventMask::KEYBOARD) {
+    return Ok(1);
+  }
+  if event_mask.contains(EventMask::MOUSE) {
+    return Ok(2);
+  }
+  if event_mask.contains(EventMask::RUNTIME) {
+    return Ok(3);
+  }
+  if event_mask.contains(EventMask::COMPONENT) {
+    return Ok(4);
+  }
+
+  return Err(format!(
+    "Unsupported event mask for listener bucket: {:?}",
+    event_mask
+  ));
+}
+
+/// Builds a per-category index of component listeners for event dispatch.
+///
+/// Each component is inspected once during runtime startup and its position in
+/// the component stack is recorded in every bucket named by its [`EventMask`].
+/// This front-loads an `O(C)` setup cost so dispatch can visit only matching
+/// listeners for an event category instead of scanning all `C` components on
+/// every event.
+fn build_event_listener_index(
+  components: &[Box<dyn Component<ComponentResult, String>>],
+) -> [Vec<usize>; EVENT_CATEGORY_COUNT] {
+  let mut listeners = std::array::from_fn(|_| Vec::new());
+
+  for (index, component) in components.iter().enumerate() {
+    let mask = component.event_mask();
+    if mask.contains(EventMask::WINDOW) {
+      listeners[0].push(index);
+    }
+    if mask.contains(EventMask::KEYBOARD) {
+      listeners[1].push(index);
+    }
+    if mask.contains(EventMask::MOUSE) {
+      listeners[2].push(index);
+    }
+    if mask.contains(EventMask::RUNTIME) {
+      listeners[3].push(index);
+    }
+    if mask.contains(EventMask::COMPONENT) {
+      listeners[4].push(index);
+    }
+  }
+
+  return listeners;
+}
+
 const MAX_TARGET_FPS: u32 = 1000;
 
 fn div_ceil_u64(numerator: u64, denominator: u64) -> u64 {
@@ -222,6 +287,7 @@ impl Runtime<(), String> for ApplicationRuntime {
     let mut event_loop = LoopBuilder::new().build();
     let window = self.window_builder.build(&mut event_loop);
     let mut component_stack = self.component_stack;
+    let listener_index = build_event_listener_index(&component_stack);
     let render_context = match self.render_context_builder.build(&window) {
       Ok(ctx) => ctx,
       Err(err) => {
@@ -493,7 +559,34 @@ impl Runtime<(), String> for ApplicationRuntime {
           logging::trace!("Sending event: {:?} to all components", event);
 
           let event_mask = event.mask();
-          for component in &mut component_stack {
+          let bucket = match event_listener_bucket(event_mask) {
+            Ok(bucket) => bucket,
+            Err(error) => {
+              logging::error!("{}", error);
+              publisher.publish_event(Events::Runtime {
+                event: RuntimeEvent::ComponentPanic { message: error },
+                issued_at: Instant::now(),
+              });
+              return;
+            }
+          };
+          let listeners = &listener_index[bucket];
+          for component_index in listeners {
+            let component = match component_stack.get_mut(*component_index) {
+              Some(component) => component,
+              None => {
+                let error = format!(
+                  "Listener index {} is out of bounds for component stack.",
+                  component_index
+                );
+                logging::error!("{}", error);
+                publisher.publish_event(Events::Runtime {
+                  event: RuntimeEvent::ComponentPanic { message: error },
+                  issued_at: Instant::now(),
+                });
+                return;
+              }
+            };
             let event_result = dispatch_event_to_component(
               &event,
               event_mask,
@@ -722,5 +815,49 @@ mod tests {
 
     assert!(error.contains("A component has panicked while handling an event."));
     assert!(error.contains("window failure"));
+  }
+
+  #[test]
+  fn event_listener_bucket_maps_each_category() {
+    assert_eq!(event_listener_bucket(EventMask::WINDOW), Ok(0));
+    assert_eq!(event_listener_bucket(EventMask::KEYBOARD), Ok(1));
+    assert_eq!(event_listener_bucket(EventMask::MOUSE), Ok(2));
+    assert_eq!(event_listener_bucket(EventMask::RUNTIME), Ok(3));
+    assert_eq!(event_listener_bucket(EventMask::COMPONENT), Ok(4));
+  }
+
+  #[test]
+  fn event_listener_bucket_rejects_empty_mask() {
+    let error = event_listener_bucket(EventMask::NONE).unwrap_err();
+    assert!(error.contains("Unsupported event mask"));
+  }
+
+  #[test]
+  fn build_event_listener_index_registers_only_matching_components() {
+    let components: Vec<Box<dyn Component<ComponentResult, String>>> = vec![
+      Box::new(RecordingComponent {
+        mask: EventMask::WINDOW | EventMask::KEYBOARD,
+        ..Default::default()
+      }),
+      Box::new(RecordingComponent {
+        mask: EventMask::RUNTIME,
+        ..Default::default()
+      }),
+      Box::new(RecordingComponent {
+        mask: EventMask::NONE,
+        ..Default::default()
+      }),
+      Box::new(RecordingComponent {
+        mask: EventMask::MOUSE | EventMask::COMPONENT,
+        ..Default::default()
+      }),
+    ];
+
+    let listeners = build_event_listener_index(&components);
+    assert_eq!(listeners[0], vec![0]);
+    assert_eq!(listeners[1], vec![0]);
+    assert_eq!(listeners[2], vec![3]);
+    assert_eq!(listeners[3], vec![1]);
+    assert_eq!(listeners[4], vec![3]);
   }
 }
