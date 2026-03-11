@@ -991,8 +991,8 @@ impl PhysicsBackend2D {
       self.debug_validate_collider_slots_2d();
     }
 
-    // Sync accumulated forces into Rapier so Rapier integrates gravity, forces,
-    // and collision impulses in a single consistent step.
+    // Rapier consumes user forces during each integration step, so
+    // accumulated public forces must be re-synchronized before every substep.
     self.sync_force_accumulators_2d();
 
     self.pipeline.step(
@@ -1130,6 +1130,9 @@ impl PhysicsBackend2D {
   /// explicitly cleared. Rapier stores forces on each rigid body. This function
   /// overwrites Rapier's stored force with the value tracked by `lambda-rs` so
   /// Rapier can integrate forces and gravity consistently during stepping.
+  /// Bodies with zero accumulated force are skipped because `clear_*` methods
+  /// and Rapier step completion already leave them with no user force to
+  /// reapply.
   ///
   /// # Returns
   /// Returns `()` after updating Rapier force state for all dynamic bodies.
@@ -1145,6 +1148,10 @@ impl PhysicsBackend2D {
       };
 
       if body_type != RigidBodyType2D::Dynamic {
+        continue;
+      }
+
+      if force_accumulator[0] == 0.0 && force_accumulator[1] == 0.0 {
         continue;
       }
 
