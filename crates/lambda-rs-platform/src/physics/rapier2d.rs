@@ -591,6 +591,24 @@ impl PhysicsBackend2D {
     return Ok([velocity.x, velocity.y]);
   }
 
+  /// Returns whether the referenced body slot resolves to a live rigid body.
+  ///
+  /// # Arguments
+  /// - `slot_index`: The body slot index.
+  /// - `slot_generation`: The slot generation counter.
+  ///
+  /// # Returns
+  /// Returns `true` when the slot is valid and the Rapier body still exists.
+  pub fn rigid_body_exists_2d(
+    &self,
+    slot_index: u32,
+    slot_generation: u32,
+  ) -> bool {
+    return self
+      .rapier_rigid_body_2d(slot_index, slot_generation)
+      .is_ok();
+  }
+
   /// Sets the current position for the referenced body.
   ///
   /// # Arguments
@@ -1561,6 +1579,28 @@ mod tests {
         .unwrap(),
       [10.0, 0.0]
     );
+
+    return;
+  }
+
+  /// Reports rigid-body slot liveness without reading body state.
+  #[test]
+  fn rigid_body_exists_2d_reports_live_slots() {
+    let mut backend = PhysicsBackend2D::new([0.0, 0.0], 1.0);
+
+    let (slot_index, slot_generation) = backend
+      .create_rigid_body_2d(
+        RigidBodyType2D::Dynamic,
+        [0.0, 0.0],
+        0.0,
+        [0.0, 0.0],
+        Some(1.0),
+      )
+      .unwrap();
+
+    assert!(backend.rigid_body_exists_2d(slot_index, slot_generation));
+    assert!(!backend.rigid_body_exists_2d(slot_index, slot_generation + 1));
+    assert!(!backend.rigid_body_exists_2d(slot_index + 1, 1));
 
     return;
   }

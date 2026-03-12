@@ -313,6 +313,36 @@ impl RigidBody2D {
 
     return Ok(());
   }
+
+  /// Validates that this handle references a live rigid body in the world.
+  ///
+  /// This helper exists for APIs that only need liveness validation and do not
+  /// need to read any rigid-body state from the backend.
+  ///
+  /// # Arguments
+  /// - `world`: The physics world that should own the body.
+  ///
+  /// # Returns
+  /// Returns `()` when the handle is non-zero, world-matched, and live.
+  ///
+  /// # Errors
+  /// Returns `RigidBody2DError` if the handle is invalid, belongs to a
+  /// different world, or does not reference a live body.
+  pub(super) fn validate_live_handle(
+    self,
+    world: &PhysicsWorld2D,
+  ) -> Result<(), RigidBody2DError> {
+    self.validate_handle(world)?;
+
+    if !world
+      .backend
+      .rigid_body_exists_2d(self.slot_index, self.slot_generation)
+    {
+      return Err(RigidBody2DError::BodyNotFound);
+    }
+
+    return Ok(());
+  }
 }
 
 /// Builder for `RigidBody2D`.

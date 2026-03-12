@@ -531,7 +531,7 @@ fn validate_body_handle(
   world: &PhysicsWorld2D,
   body: RigidBody2D,
 ) -> Result<(), Collider2DError> {
-  let result = body.position(world).map(|_| ());
+  let result = body.validate_live_handle(world);
   return result.map_err(map_body_error);
 }
 
