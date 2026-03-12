@@ -195,19 +195,19 @@ const EVENT_CATEGORY_COUNT: usize = 5;
 /// outside the supported categories so the runtime can surface the invariant
 /// violation without panicking.
 fn event_listener_bucket(event_mask: EventMask) -> Result<usize, String> {
-  if event_mask.contains(EventMask::WINDOW) {
+  if event_mask == EventMask::WINDOW {
     return Ok(0);
   }
-  if event_mask.contains(EventMask::KEYBOARD) {
+  if event_mask == EventMask::KEYBOARD {
     return Ok(1);
   }
-  if event_mask.contains(EventMask::MOUSE) {
+  if event_mask == EventMask::MOUSE {
     return Ok(2);
   }
-  if event_mask.contains(EventMask::RUNTIME) {
+  if event_mask == EventMask::RUNTIME {
     return Ok(3);
   }
-  if event_mask.contains(EventMask::COMPONENT) {
+  if event_mask == EventMask::COMPONENT {
     return Ok(4);
   }
 
@@ -829,6 +829,13 @@ mod tests {
   #[test]
   fn event_listener_bucket_rejects_empty_mask() {
     let error = event_listener_bucket(EventMask::NONE).unwrap_err();
+    assert!(error.contains("Unsupported event mask"));
+  }
+
+  #[test]
+  fn event_listener_bucket_rejects_multi_bit_masks() {
+    let error = event_listener_bucket(EventMask::WINDOW | EventMask::KEYBOARD)
+      .unwrap_err();
     assert!(error.contains("Unsupported event mask"));
   }
 
