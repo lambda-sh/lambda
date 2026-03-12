@@ -169,41 +169,6 @@ struct ColliderAttachmentMassPlan2D {
   should_remove_fallback_mass: bool,
 }
 
-/// Applies Lambda collision-material combination rules to solver contacts.
-///
-/// This hook implements backend-agnostic combination semantics without
-/// exposing vendor types to `lambda-rs`:
-/// - `combined_friction = sqrt(friction_a * friction_b)`
-/// - `combined_restitution = max(restitution_a, restitution_b)`
-#[derive(Debug, Clone, Copy)]
-struct ColliderMaterialCombineHooks2D;
-
-impl PhysicsHooks for ColliderMaterialCombineHooks2D {
-  fn modify_solver_contacts(&self, context: &mut ContactModificationContext) {
-    let Some(collider_1) = context.colliders.get(context.collider1) else {
-      return;
-    };
-    let Some(collider_2) = context.colliders.get(context.collider2) else {
-      return;
-    };
-
-    let friction_1 = collider_1.friction();
-    let friction_2 = collider_2.friction();
-    let restitution_1 = collider_1.restitution();
-    let restitution_2 = collider_2.restitution();
-
-    let combined_friction = (friction_1 * friction_2).sqrt();
-    let combined_restitution = restitution_1.max(restitution_2);
-
-    for solver_contact in context.solver_contacts.iter_mut() {
-      solver_contact.friction = combined_friction;
-      solver_contact.restitution = combined_restitution;
-    }
-
-    return;
-  }
-}
-
 /// A 2D physics backend powered by `rapier2d`.
 ///
 /// This type is an internal implementation detail used by `lambda-rs`.
@@ -219,7 +184,6 @@ pub struct PhysicsBackend2D {
   multibody_joints: MultibodyJointSet,
   ccd_solver: CCDSolver,
   pipeline: PhysicsPipeline,
-  material_combine_hooks_2d: ColliderMaterialCombineHooks2D,
   rigid_body_slots_2d: Vec<RigidBodySlot2D>,
   collider_slots_2d: Vec<ColliderSlot2D>,
 }
@@ -253,7 +217,6 @@ impl PhysicsBackend2D {
       multibody_joints: MultibodyJointSet::new(),
       ccd_solver: CCDSolver::new(),
       pipeline: PhysicsPipeline::new(),
-      material_combine_hooks_2d: ColliderMaterialCombineHooks2D,
       rigid_body_slots_2d: Vec::new(),
       collider_slots_2d: Vec::new(),
     };
@@ -864,7 +827,7 @@ impl PhysicsBackend2D {
       &mut self.impulse_joints,
       &mut self.multibody_joints,
       &mut self.ccd_solver,
-      &self.material_combine_hooks_2d,
+      &(),
       &(),
     );
 
@@ -1035,6 +998,11 @@ impl PhysicsBackend2D {
   /// inserts the built collider into Rapier, recomputes parent mass
   /// properties, and allocates the public collider slot.
   ///
+  /// Lambda material semantics are encoded using Rapier's built-in combine
+  /// rules instead of a custom contact hook:
+  /// - friction stores `sqrt(requested_friction)` and uses `Multiply`
+  /// - restitution stores the requested value and uses `Max`
+  ///
   /// # Arguments
   /// - `parent_slot_index`: The parent rigid body slot index.
   /// - `parent_slot_generation`: The parent slot generation counter.
@@ -1073,9 +1041,10 @@ impl PhysicsBackend2D {
       .translation(Vector::new(local_offset[0], local_offset[1]))
       .rotation(local_rotation)
       .density(rapier_density)
-      .friction(friction)
+      .friction(encode_rapier_friction_coefficient(friction))
+      .friction_combine_rule(CoefficientCombineRule::Multiply)
       .restitution(restitution)
-      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
+      .restitution_combine_rule(CoefficientCombineRule::Max)
       .build();
 
     let rapier_handle = self.colliders.insert_with_parent(
@@ -1433,6 +1402,22 @@ fn resolve_additional_mass_kg(
   return Ok(fallback_mass_kg);
 }
 
+/// Encodes a public friction coefficient for Rapier's `Multiply` rule.
+///
+/// Lambda specifies `sqrt(friction_a * friction_b)` as the effective contact
+/// friction. Rapier cannot express that rule directly, so the backend stores
+/// `sqrt(requested_friction)` on each collider and relies on
+/// `CoefficientCombineRule::Multiply` to recover the public result.
+///
+/// # Arguments
+/// - `requested_friction`: The public friction coefficient.
+///
+/// # Returns
+/// Returns the Rapier friction coefficient to store on the collider.
+fn encode_rapier_friction_coefficient(requested_friction: f32) -> f32 {
+  return requested_friction.sqrt();
+}
+
 /// Resolves how attaching a collider affects a body's backend mass state.
 ///
 /// This helper encodes the public density semantics without directly mutating
@@ -1731,6 +1716,19 @@ mod tests {
         should_remove_fallback_mass: false,
       }
     );
+
+    return;
+  }
+
+  /// Encodes friction so Rapier `Multiply` matches the public rule.
+  #[test]
+  fn rapier_friction_encoding_preserves_public_combination_semantics() {
+    let encoded_friction_1 = encode_rapier_friction_coefficient(4.0);
+    let encoded_friction_2 = encode_rapier_friction_coefficient(9.0);
+
+    assert_eq!(encoded_friction_1, 2.0);
+    assert_eq!(encoded_friction_2, 3.0);
+    assert_eq!(encoded_friction_1 * encoded_friction_2, 6.0);
 
     return;
   }
