@@ -573,6 +573,29 @@ mod tests {
   }
 
   #[test]
+  fn determinant_4x4_stack_path_handles_row_swap_sign() {
+    let m = [
+      [0.0, 2.0, 0.0, 0.0],
+      [1.0, 0.0, 0.0, 0.0],
+      [0.0, 0.0, 3.0, 0.0],
+      [0.0, 0.0, 0.0, 4.0],
+    ];
+    assert_eq!(m.determinant(), Ok(-24.0));
+  }
+
+  #[test]
+  fn determinant_5x5_dynamic_path_handles_row_swap_sign() {
+    let m = [
+      [0.0, 2.0, 0.0, 0.0, 0.0],
+      [1.0, 0.0, 0.0, 0.0, 0.0],
+      [0.0, 0.0, 3.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0, 4.0, 0.0],
+      [0.0, 0.0, 0.0, 0.0, 5.0],
+    ];
+    assert_eq!(m.determinant(), Ok(-120.0));
+  }
+
+  #[test]
   fn determinant_preserves_small_non_zero_pivot_in_stack_path() {
     let m = [[1.0e-8, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 3.0]];
     crate::assert_approximately_equal!(
