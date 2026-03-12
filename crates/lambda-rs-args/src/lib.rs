@@ -1308,6 +1308,28 @@ mod tests {
   }
 
   #[test]
+  fn unknown_argument_suggests_with_many_unrelated_keys() {
+    let mut parser = ArgumentParser::new("app")
+      .with_argument(Argument::new("--port").with_type(ArgumentType::Integer));
+    for i in 0..500 {
+      let long_name = Box::leak(
+        format!("--very-long-unrelated-argument-name-{}", i).into_boxed_str(),
+      );
+      parser = parser.with_argument(
+        Argument::new(long_name).with_type(ArgumentType::String),
+      );
+    }
+
+    let err = parser.parse(&argv(&["--portt", "1"])).unwrap_err();
+    match err {
+      ArgsError::UnknownArgument(msg) => {
+        assert!(msg.contains("did you mean '--port'"))
+      }
+      _ => panic!(),
+    }
+  }
+
+  #[test]
   fn missing_value_error() {
     let parser = ArgumentParser::new("app")
       .with_argument(Argument::new("--name").with_type(ArgumentType::String));
@@ -1512,7 +1534,16 @@ fn read_config_file(
 
 fn unknown_with_suggestion(arg: &str, parser: &ArgumentParser) -> String {
   let mut best: Option<(usize, String)> = None;
+  let arg_len = arg.chars().count();
   for key in parser.args.keys() {
+    // Levenshtein distance has a hard lower bound of the character-length gap.
+    // If that bound cannot beat the current best score, skip this candidate.
+    if let Some((best_distance, _)) = best.as_ref() {
+      let key_len = key.chars().count();
+      if key_len.abs_diff(arg_len) >= *best_distance {
+        continue;
+      }
+    }
     let d = levenshtein(arg, key);
     if best.as_ref().map(|(bd, _)| d < *bd).unwrap_or(true) {
       best = Some((d, key.clone()));
