@@ -572,47 +572,8 @@ fn map_backend_error(error: Collider2DBackendError) -> Collider2DError {
     Collider2DBackendError::BodyNotFound => {
       return Collider2DError::BodyNotFound;
     }
-    Collider2DBackendError::InvalidLocalOffset { x, y } => {
-      return Collider2DError::InvalidLocalOffset { x, y };
-    }
-    Collider2DBackendError::InvalidLocalRotation { radians } => {
-      return Collider2DError::InvalidLocalRotation { radians };
-    }
-    Collider2DBackendError::InvalidCircleRadius { radius } => {
-      return Collider2DError::InvalidCircleRadius { radius };
-    }
-    Collider2DBackendError::InvalidRectangleHalfExtents {
-      half_width,
-      half_height,
-    } => {
-      return Collider2DError::InvalidRectangleHalfExtents {
-        half_width,
-        half_height,
-      };
-    }
-    Collider2DBackendError::InvalidCapsuleHalfHeight { half_height } => {
-      return Collider2DError::InvalidCapsuleHalfHeight { half_height };
-    }
-    Collider2DBackendError::InvalidCapsuleRadius { radius } => {
-      return Collider2DError::InvalidCapsuleRadius { radius };
-    }
-    Collider2DBackendError::InvalidPolygonTooFewVertices { vertex_count } => {
-      return Collider2DError::InvalidPolygonTooFewVertices { vertex_count };
-    }
-    Collider2DBackendError::InvalidPolygonVertex { index, x, y } => {
-      return Collider2DError::InvalidPolygonVertex { index, x, y };
-    }
     Collider2DBackendError::InvalidPolygonDegenerate => {
       return Collider2DError::InvalidPolygonZeroArea;
-    }
-    Collider2DBackendError::InvalidDensity { density } => {
-      return Collider2DError::InvalidDensity { density };
-    }
-    Collider2DBackendError::InvalidFriction { friction } => {
-      return Collider2DError::InvalidFriction { friction };
-    }
-    Collider2DBackendError::InvalidRestitution { restitution } => {
-      return Collider2DError::InvalidRestitution { restitution };
     }
   }
 }
@@ -869,6 +830,48 @@ mod tests {
       error,
       Collider2DError::InvalidRestitution { restitution: 2.0 }
     );
+
+    return;
+  }
+
+  /// Rejects non-finite local offsets during build validation.
+  #[test]
+  fn build_rejects_non_finite_local_offset() {
+    let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
+    let body = RigidBody2DBuilder::new(RigidBodyType::Static)
+      .build(&mut world)
+      .unwrap();
+
+    let error = Collider2DBuilder::circle(1.0)
+      .with_offset(f32::NAN, 0.0)
+      .build(&mut world, body)
+      .unwrap_err();
+
+    match error {
+      Collider2DError::InvalidLocalOffset { x, y } => {
+        assert!(x.is_nan());
+        assert_eq!(y, 0.0);
+      }
+      other => panic!("unexpected error: {other:?}"),
+    }
+
+    return;
+  }
+
+  /// Rejects negative friction during build validation.
+  #[test]
+  fn build_rejects_negative_friction() {
+    let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
+    let body = RigidBody2DBuilder::new(RigidBodyType::Static)
+      .build(&mut world)
+      .unwrap();
+
+    let error = Collider2DBuilder::circle(1.0)
+      .with_friction(-0.1)
+      .build(&mut world, body)
+      .unwrap_err();
+
+    assert_eq!(error, Collider2DError::InvalidFriction { friction: -0.1 });
 
     return;
   }

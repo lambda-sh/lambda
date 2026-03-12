@@ -84,30 +84,8 @@ impl Error for RigidBody2DBackendError {}
 pub enum Collider2DBackendError {
   /// The referenced rigid body was not found.
   BodyNotFound,
-  /// The provided local offset is invalid.
-  InvalidLocalOffset { x: f32, y: f32 },
-  /// The provided local rotation is invalid.
-  InvalidLocalRotation { radians: f32 },
-  /// The provided circle radius is invalid.
-  InvalidCircleRadius { radius: f32 },
-  /// The provided rectangle half-extents are invalid.
-  InvalidRectangleHalfExtents { half_width: f32, half_height: f32 },
-  /// The provided capsule half-height is invalid.
-  InvalidCapsuleHalfHeight { half_height: f32 },
-  /// The provided capsule radius is invalid.
-  InvalidCapsuleRadius { radius: f32 },
-  /// The provided polygon has too few vertices.
-  InvalidPolygonTooFewVertices { vertex_count: usize },
-  /// The provided polygon contains a non-finite vertex.
-  InvalidPolygonVertex { index: usize, x: f32, y: f32 },
-  /// The provided polygon vertices are degenerate.
+  /// The provided polygon could not be represented as a convex hull.
   InvalidPolygonDegenerate,
-  /// The provided density is invalid.
-  InvalidDensity { density: f32 },
-  /// The provided friction coefficient is invalid.
-  InvalidFriction { friction: f32 },
-  /// The provided restitution coefficient is invalid.
-  InvalidRestitution { restitution: f32 },
 }
 
 impl fmt::Display for Collider2DBackendError {
@@ -116,53 +94,8 @@ impl fmt::Display for Collider2DBackendError {
       Self::BodyNotFound => {
         return write!(formatter, "rigid body not found");
       }
-      Self::InvalidLocalOffset { x, y } => {
-        return write!(formatter, "invalid local_offset: ({x}, {y})");
-      }
-      Self::InvalidLocalRotation { radians } => {
-        return write!(formatter, "invalid local_rotation: {radians}");
-      }
-      Self::InvalidCircleRadius { radius } => {
-        return write!(formatter, "invalid circle radius: {radius}");
-      }
-      Self::InvalidRectangleHalfExtents {
-        half_width,
-        half_height,
-      } => {
-        return write!(
-          formatter,
-          "invalid rectangle half extents: ({half_width}, {half_height})"
-        );
-      }
-      Self::InvalidCapsuleHalfHeight { half_height } => {
-        return write!(formatter, "invalid capsule half_height: {half_height}");
-      }
-      Self::InvalidCapsuleRadius { radius } => {
-        return write!(formatter, "invalid capsule radius: {radius}");
-      }
-      Self::InvalidPolygonTooFewVertices { vertex_count } => {
-        return write!(
-          formatter,
-          "invalid polygon vertex_count (too few): {vertex_count}"
-        );
-      }
-      Self::InvalidPolygonVertex { index, x, y } => {
-        return write!(
-          formatter,
-          "invalid polygon vertex at index {index}: ({x}, {y})"
-        );
-      }
       Self::InvalidPolygonDegenerate => {
         return write!(formatter, "invalid polygon: degenerate");
-      }
-      Self::InvalidDensity { density } => {
-        return write!(formatter, "invalid density: {density}");
-      }
-      Self::InvalidFriction { friction } => {
-        return write!(formatter, "invalid friction: {friction}");
-      }
-      Self::InvalidRestitution { restitution } => {
-        return write!(formatter, "invalid restitution: {restitution}");
       }
     }
   }
@@ -372,6 +305,9 @@ impl PhysicsBackend2D {
 
   /// Creates and attaches a circle collider to a rigid body.
   ///
+  /// The caller MUST validate all collider inputs before reaching this backend.
+  /// `lambda-rs` performs that validation in `Collider2DBuilder::build()`.
+  ///
   /// # Arguments
   /// - `parent_slot_index`: The rigid body slot index.
   /// - `parent_slot_generation`: The rigid body slot generation counter.
@@ -386,8 +322,8 @@ impl PhysicsBackend2D {
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
   ///
   /// # Errors
-  /// Returns `Collider2DBackendError` if any input is invalid or if the parent
-  /// body does not exist.
+  /// Returns `Collider2DBackendError::BodyNotFound` if the parent body does
+  /// not exist.
   #[allow(clippy::too_many_arguments)]
   pub fn create_circle_collider_2d(
     &mut self,
@@ -400,11 +336,6 @@ impl PhysicsBackend2D {
     friction: f32,
     restitution: f32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
-    validate_local_offset(local_offset[0], local_offset[1])?;
-    validate_local_rotation(local_rotation)?;
-    validate_circle_radius(radius)?;
-    validate_material(density, friction, restitution)?;
-
     return self.attach_collider_2d(
       parent_slot_index,
       parent_slot_generation,
@@ -418,6 +349,9 @@ impl PhysicsBackend2D {
   }
 
   /// Creates and attaches a rectangle collider to a rigid body.
+  ///
+  /// The caller MUST validate all collider inputs before reaching this backend.
+  /// `lambda-rs` performs that validation in `Collider2DBuilder::build()`.
   ///
   /// # Arguments
   /// - `parent_slot_index`: The rigid body slot index.
@@ -434,8 +368,8 @@ impl PhysicsBackend2D {
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
   ///
   /// # Errors
-  /// Returns `Collider2DBackendError` if any input is invalid or if the parent
-  /// body does not exist.
+  /// Returns `Collider2DBackendError::BodyNotFound` if the parent body does
+  /// not exist.
   #[allow(clippy::too_many_arguments)]
   pub fn create_rectangle_collider_2d(
     &mut self,
@@ -449,11 +383,6 @@ impl PhysicsBackend2D {
     friction: f32,
     restitution: f32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
-    validate_local_offset(local_offset[0], local_offset[1])?;
-    validate_local_rotation(local_rotation)?;
-    validate_rectangle_half_extents(half_width, half_height)?;
-    validate_material(density, friction, restitution)?;
-
     return self.attach_collider_2d(
       parent_slot_index,
       parent_slot_generation,
@@ -469,6 +398,8 @@ impl PhysicsBackend2D {
   /// Creates and attaches a capsule collider to a rigid body.
   ///
   /// The capsule is aligned with the collider local Y axis.
+  /// The caller MUST validate all collider inputs before reaching this backend.
+  /// `lambda-rs` performs that validation in `Collider2DBuilder::build()`.
   ///
   /// # Arguments
   /// - `parent_slot_index`: The rigid body slot index.
@@ -485,8 +416,8 @@ impl PhysicsBackend2D {
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
   ///
   /// # Errors
-  /// Returns `Collider2DBackendError` if any input is invalid or if the parent
-  /// body does not exist.
+  /// Returns `Collider2DBackendError::BodyNotFound` if the parent body does
+  /// not exist.
   #[allow(clippy::too_many_arguments)]
   pub fn create_capsule_collider_2d(
     &mut self,
@@ -500,11 +431,6 @@ impl PhysicsBackend2D {
     friction: f32,
     restitution: f32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
-    validate_local_offset(local_offset[0], local_offset[1])?;
-    validate_local_rotation(local_rotation)?;
-    validate_capsule_dimensions(half_height, radius)?;
-    validate_material(density, friction, restitution)?;
-
     let rapier_builder = if half_height == 0.0 {
       ColliderBuilder::ball(radius)
     } else {
@@ -526,6 +452,9 @@ impl PhysicsBackend2D {
   /// Creates and attaches a convex polygon collider to a rigid body.
   ///
   /// The polygon vertices are interpreted as points in collider local space.
+  /// The caller MUST validate and normalize polygon inputs before reaching this
+  /// backend. `lambda-rs` performs that validation in
+  /// `Collider2DBuilder::build()`.
   ///
   /// # Arguments
   /// - `parent_slot_index`: The rigid body slot index.
@@ -541,8 +470,10 @@ impl PhysicsBackend2D {
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
   ///
   /// # Errors
-  /// Returns `Collider2DBackendError` if any input is invalid, if the polygon
-  /// is degenerate, or if the parent body does not exist.
+  /// Returns `Collider2DBackendError::BodyNotFound` if the parent body does
+  /// not exist. Returns `Collider2DBackendError::InvalidPolygonDegenerate` if
+  /// the validated polygon still cannot be represented as a Rapier convex
+  /// hull.
   #[allow(clippy::too_many_arguments)]
   pub fn create_convex_polygon_collider_2d(
     &mut self,
@@ -555,11 +486,6 @@ impl PhysicsBackend2D {
     friction: f32,
     restitution: f32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
-    validate_local_offset(local_offset[0], local_offset[1])?;
-    validate_local_rotation(local_rotation)?;
-    validate_convex_polygon_vertices(vertices.as_slice())?;
-    validate_material(density, friction, restitution)?;
-
     let rapier_vertices: Vec<Vector> = vertices
       .iter()
       .map(|vertex| Vector::new(vertex[0], vertex[1]))
@@ -1472,186 +1398,6 @@ fn resolve_additional_mass_kg(
   }
 
   return Ok(fallback_mass_kg);
-}
-
-/// Validates a collider local offset.
-///
-/// # Arguments
-/// - `x`: The local X translation component in meters.
-/// - `y`: The local Y translation component in meters.
-///
-/// # Returns
-/// Returns `()` when the input is finite.
-///
-/// # Errors
-/// Returns `Collider2DBackendError::InvalidLocalOffset` when any component is
-/// non-finite.
-fn validate_local_offset(x: f32, y: f32) -> Result<(), Collider2DBackendError> {
-  if !x.is_finite() || !y.is_finite() {
-    return Err(Collider2DBackendError::InvalidLocalOffset { x, y });
-  }
-
-  return Ok(());
-}
-
-/// Validates a collider local rotation.
-///
-/// # Arguments
-/// - `radians`: The local rotation in radians.
-///
-/// # Returns
-/// Returns `()` when the input is finite.
-///
-/// # Errors
-/// Returns `Collider2DBackendError::InvalidLocalRotation` when the angle is
-/// non-finite.
-fn validate_local_rotation(radians: f32) -> Result<(), Collider2DBackendError> {
-  if !radians.is_finite() {
-    return Err(Collider2DBackendError::InvalidLocalRotation { radians });
-  }
-
-  return Ok(());
-}
-
-/// Validates a circle radius.
-///
-/// # Arguments
-/// - `radius`: The radius in meters.
-///
-/// # Returns
-/// Returns `()` when `radius` is finite and positive.
-///
-/// # Errors
-/// Returns `Collider2DBackendError::InvalidCircleRadius` when the radius is
-/// non-finite or non-positive.
-fn validate_circle_radius(radius: f32) -> Result<(), Collider2DBackendError> {
-  if !radius.is_finite() || radius <= 0.0 {
-    return Err(Collider2DBackendError::InvalidCircleRadius { radius });
-  }
-
-  return Ok(());
-}
-
-/// Validates rectangle half extents.
-///
-/// # Arguments
-/// - `half_width`: The half-width in meters.
-/// - `half_height`: The half-height in meters.
-///
-/// # Returns
-/// Returns `()` when inputs are finite and positive.
-///
-/// # Errors
-/// Returns `Collider2DBackendError::InvalidRectangleHalfExtents` when inputs
-/// are non-finite or non-positive.
-fn validate_rectangle_half_extents(
-  half_width: f32,
-  half_height: f32,
-) -> Result<(), Collider2DBackendError> {
-  if !half_width.is_finite()
-    || !half_height.is_finite()
-    || half_width <= 0.0
-    || half_height <= 0.0
-  {
-    return Err(Collider2DBackendError::InvalidRectangleHalfExtents {
-      half_width,
-      half_height,
-    });
-  }
-
-  return Ok(());
-}
-
-/// Validates capsule dimensions.
-///
-/// # Arguments
-/// - `half_height`: The half-height of the capsule segment in meters.
-/// - `radius`: The capsule radius in meters.
-///
-/// # Returns
-/// Returns `()` when inputs are finite and within supported bounds.
-///
-/// # Errors
-/// Returns `Collider2DBackendError` if any input is invalid.
-fn validate_capsule_dimensions(
-  half_height: f32,
-  radius: f32,
-) -> Result<(), Collider2DBackendError> {
-  if !half_height.is_finite() || half_height < 0.0 {
-    return Err(Collider2DBackendError::InvalidCapsuleHalfHeight {
-      half_height,
-    });
-  }
-
-  if !radius.is_finite() || radius <= 0.0 {
-    return Err(Collider2DBackendError::InvalidCapsuleRadius { radius });
-  }
-
-  return Ok(());
-}
-
-/// Validates convex polygon vertices.
-///
-/// # Arguments
-/// - `vertices`: The polygon vertices in meters.
-///
-/// # Returns
-/// Returns `()` when all vertices are finite and at least three are provided.
-///
-/// # Errors
-/// Returns `Collider2DBackendError` if the vertex list is too small or any
-/// vertex component is non-finite.
-fn validate_convex_polygon_vertices(
-  vertices: &[[f32; 2]],
-) -> Result<(), Collider2DBackendError> {
-  let vertex_count = vertices.len();
-  if vertex_count < 3 {
-    return Err(Collider2DBackendError::InvalidPolygonTooFewVertices {
-      vertex_count,
-    });
-  }
-
-  for (index, vertex) in vertices.iter().enumerate() {
-    let x = vertex[0];
-    let y = vertex[1];
-    if !x.is_finite() || !y.is_finite() {
-      return Err(Collider2DBackendError::InvalidPolygonVertex { index, x, y });
-    }
-  }
-
-  return Ok(());
-}
-
-/// Validates collider material parameters.
-///
-/// # Arguments
-/// - `density`: The density in kg/m².
-/// - `friction`: The friction coefficient (unitless).
-/// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
-///
-/// # Returns
-/// Returns `()` when all parameters are finite and within supported bounds.
-///
-/// # Errors
-/// Returns `Collider2DBackendError` if any input is invalid.
-fn validate_material(
-  density: f32,
-  friction: f32,
-  restitution: f32,
-) -> Result<(), Collider2DBackendError> {
-  if !density.is_finite() || density < 0.0 {
-    return Err(Collider2DBackendError::InvalidDensity { density });
-  }
-
-  if !friction.is_finite() || friction < 0.0 {
-    return Err(Collider2DBackendError::InvalidFriction { friction });
-  }
-
-  if !restitution.is_finite() || !(0.0..=1.0).contains(&restitution) {
-    return Err(Collider2DBackendError::InvalidRestitution { restitution });
-  }
-
-  return Ok(());
 }
 
 #[cfg(test)]
