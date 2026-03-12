@@ -271,7 +271,8 @@ pub fn identity_matrix<
 /// # Returns
 ///
 /// - Determinant of `data`.
-/// - `0.0` when elimination detects a near-zero pivot (singular matrix).
+/// - `0.0` when elimination detects an exact zero pivot after pivoting
+///   (singular matrix).
 fn determinant_gaussian_stack<const N: usize>(mut data: [[f32; N]; N]) -> f32 {
   let mut sign = 1.0_f32;
   for pivot in 0..N {
@@ -285,7 +286,7 @@ fn determinant_gaussian_stack<const N: usize>(mut data: [[f32; N]; N]) -> f32 {
       }
     }
 
-    if pivot_abs <= f32::EPSILON {
+    if pivot_abs == 0.0 {
       return 0.0;
     }
 
@@ -459,7 +460,7 @@ where
         }
       }
 
-      if pivot_abs <= f32::EPSILON {
+      if pivot_abs == 0.0 {
         return Ok(0.0);
       }
 
@@ -569,6 +570,32 @@ mod tests {
 
     let m2 = [[6.0, 1.0, 1.0], [4.0, -2.0, 5.0], [2.0, 8.0, 7.0]];
     assert_eq!(m2.determinant(), Ok(-306.0));
+  }
+
+  #[test]
+  fn determinant_preserves_small_non_zero_pivot_in_stack_path() {
+    let m = [[1.0e-8, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 3.0]];
+    crate::assert_approximately_equal!(
+      m.determinant().expect("determinant should succeed"),
+      6.0e-8,
+      1.0e-12
+    );
+  }
+
+  #[test]
+  fn determinant_preserves_small_non_zero_pivot_in_dynamic_path() {
+    let m = [
+      [1.0e-8, 0.0, 0.0, 0.0, 0.0],
+      [0.0, 2.0, 0.0, 0.0, 0.0],
+      [0.0, 0.0, 3.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0, 4.0, 0.0],
+      [0.0, 0.0, 0.0, 0.0, 5.0],
+    ];
+    crate::assert_approximately_equal!(
+      m.determinant().expect("determinant should succeed"),
+      1.2e-6,
+      1.0e-10
+    );
   }
 
   #[test]
