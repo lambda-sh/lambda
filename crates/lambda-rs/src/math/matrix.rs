@@ -437,11 +437,12 @@ where
       return Ok(determinant_gaussian_stack::<4>(data));
     }
 
-    // Convert to a mutable dense matrix so we can perform in-place elimination.
-    let mut working = vec![vec![0.0_f32; rows]; rows];
-    for (i, row) in working.iter_mut().enumerate() {
-      for (j, value) in row.iter_mut().enumerate() {
-        *value = self.at(i, j);
+    // Use a contiguous row-major buffer for larger matrices to keep the
+    // fallback cache-friendlier than `Vec<Vec<f32>>`.
+    let mut working = vec![0.0_f32; rows * rows];
+    for i in 0..rows {
+      for j in 0..rows {
+        working[i * rows + j] = self.at(i, j);
       }
     }
 
@@ -449,9 +450,9 @@ where
     for pivot in 0..rows {
       // Partial pivoting improves numerical stability and avoids division by 0.
       let mut pivot_row = pivot;
-      let mut pivot_abs = working[pivot][pivot].abs();
-      for (candidate, row) in working.iter().enumerate().skip(pivot + 1) {
-        let candidate_abs = row[pivot].abs();
+      let mut pivot_abs = working[pivot * rows + pivot].abs();
+      for candidate in (pivot + 1)..rows {
+        let candidate_abs = working[candidate * rows + pivot].abs();
         if candidate_abs > pivot_abs {
           pivot_abs = candidate_abs;
           pivot_row = candidate;
@@ -463,24 +464,28 @@ where
       }
 
       if pivot_row != pivot {
-        working.swap(pivot, pivot_row);
+        for column in 0..rows {
+          working.swap(pivot * rows + column, pivot_row * rows + column);
+        }
         sign = -sign;
       }
 
-      let pivot_value = working[pivot][pivot];
-      let pivot_tail: Vec<f32> = working[pivot][pivot..].to_vec();
-      for row in working.iter_mut().skip(pivot + 1) {
-        let factor = row[pivot] / pivot_value;
+      let pivot_value = working[pivot * rows + pivot];
+      for row in (pivot + 1)..rows {
+        let factor = working[row * rows + pivot] / pivot_value;
         if factor == 0.0 {
           continue;
         }
-        for (dst, src) in row[pivot..].iter_mut().zip(pivot_tail.iter()) {
-          *dst -= factor * *src;
+        for column in pivot..rows {
+          let row_idx = row * rows + column;
+          let pivot_idx = pivot * rows + column;
+          working[row_idx] -= factor * working[pivot_idx];
         }
       }
     }
 
-    let diagonal_product = (0..rows).map(|i| working[i][i]).product::<f32>();
+    let diagonal_product =
+      (0..rows).map(|i| working[i * rows + i]).product::<f32>();
     return Ok(sign * diagonal_product);
   }
 
