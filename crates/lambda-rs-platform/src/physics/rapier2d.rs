@@ -103,6 +103,9 @@ impl fmt::Display for Collider2DBackendError {
 
 impl Error for Collider2DBackendError {}
 
+/// The fallback mass applied to dynamic bodies before density colliders exist.
+const DYNAMIC_BODY_FALLBACK_MASS_KG: f32 = 1.0;
+
 /// Stores per-body state that `lambda-rs` tracks alongside Rapier.
 ///
 /// This slot exists because `lambda-rs` defines integration semantics that are
@@ -149,6 +152,21 @@ struct ColliderSlot2D {
   rapier_handle: ColliderHandle,
   /// A monotonically increasing counter used to validate stale handles.
   generation: u32,
+}
+
+/// Describes how collider attachment should affect dynamic-body mass semantics.
+///
+/// This helper isolates `lambda-rs` mass rules from the Rapier attachment flow
+/// so body creation and collider attachment share one backend policy source.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ColliderAttachmentMassPlan2D {
+  /// The density value that MUST be passed to the Rapier collider builder.
+  rapier_density: f32,
+  /// Whether attaching this collider transitions the body to density-driven
+  /// mass computation.
+  should_mark_has_positive_density_colliders: bool,
+  /// Whether the initial fallback mass MUST be removed before insertion.
+  should_remove_fallback_mass: bool,
 }
 
 /// Applies Lambda collision-material combination rules to solver contacts.
@@ -1111,7 +1129,12 @@ impl PhysicsBackend2D {
     parent_slot_generation: u32,
     requested_density: f32,
   ) -> Result<(RigidBodyHandle, f32), Collider2DBackendError> {
-    let (body_type, rapier_handle, explicit_dynamic_mass_kg) = {
+    let (
+      body_type,
+      rapier_handle,
+      explicit_dynamic_mass_kg,
+      has_positive_density_colliders,
+    ) = {
       let body_slot = self
         .rigid_body_slot_2d(parent_slot_index, parent_slot_generation)
         .map_err(|_| Collider2DBackendError::BodyNotFound)?;
@@ -1119,6 +1142,7 @@ impl PhysicsBackend2D {
         body_slot.body_type,
         body_slot.rapier_handle,
         body_slot.explicit_dynamic_mass_kg,
+        body_slot.has_positive_density_colliders,
       )
     };
 
@@ -1126,37 +1150,28 @@ impl PhysicsBackend2D {
       return Err(Collider2DBackendError::BodyNotFound);
     }
 
-    if body_type != RigidBodyType2D::Dynamic {
-      return Ok((rapier_handle, requested_density));
+    let attachment_mass_plan = resolve_collider_attachment_mass_plan_2d(
+      body_type,
+      explicit_dynamic_mass_kg,
+      has_positive_density_colliders,
+      requested_density,
+    );
+
+    if attachment_mass_plan.should_mark_has_positive_density_colliders {
+      let body_slot = self
+        .rigid_body_slot_2d_mut(parent_slot_index, parent_slot_generation)
+        .map_err(|_| Collider2DBackendError::BodyNotFound)?;
+      body_slot.has_positive_density_colliders = true;
     }
 
-    if explicit_dynamic_mass_kg.is_some() {
-      return Ok((rapier_handle, 0.0));
-    }
-
-    if requested_density > 0.0 {
-      let should_remove_fallback_mass = {
-        let body_slot = self
-          .rigid_body_slot_2d_mut(parent_slot_index, parent_slot_generation)
-          .map_err(|_| Collider2DBackendError::BodyNotFound)?;
-
-        if body_slot.has_positive_density_colliders {
-          false
-        } else {
-          body_slot.has_positive_density_colliders = true;
-          true
-        }
+    if attachment_mass_plan.should_remove_fallback_mass {
+      let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
+        return Err(Collider2DBackendError::BodyNotFound);
       };
-
-      if should_remove_fallback_mass {
-        let Some(rapier_body) = self.bodies.get_mut(rapier_handle) else {
-          return Err(Collider2DBackendError::BodyNotFound);
-        };
-        rapier_body.set_additional_mass(0.0, true);
-      }
+      rapier_body.set_additional_mass(0.0, true);
     }
 
-    return Ok((rapier_handle, requested_density));
+    return Ok((rapier_handle, attachment_mass_plan.rapier_density));
   }
 
   /// Recomputes mass properties for a parent body after collider attachment.
@@ -1408,7 +1423,7 @@ fn resolve_additional_mass_kg(
     return Ok(explicit_mass_kg);
   }
 
-  let fallback_mass_kg = 1.0;
+  let fallback_mass_kg = DYNAMIC_BODY_FALLBACK_MASS_KG;
   if !fallback_mass_kg.is_finite() || fallback_mass_kg <= 0.0 {
     return Err(RigidBody2DBackendError::InvalidMassKg {
       mass_kg: fallback_mass_kg,
@@ -1416,6 +1431,55 @@ fn resolve_additional_mass_kg(
   }
 
   return Ok(fallback_mass_kg);
+}
+
+/// Resolves how attaching a collider affects a body's backend mass state.
+///
+/// This helper encodes the public density semantics without directly mutating
+/// Rapier state or backend slots.
+///
+/// # Arguments
+/// - `body_type`: The parent rigid body integration mode.
+/// - `explicit_dynamic_mass_kg`: The explicitly configured dynamic mass, if
+///   any.
+/// - `has_positive_density_colliders`: Whether the body already has at least
+///   one collider with `density > 0.0`.
+/// - `requested_density`: The density requested for the new collider.
+///
+/// # Returns
+/// Returns a plan describing the Rapier density and any required backend state
+/// transitions.
+fn resolve_collider_attachment_mass_plan_2d(
+  body_type: RigidBodyType2D,
+  explicit_dynamic_mass_kg: Option<f32>,
+  has_positive_density_colliders: bool,
+  requested_density: f32,
+) -> ColliderAttachmentMassPlan2D {
+  if body_type != RigidBodyType2D::Dynamic {
+    return ColliderAttachmentMassPlan2D {
+      rapier_density: requested_density,
+      should_mark_has_positive_density_colliders: false,
+      should_remove_fallback_mass: false,
+    };
+  }
+
+  if explicit_dynamic_mass_kg.is_some() {
+    return ColliderAttachmentMassPlan2D {
+      rapier_density: 0.0,
+      should_mark_has_positive_density_colliders: false,
+      should_remove_fallback_mass: false,
+    };
+  }
+
+  let is_first_positive_density_collider =
+    requested_density > 0.0 && !has_positive_density_colliders;
+
+  return ColliderAttachmentMassPlan2D {
+    rapier_density: requested_density,
+    should_mark_has_positive_density_colliders:
+      is_first_positive_density_collider,
+    should_remove_fallback_mass: is_first_positive_density_collider,
+  };
 }
 
 #[cfg(test)]
@@ -1601,6 +1665,72 @@ mod tests {
     assert!(backend.rigid_body_exists_2d(slot_index, slot_generation));
     assert!(!backend.rigid_body_exists_2d(slot_index, slot_generation + 1));
     assert!(!backend.rigid_body_exists_2d(slot_index + 1, 1));
+
+    return;
+  }
+
+  /// Removes fallback mass only for the first positive-density collider.
+  #[test]
+  fn collider_attachment_mass_plan_marks_first_positive_density_collider() {
+    let plan = resolve_collider_attachment_mass_plan_2d(
+      RigidBodyType2D::Dynamic,
+      None,
+      false,
+      1.0,
+    );
+
+    assert_eq!(
+      plan,
+      ColliderAttachmentMassPlan2D {
+        rapier_density: 1.0,
+        should_mark_has_positive_density_colliders: true,
+        should_remove_fallback_mass: true,
+      }
+    );
+
+    return;
+  }
+
+  /// Preserves density-driven mass state after the first positive collider.
+  #[test]
+  fn collider_attachment_mass_plan_does_not_remove_fallback_mass_twice() {
+    let plan = resolve_collider_attachment_mass_plan_2d(
+      RigidBodyType2D::Dynamic,
+      None,
+      true,
+      1.0,
+    );
+
+    assert_eq!(
+      plan,
+      ColliderAttachmentMassPlan2D {
+        rapier_density: 1.0,
+        should_mark_has_positive_density_colliders: false,
+        should_remove_fallback_mass: false,
+      }
+    );
+
+    return;
+  }
+
+  /// Keeps explicit dynamic mass authoritative over collider density.
+  #[test]
+  fn collider_attachment_mass_plan_ignores_density_for_explicit_mass() {
+    let plan = resolve_collider_attachment_mass_plan_2d(
+      RigidBodyType2D::Dynamic,
+      Some(2.0),
+      false,
+      5.0,
+    );
+
+    assert_eq!(
+      plan,
+      ColliderAttachmentMassPlan2D {
+        rapier_density: 0.0,
+        should_mark_has_positive_density_colliders: false,
+        should_remove_fallback_mass: false,
+      }
+    );
 
     return;
   }
