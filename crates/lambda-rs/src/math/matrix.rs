@@ -259,6 +259,62 @@ pub fn identity_matrix<
   return result;
 }
 
+/// Compute determinant via Gaussian elimination on fixed-size stack storage.
+///
+/// This avoids heap allocations in hot fixed-size paths (for example 4x4
+/// transform matrices).
+///
+/// # Arguments
+///
+/// - `data`: Square matrix values stored in stack-allocated fixed-size arrays.
+///
+/// # Returns
+///
+/// - Determinant of `data`.
+/// - `0.0` when elimination detects a near-zero pivot (singular matrix).
+fn determinant_gaussian_stack<const N: usize>(mut data: [[f32; N]; N]) -> f32 {
+  let mut sign = 1.0_f32;
+  for pivot in 0..N {
+    let mut pivot_row = pivot;
+    let mut pivot_abs = data[pivot][pivot].abs();
+    for (candidate, row) in data.iter().enumerate().skip(pivot + 1) {
+      let candidate_abs = row[pivot].abs();
+      if candidate_abs > pivot_abs {
+        pivot_abs = candidate_abs;
+        pivot_row = candidate;
+      }
+    }
+
+    if pivot_abs <= f32::EPSILON {
+      return 0.0;
+    }
+
+    if pivot_row != pivot {
+      data.swap(pivot, pivot_row);
+      sign = -sign;
+    }
+
+    let pivot_value = data[pivot][pivot];
+    let pivot_tail = data[pivot];
+    for row in data.iter_mut().skip(pivot + 1) {
+      let factor = row[pivot] / pivot_value;
+      if factor == 0.0 {
+        continue;
+      }
+      for (dst, src) in row[pivot..].iter_mut().zip(pivot_tail[pivot..].iter())
+      {
+        *dst -= factor * *src;
+      }
+    }
+  }
+
+  let mut det = sign;
+  for (i, row) in data.iter().enumerate().take(N) {
+    det *= row[i];
+  }
+  return det;
+}
+
 // -------------------------- ARRAY IMPLEMENTATION -----------------------------
 
 /// Matrix implementations for arrays of f32 arrays. Including the trait Matrix into
@@ -325,7 +381,15 @@ where
     todo!()
   }
 
-  /// Computes the determinant of any square matrix using Laplace expansion.
+  /// Computes the determinant of any square matrix using Gaussian elimination
+  /// with partial pivoting.
+  ///
+  /// # Behavior
+  ///
+  /// - Uses stack-allocated elimination for 3x3 and 4x4 matrices to avoid heap
+  ///   allocation on common transform sizes.
+  /// - Uses a generic dense fallback for larger matrices.
+  /// - Overall asymptotic runtime is `O(n^3)` for square `n x n` matrices.
   fn determinant(&self) -> Result<f32, MathError> {
     let rows = self.as_ref().len();
     if rows == 0 {
@@ -341,34 +405,83 @@ where
       return Err(MathError::NonSquareMatrix { rows, cols });
     }
 
-    return match rows {
-      1 => Ok(self.as_ref()[0].as_ref()[0]),
-      2 => {
-        let a = self.at(0, 0);
-        let b = self.at(0, 1);
-        let c = self.at(1, 0);
-        let d = self.at(1, 1);
-        return Ok(a * d - b * c);
-      }
-      _ => {
-        let mut result = 0.0;
-        for i in 0..rows {
-          let mut submatrix: Vec<Vec<f32>> = Vec::with_capacity(rows - 1);
-          for j in 1..rows {
-            let mut row = Vec::new();
-            for k in 0..rows {
-              if k != i {
-                row.push(self.at(j, k));
-              }
-            }
-            submatrix.push(row);
-          }
-          let sub_determinant = submatrix.determinant()?;
-          result += self.at(0, i) * sub_determinant * (-1.0_f32).powi(i as i32);
+    if rows == 1 {
+      return Ok(self.as_ref()[0].as_ref()[0]);
+    }
+
+    if rows == 2 {
+      let a = self.at(0, 0);
+      let b = self.at(0, 1);
+      let c = self.at(1, 0);
+      let d = self.at(1, 1);
+      return Ok(a * d - b * c);
+    }
+
+    if rows == 3 {
+      let mut data = [[0.0_f32; 3]; 3];
+      for (i, row) in data.iter_mut().enumerate() {
+        for (j, value) in row.iter_mut().enumerate() {
+          *value = self.at(i, j);
         }
-        return Ok(result);
       }
-    };
+      return Ok(determinant_gaussian_stack::<3>(data));
+    }
+
+    if rows == 4 {
+      let mut data = [[0.0_f32; 4]; 4];
+      for (i, row) in data.iter_mut().enumerate() {
+        for (j, value) in row.iter_mut().enumerate() {
+          *value = self.at(i, j);
+        }
+      }
+      return Ok(determinant_gaussian_stack::<4>(data));
+    }
+
+    // Convert to a mutable dense matrix so we can perform in-place elimination.
+    let mut working = vec![vec![0.0_f32; rows]; rows];
+    for (i, row) in working.iter_mut().enumerate() {
+      for (j, value) in row.iter_mut().enumerate() {
+        *value = self.at(i, j);
+      }
+    }
+
+    let mut sign = 1.0_f32;
+    for pivot in 0..rows {
+      // Partial pivoting improves numerical stability and avoids division by 0.
+      let mut pivot_row = pivot;
+      let mut pivot_abs = working[pivot][pivot].abs();
+      for (candidate, row) in working.iter().enumerate().skip(pivot + 1) {
+        let candidate_abs = row[pivot].abs();
+        if candidate_abs > pivot_abs {
+          pivot_abs = candidate_abs;
+          pivot_row = candidate;
+        }
+      }
+
+      if pivot_abs <= f32::EPSILON {
+        return Ok(0.0);
+      }
+
+      if pivot_row != pivot {
+        working.swap(pivot, pivot_row);
+        sign = -sign;
+      }
+
+      let pivot_value = working[pivot][pivot];
+      let pivot_tail: Vec<f32> = working[pivot][pivot..].to_vec();
+      for row in working.iter_mut().skip(pivot + 1) {
+        let factor = row[pivot] / pivot_value;
+        if factor == 0.0 {
+          continue;
+        }
+        for (dst, src) in row[pivot..].iter_mut().zip(pivot_tail.iter()) {
+          *dst -= factor * *src;
+        }
+      }
+    }
+
+    let diagonal_product = (0..rows).map(|i| working[i][i]).product::<f32>();
+    return Ok(sign * diagonal_product);
   }
 
   /// Return the size as a (rows, columns).
@@ -394,7 +507,6 @@ where
 
 #[cfg(test)]
 mod tests {
-
   use super::{
     filled_matrix,
     identity_matrix,
