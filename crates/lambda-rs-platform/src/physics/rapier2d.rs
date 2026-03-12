@@ -405,42 +405,16 @@ impl PhysicsBackend2D {
     validate_circle_radius(radius)?;
     validate_material(density, friction, restitution)?;
 
-    let (rapier_parent_handle, rapier_density) = self
-      .prepare_parent_body_for_collider_attachment_2d(
-        parent_slot_index,
-        parent_slot_generation,
-        density,
-      )?;
-
-    let rapier_collider = ColliderBuilder::ball(radius)
-      .translation(Vector::new(local_offset[0], local_offset[1]))
-      .rotation(local_rotation)
-      .density(rapier_density)
-      .friction(friction)
-      .restitution(restitution)
-      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
-      .build();
-
-    let rapier_handle = self.colliders.insert_with_parent(
-      rapier_collider,
-      rapier_parent_handle,
-      &mut self.bodies,
-    );
-
-    self.recompute_parent_mass_after_collider_attachment_2d(
+    return self.attach_collider_2d(
       parent_slot_index,
       parent_slot_generation,
-      rapier_parent_handle,
-    )?;
-
-    let slot_index = self.collider_slots_2d.len() as u32;
-    let slot_generation = 1;
-    self.collider_slots_2d.push(ColliderSlot2D {
-      rapier_handle,
-      generation: slot_generation,
-    });
-
-    return Ok((slot_index, slot_generation));
+      ColliderBuilder::ball(radius),
+      local_offset,
+      local_rotation,
+      density,
+      friction,
+      restitution,
+    );
   }
 
   /// Creates and attaches a rectangle collider to a rigid body.
@@ -480,42 +454,16 @@ impl PhysicsBackend2D {
     validate_rectangle_half_extents(half_width, half_height)?;
     validate_material(density, friction, restitution)?;
 
-    let (rapier_parent_handle, rapier_density) = self
-      .prepare_parent_body_for_collider_attachment_2d(
-        parent_slot_index,
-        parent_slot_generation,
-        density,
-      )?;
-
-    let rapier_collider = ColliderBuilder::cuboid(half_width, half_height)
-      .translation(Vector::new(local_offset[0], local_offset[1]))
-      .rotation(local_rotation)
-      .density(rapier_density)
-      .friction(friction)
-      .restitution(restitution)
-      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
-      .build();
-
-    let rapier_handle = self.colliders.insert_with_parent(
-      rapier_collider,
-      rapier_parent_handle,
-      &mut self.bodies,
-    );
-
-    self.recompute_parent_mass_after_collider_attachment_2d(
+    return self.attach_collider_2d(
       parent_slot_index,
       parent_slot_generation,
-      rapier_parent_handle,
-    )?;
-
-    let slot_index = self.collider_slots_2d.len() as u32;
-    let slot_generation = 1;
-    self.collider_slots_2d.push(ColliderSlot2D {
-      rapier_handle,
-      generation: slot_generation,
-    });
-
-    return Ok((slot_index, slot_generation));
+      ColliderBuilder::cuboid(half_width, half_height),
+      local_offset,
+      local_rotation,
+      density,
+      friction,
+      restitution,
+    );
   }
 
   /// Creates and attaches a capsule collider to a rigid body.
@@ -557,48 +505,22 @@ impl PhysicsBackend2D {
     validate_capsule_dimensions(half_height, radius)?;
     validate_material(density, friction, restitution)?;
 
-    let (rapier_parent_handle, rapier_density) = self
-      .prepare_parent_body_for_collider_attachment_2d(
-        parent_slot_index,
-        parent_slot_generation,
-        density,
-      )?;
-
     let rapier_builder = if half_height == 0.0 {
       ColliderBuilder::ball(radius)
     } else {
       ColliderBuilder::capsule_y(half_height, radius)
     };
 
-    let rapier_collider = rapier_builder
-      .translation(Vector::new(local_offset[0], local_offset[1]))
-      .rotation(local_rotation)
-      .density(rapier_density)
-      .friction(friction)
-      .restitution(restitution)
-      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
-      .build();
-
-    let rapier_handle = self.colliders.insert_with_parent(
-      rapier_collider,
-      rapier_parent_handle,
-      &mut self.bodies,
-    );
-
-    self.recompute_parent_mass_after_collider_attachment_2d(
+    return self.attach_collider_2d(
       parent_slot_index,
       parent_slot_generation,
-      rapier_parent_handle,
-    )?;
-
-    let slot_index = self.collider_slots_2d.len() as u32;
-    let slot_generation = 1;
-    self.collider_slots_2d.push(ColliderSlot2D {
-      rapier_handle,
-      generation: slot_generation,
-    });
-
-    return Ok((slot_index, slot_generation));
+      rapier_builder,
+      local_offset,
+      local_rotation,
+      density,
+      friction,
+      restitution,
+    );
   }
 
   /// Creates and attaches a convex polygon collider to a rigid body.
@@ -638,13 +560,6 @@ impl PhysicsBackend2D {
     validate_convex_polygon_vertices(vertices.as_slice())?;
     validate_material(density, friction, restitution)?;
 
-    let (rapier_parent_handle, rapier_density) = self
-      .prepare_parent_body_for_collider_attachment_2d(
-        parent_slot_index,
-        parent_slot_generation,
-        density,
-      )?;
-
     let rapier_vertices: Vec<Vector> = vertices
       .iter()
       .map(|vertex| Vector::new(vertex[0], vertex[1]))
@@ -656,35 +571,16 @@ impl PhysicsBackend2D {
       return Err(Collider2DBackendError::InvalidPolygonDegenerate);
     };
 
-    let rapier_collider = rapier_builder
-      .translation(Vector::new(local_offset[0], local_offset[1]))
-      .rotation(local_rotation)
-      .density(rapier_density)
-      .friction(friction)
-      .restitution(restitution)
-      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
-      .build();
-
-    let rapier_handle = self.colliders.insert_with_parent(
-      rapier_collider,
-      rapier_parent_handle,
-      &mut self.bodies,
-    );
-
-    self.recompute_parent_mass_after_collider_attachment_2d(
+    return self.attach_collider_2d(
       parent_slot_index,
       parent_slot_generation,
-      rapier_parent_handle,
-    )?;
-
-    let slot_index = self.collider_slots_2d.len() as u32;
-    let slot_generation = 1;
-    self.collider_slots_2d.push(ColliderSlot2D {
-      rapier_handle,
-      generation: slot_generation,
-    });
-
-    return Ok((slot_index, slot_generation));
+      rapier_builder,
+      local_offset,
+      local_rotation,
+      density,
+      friction,
+      restitution,
+    );
   }
 
   /// Returns the rigid body type for the referenced body.
@@ -1169,6 +1065,77 @@ impl PhysicsBackend2D {
     }
 
     return;
+  }
+
+  /// Attaches a prepared Rapier collider builder to a parent rigid body.
+  ///
+  /// This helper applies the shared local transform and material properties,
+  /// inserts the built collider into Rapier, recomputes parent mass
+  /// properties, and allocates the public collider slot.
+  ///
+  /// # Arguments
+  /// - `parent_slot_index`: The parent rigid body slot index.
+  /// - `parent_slot_generation`: The parent slot generation counter.
+  /// - `rapier_builder`: The shape-specific Rapier collider builder.
+  /// - `local_offset`: The collider local translation in meters.
+  /// - `local_rotation`: The collider local rotation in radians.
+  /// - `density`: The requested density in kg/m².
+  /// - `friction`: The friction coefficient (unitless).
+  /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  ///
+  /// # Returns
+  /// Returns a `(slot_index, slot_generation)` pair for the created collider.
+  ///
+  /// # Errors
+  /// Returns `Collider2DBackendError` if the parent body does not exist.
+  #[allow(clippy::too_many_arguments)]
+  fn attach_collider_2d(
+    &mut self,
+    parent_slot_index: u32,
+    parent_slot_generation: u32,
+    rapier_builder: ColliderBuilder,
+    local_offset: [f32; 2],
+    local_rotation: f32,
+    density: f32,
+    friction: f32,
+    restitution: f32,
+  ) -> Result<(u32, u32), Collider2DBackendError> {
+    let (rapier_parent_handle, rapier_density) = self
+      .prepare_parent_body_for_collider_attachment_2d(
+        parent_slot_index,
+        parent_slot_generation,
+        density,
+      )?;
+
+    let rapier_collider = rapier_builder
+      .translation(Vector::new(local_offset[0], local_offset[1]))
+      .rotation(local_rotation)
+      .density(rapier_density)
+      .friction(friction)
+      .restitution(restitution)
+      .active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS)
+      .build();
+
+    let rapier_handle = self.colliders.insert_with_parent(
+      rapier_collider,
+      rapier_parent_handle,
+      &mut self.bodies,
+    );
+
+    self.recompute_parent_mass_after_collider_attachment_2d(
+      parent_slot_index,
+      parent_slot_generation,
+      rapier_parent_handle,
+    )?;
+
+    let slot_index = self.collider_slots_2d.len() as u32;
+    let slot_generation = 1;
+    self.collider_slots_2d.push(ColliderSlot2D {
+      rapier_handle,
+      generation: slot_generation,
+    });
+
+    return Ok((slot_index, slot_generation));
   }
 
   /// Prepares a parent body for collider attachment and resolves the Rapier
