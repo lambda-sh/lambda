@@ -528,6 +528,7 @@ pub struct SamplerBuilder {
   address_w: AddressMode,
   lod_min: f32,
   lod_max: f32,
+  anisotropy_clamp: u16,
 }
 
 impl Default for SamplerBuilder {
@@ -549,6 +550,7 @@ impl SamplerBuilder {
       address_w: AddressMode::ClampToEdge,
       lod_min: 0.0,
       lod_max: 32.0,
+      anisotropy_clamp: 1,
     };
   }
 
@@ -621,7 +623,63 @@ impl SamplerBuilder {
     return self;
   }
 
-  fn to_descriptor(&self) -> wgpu::SamplerDescriptor<'_> {
+  /// Set the maximum anisotropic filtering level.
+  ///
+  /// Valid values are `1` (disabled) through `16`. Values outside this range
+  /// are clamped. Higher values improve texture quality at oblique viewing
+  /// angles but increase GPU cost.
+  ///
+  /// Common values:
+  /// - `1`: Disabled (default)
+  /// - `4`: Good balance of quality and performance
+  /// - `8`: High quality
+  /// - `16`: Maximum quality
+  ///
+  /// Note: Anisotropic filtering is most effective with linear filtering and
+  /// mipmapped textures. wgpu also requires all filter modes to be linear when
+  /// anisotropy is enabled; otherwise anisotropy is disabled.
+  ///
+  /// ```no_run
+  /// # use lambda_platform::wgpu::texture::{FilterMode, SamplerBuilder};
+  /// # fn demo(gpu: &lambda_platform::wgpu::gpu::Gpu) {
+  /// // High-quality sampler for floor/wall textures viewed at angles
+  /// let aniso_sampler = SamplerBuilder::new()
+  ///   .linear_clamp()
+  ///   .with_mip_filter(FilterMode::Linear)
+  ///   .with_anisotropy_clamp(8)
+  ///   .build(gpu);
+  ///
+  /// // Default sampler (no anisotropy) for UI textures
+  /// let ui_sampler = SamplerBuilder::new().linear_clamp().build(gpu);
+  /// # let _ = (aniso_sampler, ui_sampler);
+  /// # }
+  /// ```
+  pub fn with_anisotropy_clamp(mut self, clamp: u16) -> Self {
+    self.anisotropy_clamp = clamp.clamp(1, 16);
+    return self;
+  }
+
+  fn to_descriptor(
+    &self,
+    max_supported_anisotropy: u16,
+  ) -> wgpu::SamplerDescriptor<'_> {
+    let max_supported_anisotropy = max_supported_anisotropy.clamp(1, 16);
+    let mut anisotropy_clamp =
+      self.anisotropy_clamp.min(max_supported_anisotropy);
+    if anisotropy_clamp > 1
+      && !matches!(
+        (self.min_filter, self.mag_filter, self.mipmap_filter),
+        (FilterMode::Linear, FilterMode::Linear, FilterMode::Linear)
+      )
+    {
+      logging::warn!(
+        "Sampler anisotropy requested ({}), but all filters must be \
+linear; anisotropy disabled.",
+        anisotropy_clamp
+      );
+      anisotropy_clamp = 1;
+    }
+
     return wgpu::SamplerDescriptor {
       label: self.label.as_deref(),
       address_mode_u: self.address_u.to_wgpu(),
@@ -632,13 +690,28 @@ impl SamplerBuilder {
       mipmap_filter: self.mipmap_filter.to_wgpu_mipmap(),
       lod_min_clamp: self.lod_min,
       lod_max_clamp: self.lod_max,
+      anisotropy_clamp,
       ..Default::default()
     };
   }
 
   /// Create the sampler on the provided device.
   pub fn build(self, gpu: &Gpu) -> Sampler {
-    let desc = self.to_descriptor();
+    let requested_anisotropy = self.anisotropy_clamp.clamp(1, 16);
+    let downlevel = gpu.adapter().get_downlevel_capabilities();
+    let supports_anisotropy = downlevel
+      .flags
+      .contains(wgpu::DownlevelFlags::ANISOTROPIC_FILTERING);
+    if requested_anisotropy > 1 && !supports_anisotropy {
+      logging::warn!(
+        "Sampler anisotropy requested ({}), but adapter does not report \
+anisotropic filtering support; anisotropy disabled.",
+        requested_anisotropy
+      );
+    }
+
+    let max_supported_anisotropy = if supports_anisotropy { 16 } else { 1 };
+    let desc = self.to_descriptor(max_supported_anisotropy);
     let raw = gpu.device().create_sampler(&desc);
     return Sampler {
       raw,
@@ -1051,7 +1124,7 @@ mod tests {
   #[test]
   fn sampler_builder_defaults_map() {
     let b = SamplerBuilder::new();
-    let d = b.to_descriptor();
+    let d = b.to_descriptor(16);
     assert_eq!(d.address_mode_u, wgpu::AddressMode::ClampToEdge);
     assert_eq!(d.address_mode_v, wgpu::AddressMode::ClampToEdge);
     assert_eq!(d.address_mode_w, wgpu::AddressMode::ClampToEdge);
@@ -1060,6 +1133,7 @@ mod tests {
     assert_eq!(d.mipmap_filter, wgpu::MipmapFilterMode::Nearest);
     assert_eq!(d.lod_min_clamp, 0.0);
     assert_eq!(d.lod_max_clamp, 32.0);
+    assert_eq!(d.anisotropy_clamp, 1);
   }
 
   #[test]
@@ -1067,12 +1141,67 @@ mod tests {
     let b = SamplerBuilder::new()
       .linear_clamp()
       .with_mip_filter(FilterMode::Linear);
-    let d = b.to_descriptor();
+    let d = b.to_descriptor(16);
     assert_eq!(d.address_mode_u, wgpu::AddressMode::ClampToEdge);
     assert_eq!(d.address_mode_v, wgpu::AddressMode::ClampToEdge);
     assert_eq!(d.address_mode_w, wgpu::AddressMode::ClampToEdge);
     assert_eq!(d.mag_filter, wgpu::FilterMode::Linear);
     assert_eq!(d.min_filter, wgpu::FilterMode::Linear);
     assert_eq!(d.mipmap_filter, wgpu::MipmapFilterMode::Linear);
+  }
+
+  #[test]
+  fn sampler_builder_anisotropy_is_clamped_and_passed_through() {
+    let b = SamplerBuilder::new()
+      .linear_clamp()
+      .with_mip_filter(FilterMode::Linear)
+      .with_anisotropy_clamp(8);
+    assert_eq!(b.to_descriptor(16).anisotropy_clamp, 8);
+    assert_eq!(b.to_descriptor(4).anisotropy_clamp, 4);
+    assert_eq!(b.to_descriptor(1).anisotropy_clamp, 1);
+  }
+
+  #[test]
+  fn sampler_builder_anisotropy_clamps_to_valid_range() {
+    assert_eq!(
+      SamplerBuilder::new()
+        .linear_clamp()
+        .with_mip_filter(FilterMode::Linear)
+        .with_anisotropy_clamp(0)
+        .to_descriptor(16)
+        .anisotropy_clamp,
+      1
+    );
+    assert_eq!(
+      SamplerBuilder::new()
+        .linear_clamp()
+        .with_mip_filter(FilterMode::Linear)
+        .with_anisotropy_clamp(100)
+        .to_descriptor(16)
+        .anisotropy_clamp,
+      16
+    );
+  }
+
+  #[test]
+  fn sampler_builder_anisotropy_is_disabled_when_filters_not_all_linear() {
+    // Default builder uses nearest filters, so anisotropy must be disabled.
+    assert_eq!(
+      SamplerBuilder::new()
+        .with_anisotropy_clamp(8)
+        .to_descriptor(16)
+        .anisotropy_clamp,
+      1
+    );
+
+    // If mipmap filtering isn't linear, anisotropy must be disabled.
+    assert_eq!(
+      SamplerBuilder::new()
+        .linear()
+        .with_anisotropy_clamp(8)
+        .to_descriptor(16)
+        .anisotropy_clamp,
+      1
+    );
   }
 }

@@ -627,6 +627,19 @@ impl SamplerBuilder {
     return self;
   }
 
+  /// Set the maximum anisotropic filtering level.
+  ///
+  /// Valid values are `1` (disabled) through `16`. Values outside this range
+  /// are clamped. Higher values improve texture quality at oblique viewing
+  /// angles but increase GPU cost.
+  ///
+  /// Note: Anisotropic filtering is most effective with linear filtering and
+  /// mipmapped textures.
+  pub fn with_anisotropy_clamp(mut self, clamp: u16) -> Self {
+    self.inner = self.inner.with_anisotropy_clamp(clamp);
+    return self;
+  }
+
   /// Attach a debug label.
   pub fn with_label(mut self, label: &str) -> Self {
     self.inner = self.inner.with_label(label);

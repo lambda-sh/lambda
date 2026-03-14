@@ -262,11 +262,11 @@ impl Component<ComponentResult, String> for TexturedCubeExample {
       [(h, -h, -h), (-h, -h, -h), (-h, h, -h), (h, h, -h)],
     );
 
-    let mut mesh_builder = MeshBuilder::new();
-    for v in verts.into_iter() {
-      mesh_builder.with_vertex(v);
-    }
-    let mesh = mesh_builder
+    let mesh = verts
+      .into_iter()
+      .fold(MeshBuilder::new(), |builder, vertex| {
+        return builder.with_vertex(vertex);
+      })
       .with_attributes(vec![
         VertexAttribute {
           location: 0,

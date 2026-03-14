@@ -870,11 +870,11 @@ fn build_unit_cube_mesh() -> Mesh {
     [(h, -h, -h), (-h, -h, -h), (-h, h, -h), (h, h, -h)],
   );
 
-  let mut mesh_builder = MeshBuilder::new();
-  for v in verts.into_iter() {
-    mesh_builder.with_vertex(v);
-  }
-  let mesh = mesh_builder
+  let mesh = verts
+    .into_iter()
+    .fold(MeshBuilder::new(), |builder, vertex| {
+      return builder.with_vertex(vertex);
+    })
     .with_attributes(vec![
       VertexAttribute {
         location: 0,
@@ -914,18 +914,16 @@ fn build_floor_quad_mesh(extent: f32) -> Mesh {
   let p2 = v(h, h);
   let p3 = v(-h, h);
 
-  let mut mesh_builder = MeshBuilder::new();
   // Tri winding flipped to face +Y (avoid back-face cull)
-  // Tri 1
-  mesh_builder.with_vertex(p0);
-  mesh_builder.with_vertex(p2);
-  mesh_builder.with_vertex(p1);
-  // Tri 2
-  mesh_builder.with_vertex(p0);
-  mesh_builder.with_vertex(p3);
-  mesh_builder.with_vertex(p2);
-
-  let mesh = mesh_builder
+  let mesh = MeshBuilder::new()
+    // Tri 1
+    .with_vertex(p0)
+    .with_vertex(p2)
+    .with_vertex(p1)
+    // Tri 2
+    .with_vertex(p0)
+    .with_vertex(p3)
+    .with_vertex(p2)
     .with_attributes(vec![
       VertexAttribute {
         location: 0,
