@@ -175,11 +175,7 @@ pub struct Colliders2DDemo {
 }
 
 impl Colliders2DDemo {
-  fn push_vertex(
-    mesh_builder: &mut MeshBuilder,
-    x: f32,
-    y: f32,
-  ) -> &mut MeshBuilder {
+  fn push_vertex(mesh_builder: MeshBuilder, x: f32, y: f32) -> MeshBuilder {
     return mesh_builder.with_vertex(
       VertexBuilder::new()
         .with_position([x, y, 0.0])
@@ -190,11 +186,11 @@ impl Colliders2DDemo {
   }
 
   fn append_rectangle(
-    mesh_builder: &mut MeshBuilder,
+    mesh_builder: MeshBuilder,
     vertex_count: &mut u32,
     half_width: f32,
     half_height: f32,
-  ) -> Range<u32> {
+  ) -> (MeshBuilder, Range<u32>) {
     let start = *vertex_count;
 
     let left = -half_width;
@@ -202,25 +198,26 @@ impl Colliders2DDemo {
     let bottom = -half_height;
     let top = half_height;
 
-    Self::push_vertex(mesh_builder, left, bottom);
-    Self::push_vertex(mesh_builder, right, bottom);
-    Self::push_vertex(mesh_builder, right, top);
+    let mesh_builder = Self::push_vertex(mesh_builder, left, bottom);
+    let mesh_builder = Self::push_vertex(mesh_builder, right, bottom);
+    let mesh_builder = Self::push_vertex(mesh_builder, right, top);
 
-    Self::push_vertex(mesh_builder, left, bottom);
-    Self::push_vertex(mesh_builder, right, top);
-    Self::push_vertex(mesh_builder, left, top);
+    let mesh_builder = Self::push_vertex(mesh_builder, left, bottom);
+    let mesh_builder = Self::push_vertex(mesh_builder, right, top);
+    let mesh_builder = Self::push_vertex(mesh_builder, left, top);
 
     *vertex_count += 6;
     let end = *vertex_count;
-    return start..end;
+    return (mesh_builder, start..end);
   }
 
   fn append_convex_polygon(
-    mesh_builder: &mut MeshBuilder,
+    mesh_builder: MeshBuilder,
     vertex_count: &mut u32,
     vertices: &[[f32; 2]],
-  ) -> Range<u32> {
+  ) -> (MeshBuilder, Range<u32>) {
     let start = *vertex_count;
+    let mut mesh_builder = mesh_builder;
 
     let mut centroid = [0.0_f32, 0.0_f32];
     for vertex in vertices.iter() {
@@ -234,23 +231,24 @@ impl Colliders2DDemo {
       let a = vertices[index];
       let b = vertices[(index + 1) % vertices.len()];
 
-      Self::push_vertex(mesh_builder, centroid[0], centroid[1]);
-      Self::push_vertex(mesh_builder, a[0], a[1]);
-      Self::push_vertex(mesh_builder, b[0], b[1]);
+      mesh_builder = Self::push_vertex(mesh_builder, centroid[0], centroid[1]);
+      mesh_builder = Self::push_vertex(mesh_builder, a[0], a[1]);
+      mesh_builder = Self::push_vertex(mesh_builder, b[0], b[1]);
     }
 
     *vertex_count += 3 * vertices.len() as u32;
     let end = *vertex_count;
-    return start..end;
+    return (mesh_builder, start..end);
   }
 
   fn append_circle(
-    mesh_builder: &mut MeshBuilder,
+    mesh_builder: MeshBuilder,
     vertex_count: &mut u32,
     radius: f32,
     segments: u32,
-  ) -> Range<u32> {
+  ) -> (MeshBuilder, Range<u32>) {
     let start = *vertex_count;
+    let mut mesh_builder = mesh_builder;
 
     for index in 0..segments {
       let t0 = index as f32 / segments as f32;
@@ -264,23 +262,23 @@ impl Colliders2DDemo {
       let x1 = angle1.cos() * radius;
       let y1 = angle1.sin() * radius;
 
-      Self::push_vertex(mesh_builder, 0.0, 0.0);
-      Self::push_vertex(mesh_builder, x0, y0);
-      Self::push_vertex(mesh_builder, x1, y1);
+      mesh_builder = Self::push_vertex(mesh_builder, 0.0, 0.0);
+      mesh_builder = Self::push_vertex(mesh_builder, x0, y0);
+      mesh_builder = Self::push_vertex(mesh_builder, x1, y1);
     }
 
     *vertex_count += 3 * segments;
     let end = *vertex_count;
-    return start..end;
+    return (mesh_builder, start..end);
   }
 
   fn append_capsule(
-    mesh_builder: &mut MeshBuilder,
+    mesh_builder: MeshBuilder,
     vertex_count: &mut u32,
     half_height: f32,
     radius: f32,
     segments: u32,
-  ) -> Range<u32> {
+  ) -> (MeshBuilder, Range<u32>) {
     let mut vertices = Vec::with_capacity((segments as usize + 1) * 2);
 
     for index in 0..=segments {
@@ -299,10 +297,10 @@ impl Colliders2DDemo {
   }
 
   fn append_shape(
-    mesh_builder: &mut MeshBuilder,
+    mesh_builder: MeshBuilder,
     vertex_count: &mut u32,
     shape: &ColliderShape2D,
-  ) -> Range<u32> {
+  ) -> (MeshBuilder, Range<u32>) {
     match shape {
       ColliderShape2D::Circle { radius } => {
         return Self::append_circle(mesh_builder, vertex_count, *radius, 32);
@@ -394,15 +392,16 @@ impl Component<ComponentResult, String> for Colliders2DDemo {
       },
     ];
 
-    let mut mesh_builder = MeshBuilder::new();
-    mesh_builder.with_attributes(attributes.clone());
+    let mut mesh_builder =
+      MeshBuilder::new().with_attributes(attributes.clone());
     let mut vertex_count = 0_u32;
 
     let mut colliders = Vec::with_capacity(self.collider_inits.len());
 
     for init in self.collider_inits.iter() {
-      let vertices =
-        Self::append_shape(&mut mesh_builder, &mut vertex_count, &init.shape);
+      let (updated_mesh_builder, vertices) =
+        Self::append_shape(mesh_builder, &mut vertex_count, &init.shape);
+      mesh_builder = updated_mesh_builder;
 
       let initial_uniform = ColliderGlobalsUniform {
         offset_rotation: [0.0, 0.0, 0.0, 0.0],
