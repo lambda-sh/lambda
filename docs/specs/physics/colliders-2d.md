@@ -1,15 +1,15 @@
 ---
 title: "2D Colliders"
 document_id: "colliders-2d-2026-02-17"
-status: "draft"
+status: "living"
 created: "2026-02-17T23:08:44Z"
-last_updated: "2026-02-17T23:37:05Z"
-version: "0.1.2"
+last_updated: "2026-03-14T22:54:24Z"
+version: "0.1.3"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "43c91a76dec71326cc255ebb6fb6c6402e95735c"
+repo_commit: "23dc1cbe0b87e772e92071ad170dfb70ced36f88"
 owners: ["lambda-sh"]
 reviewers: ["engine"]
 tags: ["spec", "physics", "2d", "lambda-rs", "platform"]
@@ -45,7 +45,7 @@ tags: ["spec", "physics", "2d", "lambda-rs", "platform"]
 - Provide per-collider material properties (`density`, `friction`,
   `restitution`) that influence contact resolution for participating bodies.
 - Support a collider-local transform (offset and rotation) to enable oriented
-  shapes without requiring angular dynamics.
+  shapes and compound-body contact layouts.
 - Define a backend-agnostic behavior contract while allowing implementation via
   `lambda-rs-platform` (initially backed by `rapier2d`).
 
@@ -131,7 +131,7 @@ Module layout (new)
 
 ### lambda-rs Public API
 
-Public entry points (draft)
+Public entry points (implemented)
 
 ```rust
 /// Maximum supported vertices for `ColliderShape2D::ConvexPolygon`.
@@ -274,11 +274,13 @@ Collision detection
   - other dynamic bodies with colliders
 
 Collision response (normative)
-- Contact resolution MUST update linear velocities for dynamic bodies such that
-  penetrations are resolved and restitution and friction affect motion.
-- Angular dynamics are out of scope for the initial 2D physics surface.
-  Therefore, collision response MUST NOT introduce angular velocity and MUST
-  NOT change `RigidBody2D` rotation during `step()`.
+- Contact resolution MUST update dynamic-body motion such that penetrations are
+  resolved and restitution and friction affect motion.
+- Collision response MAY change `RigidBody2D` rotation for dynamic bodies when
+  contacts introduce torque through collider shape or local offset.
+- The public API does not currently expose explicit angular-velocity controls,
+  but dynamic-body rotation observed through `RigidBody2D` state MUST remain
+  backend-consistent.
 
 Material properties
 - `density` MUST affect mass properties for dynamic bodies when the body mass
@@ -385,15 +387,15 @@ Errors (draft)
 
 ## Requirements Checklist
 
-- [ ] Circle colliders detect collisions correctly.
-- [ ] Rectangle colliders detect collisions correctly.
-- [ ] Collider local rotation produces oriented shapes correctly.
-- [ ] Capsule colliders support character-like shapes.
-- [ ] Polygon colliders support arbitrary convex shapes.
-- [ ] Multiple colliders attached to one body work together.
-- [ ] Friction and restitution affect collision response.
-- [ ] Density affects dynamic body mass when not explicitly set.
-- [ ] No public vendor types are exposed from `lambda-rs`.
+- [x] Circle colliders detect collisions correctly.
+- [x] Rectangle colliders detect collisions correctly.
+- [x] Collider local rotation produces oriented shapes correctly.
+- [x] Capsule colliders support character-like shapes.
+- [x] Polygon colliders support arbitrary convex shapes.
+- [x] Multiple colliders attached to one body work together.
+- [x] Friction and restitution affect collision response.
+- [x] Density affects dynamic body mass when not explicitly set.
+- [x] No public vendor types are exposed from `lambda-rs`.
 
 ## Verification and Testing
 
@@ -401,30 +403,29 @@ Unit tests (crate: `lambda-rs`)
 - Validate `Collider2DBuilder::build()` rejects invalid parameters.
 - Validate world mismatch and stale-handle behavior for `Collider2D`.
 
-Integration tests (crate: `lambda-rs`, `crates/lambda-rs/tests/runnables.rs`)
-- Circle vs. circle:
-  - Two dynamic bodies with circle colliders converge, collide, and separate.
-- Rectangle vs. rectangle:
-  - A dynamic box falls onto a static box and comes to rest.
-- Oriented box:
-  - A rotated rectangle collider behaves as expected when colliding with a
-    static ground rectangle.
-- Capsule character:
-  - A dynamic capsule falls onto a static ground rectangle and does not snag.
-- Convex polygon:
-  - A dynamic convex polygon collides with a static rectangle.
-- Compound shape:
-  - A dynamic body with two colliders collides as expected (both colliders
-    generate contacts).
-- Friction and restitution:
-  - Restitution `0.0` yields minimal bounce; restitution `1.0` yields maximal
-    bounce in a controlled scenario.
-  - A slope test demonstrates friction affecting sliding behavior.
+Integration tests (crate: `lambda-rs`)
+- Integration entrypoint: `crates/lambda-rs/tests/integration.rs`.
+- Feature-specific physics tests: `crates/lambda-rs/tests/physics_2d/`.
+- Shape coverage:
+  - A dynamic circle collides with a static ground rectangle.
+  - A dynamic capsule collides with a static ground rectangle.
+  - A dynamic convex polygon collides with a static ground rectangle.
+  - A rotated rectangle collider changes motion relative to an unrotated case.
+- Compound shape coverage:
+  - A dynamic body with multiple colliders produces a wider effective collision
+    extent than a single-collider body.
+- Material coverage:
+  - Restitution affects bounce height.
+  - Friction affects sliding velocity decay.
+  - Density affects impulse-driven velocity change.
 
-Manual verification (optional)
-- A minimal example MAY be added under `crates/lambda-rs/examples/` to render a
-  simple debug visualization and visually verify compound shapes and capsule
-  behavior. This example MUST remain optional and gated behind `physics-2d`.
+Manual verification
+- Demo binary: `demos/physics/src/bin/physics_colliders_2d.rs`.
+- The demo SHOULD be used to verify:
+  - primitive shape rendering and contact behavior
+  - local rotation and local offset behavior
+  - compound-collider motion as one rigid body
+  - density, friction, and restitution behavior
 
 ## Compatibility and Migration
 
@@ -440,3 +441,5 @@ Manual verification (optional)
 - 2026-02-17 0.1.0: Define 2D collider shapes and attachment APIs.
 - 2026-02-17 0.1.1: Specify defaults and mass recomputation rules.
 - 2026-02-17 0.1.2: Add local rotation, material struct, and polygon limits.
+- 2026-03-14 0.1.3: Align the specification with the implemented rotation,
+  testing, and demo behavior.
