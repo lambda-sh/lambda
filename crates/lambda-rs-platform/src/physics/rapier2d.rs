@@ -1192,8 +1192,10 @@ impl PhysicsBackend2D {
 
 /// Builds a Rapier rigid body builder with `lambda-rs` invariants applied.
 ///
-/// Bodies created by this backend do not lock the 2D rotation axis. Dynamic
-/// bodies are expected to rotate in response to collisions.
+/// Bodies created by this backend lock 2D rotation so `RigidBody2D` rotation
+/// changes only through explicit `set_rotation()` calls. This preserves the
+/// current public 2D rigid-body contract, which excludes angular dynamics from
+/// simulation stepping.
 ///
 /// # Arguments
 /// - `body_type`: The integration mode for the rigid body.
@@ -1219,18 +1221,24 @@ fn build_rapier_rigid_body(
       return RigidBodyBuilder::fixed()
         .translation(translation)
         .rotation(rotation)
+        .angvel(0.0)
+        .lock_rotations()
         .linvel(linear_velocity);
     }
     RigidBodyType2D::Kinematic => {
       return RigidBodyBuilder::kinematic_velocity_based()
         .translation(translation)
         .rotation(rotation)
+        .angvel(0.0)
+        .lock_rotations()
         .linvel(linear_velocity);
     }
     RigidBodyType2D::Dynamic => {
       return RigidBodyBuilder::dynamic()
         .translation(translation)
         .rotation(rotation)
+        .angvel(0.0)
+        .lock_rotations()
         .linvel(linear_velocity)
         .additional_mass(additional_mass_kg);
     }

@@ -188,6 +188,49 @@ fn physics_2d_rectangle_collider_local_rotation_changes_motion() {
   return;
 }
 
+/// Ensures collision response does not rotate dynamic bodies during stepping.
+///
+/// This test uses an off-center collider attachment so ground contact would
+/// introduce torque if the backend allowed angular dynamics. The body's
+/// rotation MUST remain unchanged after collision resolution.
+#[test]
+fn physics_2d_collision_response_does_not_change_body_rotation() {
+  let mut world = PhysicsWorld2DBuilder::new().build().unwrap();
+
+  let ground = RigidBody2DBuilder::new(RigidBodyType::Static)
+    .with_position(0.0, -1.0)
+    .build(&mut world)
+    .unwrap();
+
+  Collider2DBuilder::rectangle(20.0, 0.5)
+    .build(&mut world, ground)
+    .unwrap();
+
+  let body = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
+    .with_position(0.0, 4.0)
+    .build(&mut world)
+    .unwrap();
+
+  Collider2DBuilder::circle(0.5)
+    .with_offset(0.75, 0.0)
+    .build(&mut world, body)
+    .unwrap();
+
+  step_world(&mut world, DEFAULT_STEP_COUNT);
+
+  let rotation = body.rotation(&world).unwrap();
+  let position = body.position(&world).unwrap();
+
+  assert_in_range("rotation", rotation, -0.001, 0.001);
+  assert!(
+    position[1] > -0.25,
+    "body did not appear to collide with the ground: y={}",
+    position[1],
+  );
+
+  return;
+}
+
 /// Simulates a circle falling onto a platform with a rotated rectangle collider.
 ///
 /// # Arguments

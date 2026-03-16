@@ -3,8 +3,8 @@ title: "2D Colliders"
 document_id: "colliders-2d-2026-02-17"
 status: "living"
 created: "2026-02-17T23:08:44Z"
-last_updated: "2026-03-14T22:54:24Z"
-version: "0.1.3"
+last_updated: "2026-03-14T23:51:46Z"
+version: "0.1.4"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
@@ -276,11 +276,10 @@ Collision detection
 Collision response (normative)
 - Contact resolution MUST update dynamic-body motion such that penetrations are
   resolved and restitution and friction affect motion.
-- Collision response MAY change `RigidBody2D` rotation for dynamic bodies when
-  contacts introduce torque through collider shape or local offset.
-- The public API does not currently expose explicit angular-velocity controls,
-  but dynamic-body rotation observed through `RigidBody2D` state MUST remain
-  backend-consistent.
+- Collision response MUST NOT change `RigidBody2D` rotation during
+  `PhysicsWorld2D::step()`.
+- Collider shape and local offset MAY change linear contact response, but MUST
+  NOT introduce angular dynamics through public 2D rigid-body stepping.
 
 Material properties
 - `density` MUST affect mass properties for dynamic bodies when the body mass
@@ -441,5 +440,7 @@ Manual verification
 - 2026-02-17 0.1.0: Define 2D collider shapes and attachment APIs.
 - 2026-02-17 0.1.1: Specify defaults and mass recomputation rules.
 - 2026-02-17 0.1.2: Add local rotation, material struct, and polygon limits.
-- 2026-03-14 0.1.3: Align the specification with the implemented rotation,
-  testing, and demo behavior.
+- 2026-03-14 0.1.3: Align the specification with the implemented testing and
+  demo behavior.
+- 2026-03-14 0.1.4: Restore the no-angular-dynamics collision contract to
+  match `RigidBody2D`.
