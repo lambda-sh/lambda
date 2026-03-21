@@ -200,8 +200,14 @@ impl PhysicsBackend2D {
   pub fn new(gravity: [f32; 2], timestep_seconds: f32) -> Self {
     let gravity_vector = Vector::new(gravity[0], gravity[1]);
 
+    // `lambda-rs` exposes substep control at the `PhysicsWorld2D` layer.
+    // Rapier's default `num_solver_iterations = 4` also subdivides the step
+    // for integration, which changes free-body motion even when the public
+    // world is configured with one substep. Keep this at `1` so only
+    // `PhysicsWorld2D::substeps` controls outer-step subdivision.
     let integration_parameters = IntegrationParameters {
       dt: timestep_seconds,
+      num_solver_iterations: 1,
       ..Default::default()
     };
 
