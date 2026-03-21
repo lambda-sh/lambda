@@ -3,9 +3,9 @@ title: "Specifications Index"
 document_id: "specs-index-2026-02-07"
 status: "living"
 created: "2026-02-07T00:00:00Z"
-last_updated: "2026-02-15T00:00:00Z"
-version: "0.1.3"
-repo_commit: "6f96052fae896a095b658f29af1eff96e5aaa348"
+last_updated: "2026-02-17T23:08:44Z"
+version: "0.1.4"
+repo_commit: "43c91a76dec71326cc255ebb6fb6c6402e95735c"
 owners: ["lambda-sh"]
 reviewers: ["engine"]
 tags: ["index", "specs", "docs"]
@@ -35,6 +35,7 @@ tags: ["index", "specs", "docs"]
 
 - 2D Physics World — [physics/physics-world-2d.md](physics/physics-world-2d.md)
 - 2D Rigid Bodies — [physics/rigid-bodies-2d.md](physics/rigid-bodies-2d.md)
+- 2D Colliders — [physics/colliders-2d.md](physics/colliders-2d.md)
 
 ## Templates
 
