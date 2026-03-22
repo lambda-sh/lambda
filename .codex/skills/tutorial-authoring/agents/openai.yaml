@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tutorial Authoring"
+  short_description: "Write repository tutorials with the required structure"
+  default_prompt: "Use $tutorial-authoring to create or revise a tutorial for this repository."
