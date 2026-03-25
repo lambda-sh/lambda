@@ -97,21 +97,12 @@ pub enum SurfaceError {
   OutOfMemory,
   /// Timed out waiting for a frame.
   Timeout,
+  /// The window is occluded and cannot currently present.
+  Occluded,
+  /// Surface acquisition triggered a validation error.
+  Validation,
   /// Other/unclassified error (opaque).
   Other(String),
-}
-
-impl From<wgpu::SurfaceError> for SurfaceError {
-  fn from(error: wgpu::SurfaceError) -> Self {
-    use wgpu::SurfaceError as We;
-    match error {
-      We::Lost => return SurfaceError::Lost,
-      We::Outdated => return SurfaceError::Outdated,
-      We::OutOfMemory => return SurfaceError::OutOfMemory,
-      We::Timeout => return SurfaceError::Timeout,
-      _ => return SurfaceError::Other(format!("{:?}", error)),
-    }
-  }
 }
 
 /// Builder for creating a `Surface` bound to a `winit` window.
@@ -160,7 +151,7 @@ impl SurfaceBuilder {
       instance
         .raw()
         .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-          raw_display_handle,
+          raw_display_handle: Some(raw_display_handle),
           raw_window_handle,
         })
         .map_err(CreateSurfaceError::from)?
@@ -298,15 +289,34 @@ impl<'window> Surface<'window> {
 
   /// Acquire the next swapchain texture and a default view.
   pub fn acquire_next_frame(&self) -> Result<Frame, SurfaceError> {
-    let texture = match self.surface.get_current_texture() {
-      Ok(t) => t,
-      Err(e) => return Err(SurfaceError::from(e)),
+    let (texture, suboptimal) = match self.surface.get_current_texture() {
+      wgpu::CurrentSurfaceTexture::Success(texture) => (texture, false),
+      wgpu::CurrentSurfaceTexture::Suboptimal(texture) => (texture, true),
+      wgpu::CurrentSurfaceTexture::Timeout => {
+        return Err(SurfaceError::Timeout);
+      }
+      wgpu::CurrentSurfaceTexture::Outdated => {
+        return Err(SurfaceError::Outdated);
+      }
+      wgpu::CurrentSurfaceTexture::Lost => {
+        return Err(SurfaceError::Lost);
+      }
+      wgpu::CurrentSurfaceTexture::Occluded => {
+        return Err(SurfaceError::Occluded);
+      }
+      wgpu::CurrentSurfaceTexture::Validation => {
+        return Err(SurfaceError::Validation);
+      }
     };
     let view = texture
       .texture
       .create_view(&wgpu::TextureViewDescriptor::default());
 
-    return Ok(Frame { texture, view });
+    return Ok(Frame {
+      texture,
+      view,
+      suboptimal,
+    });
   }
 }
 
@@ -383,6 +393,7 @@ fn select_present_mode(
 pub struct Frame {
   texture: wgpu::SurfaceTexture,
   view: wgpu::TextureView,
+  suboptimal: bool,
 }
 
 /// Borrowed reference to a texture view used for render passes.
@@ -395,6 +406,11 @@ impl Frame {
   /// Borrow the default view for rendering.
   pub fn texture_view(&self) -> TextureViewRef<'_> {
     return TextureViewRef { raw: &self.view };
+  }
+
+  /// Whether this frame was acquired in a suboptimal surface state.
+  pub fn is_suboptimal(&self) -> bool {
+    return self.suboptimal;
   }
 
   /// Present the frame to the swapchain.

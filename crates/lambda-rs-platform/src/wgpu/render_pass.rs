@@ -431,7 +431,7 @@ impl<'a> RenderPass<'a> {
 
   /// Set immediate data for subsequent draw calls.
   ///
-  /// This is the wgpu v28 replacement for push constants. The `offset` and
+  /// This is the current wgpu replacement for push constants. The `offset` and
   /// `data` length MUST be multiples of 4 bytes (IMMEDIATE_DATA_ALIGNMENT).
   pub fn set_immediates(&mut self, offset: u32, data: &[u8]) {
     self.raw.set_immediates(offset, data);

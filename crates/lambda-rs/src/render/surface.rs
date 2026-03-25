@@ -177,6 +177,10 @@ pub enum SurfaceError {
   OutOfMemory,
   /// Timed out waiting for a frame.
   Timeout,
+  /// The window is occluded and cannot currently present.
+  Occluded,
+  /// Surface acquisition triggered a validation error.
+  Validation,
   /// Other/unclassified error.
   Other(String),
 }
@@ -188,6 +192,8 @@ impl From<platform_surface::SurfaceError> for SurfaceError {
       platform_surface::SurfaceError::Outdated => SurfaceError::Outdated,
       platform_surface::SurfaceError::OutOfMemory => SurfaceError::OutOfMemory,
       platform_surface::SurfaceError::Timeout => SurfaceError::Timeout,
+      platform_surface::SurfaceError::Occluded => SurfaceError::Occluded,
+      platform_surface::SurfaceError::Validation => SurfaceError::Validation,
       platform_surface::SurfaceError::Other(msg) => SurfaceError::Other(msg),
     };
   }
@@ -235,6 +241,14 @@ mod tests {
     assert!(matches!(
       SurfaceError::from(platform_surface::SurfaceError::Timeout),
       SurfaceError::Timeout
+    ));
+    assert!(matches!(
+      SurfaceError::from(platform_surface::SurfaceError::Occluded),
+      SurfaceError::Occluded
+    ));
+    assert!(matches!(
+      SurfaceError::from(platform_surface::SurfaceError::Validation),
+      SurfaceError::Validation
     ));
 
     let other = SurfaceError::from(platform_surface::SurfaceError::Other(

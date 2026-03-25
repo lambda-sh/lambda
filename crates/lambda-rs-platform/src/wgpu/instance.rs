@@ -167,11 +167,12 @@ impl InstanceBuilder {
       flags: self.flags.to_wgpu(),
       memory_budget_thresholds: self.memory_budget_thresholds,
       backend_options: self.backend_options,
+      display: None,
     };
 
     Instance {
       label: self.label,
-      instance: wgpu::Instance::new(&descriptor),
+      instance: wgpu::Instance::new(descriptor),
     }
   }
 }

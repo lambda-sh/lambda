@@ -246,8 +246,7 @@ impl Gpu {
     return GpuLimits {
       max_uniform_buffer_binding_size: self
         .limits
-        .max_uniform_buffer_binding_size
-        .into(),
+        .max_uniform_buffer_binding_size,
       max_bind_groups: self.limits.max_bind_groups,
       max_vertex_buffers: self.limits.max_vertex_buffers,
       max_vertex_attributes: self.limits.max_vertex_attributes,
