@@ -1,0 +1,4 @@
+interface:
+  display_name: "Long-Lived Docs"
+  short_description: "Author specs, guides, and durable docs"
+  default_prompt: "Use $long-lived-docs-authoring to draft or revise a spec, roadmap, or guide for this repository."
