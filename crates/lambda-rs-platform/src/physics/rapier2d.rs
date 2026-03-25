@@ -150,6 +150,10 @@ struct RigidBodySlot2D {
 struct ColliderSlot2D {
   /// The handle to the Rapier collider stored in the `ColliderSet`.
   rapier_handle: ColliderHandle,
+  /// The parent rigid body slot index that owns this collider.
+  parent_slot_index: u32,
+  /// The parent rigid body slot generation that owns this collider.
+  parent_slot_generation: u32,
   /// A monotonically increasing counter used to validate stale handles.
   generation: u32,
 }
@@ -618,6 +622,85 @@ impl PhysicsBackend2D {
     return self
       .rapier_rigid_body_2d(slot_index, slot_generation)
       .is_ok();
+  }
+
+  /// Returns all rigid bodies whose colliders contain the provided point.
+  ///
+  /// # Arguments
+  /// - `point`: The world-space point to test.
+  ///
+  /// # Returns
+  /// Returns backend rigid body slot pairs for each matching collider.
+  pub fn query_point_2d(&self, point: [f32; 2]) -> Vec<(u32, u32)> {
+    if validate_position(point[0], point[1]).is_err() {
+      return Vec::new();
+    }
+
+    let point = Vector::new(point[0], point[1]);
+    let mut body_slots = Vec::new();
+
+    for (collider_handle, collider) in self.colliders.iter() {
+      if !collider.shape().contains_point(collider.position(), point) {
+        continue;
+      }
+
+      let Some(body_slot) =
+        self.query_hit_to_parent_body_slot_2d(collider_handle)
+      else {
+        continue;
+      };
+
+      body_slots.push(body_slot);
+    }
+
+    return body_slots;
+  }
+
+  /// Returns all rigid bodies whose colliders overlap the provided AABB.
+  ///
+  /// # Arguments
+  /// - `min`: The minimum world-space corner of the query box.
+  /// - `max`: The maximum world-space corner of the query box.
+  ///
+  /// # Returns
+  /// Returns backend rigid body slot pairs for each matching collider.
+  pub fn query_aabb_2d(&self, min: [f32; 2], max: [f32; 2]) -> Vec<(u32, u32)> {
+    if validate_position(min[0], min[1]).is_err()
+      || validate_position(max[0], max[1]).is_err()
+    {
+      return Vec::new();
+    }
+
+    let half_extents =
+      Vector::new((max[0] - min[0]) * 0.5, (max[1] - min[1]) * 0.5);
+    let center = Vector::new((min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5);
+    let query_shape = Cuboid::new(half_extents);
+    let query_pose = Pose::from_translation(center);
+    let query_dispatcher = self.narrow_phase.query_dispatcher();
+    let mut body_slots = Vec::new();
+
+    for (collider_handle, collider) in self.colliders.iter() {
+      let shape_to_collider = query_pose.inv_mul(collider.position());
+      let intersects = query_dispatcher.intersection_test(
+        &shape_to_collider,
+        &query_shape,
+        collider.shape(),
+      );
+
+      if intersects != Ok(true) {
+        continue;
+      }
+
+      let Some(body_slot) =
+        self.query_hit_to_parent_body_slot_2d(collider_handle)
+      else {
+        continue;
+      };
+
+      body_slots.push(body_slot);
+    }
+
+    return body_slots;
   }
 
   /// Sets the current position for the referenced body.
@@ -1101,6 +1184,8 @@ impl PhysicsBackend2D {
     let slot_generation = 1;
     self.collider_slots_2d.push(ColliderSlot2D {
       rapier_handle,
+      parent_slot_index,
+      parent_slot_generation,
       generation: slot_generation,
     });
 
@@ -1222,9 +1307,40 @@ impl PhysicsBackend2D {
         self.colliders.get(slot.rapier_handle).is_some(),
         "collider slot references missing Rapier collider"
       );
+      debug_assert!(
+        self
+          .rigid_body_slot_2d(
+            slot.parent_slot_index,
+            slot.parent_slot_generation
+          )
+          .is_ok(),
+        "collider slot references missing parent rigid body slot"
+      );
     }
 
     return;
+  }
+  /// Resolves a query hit collider back to its owning rigid body slot.
+  ///
+  /// # Arguments
+  /// - `collider_handle`: The Rapier collider handle returned by a query.
+  ///
+  /// # Returns
+  /// Returns the owning backend rigid body slot pair when the collider slot is
+  /// still tracked by the backend.
+  fn query_hit_to_parent_body_slot_2d(
+    &self,
+    collider_handle: ColliderHandle,
+  ) -> Option<(u32, u32)> {
+    let collider_slot = self
+      .collider_slots_2d
+      .iter()
+      .find(|slot| slot.rapier_handle == collider_handle)?;
+
+    return Some((
+      collider_slot.parent_slot_index,
+      collider_slot.parent_slot_generation,
+    ));
   }
 }
 

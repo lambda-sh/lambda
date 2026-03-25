@@ -4,6 +4,7 @@
 //! API is backend-agnostic and does not expose vendor types.
 
 use std::{
+  collections::HashSet,
   error::Error,
   fmt,
   sync::atomic::{
@@ -157,8 +158,13 @@ impl PhysicsWorld2D {
   ///
   /// # Returns
   /// Returns a vector of matching rigid body handles.
-  pub fn query_point(&self, _point: [f32; 2]) -> Vec<RigidBody2D> {
-    return Vec::new();
+  pub fn query_point(&self, point: [f32; 2]) -> Vec<RigidBody2D> {
+    if !is_valid_query_point(point) {
+      return Vec::new();
+    }
+
+    let body_slots = self.backend.query_point_2d(point);
+    return self.deduplicate_query_body_hits(body_slots);
   }
 
   /// Returns all bodies whose colliders overlap the provided axis-aligned box.
@@ -169,8 +175,16 @@ impl PhysicsWorld2D {
   ///
   /// # Returns
   /// Returns a vector of matching rigid body handles.
-  pub fn query_aabb(&self, _min: [f32; 2], _max: [f32; 2]) -> Vec<RigidBody2D> {
-    return Vec::new();
+  pub fn query_aabb(&self, min: [f32; 2], max: [f32; 2]) -> Vec<RigidBody2D> {
+    if !is_valid_query_point(min) || !is_valid_query_point(max) {
+      return Vec::new();
+    }
+
+    let normalized_min = [min[0].min(max[0]), min[1].min(max[1])];
+    let normalized_max = [min[0].max(max[0]), min[1].max(max[1])];
+    let body_slots = self.backend.query_aabb_2d(normalized_min, normalized_max);
+
+    return self.deduplicate_query_body_hits(body_slots);
   }
 
   /// Returns the nearest rigid body hit by the provided ray.
@@ -189,6 +203,36 @@ impl PhysicsWorld2D {
     _max_dist: f32,
   ) -> Option<RaycastHit> {
     return None;
+  }
+
+  /// Rebuilds and deduplicates rigid body handles from backend query hits.
+  ///
+  /// # Arguments
+  /// - `body_slots`: Backend `(slot_index, slot_generation)` pairs.
+  ///
+  /// # Returns
+  /// Returns one `RigidBody2D` handle per unique body, preserving first-hit
+  /// order from the backend query.
+  fn deduplicate_query_body_hits(
+    &self,
+    body_slots: Vec<(u32, u32)>,
+  ) -> Vec<RigidBody2D> {
+    let mut seen_bodies = HashSet::new();
+    let mut bodies = Vec::new();
+
+    for (slot_index, slot_generation) in body_slots {
+      let body = RigidBody2D::from_backend_slot(
+        self.world_id,
+        slot_index,
+        slot_generation,
+      );
+
+      if seen_bodies.insert(body) {
+        bodies.push(body);
+      }
+    }
+
+    return bodies;
   }
 }
 
@@ -352,6 +396,17 @@ fn validate_gravity(gravity: [f32; 2]) -> Result<(), PhysicsWorld2DError> {
   }
 
   return Ok(());
+}
+
+/// Returns whether a query point contains only finite coordinates.
+///
+/// # Arguments
+/// - `point`: The point to validate.
+///
+/// # Returns
+/// Returns `true` when both coordinates are finite.
+fn is_valid_query_point(point: [f32; 2]) -> bool {
+  return point[0].is_finite() && point[1].is_finite();
 }
 
 /// Allocates a non-zero unique world identifier.

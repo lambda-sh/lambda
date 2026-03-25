@@ -7,6 +7,7 @@ mod colliders;
 mod collision_filters;
 mod compound_colliders;
 mod materials;
+mod queries;
 
 use lambda::physics::{
   PhysicsWorld2DBuilder,

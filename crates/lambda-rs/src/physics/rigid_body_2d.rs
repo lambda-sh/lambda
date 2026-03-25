@@ -44,6 +44,30 @@ pub struct RigidBody2D {
 }
 
 impl RigidBody2D {
+  /// Creates a world-scoped rigid body handle from backend slot identifiers.
+  ///
+  /// This helper is an internal implementation detail used by query and event
+  /// APIs that reconstruct public handles from backend state.
+  ///
+  /// # Arguments
+  /// - `world_id`: The owning physics world identifier.
+  /// - `slot_index`: The backend body slot index.
+  /// - `slot_generation`: The backend body slot generation counter.
+  ///
+  /// # Returns
+  /// Returns a `RigidBody2D` handle bound to the provided world.
+  pub(super) fn from_backend_slot(
+    world_id: u64,
+    slot_index: u32,
+    slot_generation: u32,
+  ) -> Self {
+    return Self {
+      world_id,
+      slot_index,
+      slot_generation,
+    };
+  }
+
   /// Returns the backend slot identifiers for this handle.
   ///
   /// This function is an internal implementation detail used by other
