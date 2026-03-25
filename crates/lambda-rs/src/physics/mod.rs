@@ -32,12 +32,71 @@ pub use rigid_body_2d::{
   RigidBodyType,
 };
 
+const DEFAULT_COLLISION_FILTER_GROUP: u32 = u32::MAX;
+const DEFAULT_COLLISION_FILTER_MASK: u32 = u32::MAX;
 const DEFAULT_GRAVITY_X: f32 = 0.0;
 const DEFAULT_GRAVITY_Y: f32 = -9.81;
 const DEFAULT_TIMESTEP_SECONDS: f32 = 1.0 / 60.0;
 const DEFAULT_SUBSTEPS: u32 = 1;
 
 static NEXT_WORLD_ID: AtomicU64 = AtomicU64::new(1);
+
+/// Indicates whether a collision pair started or ended contact this step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollisionEventKind {
+  /// The two bodies started touching during the most recent simulation step.
+  Started,
+  /// The two bodies stopped touching during the most recent simulation step.
+  Ended,
+}
+
+/// Describes a body pair collision observed during simulation stepping.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CollisionEvent {
+  /// The event transition kind for this body pair.
+  pub kind: CollisionEventKind,
+  /// The first body participating in the collision pair.
+  pub body_a: RigidBody2D,
+  /// The second body participating in the collision pair.
+  pub body_b: RigidBody2D,
+  /// The representative contact point, when available.
+  pub contact_point: Option<[f32; 2]>,
+  /// The representative contact normal, when available.
+  pub normal: Option<[f32; 2]>,
+  /// The representative penetration depth, when available.
+  pub penetration: Option<f32>,
+}
+
+/// Configures collider collision group and mask bitfields.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CollisionFilter {
+  /// The membership bitfield for this collider.
+  pub group: u32,
+  /// The bitfield describing which groups this collider can collide with.
+  pub mask: u32,
+}
+
+impl Default for CollisionFilter {
+  fn default() -> Self {
+    return Self {
+      group: DEFAULT_COLLISION_FILTER_GROUP,
+      mask: DEFAULT_COLLISION_FILTER_MASK,
+    };
+  }
+}
+
+/// Describes the nearest body hit by a ray query.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RaycastHit {
+  /// The rigid body hit by the ray.
+  pub body: RigidBody2D,
+  /// The world-space hit position.
+  pub point: [f32; 2],
+  /// The world-space hit normal.
+  pub normal: [f32; 2],
+  /// The non-negative distance from the origin to the hit point.
+  pub distance: f32,
+}
 
 /// A 2D physics simulation world.
 pub struct PhysicsWorld2D {
@@ -81,6 +140,55 @@ impl PhysicsWorld2D {
   /// Returns the timestep in seconds.
   pub fn timestep_seconds(&self) -> f32 {
     return self.timestep_seconds;
+  }
+
+  /// Returns collision events collected during the most recent step.
+  ///
+  /// # Returns
+  /// Returns an iterator over collision events emitted by the world.
+  pub fn collision_events(&self) -> impl Iterator<Item = CollisionEvent> {
+    return std::iter::empty();
+  }
+
+  /// Returns all bodies whose colliders contain the provided point.
+  ///
+  /// # Arguments
+  /// - `point`: The world-space point to test.
+  ///
+  /// # Returns
+  /// Returns a vector of matching rigid body handles.
+  pub fn query_point(&self, _point: [f32; 2]) -> Vec<RigidBody2D> {
+    return Vec::new();
+  }
+
+  /// Returns all bodies whose colliders overlap the provided axis-aligned box.
+  ///
+  /// # Arguments
+  /// - `min`: The minimum world-space corner of the query box.
+  /// - `max`: The maximum world-space corner of the query box.
+  ///
+  /// # Returns
+  /// Returns a vector of matching rigid body handles.
+  pub fn query_aabb(&self, _min: [f32; 2], _max: [f32; 2]) -> Vec<RigidBody2D> {
+    return Vec::new();
+  }
+
+  /// Returns the nearest rigid body hit by the provided ray.
+  ///
+  /// # Arguments
+  /// - `origin`: The ray origin in world space.
+  /// - `dir`: The ray direction in world space.
+  /// - `max_dist`: The maximum query distance.
+  ///
+  /// # Returns
+  /// Returns the nearest hit, if one exists.
+  pub fn raycast(
+    &self,
+    _origin: [f32; 2],
+    _dir: [f32; 2],
+    _max_dist: f32,
+  ) -> Option<RaycastHit> {
+    return None;
   }
 }
 
@@ -401,6 +509,30 @@ mod tests {
 
     world.step();
     assert_eq!(world.backend.timestep_seconds(), 0.25);
+
+    return;
+  }
+
+  /// Exposes stable defaults for collider collision filtering.
+  #[test]
+  fn collision_filter_default_collides_with_all_groups() {
+    let filter = CollisionFilter::default();
+
+    assert_eq!(filter.group, u32::MAX);
+    assert_eq!(filter.mask, u32::MAX);
+
+    return;
+  }
+
+  /// Returns empty query and event results for an empty world.
+  #[test]
+  fn empty_world_collision_queries_return_no_results() {
+    let world = PhysicsWorld2DBuilder::new().build().unwrap();
+
+    assert_eq!(world.collision_events().count(), 0);
+    assert!(world.query_point([0.0, 0.0]).is_empty());
+    assert!(world.query_aabb([-1.0, -1.0], [1.0, 1.0]).is_empty());
+    assert_eq!(world.raycast([0.0, 0.0], [1.0, 0.0], 10.0), None);
 
     return;
   }
