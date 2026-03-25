@@ -305,7 +305,7 @@ fn align_up_u32(value: u32, alignment: u32) -> u32 {
 
 /// Validate immediate ranges and calculate the minimum allocation size.
 ///
-/// wgpu v28 uses a single byte region of size `immediate_size`, addressed by
+/// wgpu uses a single byte region of size `immediate_size`, addressed by
 /// `set_immediates(offset, data)`. This function enforces that the provided
 /// ranges:
 /// - Start at byte offset 0 (as a union)
@@ -408,10 +408,13 @@ impl<'a> PipelineLayoutBuilder<'a> {
 
   /// Build the layout.
   pub fn build(self, gpu: &Gpu) -> PipelineLayout {
-    let layouts_raw: Vec<&wgpu::BindGroupLayout> =
-      self.layouts.iter().map(|l| l.raw()).collect();
+    let layouts_raw: Vec<Option<&wgpu::BindGroupLayout>> = self
+      .layouts
+      .iter()
+      .map(|layout| Some(layout.raw()))
+      .collect();
 
-    // wgpu v28 allocates a single immediate byte region sized by
+    // wgpu allocates a single immediate byte region sized by
     // `PipelineLayoutDescriptor::immediate_size`. If callers provide multiple
     // ranges, they are treated as sub-ranges of the same contiguous allocation.
     //
@@ -442,7 +445,7 @@ impl<'a> PipelineLayoutBuilder<'a> {
         .device()
         .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
           label: self.label.as_deref(),
-          bind_group_layouts: &layouts_raw,
+          bind_group_layouts: layouts_raw.as_slice(),
           immediate_size,
         });
     if fallback_used {
@@ -625,8 +628,8 @@ impl<'a> RenderPipelineBuilder<'a> {
   pub fn with_depth_stencil(mut self, format: DepthFormat) -> Self {
     self.depth_stencil = Some(wgpu::DepthStencilState {
       format: format.to_wgpu(),
-      depth_write_enabled: true,
-      depth_compare: wgpu::CompareFunction::Less,
+      depth_write_enabled: Some(true),
+      depth_compare: Some(wgpu::CompareFunction::Less),
       stencil: wgpu::StencilState::default(),
       bias: wgpu::DepthBiasState::default(),
     });
@@ -637,12 +640,12 @@ impl<'a> RenderPipelineBuilder<'a> {
   pub fn with_depth_compare(mut self, compare: CompareFunction) -> Self {
     let ds = self.depth_stencil.get_or_insert(wgpu::DepthStencilState {
       format: wgpu::TextureFormat::Depth32Float,
-      depth_write_enabled: true,
-      depth_compare: wgpu::CompareFunction::Less,
+      depth_write_enabled: Some(true),
+      depth_compare: Some(wgpu::CompareFunction::Less),
       stencil: wgpu::StencilState::default(),
       bias: wgpu::DepthBiasState::default(),
     });
-    ds.depth_compare = compare.to_wgpu();
+    ds.depth_compare = Some(compare.to_wgpu());
     return self;
   }
 
@@ -650,12 +653,12 @@ impl<'a> RenderPipelineBuilder<'a> {
   pub fn with_depth_write_enabled(mut self, enabled: bool) -> Self {
     let ds = self.depth_stencil.get_or_insert(wgpu::DepthStencilState {
       format: wgpu::TextureFormat::Depth32Float,
-      depth_write_enabled: true,
-      depth_compare: wgpu::CompareFunction::Less,
+      depth_write_enabled: Some(true),
+      depth_compare: Some(wgpu::CompareFunction::Less),
       stencil: wgpu::StencilState::default(),
       bias: wgpu::DepthBiasState::default(),
     });
-    ds.depth_write_enabled = enabled;
+    ds.depth_write_enabled = Some(enabled);
     return self;
   }
 
@@ -663,8 +666,8 @@ impl<'a> RenderPipelineBuilder<'a> {
   pub fn with_stencil(mut self, stencil: StencilState) -> Self {
     let ds = self.depth_stencil.get_or_insert(wgpu::DepthStencilState {
       format: wgpu::TextureFormat::Depth24PlusStencil8,
-      depth_write_enabled: true,
-      depth_compare: wgpu::CompareFunction::Less,
+      depth_write_enabled: Some(true),
+      depth_compare: Some(wgpu::CompareFunction::Less),
       stencil: wgpu::StencilState::default(),
       bias: wgpu::DepthBiasState::default(),
     });
