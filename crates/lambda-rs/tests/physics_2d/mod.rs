@@ -4,6 +4,7 @@
 //! surface, including cross-crate wiring through `lambda-rs-platform`.
 
 mod colliders;
+mod collision_filters;
 mod compound_colliders;
 mod materials;
 

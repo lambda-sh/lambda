@@ -304,6 +304,8 @@ impl PhysicsBackend2D {
   /// - `density`: The density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -322,6 +324,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     return self.attach_collider_2d(
       parent_slot_index,
@@ -332,6 +336,8 @@ impl PhysicsBackend2D {
       density,
       friction,
       restitution,
+      collision_group,
+      collision_mask,
     );
   }
 
@@ -350,6 +356,8 @@ impl PhysicsBackend2D {
   /// - `density`: The density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -369,6 +377,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     return self.attach_collider_2d(
       parent_slot_index,
@@ -379,6 +389,8 @@ impl PhysicsBackend2D {
       density,
       friction,
       restitution,
+      collision_group,
+      collision_mask,
     );
   }
 
@@ -398,6 +410,8 @@ impl PhysicsBackend2D {
   /// - `density`: The density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -417,6 +431,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     let rapier_builder = if half_height == 0.0 {
       ColliderBuilder::ball(radius)
@@ -433,6 +449,8 @@ impl PhysicsBackend2D {
       density,
       friction,
       restitution,
+      collision_group,
+      collision_mask,
     );
   }
 
@@ -452,6 +470,8 @@ impl PhysicsBackend2D {
   /// - `density`: The density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -472,6 +492,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     let rapier_vertices: Vec<Vector> = vertices
       .iter()
@@ -493,6 +515,8 @@ impl PhysicsBackend2D {
       density,
       friction,
       restitution,
+      collision_group,
+      collision_mask,
     );
   }
 
@@ -1018,6 +1042,8 @@ impl PhysicsBackend2D {
   /// - `density`: The requested density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -1035,6 +1061,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     let (rapier_parent_handle, rapier_density) = self
       .prepare_parent_body_for_collider_attachment_2d(
@@ -1042,6 +1070,8 @@ impl PhysicsBackend2D {
         parent_slot_generation,
         density,
       )?;
+    let interaction_groups =
+      build_collision_groups_2d(collision_group, collision_mask);
 
     let rapier_collider = rapier_builder
       .translation(Vector::new(local_offset[0], local_offset[1]))
@@ -1051,6 +1081,8 @@ impl PhysicsBackend2D {
       .friction_combine_rule(CoefficientCombineRule::Multiply)
       .restitution(restitution)
       .restitution_combine_rule(CoefficientCombineRule::Max)
+      .collision_groups(interaction_groups)
+      .solver_groups(interaction_groups)
       .build();
 
     let rapier_handle = self.colliders.insert_with_parent(
@@ -1249,6 +1281,25 @@ fn build_rapier_rigid_body(
         .additional_mass(additional_mass_kg);
     }
   }
+}
+
+/// Converts public collision filter bitfields into Rapier interaction groups.
+///
+/// # Arguments
+/// - `collision_group`: The collider membership bitfield.
+/// - `collision_mask`: The collider interaction mask bitfield.
+///
+/// # Returns
+/// Returns Rapier interaction groups using AND-based matching.
+fn build_collision_groups_2d(
+  collision_group: u32,
+  collision_mask: u32,
+) -> InteractionGroups {
+  return InteractionGroups::new(
+    Group::from_bits_retain(collision_group),
+    Group::from_bits_retain(collision_mask),
+    InteractionTestMode::And,
+  );
 }
 
 /// Validates a 2D position.

@@ -345,6 +345,8 @@ impl Collider2DBuilder {
           self.material.density(),
           self.material.friction(),
           self.material.restitution(),
+          self.collision_filter.group,
+          self.collision_filter.mask,
         )
         .map_err(map_backend_error)?,
       ColliderShape2D::Rectangle {
@@ -362,6 +364,8 @@ impl Collider2DBuilder {
           self.material.density(),
           self.material.friction(),
           self.material.restitution(),
+          self.collision_filter.group,
+          self.collision_filter.mask,
         )
         .map_err(map_backend_error)?,
       ColliderShape2D::Capsule {
@@ -379,6 +383,8 @@ impl Collider2DBuilder {
           self.material.density(),
           self.material.friction(),
           self.material.restitution(),
+          self.collision_filter.group,
+          self.collision_filter.mask,
         )
         .map_err(map_backend_error)?,
       ColliderShape2D::ConvexPolygon { vertices } => world
@@ -392,6 +398,8 @@ impl Collider2DBuilder {
           self.material.density(),
           self.material.friction(),
           self.material.restitution(),
+          self.collision_filter.group,
+          self.collision_filter.mask,
         )
         .map_err(map_backend_error)?,
     };
