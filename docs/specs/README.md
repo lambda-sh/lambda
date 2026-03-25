@@ -3,9 +3,13 @@ title: "Specifications Index"
 document_id: "specs-index-2026-02-07"
 status: "living"
 created: "2026-02-07T00:00:00Z"
-last_updated: "2026-02-17T23:08:44Z"
-version: "0.1.4"
-repo_commit: "43c91a76dec71326cc255ebb6fb6c6402e95735c"
+last_updated: "2026-03-25T16:39:52Z"
+version: "0.1.5"
+engine_workspace_version: "2023.1.30"
+wgpu_version: "26.0.1"
+shader_backend_default: "naga"
+winit_version: "0.29.10"
+repo_commit: "f3c56aaa0985993cc7e751865913e7a2ef27040e"
 owners: ["lambda-sh"]
 reviewers: ["engine"]
 tags: ["index", "specs", "docs"]
@@ -36,7 +40,13 @@ tags: ["index", "specs", "docs"]
 - 2D Physics World — [physics/physics-world-2d.md](physics/physics-world-2d.md)
 - 2D Rigid Bodies — [physics/rigid-bodies-2d.md](physics/rigid-bodies-2d.md)
 - 2D Colliders — [physics/colliders-2d.md](physics/colliders-2d.md)
+- 2D Collision Queries and Events — [physics/collision-queries-and-events-2d.md](physics/collision-queries-and-events-2d.md)
 
 ## Templates
 
 - Specification template — [_spec-template.md](_spec-template.md)
+
+## Changelog
+
+- 0.1.5 (2026-03-25): Add the 2D collision queries and events specification
+  and align metadata with the long-lived documentation requirements.

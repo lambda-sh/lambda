@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-03-14T22:54:24Z"
-version: "0.1.17"
+last_updated: "2026-03-25T16:39:52Z"
+version: "0.1.18"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "23dc1cbe0b87e772e92071ad170dfb70ced36f88"
+repo_commit: "f3c56aaa0985993cc7e751865913e7a2ef27040e"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo", "audio", "physics"]
@@ -17,8 +17,8 @@ tags: ["guide", "features", "validation", "cargo", "audio", "physics"]
 
 ## Overview
 This document enumerates the primary Cargo features exposed by the workspace
-relevant to rendering, validation, and audio behavior. It defines defaults,
-relationships, and expected behavior in debug and release builds.
+relevant to rendering, validation, audio, and physics behavior. It defines
+defaults, relationships, and expected behavior in debug and release builds.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -91,11 +91,16 @@ Physics
 - `physics-2d` (umbrella, disabled by default): enables the 2D physics world
   APIs (for example, `lambda::physics::PhysicsWorld2D`,
   `lambda::physics::RigidBody2D`, `lambda::physics::Collider2D`, and
-  `lambda::physics::Collider2DBuilder`). This feature enables the platform
-  physics backend via `lambda-rs-platform/physics-2d` (currently backed by
-  `rapier2d`). Expected runtime cost depends on simulation workload, collider
-  count, and contact density; no runtime cost is incurred unless a physics
-  world is constructed, populated, and stepped.
+  `lambda::physics::Collider2DBuilder`). This feature also covers collision
+  event delivery (`PhysicsWorld2D::collision_events()`), per-collider
+  collision filtering (`CollisionFilter`,
+  `Collider2DBuilder::with_collision_filter()`), and read-only spatial queries
+  (`PhysicsWorld2D::{query_point,query_aabb,raycast}`). This feature enables
+  the platform physics backend via `lambda-rs-platform/physics-2d` (currently
+  backed by `rapier2d`). Expected runtime cost depends on simulation workload,
+  collider count, contact density, event buffering, and query frequency; no
+  runtime cost is incurred unless a physics world is constructed, populated,
+  stepped, or queried.
 
 Render validation
 
@@ -175,6 +180,8 @@ Physics
   `rapier2d` directly via this crate.
 
 ## Changelog
+- 0.1.18 (2026-03-25): Expand `physics-2d` documentation to include collision
+  events, collision filtering, and spatial queries.
 - 0.1.17 (2026-03-14): Update `physics-2d` coverage to include 2D colliders.
 - 0.1.16 (2026-02-13): Document 2D rigid bodies under `physics-2d` and update
   metadata.
