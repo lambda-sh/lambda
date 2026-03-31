@@ -55,6 +55,52 @@ fn build_ball(world: &mut PhysicsWorld2D) -> RigidBody2D {
   return ball;
 }
 
+/// Creates a static body with two overlapping circle colliders.
+///
+/// # Arguments
+/// - `world`: The world that will own the compound body.
+///
+/// # Returns
+/// Returns the created compound rigid body handle.
+fn build_compound_circle_body(world: &mut PhysicsWorld2D) -> RigidBody2D {
+  let body = RigidBody2DBuilder::new(RigidBodyType::Static)
+    .build(world)
+    .unwrap();
+
+  Collider2DBuilder::circle(0.5)
+    .with_offset(-0.25, 0.0)
+    .build(world, body)
+    .unwrap();
+  Collider2DBuilder::circle(0.5)
+    .with_offset(0.25, 0.0)
+    .build(world, body)
+    .unwrap();
+
+  return body;
+}
+
+/// Creates a dynamic ball already positioned in overlap.
+///
+/// # Arguments
+/// - `world`: The world that will own the body.
+/// - `position`: The initial body position in meters.
+///
+/// # Returns
+/// Returns the created rigid body handle.
+fn build_overlapping_ball(
+  world: &mut PhysicsWorld2D,
+  position: [f32; 2],
+) -> RigidBody2D {
+  let ball = RigidBody2DBuilder::new(RigidBodyType::Dynamic)
+    .with_position(position[0], position[1])
+    .build(world)
+    .unwrap();
+
+  Collider2DBuilder::circle(0.5).build(world, ball).unwrap();
+
+  return ball;
+}
+
 /// Steps until at least one collision event is produced.
 ///
 /// # Arguments
@@ -77,6 +123,33 @@ fn step_until_collision_events(
   }
 
   panic!("expected collision events within {max_steps} steps");
+}
+
+/// Steps until a collision event of the requested kind is produced.
+///
+/// # Arguments
+/// - `world`: The world to step.
+/// - `kind`: The event kind to wait for.
+/// - `max_steps`: The maximum number of steps to attempt.
+///
+/// # Returns
+/// Returns all drained events from the first step that produced the requested
+/// event kind.
+fn step_until_collision_event_kind(
+  world: &mut PhysicsWorld2D,
+  kind: CollisionEventKind,
+  max_steps: u32,
+) -> Vec<CollisionEvent> {
+  for _ in 0..max_steps {
+    world.step();
+
+    let events: Vec<CollisionEvent> = world.collision_events().collect();
+    if events.iter().any(|event| event.kind == kind) {
+      return events;
+    }
+  }
+
+  panic!("expected {kind:?} event within {max_steps} steps");
 }
 
 /// Ensures first contact emits a single `Started` event.
@@ -166,6 +239,145 @@ fn physics_2d_collision_events_started_includes_contact_data() {
     "expected a unit normal, got {:?}",
     normal,
   );
+
+  return;
+}
+
+/// Ensures separation emits one `Ended` event.
+#[test]
+fn physics_2d_collision_events_separation_emits_ended() {
+  let mut world = PhysicsWorld2DBuilder::new()
+    .with_gravity(0.0, 0.0)
+    .build()
+    .unwrap();
+
+  let ground = build_ground(&mut world);
+  let ball = build_overlapping_ball(&mut world, [0.0, 0.0]);
+
+  let started_events =
+    step_until_collision_event_kind(&mut world, CollisionEventKind::Started, 1);
+  assert_eq!(
+    started_events
+      .iter()
+      .filter(|event| event.kind == CollisionEventKind::Started)
+      .count(),
+    1,
+  );
+
+  ball.set_position(&mut world, 0.0, 4.0).unwrap();
+  let ended_events =
+    step_until_collision_event_kind(&mut world, CollisionEventKind::Ended, 1);
+  let ended_event = ended_events
+    .into_iter()
+    .find(|event| event.kind == CollisionEventKind::Ended)
+    .unwrap();
+
+  assert_eq!(ended_event.body_a, ground);
+  assert_eq!(ended_event.body_b, ball);
+
+  return;
+}
+
+/// Ensures `Ended` omits contact payload fields.
+#[test]
+fn physics_2d_collision_events_ended_has_no_contact_payload() {
+  let mut world = PhysicsWorld2DBuilder::new()
+    .with_gravity(0.0, 0.0)
+    .build()
+    .unwrap();
+
+  build_ground(&mut world);
+  let ball = build_overlapping_ball(&mut world, [0.0, 0.0]);
+
+  step_until_collision_event_kind(&mut world, CollisionEventKind::Started, 1);
+  ball.set_position(&mut world, 0.0, 4.0).unwrap();
+
+  let ended_event =
+    step_until_collision_event_kind(&mut world, CollisionEventKind::Ended, 1)
+      .into_iter()
+      .find(|event| event.kind == CollisionEventKind::Ended)
+      .unwrap();
+
+  assert_eq!(ended_event.contact_point, None);
+  assert_eq!(ended_event.normal, None);
+  assert_eq!(ended_event.penetration, None);
+
+  return;
+}
+
+/// Ensures compound colliders still emit one event per body pair.
+#[test]
+fn physics_2d_collision_events_compound_colliders_emit_one_body_pair_event() {
+  let mut world = PhysicsWorld2DBuilder::new()
+    .with_gravity(0.0, 0.0)
+    .build()
+    .unwrap();
+
+  let compound_body = build_compound_circle_body(&mut world);
+  let ball = build_overlapping_ball(&mut world, [0.0, 0.0]);
+
+  let started_events =
+    step_until_collision_event_kind(&mut world, CollisionEventKind::Started, 1);
+
+  assert_eq!(
+    started_events
+      .iter()
+      .filter(|event| event.kind == CollisionEventKind::Started)
+      .count(),
+    1,
+  );
+  assert_eq!(
+    started_events
+      .iter()
+      .find(|event| event.kind == CollisionEventKind::Started)
+      .unwrap()
+      .body_a,
+    compound_body,
+  );
+  assert_eq!(
+    started_events
+      .iter()
+      .find(|event| event.kind == CollisionEventKind::Started)
+      .unwrap()
+      .body_b,
+    ball,
+  );
+
+  ball.set_position(&mut world, 3.0, 0.0).unwrap();
+  let ended_events =
+    step_until_collision_event_kind(&mut world, CollisionEventKind::Ended, 1);
+
+  assert_eq!(
+    ended_events
+      .iter()
+      .filter(|event| event.kind == CollisionEventKind::Ended)
+      .count(),
+    1,
+  );
+
+  return;
+}
+
+/// Ensures queued events survive multiple steps until drained.
+#[test]
+fn physics_2d_collision_events_preserve_queue_across_multiple_steps() {
+  let mut world = PhysicsWorld2DBuilder::new()
+    .with_gravity(0.0, 0.0)
+    .build()
+    .unwrap();
+
+  build_ground(&mut world);
+  let ball = build_overlapping_ball(&mut world, [0.0, 0.0]);
+
+  world.step();
+  ball.set_position(&mut world, 0.0, 4.0).unwrap();
+  world.step();
+
+  let events: Vec<CollisionEvent> = world.collision_events().collect();
+
+  assert_eq!(events.len(), 2);
+  assert_eq!(events[0].kind, CollisionEventKind::Started);
+  assert_eq!(events[1].kind, CollisionEventKind::Ended);
 
   return;
 }

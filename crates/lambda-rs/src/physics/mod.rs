@@ -158,7 +158,8 @@ impl PhysicsWorld2D {
   /// until gameplay code asks for them. Draining here keeps the simulation step
   /// free of user callbacks and makes event consumption explicit, which is
   /// easier to integrate into fixed-update loops than re-entrant callback
-  /// dispatch during contact resolution.
+  /// dispatch during contact resolution. Events remain queued across multiple
+  /// `step()` calls until this method drains them.
   ///
   /// # Returns
   /// Returns an iterator over the queued collision events, draining the queue

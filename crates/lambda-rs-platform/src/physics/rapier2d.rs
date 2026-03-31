@@ -264,6 +264,7 @@ pub struct PhysicsBackend2D {
   rigid_body_slots_2d: Vec<RigidBodySlot2D>,
   collider_slots_2d: Vec<ColliderSlot2D>,
   active_body_pairs_2d: HashSet<BodyPairKey2D>,
+  active_body_pair_order_2d: Vec<BodyPairKey2D>,
   queued_collision_events_2d: Vec<CollisionEvent2DBackend>,
 }
 
@@ -305,6 +306,7 @@ impl PhysicsBackend2D {
       rigid_body_slots_2d: Vec::new(),
       collider_slots_2d: Vec::new(),
       active_body_pairs_2d: HashSet::new(),
+      active_body_pair_order_2d: Vec::new(),
       queued_collision_events_2d: Vec::new(),
     };
   }
@@ -1291,8 +1293,9 @@ impl PhysicsBackend2D {
   /// The public API reports one event per body pair, not one event per collider
   /// pair. This pass aggregates Rapier collider contacts by owning bodies,
   /// keeps the deepest active contact seen for each body pair, and compares the
-  /// resulting active set against the previous step to detect newly-started
-  /// contacts without repeating `Started` every frame.
+  /// resulting active set against the previous step to detect both newly
+  /// started and newly ended contacts without emitting collider-pair
+  /// duplicates for compound bodies.
   ///
   /// # Returns
   /// Returns `()` after appending any newly-started events to the backend
@@ -1352,8 +1355,28 @@ impl PhysicsBackend2D {
         });
     }
 
+    for body_pair_key in self.active_body_pair_order_2d.iter().copied() {
+      if current_body_pair_contacts.contains_key(&body_pair_key) {
+        continue;
+      }
+
+      self
+        .queued_collision_events_2d
+        .push(CollisionEvent2DBackend {
+          kind: CollisionEventKind2DBackend::Ended,
+          body_a_slot_index: body_pair_key.body_a_slot_index,
+          body_a_slot_generation: body_pair_key.body_a_slot_generation,
+          body_b_slot_index: body_pair_key.body_b_slot_index,
+          body_b_slot_generation: body_pair_key.body_b_slot_generation,
+          contact_point: None,
+          normal: None,
+          penetration: None,
+        });
+    }
+
     self.active_body_pairs_2d =
       current_body_pair_contacts.keys().copied().collect();
+    self.active_body_pair_order_2d = current_body_pair_order;
 
     return;
   }
