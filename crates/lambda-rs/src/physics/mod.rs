@@ -156,6 +156,11 @@ impl PhysicsWorld2D {
 
   /// Returns all bodies whose colliders contain the provided point.
   ///
+  /// Point queries are intended for gameplay checks that can be called freely
+  /// during update code. Treating invalid floating-point input as a miss keeps
+  /// the public API simple for callers and avoids forcing game code to thread
+  /// backend validation errors through every query site.
+  ///
   /// # Arguments
   /// - `point`: The world-space point to test.
   ///
@@ -166,11 +171,21 @@ impl PhysicsWorld2D {
       return Vec::new();
     }
 
+    // Backend queries operate in collider space, but the public API reports
+    // owning bodies. Rebuild body handles and collapse duplicate hits from
+    // compound colliders before returning the result.
     let body_slots = self.backend.query_point_2d(point);
     return self.deduplicate_query_body_hits(body_slots);
   }
 
   /// Returns all bodies whose colliders overlap the provided axis-aligned box.
+  ///
+  /// AABB queries are meant to be tolerant of how gameplay code produces
+  /// bounds. The world normalizes `min` and `max` before delegating so callers
+  /// can pass corners in either order without adding their own pre-processing.
+  /// Invalid floating-point inputs are treated as a miss for the same reason as
+  /// `query_point()`: query call sites stay straightforward and do not need to
+  /// handle backend-specific error types.
   ///
   /// # Arguments
   /// - `min`: The minimum world-space corner of the query box.
@@ -183,6 +198,7 @@ impl PhysicsWorld2D {
       return Vec::new();
     }
 
+    // Normalize the query box so callers do not need to sort the bounds first.
     let normalized_min = [min[0].min(max[0]), min[1].min(max[1])];
     let normalized_max = [min[0].max(max[0]), min[1].max(max[1])];
     let body_slots = self.backend.query_aabb_2d(normalized_min, normalized_max);
@@ -192,6 +208,12 @@ impl PhysicsWorld2D {
 
   /// Returns the nearest rigid body hit by the provided ray.
   ///
+  /// Raycasts are exposed as a lightweight gameplay query rather than a
+  /// fallible backend operation. Inputs that cannot represent a meaningful
+  /// finite segment are treated as a miss, and the backend hit is rebound to
+  /// this world's public body handles before returning so the high-level API
+  /// stays vendor-free.
+  ///
   /// # Arguments
   /// - `origin`: The ray origin in world space.
   /// - `dir`: The ray direction in world space.
@@ -199,10 +221,6 @@ impl PhysicsWorld2D {
   ///
   /// # Returns
   /// Returns the nearest hit, if one exists.
-  ///
-  /// This method preserves an infallible query contract for games: invalid
-  /// inputs return `None` instead of surfacing backend-specific validation
-  /// errors through the high-level API.
   pub fn raycast(
     &self,
     origin: [f32; 2],
@@ -245,6 +263,8 @@ impl PhysicsWorld2D {
         slot_generation,
       );
 
+      // Spatial queries match colliders internally, but the public surface is
+      // body-oriented. Compound bodies therefore collapse to one handle.
       if seen_bodies.insert(body) {
         bodies.push(body);
       }

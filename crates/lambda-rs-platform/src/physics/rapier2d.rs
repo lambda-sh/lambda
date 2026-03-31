@@ -641,6 +641,11 @@ impl PhysicsBackend2D {
 
   /// Returns all rigid bodies whose colliders contain the provided point.
   ///
+  /// This walks the live collider set instead of Rapier's query pipeline
+  /// because gameplay queries are expected to work immediately after collider
+  /// creation. Before the world steps, broad-phase acceleration structures are
+  /// not guaranteed to be synchronized with newly attached colliders.
+  ///
   /// # Arguments
   /// - `point`: The world-space point to test.
   ///
@@ -673,6 +678,12 @@ impl PhysicsBackend2D {
 
   /// Returns all rigid bodies whose colliders overlap the provided AABB.
   ///
+  /// This performs exact shape-vs-shape tests over the live collider set for
+  /// the same reason as `query_point_2d()`: overlap queries need to be correct
+  /// before the first simulation step, when broad-phase data may still be
+  /// stale. Using exact tests here also avoids broad-phase false positives in
+  /// the backend result.
+  ///
   /// # Arguments
   /// - `min`: The minimum world-space corner of the query box.
   /// - `max`: The maximum world-space corner of the query box.
@@ -695,6 +706,8 @@ impl PhysicsBackend2D {
     let mut body_slots = Vec::new();
 
     for (collider_handle, collider) in self.colliders.iter() {
+      // Express the query box in the collider's local frame because Parry's
+      // exact intersection test compares one shape pose relative to the other.
       let shape_to_collider = query_pose.inv_mul(collider.position());
       let intersects = query_dispatcher.intersection_test(
         &shape_to_collider,
@@ -721,10 +734,10 @@ impl PhysicsBackend2D {
   /// Returns the nearest rigid body hit by the provided finite ray segment.
   ///
   /// This iterates the live collider set directly instead of using Rapier's
-  /// broad-phase query pipeline. The overlap-query work already established
-  /// that direct iteration is the most reliable way to support read-only
-  /// queries immediately after collider creation, before any simulation step
-  /// has synchronized broad-phase acceleration structures.
+  /// broad-phase query pipeline because raycasts are expected to see colliders
+  /// that were just created or attached earlier in the frame. Keeping queries
+  /// on the live collider set makes the result match gameplay expectations even
+  /// before the world has advanced.
   ///
   /// # Arguments
   /// - `origin`: The world-space ray origin.
