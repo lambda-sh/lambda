@@ -5,6 +5,10 @@
 //! of the platform layer.
 
 use std::{
+  collections::{
+    HashMap,
+    HashSet,
+  },
   error::Error,
   fmt,
 };
@@ -118,6 +122,36 @@ pub struct RaycastHit2DBackend {
   pub distance: f32,
 }
 
+/// Indicates whether a backend collision pair started or ended contact.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollisionEventKind2DBackend {
+  /// The body pair started touching during the current backend step.
+  Started,
+  /// The body pair stopped touching during the current backend step.
+  Ended,
+}
+
+/// Backend-agnostic data describing one 2D collision event.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CollisionEvent2DBackend {
+  /// The transition kind for the body pair.
+  pub kind: CollisionEventKind2DBackend,
+  /// The first rigid body's slot index.
+  pub body_a_slot_index: u32,
+  /// The first rigid body's slot generation.
+  pub body_a_slot_generation: u32,
+  /// The second rigid body's slot index.
+  pub body_b_slot_index: u32,
+  /// The second rigid body's slot generation.
+  pub body_b_slot_generation: u32,
+  /// The representative world-space contact point, when available.
+  pub contact_point: Option<[f32; 2]>,
+  /// The representative world-space contact normal, when available.
+  pub normal: Option<[f32; 2]>,
+  /// The representative penetration depth, when available.
+  pub penetration: Option<f32>,
+}
+
 /// The fallback mass applied to dynamic bodies before density colliders exist.
 const DYNAMIC_BODY_FALLBACK_MASS_KG: f32 = 1.0;
 
@@ -188,6 +222,30 @@ struct ColliderAttachmentMassPlan2D {
   should_remove_fallback_mass: bool,
 }
 
+/// A normalized body-pair key used for backend collision tracking.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct BodyPairKey2D {
+  /// The first body slot index.
+  body_a_slot_index: u32,
+  /// The first body slot generation.
+  body_a_slot_generation: u32,
+  /// The second body slot index.
+  body_b_slot_index: u32,
+  /// The second body slot generation.
+  body_b_slot_generation: u32,
+}
+
+/// The representative contact selected for a body pair during one step.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct BodyPairContact2D {
+  /// The representative world-space contact point.
+  point: [f32; 2],
+  /// The representative world-space normal from body A toward body B.
+  normal: [f32; 2],
+  /// The non-negative penetration depth.
+  penetration: f32,
+}
+
 /// A 2D physics backend powered by `rapier2d`.
 ///
 /// This type is an internal implementation detail used by `lambda-rs`.
@@ -205,6 +263,8 @@ pub struct PhysicsBackend2D {
   pipeline: PhysicsPipeline,
   rigid_body_slots_2d: Vec<RigidBodySlot2D>,
   collider_slots_2d: Vec<ColliderSlot2D>,
+  active_body_pairs_2d: HashSet<BodyPairKey2D>,
+  queued_collision_events_2d: Vec<CollisionEvent2DBackend>,
 }
 
 impl PhysicsBackend2D {
@@ -244,6 +304,8 @@ impl PhysicsBackend2D {
       pipeline: PhysicsPipeline::new(),
       rigid_body_slots_2d: Vec::new(),
       collider_slots_2d: Vec::new(),
+      active_body_pairs_2d: HashSet::new(),
+      queued_collision_events_2d: Vec::new(),
     };
   }
 
@@ -1048,7 +1110,22 @@ impl PhysicsBackend2D {
       &(),
     );
 
+    self.collect_collision_events_2d();
+
     return;
+  }
+
+  /// Drains backend collision events queued by prior step calls.
+  ///
+  /// The backend accumulates transition events across substeps so
+  /// `PhysicsWorld2D` can expose one post-step drain point without exposing
+  /// Rapier's event machinery or borrowing backend internals through the
+  /// public iterator.
+  ///
+  /// # Returns
+  /// Returns all queued backend collision events in insertion order.
+  pub fn drain_collision_events_2d(&mut self) -> Vec<CollisionEvent2DBackend> {
+    return std::mem::take(&mut self.queued_collision_events_2d);
   }
 
   /// Returns an immutable reference to a rigid body slot after validation.
@@ -1205,6 +1282,78 @@ impl PhysicsBackend2D {
         should_wake,
       );
     }
+
+    return;
+  }
+
+  /// Collects body-pair collision transitions from the current narrow phase.
+  ///
+  /// The public API reports one event per body pair, not one event per collider
+  /// pair. This pass aggregates Rapier collider contacts by owning bodies,
+  /// keeps the deepest active contact seen for each body pair, and compares the
+  /// resulting active set against the previous step to detect newly-started
+  /// contacts without repeating `Started` every frame.
+  ///
+  /// # Returns
+  /// Returns `()` after appending any newly-started events to the backend
+  /// queue.
+  fn collect_collision_events_2d(&mut self) {
+    let mut current_body_pair_contacts: HashMap<
+      BodyPairKey2D,
+      BodyPairContact2D,
+    > = HashMap::new();
+    let mut current_body_pair_order = Vec::new();
+
+    for contact_pair in self.narrow_phase.contact_pairs() {
+      if !contact_pair.has_any_active_contact() {
+        continue;
+      }
+
+      let Some((body_pair_key, body_pair_contact)) =
+        self.body_pair_contact_from_contact_pair_2d(contact_pair)
+      else {
+        continue;
+      };
+
+      if let Some(existing_contact) =
+        current_body_pair_contacts.get_mut(&body_pair_key)
+      {
+        if body_pair_contact.penetration > existing_contact.penetration {
+          *existing_contact = body_pair_contact;
+        }
+
+        continue;
+      }
+
+      current_body_pair_order.push(body_pair_key);
+      current_body_pair_contacts.insert(body_pair_key, body_pair_contact);
+    }
+
+    for body_pair_key in current_body_pair_order.iter().copied() {
+      if self.active_body_pairs_2d.contains(&body_pair_key) {
+        continue;
+      }
+
+      let Some(contact) = current_body_pair_contacts.get(&body_pair_key) else {
+        continue;
+      };
+
+      self
+        .queued_collision_events_2d
+        .push(CollisionEvent2DBackend {
+          kind: CollisionEventKind2DBackend::Started,
+          body_a_slot_index: body_pair_key.body_a_slot_index,
+          body_a_slot_generation: body_pair_key.body_a_slot_generation,
+          body_b_slot_index: body_pair_key.body_b_slot_index,
+          body_b_slot_generation: body_pair_key.body_b_slot_generation,
+          contact_point: Some(contact.point),
+          normal: Some(contact.normal),
+          penetration: Some(contact.penetration),
+        });
+    }
+
+    self.active_body_pairs_2d =
+      current_body_pair_contacts.keys().copied().collect();
 
     return;
   }
@@ -1424,6 +1573,7 @@ impl PhysicsBackend2D {
 
     return;
   }
+
   /// Resolves a query hit collider back to its owning rigid body slot.
   ///
   /// # Arguments
@@ -1445,6 +1595,41 @@ impl PhysicsBackend2D {
       collider_slot.parent_slot_index,
       collider_slot.parent_slot_generation,
     ));
+  }
+
+  /// Resolves one Rapier contact pair into a normalized body-pair contact.
+  ///
+  /// Rapier stores contacts per collider pair. The public API is body-oriented,
+  /// so this helper maps each collider pair back to its owning bodies, discards
+  /// self-contacts, normalizes body ordering for stable deduplication, and
+  /// returns the deepest active solver contact for that body pair.
+  ///
+  /// # Arguments
+  /// - `contact_pair`: The Rapier contact pair to inspect.
+  ///
+  /// # Returns
+  /// Returns the normalized body-pair key and representative contact when the
+  /// pair belongs to two distinct tracked bodies and has at least one active
+  /// solver contact.
+  fn body_pair_contact_from_contact_pair_2d(
+    &self,
+    contact_pair: &ContactPair,
+  ) -> Option<(BodyPairKey2D, BodyPairContact2D)> {
+    let body_a =
+      self.query_hit_to_parent_body_slot_2d(contact_pair.collider1)?;
+    let body_b =
+      self.query_hit_to_parent_body_slot_2d(contact_pair.collider2)?;
+
+    if body_a == body_b {
+      return None;
+    }
+
+    let (body_pair_key, should_flip_normal) =
+      normalize_body_pair_key_2d(body_a, body_b);
+    let representative_contact =
+      representative_contact_from_pair_2d(contact_pair, should_flip_normal)?;
+
+    return Some((body_pair_key, representative_contact));
   }
 }
 
@@ -1519,6 +1704,48 @@ fn build_collision_groups_2d(
     Group::from_bits_retain(collision_group),
     Group::from_bits_retain(collision_mask),
     InteractionTestMode::And,
+  );
+}
+
+/// Normalizes a body-pair key into a stable `body_a`/`body_b` ordering.
+///
+/// Stable ordering lets the backend deduplicate collider contacts that belong
+/// to the same bodies and keeps the public event stream from oscillating based
+/// on Rapier's internal pair ordering. The returned boolean tells callers
+/// whether normals reported from collider/body 1 toward collider/body 2 must be
+/// flipped to match the normalized body ordering.
+///
+/// # Arguments
+/// - `body_a`: The first raw backend body slot pair.
+/// - `body_b`: The second raw backend body slot pair.
+///
+/// # Returns
+/// Returns the normalized body-pair key and whether contact normals should be
+/// flipped to point from normalized body A toward normalized body B.
+fn normalize_body_pair_key_2d(
+  body_a: (u32, u32),
+  body_b: (u32, u32),
+) -> (BodyPairKey2D, bool) {
+  if body_a <= body_b {
+    return (
+      BodyPairKey2D {
+        body_a_slot_index: body_a.0,
+        body_a_slot_generation: body_a.1,
+        body_b_slot_index: body_b.0,
+        body_b_slot_generation: body_b.1,
+      },
+      false,
+    );
+  }
+
+  return (
+    BodyPairKey2D {
+      body_a_slot_index: body_b.0,
+      body_a_slot_generation: body_b.1,
+      body_b_slot_index: body_a.0,
+      body_b_slot_generation: body_a.1,
+    },
+    true,
   );
 }
 
@@ -1599,6 +1826,58 @@ fn normalize_query_vector_2d(vector: [f32; 2]) -> Option<[f32; 2]> {
   }
 
   return Some([vector[0] / length, vector[1] / length]);
+}
+
+/// Selects the deepest active solver contact from one Rapier contact pair.
+///
+/// Rapier's collider pair may expose several manifolds and several active
+/// solver contacts per manifold. The public start event only needs one
+/// representative contact, so this helper keeps the active solver contact with
+/// the greatest penetration depth. Solver contacts are used instead of raw
+/// tracked contacts because they already provide world-space points and reflect
+/// the contacts that actually participated in collision resolution this step.
+///
+/// # Arguments
+/// - `contact_pair`: The Rapier contact pair to inspect.
+/// - `should_flip_normal`: Whether the selected normal should be inverted to
+///   point from normalized body A toward normalized body B.
+///
+/// # Returns
+/// Returns the deepest active solver contact for the pair, if one exists.
+fn representative_contact_from_pair_2d(
+  contact_pair: &ContactPair,
+  should_flip_normal: bool,
+) -> Option<BodyPairContact2D> {
+  let mut representative_contact = None;
+
+  for manifold in &contact_pair.manifolds {
+    let mut normal = [manifold.data.normal.x, manifold.data.normal.y];
+
+    if should_flip_normal {
+      normal = [-normal[0], -normal[1]];
+    }
+
+    for solver_contact in &manifold.data.solver_contacts {
+      let penetration = (-solver_contact.dist).max(0.0);
+      let candidate_contact = BodyPairContact2D {
+        point: [solver_contact.point.x, solver_contact.point.y],
+        normal,
+        penetration,
+      };
+
+      if representative_contact.as_ref().is_some_and(
+        |existing: &BodyPairContact2D| {
+          candidate_contact.penetration <= existing.penetration
+        },
+      ) {
+        continue;
+      }
+
+      representative_contact = Some(candidate_contact);
+    }
+  }
+
+  return representative_contact;
 }
 
 /// Casts a ray against one live collider and normalizes the reported normal.

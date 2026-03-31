@@ -4,6 +4,7 @@
 //! API is backend-agnostic and does not expose vendor types.
 
 use std::{
+  cell::RefCell,
   collections::HashSet,
   error::Error,
   fmt,
@@ -14,6 +15,8 @@ use std::{
 };
 
 use lambda_platform::physics::{
+  CollisionEvent2DBackend,
+  CollisionEventKind2DBackend,
   PhysicsBackend2D,
   RaycastHit2DBackend,
 };
@@ -109,6 +112,7 @@ pub struct PhysicsWorld2D {
   timestep_seconds: f32,
   substeps: u32,
   backend: PhysicsBackend2D,
+  queued_collision_events: RefCell<Vec<CollisionEvent>>,
 }
 
 impl PhysicsWorld2D {
@@ -125,6 +129,8 @@ impl PhysicsWorld2D {
         .step_with_timestep_seconds(substep_timestep_seconds);
     }
 
+    let backend_events = self.backend.drain_collision_events_2d();
+    self.queue_backend_collision_events(backend_events);
     self.backend.clear_rigid_body_forces_2d();
 
     return;
@@ -146,12 +152,24 @@ impl PhysicsWorld2D {
     return self.timestep_seconds;
   }
 
-  /// Returns collision events collected during the most recent step.
+  /// Drains collision events collected by prior `step()` calls.
+  ///
+  /// Collision events are produced while the world advances and then buffered
+  /// until gameplay code asks for them. Draining here keeps the simulation step
+  /// free of user callbacks and makes event consumption explicit, which is
+  /// easier to integrate into fixed-update loops than re-entrant callback
+  /// dispatch during contact resolution.
   ///
   /// # Returns
-  /// Returns an iterator over collision events emitted by the world.
+  /// Returns an iterator over the queued collision events, draining the queue
+  /// as part of iteration creation.
   pub fn collision_events(&self) -> impl Iterator<Item = CollisionEvent> {
-    return std::iter::empty();
+    let queued_events: Vec<CollisionEvent> = self
+      .queued_collision_events
+      .borrow_mut()
+      .drain(..)
+      .collect();
+    return queued_events.into_iter();
   }
 
   /// Returns all bodies whose colliders contain the provided point.
@@ -292,6 +310,64 @@ impl PhysicsWorld2D {
       distance: hit.distance,
     };
   }
+
+  /// Appends backend collision events to the public drain queue.
+  ///
+  /// The backend reports only world-local slot data. This helper rebinds those
+  /// slots to world-scoped public handles and stores the results until
+  /// `collision_events()` drains them.
+  ///
+  /// # Arguments
+  /// - `backend_events`: The backend events to convert and queue.
+  ///
+  /// # Returns
+  /// Returns `()` after queueing the converted events.
+  fn queue_backend_collision_events(
+    &self,
+    backend_events: Vec<CollisionEvent2DBackend>,
+  ) {
+    let mapped_events = backend_events
+      .into_iter()
+      .map(|event| self.map_backend_collision_event(event));
+    self
+      .queued_collision_events
+      .borrow_mut()
+      .extend(mapped_events);
+
+    return;
+  }
+
+  /// Rebuilds a public collision event from backend slot and contact data.
+  ///
+  /// # Arguments
+  /// - `event`: The backend event payload.
+  ///
+  /// # Returns
+  /// Returns a backend-agnostic public collision event.
+  fn map_backend_collision_event(
+    &self,
+    event: CollisionEvent2DBackend,
+  ) -> CollisionEvent {
+    return CollisionEvent {
+      kind: match event.kind {
+        CollisionEventKind2DBackend::Started => CollisionEventKind::Started,
+        CollisionEventKind2DBackend::Ended => CollisionEventKind::Ended,
+      },
+      body_a: RigidBody2D::from_backend_slot(
+        self.world_id,
+        event.body_a_slot_index,
+        event.body_a_slot_generation,
+      ),
+      body_b: RigidBody2D::from_backend_slot(
+        self.world_id,
+        event.body_b_slot_index,
+        event.body_b_slot_generation,
+      ),
+      contact_point: event.contact_point,
+      normal: event.normal,
+      penetration: event.penetration,
+    };
+  }
 }
 
 /// Builder for `PhysicsWorld2D`.
@@ -381,6 +457,7 @@ impl PhysicsWorld2DBuilder {
       timestep_seconds: self.timestep_seconds,
       substeps: self.substeps,
       backend,
+      queued_collision_events: RefCell::new(Vec::new()),
     });
   }
 }
