@@ -13,7 +13,10 @@ use std::{
   },
 };
 
-use lambda_platform::physics::PhysicsBackend2D;
+use lambda_platform::physics::{
+  PhysicsBackend2D,
+  RaycastHit2DBackend,
+};
 
 mod collider_2d;
 mod rigid_body_2d;
@@ -196,13 +199,28 @@ impl PhysicsWorld2D {
   ///
   /// # Returns
   /// Returns the nearest hit, if one exists.
+  ///
+  /// This method preserves an infallible query contract for games: invalid
+  /// inputs return `None` instead of surfacing backend-specific validation
+  /// errors through the high-level API.
   pub fn raycast(
     &self,
-    _origin: [f32; 2],
-    _dir: [f32; 2],
-    _max_dist: f32,
+    origin: [f32; 2],
+    dir: [f32; 2],
+    max_dist: f32,
   ) -> Option<RaycastHit> {
-    return None;
+    if !is_valid_query_point(origin)
+      || !is_valid_query_direction(dir)
+      || !max_dist.is_finite()
+      || max_dist <= 0.0
+    {
+      return None;
+    }
+
+    // The backend performs the geometry query and returns backend-neutral hit
+    // data, which we then bind back to this world's public rigid body handles.
+    let hit = self.backend.raycast_2d(origin, dir, max_dist)?;
+    return Some(self.map_backend_raycast_hit(hit));
   }
 
   /// Rebuilds and deduplicates rigid body handles from backend query hits.
@@ -233,6 +251,26 @@ impl PhysicsWorld2D {
     }
 
     return bodies;
+  }
+
+  /// Rebuilds a public raycast hit from backend slot and geometry data.
+  ///
+  /// # Arguments
+  /// - `hit`: The backend hit payload.
+  ///
+  /// # Returns
+  /// Returns a backend-agnostic `RaycastHit`.
+  fn map_backend_raycast_hit(&self, hit: RaycastHit2DBackend) -> RaycastHit {
+    return RaycastHit {
+      body: RigidBody2D::from_backend_slot(
+        self.world_id,
+        hit.body_slot_index,
+        hit.body_slot_generation,
+      ),
+      point: hit.point,
+      normal: hit.normal,
+      distance: hit.distance,
+    };
   }
 }
 
@@ -407,6 +445,21 @@ fn validate_gravity(gravity: [f32; 2]) -> Result<(), PhysicsWorld2DError> {
 /// Returns `true` when both coordinates are finite.
 fn is_valid_query_point(point: [f32; 2]) -> bool {
   return point[0].is_finite() && point[1].is_finite();
+}
+
+/// Returns whether a ray/query direction has finite non-zero length.
+///
+/// # Arguments
+/// - `direction`: The query direction to validate.
+///
+/// # Returns
+/// Returns `true` when both components are finite and the vector is non-zero.
+fn is_valid_query_direction(direction: [f32; 2]) -> bool {
+  if !direction[0].is_finite() || !direction[1].is_finite() {
+    return false;
+  }
+
+  return direction[0].hypot(direction[1]) > 0.0;
 }
 
 /// Allocates a non-zero unique world identifier.

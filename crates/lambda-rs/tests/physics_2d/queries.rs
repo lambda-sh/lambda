@@ -1,12 +1,13 @@
 //! Spatial query integration tests.
 //!
-//! These tests validate point and axis-aligned overlap queries through the
-//! public `lambda-rs` 2D physics API.
+//! These tests validate point queries, overlap queries, and raycasts through
+//! the public `lambda-rs` 2D physics API.
 
 use lambda::physics::{
   Collider2DBuilder,
   PhysicsWorld2D,
   PhysicsWorld2DBuilder,
+  RaycastHit,
   RigidBody2D,
   RigidBody2DBuilder,
   RigidBodyType,
@@ -169,6 +170,95 @@ fn physics_2d_queries_compound_colliders_return_one_body_handle() {
   let hits = world.query_point([0.0, 0.0]);
 
   assert_eq!(hits, vec![body]);
+
+  return;
+}
+
+/// Ensures raycasts return the nearest hit body along the segment.
+#[test]
+fn physics_2d_queries_raycast_returns_nearest_hit() {
+  let mut world = PhysicsWorld2DBuilder::new()
+    .with_gravity(0.0, 0.0)
+    .build()
+    .unwrap();
+
+  let near_circle = build_static_circle(&mut world, [2.0, 0.0], 0.5);
+  build_static_rectangle(&mut world, [5.0, 0.0], 0.5, 0.5);
+
+  let hit = world.raycast([0.0, 0.0], [1.0, 0.0], 10.0).unwrap();
+
+  assert_eq!(hit.body, near_circle);
+  assert_eq!(hit.point, [1.5, 0.0]);
+  assert_eq!(hit.distance, 1.5);
+
+  return;
+}
+
+/// Ensures raycast distances are reported in world meters.
+#[test]
+fn physics_2d_queries_raycast_distance_uses_world_units() {
+  let mut world = PhysicsWorld2DBuilder::new()
+    .with_gravity(0.0, 0.0)
+    .build()
+    .unwrap();
+
+  let circle = build_static_circle(&mut world, [5.0, 0.0], 1.0);
+  let hit = world.raycast([0.0, 0.0], [2.0, 0.0], 10.0).unwrap();
+
+  assert_eq!(hit.body, circle);
+  assert_eq!(hit.point, [4.0, 0.0]);
+  assert_eq!(hit.distance, 4.0);
+
+  return;
+}
+
+/// Ensures raycast normals remain unit length.
+#[test]
+fn physics_2d_queries_raycast_returns_unit_normal() {
+  let mut world = PhysicsWorld2DBuilder::new()
+    .with_gravity(0.0, 0.0)
+    .build()
+    .unwrap();
+
+  build_static_circle(&mut world, [4.0, 1.0], 1.0);
+  let hit = world.raycast([0.0, 1.0], [1.0, 0.0], 10.0).unwrap();
+
+  assert_unit_normal(hit);
+
+  return;
+}
+
+/// Ensures solid raycasts report zero distance when starting inside a collider.
+#[test]
+fn physics_2d_queries_raycast_from_inside_reports_zero_distance() {
+  let mut world = PhysicsWorld2DBuilder::new()
+    .with_gravity(0.0, 0.0)
+    .build()
+    .unwrap();
+
+  let rectangle = build_static_rectangle(&mut world, [0.0, 0.0], 1.0, 1.0);
+  let hit = world.raycast([0.0, 0.0], [1.0, 0.0], 10.0).unwrap();
+
+  assert_eq!(hit.body, rectangle);
+  assert_eq!(hit.point, [0.0, 0.0]);
+  assert_eq!(hit.distance, 0.0);
+  assert_unit_normal(hit);
+
+  return;
+}
+
+/// Asserts that a raycast hit normal has unit length within tolerance.
+///
+/// # Arguments
+/// - `hit`: The raycast hit to validate.
+///
+/// # Returns
+/// Returns `()` after validating the hit normal length.
+fn assert_unit_normal(hit: RaycastHit) {
+  let normal_length =
+    (hit.normal[0] * hit.normal[0] + hit.normal[1] * hit.normal[1]).sqrt();
+
+  assert!((normal_length - 1.0).abs() <= 1.0e-5);
 
   return;
 }

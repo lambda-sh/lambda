@@ -103,6 +103,21 @@ impl fmt::Display for Collider2DBackendError {
 
 impl Error for Collider2DBackendError {}
 
+/// Backend-agnostic data describing the nearest 2D raycast hit.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RaycastHit2DBackend {
+  /// The hit rigid body's slot index.
+  pub body_slot_index: u32,
+  /// The hit rigid body's slot generation.
+  pub body_slot_generation: u32,
+  /// The world-space hit point.
+  pub point: [f32; 2],
+  /// The world-space unit hit normal.
+  pub normal: [f32; 2],
+  /// The non-negative hit distance in meters.
+  pub distance: f32,
+}
+
 /// The fallback mass applied to dynamic bodies before density colliders exist.
 const DYNAMIC_BODY_FALLBACK_MASS_KG: f32 = 1.0;
 
@@ -701,6 +716,82 @@ impl PhysicsBackend2D {
     }
 
     return body_slots;
+  }
+
+  /// Returns the nearest rigid body hit by the provided finite ray segment.
+  ///
+  /// This iterates the live collider set directly instead of using Rapier's
+  /// broad-phase query pipeline. The overlap-query work already established
+  /// that direct iteration is the most reliable way to support read-only
+  /// queries immediately after collider creation, before any simulation step
+  /// has synchronized broad-phase acceleration structures.
+  ///
+  /// # Arguments
+  /// - `origin`: The world-space ray origin.
+  /// - `dir`: The world-space ray direction.
+  /// - `max_dist`: The maximum query distance in meters.
+  ///
+  /// # Returns
+  /// Returns the nearest hit data when any live collider intersects the ray.
+  pub fn raycast_2d(
+    &self,
+    origin: [f32; 2],
+    dir: [f32; 2],
+    max_dist: f32,
+  ) -> Option<RaycastHit2DBackend> {
+    if validate_position(origin[0], origin[1]).is_err()
+      || validate_velocity(dir[0], dir[1]).is_err()
+      || !max_dist.is_finite()
+      || max_dist <= 0.0
+    {
+      return None;
+    }
+
+    let normalized_dir = normalize_query_vector_2d(dir)?;
+    let ray = Ray::new(
+      Vector::new(origin[0], origin[1]),
+      Vector::new(normalized_dir[0], normalized_dir[1]),
+    );
+    let mut nearest_hit = None;
+
+    for (collider_handle, collider) in self.colliders.iter() {
+      // Resolve the public body handle data up front so the final hit payload
+      // stays backend-agnostic and does not expose Rapier collider handles.
+      let Some(body_slot) =
+        self.query_hit_to_parent_body_slot_2d(collider_handle)
+      else {
+        continue;
+      };
+
+      let Some(hit) =
+        cast_live_collider_raycast_hit_2d(collider, &ray, max_dist)
+      else {
+        continue;
+      };
+      let hit_point = ray.point_at(hit.time_of_impact);
+      let candidate = RaycastHit2DBackend {
+        body_slot_index: body_slot.0,
+        body_slot_generation: body_slot.1,
+        point: [hit_point.x, hit_point.y],
+        normal: [hit.normal.x, hit.normal.y],
+        distance: hit.time_of_impact,
+      };
+
+      // The public API only returns the nearest hit, so keep the first minimum
+      // distance we observe while scanning the live collider set.
+      if nearest_hit
+        .as_ref()
+        .is_some_and(|nearest: &RaycastHit2DBackend| {
+          candidate.distance >= nearest.distance
+        })
+      {
+        continue;
+      }
+
+      nearest_hit = Some(candidate);
+    }
+
+    return nearest_hit;
   }
 
   /// Sets the current position for the referenced body.
@@ -1475,6 +1566,73 @@ fn validate_velocity(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   }
 
   return Ok(());
+}
+
+/// Normalizes a finite 2D query vector.
+///
+/// # Arguments
+/// - `vector`: The vector to normalize.
+///
+/// # Returns
+/// Returns the normalized vector when the input has non-zero finite length.
+///
+/// Ray queries normalize directions so Rapier's `time_of_impact` value matches
+/// the world-space travel distance expected by the public API.
+fn normalize_query_vector_2d(vector: [f32; 2]) -> Option<[f32; 2]> {
+  let length = vector[0].hypot(vector[1]);
+
+  if !length.is_finite() || length <= 0.0 {
+    return None;
+  }
+
+  return Some([vector[0] / length, vector[1] / length]);
+}
+
+/// Casts a ray against one live collider and normalizes the reported normal.
+///
+/// When the origin lies inside a collider, Parry may report a zero normal for
+/// the solid hit at distance `0.0`. In that case, this helper performs one
+/// non-solid cast along the same ray to recover a stable outward exit normal
+/// while preserving the `0.0` contact distance expected by the public API.
+///
+/// # Arguments
+/// - `collider`: The live Rapier collider to test.
+/// - `ray`: The normalized query ray.
+/// - `max_dist`: The maximum query distance in meters.
+///
+/// # Returns
+/// Returns normalized hit data when the collider intersects the finite ray.
+fn cast_live_collider_raycast_hit_2d(
+  collider: &Collider,
+  ray: &Ray,
+  max_dist: f32,
+) -> Option<RayIntersection> {
+  // Use a solid cast so callers starting inside geometry receive an immediate
+  // hit at distance `0.0` instead of only the exit point.
+  let mut hit = collider.shape().cast_ray_and_get_normal(
+    collider.position(),
+    ray,
+    max_dist,
+    true,
+  )?;
+
+  let normalized_normal =
+    normalize_query_vector_2d([hit.normal.x, hit.normal.y]).or_else(|| {
+      // Some inside hits report a zero normal. A follow-up non-solid cast
+      // recovers the exit-face normal without changing the public `0.0`
+      // distance contract for origin-inside queries.
+      let exit_hit = collider.shape().cast_ray_and_get_normal(
+        collider.position(),
+        ray,
+        max_dist,
+        false,
+      )?;
+
+      return normalize_query_vector_2d([exit_hit.normal.x, exit_hit.normal.y]);
+    })?;
+
+  hit.normal = Vector::new(normalized_normal[0], normalized_normal[1]);
+  return Some(hit);
 }
 
 /// Validates a 2D force vector.
