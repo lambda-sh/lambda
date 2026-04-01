@@ -1298,8 +1298,8 @@ impl PhysicsBackend2D {
   /// duplicates for compound bodies.
   ///
   /// # Returns
-  /// Returns `()` after appending any newly-started events to the backend
-  /// queue.
+  /// Returns `()` after appending any newly-started or newly-ended events to
+  /// the backend queue.
   fn collect_collision_events_2d(&mut self) {
     let mut current_body_pair_contacts: HashMap<
       BodyPairKey2D,
@@ -1833,14 +1833,16 @@ fn validate_velocity(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
 
 /// Normalizes a finite 2D query vector.
 ///
+/// Query directions are normalized inside the backend so geometric helpers can
+/// treat Rapier's `time_of_impact` as world-space distance. Keeping that
+/// normalization in one helper avoids subtle drift between different query
+/// paths and keeps zero-length rejection consistent.
+///
 /// # Arguments
 /// - `vector`: The vector to normalize.
 ///
 /// # Returns
 /// Returns the normalized vector when the input has non-zero finite length.
-///
-/// Ray queries normalize directions so Rapier's `time_of_impact` value matches
-/// the world-space travel distance expected by the public API.
 fn normalize_query_vector_2d(vector: [f32; 2]) -> Option<[f32; 2]> {
   let length = vector[0].hypot(vector[1]);
 
