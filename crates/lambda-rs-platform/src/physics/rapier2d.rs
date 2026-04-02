@@ -1355,6 +1355,8 @@ impl PhysicsBackend2D {
         });
     }
 
+    // Check for ended contacts by looking for body pairs that were active in the
+    // previous step but are missing from the current step.
     for body_pair_key in self.active_body_pair_order_2d.iter().copied() {
       if current_body_pair_contacts.contains_key(&body_pair_key) {
         continue;
