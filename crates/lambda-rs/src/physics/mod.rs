@@ -8,6 +8,7 @@ use std::{
   collections::HashSet,
   error::Error,
   fmt,
+  mem,
   sync::atomic::{
     AtomicU64,
     Ordering,
@@ -58,13 +59,19 @@ pub enum CollisionEventKind {
 }
 
 /// Describes a body pair collision observed during simulation stepping.
+///
+/// The body pair is unordered. `body_a` and `body_b` identify the two bodies
+/// involved in the event, but their positions are not stable or semantically
+/// meaningful across runs, backends, or separate events. Callers MUST treat
+/// the pair as unordered and MUST NOT rely on one body always appearing in the
+/// same field.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CollisionEvent {
   /// The event transition kind for this body pair.
   pub kind: CollisionEventKind,
-  /// The first body participating in the collision pair.
+  /// One body participating in the unordered collision pair.
   pub body_a: RigidBody2D,
-  /// The second body participating in the collision pair.
+  /// The other body participating in the unordered collision pair.
   pub body_b: RigidBody2D,
   /// The representative contact point, when available.
   pub contact_point: Option<[f32; 2]>,
@@ -165,11 +172,8 @@ impl PhysicsWorld2D {
   /// Returns an iterator over the queued collision events, draining the queue
   /// as part of iteration creation.
   pub fn collision_events(&self) -> impl Iterator<Item = CollisionEvent> {
-    let queued_events: Vec<CollisionEvent> = self
-      .queued_collision_events
-      .borrow_mut()
-      .drain(..)
-      .collect();
+    let queued_events: Vec<CollisionEvent> =
+      mem::take(&mut *self.queued_collision_events.borrow_mut());
     return queued_events.into_iter();
   }
 
