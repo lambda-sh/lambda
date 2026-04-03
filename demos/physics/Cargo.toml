@@ -29,3 +29,8 @@ required-features = ["physics-2d"]
 name = "physics_colliders_2d"
 path = "src/bin/physics_colliders_2d.rs"
 required-features = ["physics-2d"]
+
+[[bin]]
+name = "physics_collision_events_2d"
+path = "src/bin/physics_collision_events_2d.rs"
+required-features = ["physics-2d"]

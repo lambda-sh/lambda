@@ -8,7 +8,10 @@ pub mod rapier2d;
 
 pub use rapier2d::{
   Collider2DBackendError,
+  CollisionEvent2DBackend,
+  CollisionEventKind2DBackend,
   PhysicsBackend2D,
+  RaycastHit2DBackend,
   RigidBody2DBackendError,
   RigidBodyType2D,
 };

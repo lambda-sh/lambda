@@ -3,13 +3,13 @@ title: "Tutorials Index"
 document_id: "tutorials-index-2025-10-17"
 status: "living"
 created: "2025-10-17T00:20:00Z"
-last_updated: "2026-02-13T00:00:00Z"
-version: "0.9.0"
+last_updated: "2026-04-01T00:00:00Z"
+version: "0.10.0"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "28.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "6a3b507eedddc39f568ed73cfadf34011d57b9a3"
+repo_commit: "7273183d923e78273b77b7f924bc8d6abc734cb9"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["index", "tutorials", "docs"]
@@ -45,11 +45,13 @@ Browse all tutorials under `rendering/`.
 
 - Physics 2D: Falling Quad (Kinematic) — [physics/basics/falling-quad-kinematic.md](physics/basics/falling-quad-kinematic.md)
 - Physics 2D: Rigid Bodies (No Collisions) — [physics/basics/rigid-bodies-2d.md](physics/basics/rigid-bodies-2d.md)
+- Physics 2D: Collision Events — [physics/basics/collision-events-2d.md](physics/basics/collision-events-2d.md)
 
 Browse all tutorials under `physics/`.
 
 Changelog
 
+- 0.10.0 (2026-04-01): Add the 2D collision events physics tutorial.
 - 0.9.0 (2026-02-13): Add rigid bodies physics tutorial.
 - 0.8.0 (2026-02-07): Add physics tutorial section and first physics demo.
 - 0.7.1 (2026-02-07): Group tutorials by feature area in the index.

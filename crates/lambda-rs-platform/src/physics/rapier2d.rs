@@ -5,6 +5,10 @@
 //! of the platform layer.
 
 use std::{
+  collections::{
+    HashMap,
+    HashSet,
+  },
   error::Error,
   fmt,
 };
@@ -103,6 +107,51 @@ impl fmt::Display for Collider2DBackendError {
 
 impl Error for Collider2DBackendError {}
 
+/// Backend-agnostic data describing the nearest 2D raycast hit.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RaycastHit2DBackend {
+  /// The hit rigid body's slot index.
+  pub body_slot_index: u32,
+  /// The hit rigid body's slot generation.
+  pub body_slot_generation: u32,
+  /// The world-space hit point.
+  pub point: [f32; 2],
+  /// The world-space unit hit normal.
+  pub normal: [f32; 2],
+  /// The non-negative hit distance in meters.
+  pub distance: f32,
+}
+
+/// Indicates whether a backend collision pair started or ended contact.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollisionEventKind2DBackend {
+  /// The body pair started touching during the current backend step.
+  Started,
+  /// The body pair stopped touching during the current backend step.
+  Ended,
+}
+
+/// Backend-agnostic data describing one 2D collision event.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CollisionEvent2DBackend {
+  /// The transition kind for the body pair.
+  pub kind: CollisionEventKind2DBackend,
+  /// The first rigid body's slot index.
+  pub body_a_slot_index: u32,
+  /// The first rigid body's slot generation.
+  pub body_a_slot_generation: u32,
+  /// The second rigid body's slot index.
+  pub body_b_slot_index: u32,
+  /// The second rigid body's slot generation.
+  pub body_b_slot_generation: u32,
+  /// The representative world-space contact point, when available.
+  pub contact_point: Option<[f32; 2]>,
+  /// The representative world-space contact normal, when available.
+  pub normal: Option<[f32; 2]>,
+  /// The representative penetration depth, when available.
+  pub penetration: Option<f32>,
+}
+
 /// The fallback mass applied to dynamic bodies before density colliders exist.
 const DYNAMIC_BODY_FALLBACK_MASS_KG: f32 = 1.0;
 
@@ -150,6 +199,10 @@ struct RigidBodySlot2D {
 struct ColliderSlot2D {
   /// The handle to the Rapier collider stored in the `ColliderSet`.
   rapier_handle: ColliderHandle,
+  /// The parent rigid body slot index that owns this collider.
+  parent_slot_index: u32,
+  /// The parent rigid body slot generation that owns this collider.
+  parent_slot_generation: u32,
   /// A monotonically increasing counter used to validate stale handles.
   generation: u32,
 }
@@ -169,6 +222,30 @@ struct ColliderAttachmentMassPlan2D {
   should_remove_fallback_mass: bool,
 }
 
+/// A normalized body-pair key used for backend collision tracking.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct BodyPairKey2D {
+  /// The first body slot index.
+  body_a_slot_index: u32,
+  /// The first body slot generation.
+  body_a_slot_generation: u32,
+  /// The second body slot index.
+  body_b_slot_index: u32,
+  /// The second body slot generation.
+  body_b_slot_generation: u32,
+}
+
+/// The representative contact selected for a body pair during one step.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct BodyPairContact2D {
+  /// The representative world-space contact point.
+  point: [f32; 2],
+  /// The representative world-space normal from body A toward body B.
+  normal: [f32; 2],
+  /// The non-negative penetration depth.
+  penetration: f32,
+}
+
 /// A 2D physics backend powered by `rapier2d`.
 ///
 /// This type is an internal implementation detail used by `lambda-rs`.
@@ -186,6 +263,10 @@ pub struct PhysicsBackend2D {
   pipeline: PhysicsPipeline,
   rigid_body_slots_2d: Vec<RigidBodySlot2D>,
   collider_slots_2d: Vec<ColliderSlot2D>,
+  collider_parent_slots_2d: HashMap<ColliderHandle, (u32, u32)>,
+  active_body_pairs_2d: HashSet<BodyPairKey2D>,
+  active_body_pair_order_2d: Vec<BodyPairKey2D>,
+  queued_collision_events_2d: Vec<CollisionEvent2DBackend>,
 }
 
 impl PhysicsBackend2D {
@@ -225,6 +306,10 @@ impl PhysicsBackend2D {
       pipeline: PhysicsPipeline::new(),
       rigid_body_slots_2d: Vec::new(),
       collider_slots_2d: Vec::new(),
+      collider_parent_slots_2d: HashMap::new(),
+      active_body_pairs_2d: HashSet::new(),
+      active_body_pair_order_2d: Vec::new(),
+      queued_collision_events_2d: Vec::new(),
     };
   }
 
@@ -304,6 +389,8 @@ impl PhysicsBackend2D {
   /// - `density`: The density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -322,6 +409,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     return self.attach_collider_2d(
       parent_slot_index,
@@ -332,6 +421,8 @@ impl PhysicsBackend2D {
       density,
       friction,
       restitution,
+      collision_group,
+      collision_mask,
     );
   }
 
@@ -350,6 +441,8 @@ impl PhysicsBackend2D {
   /// - `density`: The density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -369,6 +462,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     return self.attach_collider_2d(
       parent_slot_index,
@@ -379,6 +474,8 @@ impl PhysicsBackend2D {
       density,
       friction,
       restitution,
+      collision_group,
+      collision_mask,
     );
   }
 
@@ -398,6 +495,8 @@ impl PhysicsBackend2D {
   /// - `density`: The density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -417,6 +516,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     let rapier_builder = if half_height == 0.0 {
       ColliderBuilder::ball(radius)
@@ -433,6 +534,8 @@ impl PhysicsBackend2D {
       density,
       friction,
       restitution,
+      collision_group,
+      collision_mask,
     );
   }
 
@@ -452,6 +555,8 @@ impl PhysicsBackend2D {
   /// - `density`: The density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -472,6 +577,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     let rapier_vertices: Vec<Vector> = vertices
       .iter()
@@ -493,6 +600,8 @@ impl PhysicsBackend2D {
       density,
       friction,
       restitution,
+      collision_group,
+      collision_mask,
     );
   }
 
@@ -594,6 +703,174 @@ impl PhysicsBackend2D {
     return self
       .rapier_rigid_body_2d(slot_index, slot_generation)
       .is_ok();
+  }
+
+  /// Returns all rigid bodies whose colliders contain the provided point.
+  ///
+  /// This walks the live collider set instead of Rapier's query pipeline
+  /// because gameplay queries are expected to work immediately after collider
+  /// creation. Before the world steps, broad-phase acceleration structures are
+  /// not guaranteed to be synchronized with newly attached colliders.
+  ///
+  /// # Arguments
+  /// - `point`: The world-space point to test.
+  ///
+  /// # Returns
+  /// Returns backend rigid body slot pairs for each matching collider.
+  pub fn query_point_2d(&self, point: [f32; 2]) -> Vec<(u32, u32)> {
+    if validate_position(point[0], point[1]).is_err() {
+      return Vec::new();
+    }
+
+    let point = Vector::new(point[0], point[1]);
+    let mut body_slots = Vec::new();
+
+    for (collider_handle, collider) in self.colliders.iter() {
+      if !collider.shape().contains_point(collider.position(), point) {
+        continue;
+      }
+
+      let Some(body_slot) =
+        self.query_hit_to_parent_body_slot_2d(collider_handle)
+      else {
+        continue;
+      };
+
+      body_slots.push(body_slot);
+    }
+
+    return body_slots;
+  }
+
+  /// Returns all rigid bodies whose colliders overlap the provided AABB.
+  ///
+  /// This performs exact shape-vs-shape tests over the live collider set for
+  /// the same reason as `query_point_2d()`: overlap queries need to be correct
+  /// before the first simulation step, when broad-phase data may still be
+  /// stale. Using exact tests here also avoids broad-phase false positives in
+  /// the backend result.
+  ///
+  /// # Arguments
+  /// - `min`: The minimum world-space corner of the query box.
+  /// - `max`: The maximum world-space corner of the query box.
+  ///
+  /// # Returns
+  /// Returns backend rigid body slot pairs for each matching collider.
+  pub fn query_aabb_2d(&self, min: [f32; 2], max: [f32; 2]) -> Vec<(u32, u32)> {
+    if validate_position(min[0], min[1]).is_err()
+      || validate_position(max[0], max[1]).is_err()
+    {
+      return Vec::new();
+    }
+
+    let half_extents =
+      Vector::new((max[0] - min[0]) * 0.5, (max[1] - min[1]) * 0.5);
+    let center = Vector::new((min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5);
+    let query_shape = Cuboid::new(half_extents);
+    let query_pose = Pose::from_translation(center);
+    let query_dispatcher = self.narrow_phase.query_dispatcher();
+    let mut body_slots = Vec::new();
+
+    for (collider_handle, collider) in self.colliders.iter() {
+      // Express the query box in the collider's local frame because Parry's
+      // exact intersection test compares one shape pose relative to the other.
+      let shape_to_collider = query_pose.inv_mul(collider.position());
+      let intersects = query_dispatcher.intersection_test(
+        &shape_to_collider,
+        &query_shape,
+        collider.shape(),
+      );
+
+      if intersects != Ok(true) {
+        continue;
+      }
+
+      let Some(body_slot) =
+        self.query_hit_to_parent_body_slot_2d(collider_handle)
+      else {
+        continue;
+      };
+
+      body_slots.push(body_slot);
+    }
+
+    return body_slots;
+  }
+
+  /// Returns the nearest rigid body hit by the provided finite ray segment.
+  ///
+  /// This iterates the live collider set directly instead of using Rapier's
+  /// broad-phase query pipeline because raycasts are expected to see colliders
+  /// that were just created or attached earlier in the frame. Keeping queries
+  /// on the live collider set makes the result match gameplay expectations even
+  /// before the world has advanced.
+  ///
+  /// # Arguments
+  /// - `origin`: The world-space ray origin.
+  /// - `dir`: The world-space ray direction.
+  /// - `max_dist`: The maximum query distance in meters.
+  ///
+  /// # Returns
+  /// Returns the nearest hit data when any live collider intersects the ray.
+  pub fn raycast_2d(
+    &self,
+    origin: [f32; 2],
+    dir: [f32; 2],
+    max_dist: f32,
+  ) -> Option<RaycastHit2DBackend> {
+    if validate_position(origin[0], origin[1]).is_err()
+      || validate_velocity(dir[0], dir[1]).is_err()
+      || !max_dist.is_finite()
+      || max_dist <= 0.0
+    {
+      return None;
+    }
+
+    let normalized_dir = normalize_query_vector_2d(dir)?;
+    let ray = Ray::new(
+      Vector::new(origin[0], origin[1]),
+      Vector::new(normalized_dir[0], normalized_dir[1]),
+    );
+    let mut nearest_hit = None;
+
+    for (collider_handle, collider) in self.colliders.iter() {
+      // Resolve the public body handle data up front so the final hit payload
+      // stays backend-agnostic and does not expose Rapier collider handles.
+      let Some(body_slot) =
+        self.query_hit_to_parent_body_slot_2d(collider_handle)
+      else {
+        continue;
+      };
+
+      let Some(hit) =
+        cast_live_collider_raycast_hit_2d(collider, &ray, max_dist)
+      else {
+        continue;
+      };
+      let hit_point = ray.point_at(hit.time_of_impact);
+      let candidate = RaycastHit2DBackend {
+        body_slot_index: body_slot.0,
+        body_slot_generation: body_slot.1,
+        point: [hit_point.x, hit_point.y],
+        normal: [hit.normal.x, hit.normal.y],
+        distance: hit.time_of_impact,
+      };
+
+      // The public API only returns the nearest hit, so keep the first minimum
+      // distance we observe while scanning the live collider set.
+      if nearest_hit
+        .as_ref()
+        .is_some_and(|nearest: &RaycastHit2DBackend| {
+          candidate.distance >= nearest.distance
+        })
+      {
+        continue;
+      }
+
+      nearest_hit = Some(candidate);
+    }
+
+    return nearest_hit;
   }
 
   /// Sets the current position for the referenced body.
@@ -837,7 +1114,22 @@ impl PhysicsBackend2D {
       &(),
     );
 
+    self.collect_collision_events_2d();
+
     return;
+  }
+
+  /// Drains backend collision events queued by prior step calls.
+  ///
+  /// The backend accumulates transition events across substeps so
+  /// `PhysicsWorld2D` can expose one post-step drain point without exposing
+  /// Rapier's event machinery or borrowing backend internals through the
+  /// public iterator.
+  ///
+  /// # Returns
+  /// Returns all queued backend collision events in insertion order.
+  pub fn drain_collision_events_2d(&mut self) -> Vec<CollisionEvent2DBackend> {
+    return std::mem::take(&mut self.queued_collision_events_2d);
   }
 
   /// Returns an immutable reference to a rigid body slot after validation.
@@ -998,6 +1290,101 @@ impl PhysicsBackend2D {
     return;
   }
 
+  /// Collects body-pair collision transitions from the current narrow phase.
+  ///
+  /// The public API reports one event per body pair, not one event per collider
+  /// pair. This pass aggregates Rapier collider contacts by owning bodies,
+  /// keeps the deepest active contact seen for each body pair, and compares the
+  /// resulting active set against the previous step to detect both newly
+  /// started and newly ended contacts without emitting collider-pair
+  /// duplicates for compound bodies.
+  ///
+  /// # Returns
+  /// Returns `()` after appending any newly-started or newly-ended events to
+  /// the backend queue.
+  fn collect_collision_events_2d(&mut self) {
+    let mut current_body_pair_contacts: HashMap<
+      BodyPairKey2D,
+      BodyPairContact2D,
+    > = HashMap::new();
+    let mut current_body_pair_order = Vec::new();
+
+    for contact_pair in self.narrow_phase.contact_pairs() {
+      if !contact_pair.has_any_active_contact() {
+        continue;
+      }
+
+      let Some((body_pair_key, body_pair_contact)) =
+        self.body_pair_contact_from_contact_pair_2d(contact_pair)
+      else {
+        continue;
+      };
+
+      if let Some(existing_contact) =
+        current_body_pair_contacts.get_mut(&body_pair_key)
+      {
+        if body_pair_contact.penetration > existing_contact.penetration {
+          *existing_contact = body_pair_contact;
+        }
+
+        continue;
+      }
+
+      current_body_pair_order.push(body_pair_key);
+      current_body_pair_contacts.insert(body_pair_key, body_pair_contact);
+    }
+
+    for body_pair_key in current_body_pair_order.iter().copied() {
+      if self.active_body_pairs_2d.contains(&body_pair_key) {
+        continue;
+      }
+
+      let Some(contact) = current_body_pair_contacts.get(&body_pair_key) else {
+        continue;
+      };
+
+      self
+        .queued_collision_events_2d
+        .push(CollisionEvent2DBackend {
+          kind: CollisionEventKind2DBackend::Started,
+          body_a_slot_index: body_pair_key.body_a_slot_index,
+          body_a_slot_generation: body_pair_key.body_a_slot_generation,
+          body_b_slot_index: body_pair_key.body_b_slot_index,
+          body_b_slot_generation: body_pair_key.body_b_slot_generation,
+          contact_point: Some(contact.point),
+          normal: Some(contact.normal),
+          penetration: Some(contact.penetration),
+        });
+    }
+
+    // Check for ended contacts by looking for body pairs that were active in the
+    // previous step but are missing from the current step.
+    for body_pair_key in self.active_body_pair_order_2d.iter().copied() {
+      if current_body_pair_contacts.contains_key(&body_pair_key) {
+        continue;
+      }
+
+      self
+        .queued_collision_events_2d
+        .push(CollisionEvent2DBackend {
+          kind: CollisionEventKind2DBackend::Ended,
+          body_a_slot_index: body_pair_key.body_a_slot_index,
+          body_a_slot_generation: body_pair_key.body_a_slot_generation,
+          body_b_slot_index: body_pair_key.body_b_slot_index,
+          body_b_slot_generation: body_pair_key.body_b_slot_generation,
+          contact_point: None,
+          normal: None,
+          penetration: None,
+        });
+    }
+
+    self.active_body_pairs_2d =
+      current_body_pair_contacts.keys().copied().collect();
+    self.active_body_pair_order_2d = current_body_pair_order;
+
+    return;
+  }
+
   /// Attaches a prepared Rapier collider builder to a parent rigid body.
   ///
   /// This helper applies the shared local transform and material properties,
@@ -1018,6 +1405,8 @@ impl PhysicsBackend2D {
   /// - `density`: The requested density in kg/m².
   /// - `friction`: The friction coefficient (unitless).
   /// - `restitution`: The restitution coefficient in `[0.0, 1.0]`.
+  /// - `collision_group`: The collider membership bitfield.
+  /// - `collision_mask`: The collider interaction mask bitfield.
   ///
   /// # Returns
   /// Returns a `(slot_index, slot_generation)` pair for the created collider.
@@ -1035,6 +1424,8 @@ impl PhysicsBackend2D {
     density: f32,
     friction: f32,
     restitution: f32,
+    collision_group: u32,
+    collision_mask: u32,
   ) -> Result<(u32, u32), Collider2DBackendError> {
     let (rapier_parent_handle, rapier_density) = self
       .prepare_parent_body_for_collider_attachment_2d(
@@ -1042,6 +1433,8 @@ impl PhysicsBackend2D {
         parent_slot_generation,
         density,
       )?;
+    let interaction_groups =
+      build_collision_groups_2d(collision_group, collision_mask);
 
     let rapier_collider = rapier_builder
       .translation(Vector::new(local_offset[0], local_offset[1]))
@@ -1051,6 +1444,8 @@ impl PhysicsBackend2D {
       .friction_combine_rule(CoefficientCombineRule::Multiply)
       .restitution(restitution)
       .restitution_combine_rule(CoefficientCombineRule::Max)
+      .collision_groups(interaction_groups)
+      .solver_groups(interaction_groups)
       .build();
 
     let rapier_handle = self.colliders.insert_with_parent(
@@ -1069,8 +1464,13 @@ impl PhysicsBackend2D {
     let slot_generation = 1;
     self.collider_slots_2d.push(ColliderSlot2D {
       rapier_handle,
+      parent_slot_index,
+      parent_slot_generation,
       generation: slot_generation,
     });
+    self
+      .collider_parent_slots_2d
+      .insert(rapier_handle, (parent_slot_index, parent_slot_generation));
 
     return Ok((slot_index, slot_generation));
   }
@@ -1179,20 +1579,95 @@ impl PhysicsBackend2D {
   /// Validates that collider slots reference live Rapier colliders.
   ///
   /// This debug-only validation reads slot fields to prevent stale-handle
-  /// regressions during backend refactors.
+  /// regressions during backend refactors. The direct collider-handle lookup
+  /// map is validated alongside the slot table because queries and contact
+  /// collection rely on O(1) parent resolution in hot paths.
   ///
   /// # Returns
   /// Returns `()` after completing validation.
   fn debug_validate_collider_slots_2d(&self) {
+    debug_assert_eq!(
+      self.collider_slots_2d.len(),
+      self.collider_parent_slots_2d.len(),
+      "collider parent lookup map diverged from collider slot table"
+    );
+
     for slot in self.collider_slots_2d.iter() {
       debug_assert!(slot.generation > 0, "collider slot generation is zero");
       debug_assert!(
         self.colliders.get(slot.rapier_handle).is_some(),
         "collider slot references missing Rapier collider"
       );
+      debug_assert!(
+        self
+          .rigid_body_slot_2d(
+            slot.parent_slot_index,
+            slot.parent_slot_generation
+          )
+          .is_ok(),
+        "collider slot references missing parent rigid body slot"
+      );
+      debug_assert_eq!(
+        self
+          .collider_parent_slots_2d
+          .get(&slot.rapier_handle)
+          .copied(),
+        Some((slot.parent_slot_index, slot.parent_slot_generation)),
+        "collider parent lookup map references wrong parent rigid body slot"
+      );
     }
 
     return;
+  }
+
+  /// Resolves a query hit collider back to its owning rigid body slot.
+  ///
+  /// # Arguments
+  /// - `collider_handle`: The Rapier collider handle returned by a query.
+  ///
+  /// # Returns
+  /// Returns the owning backend rigid body slot pair when the collider slot is
+  /// still tracked by the backend.
+  fn query_hit_to_parent_body_slot_2d(
+    &self,
+    collider_handle: ColliderHandle,
+  ) -> Option<(u32, u32)> {
+    return self.collider_parent_slots_2d.get(&collider_handle).copied();
+  }
+
+  /// Resolves one Rapier contact pair into a normalized body-pair contact.
+  ///
+  /// Rapier stores contacts per collider pair. The public API is body-oriented,
+  /// so this helper maps each collider pair back to its owning bodies, discards
+  /// self-contacts, normalizes body ordering for stable deduplication, and
+  /// returns the deepest active solver contact for that body pair.
+  ///
+  /// # Arguments
+  /// - `contact_pair`: The Rapier contact pair to inspect.
+  ///
+  /// # Returns
+  /// Returns the normalized body-pair key and representative contact when the
+  /// pair belongs to two distinct tracked bodies and has at least one active
+  /// solver contact.
+  fn body_pair_contact_from_contact_pair_2d(
+    &self,
+    contact_pair: &ContactPair,
+  ) -> Option<(BodyPairKey2D, BodyPairContact2D)> {
+    let body_a =
+      self.query_hit_to_parent_body_slot_2d(contact_pair.collider1)?;
+    let body_b =
+      self.query_hit_to_parent_body_slot_2d(contact_pair.collider2)?;
+
+    if body_a == body_b {
+      return None;
+    }
+
+    let (body_pair_key, should_flip_normal) =
+      normalize_body_pair_key_2d(body_a, body_b);
+    let representative_contact =
+      representative_contact_from_pair_2d(contact_pair, should_flip_normal)?;
+
+    return Some((body_pair_key, representative_contact));
   }
 }
 
@@ -1249,6 +1724,67 @@ fn build_rapier_rigid_body(
         .additional_mass(additional_mass_kg);
     }
   }
+}
+
+/// Converts public collision filter bitfields into Rapier interaction groups.
+///
+/// # Arguments
+/// - `collision_group`: The collider membership bitfield.
+/// - `collision_mask`: The collider interaction mask bitfield.
+///
+/// # Returns
+/// Returns Rapier interaction groups using AND-based matching.
+fn build_collision_groups_2d(
+  collision_group: u32,
+  collision_mask: u32,
+) -> InteractionGroups {
+  return InteractionGroups::new(
+    Group::from_bits_retain(collision_group),
+    Group::from_bits_retain(collision_mask),
+    InteractionTestMode::And,
+  );
+}
+
+/// Normalizes a body-pair key into a stable `body_a`/`body_b` ordering.
+///
+/// Stable ordering lets the backend deduplicate collider contacts that belong
+/// to the same bodies and keeps the public event stream from oscillating based
+/// on Rapier's internal pair ordering. The returned boolean tells callers
+/// whether normals reported from collider/body 1 toward collider/body 2 must be
+/// flipped to match the normalized body ordering.
+///
+/// # Arguments
+/// - `body_a`: The first raw backend body slot pair.
+/// - `body_b`: The second raw backend body slot pair.
+///
+/// # Returns
+/// Returns the normalized body-pair key and whether contact normals should be
+/// flipped to point from normalized body A toward normalized body B.
+fn normalize_body_pair_key_2d(
+  body_a: (u32, u32),
+  body_b: (u32, u32),
+) -> (BodyPairKey2D, bool) {
+  if body_a <= body_b {
+    return (
+      BodyPairKey2D {
+        body_a_slot_index: body_a.0,
+        body_a_slot_generation: body_a.1,
+        body_b_slot_index: body_b.0,
+        body_b_slot_generation: body_b.1,
+      },
+      false,
+    );
+  }
+
+  return (
+    BodyPairKey2D {
+      body_a_slot_index: body_b.0,
+      body_a_slot_generation: body_b.1,
+      body_b_slot_index: body_a.0,
+      body_b_slot_generation: body_a.1,
+    },
+    true,
+  );
 }
 
 /// Validates a 2D position.
@@ -1308,6 +1844,127 @@ fn validate_velocity(x: f32, y: f32) -> Result<(), RigidBody2DBackendError> {
   }
 
   return Ok(());
+}
+
+/// Normalizes a finite 2D query vector.
+///
+/// Query directions are normalized inside the backend so geometric helpers can
+/// treat Rapier's `time_of_impact` as world-space distance. Keeping that
+/// normalization in one helper avoids subtle drift between different query
+/// paths and keeps zero-length rejection consistent.
+///
+/// # Arguments
+/// - `vector`: The vector to normalize.
+///
+/// # Returns
+/// Returns the normalized vector when the input has non-zero finite length.
+fn normalize_query_vector_2d(vector: [f32; 2]) -> Option<[f32; 2]> {
+  let length = vector[0].hypot(vector[1]);
+
+  if !length.is_finite() || length <= 0.0 {
+    return None;
+  }
+
+  return Some([vector[0] / length, vector[1] / length]);
+}
+
+/// Selects the deepest active solver contact from one Rapier contact pair.
+///
+/// Rapier's collider pair may expose several manifolds and several active
+/// solver contacts per manifold. The public start event only needs one
+/// representative contact, so this helper keeps the active solver contact with
+/// the greatest penetration depth. Solver contacts are used instead of raw
+/// tracked contacts because they already provide world-space points and reflect
+/// the contacts that actually participated in collision resolution this step.
+///
+/// # Arguments
+/// - `contact_pair`: The Rapier contact pair to inspect.
+/// - `should_flip_normal`: Whether the selected normal should be inverted to
+///   point from normalized body A toward normalized body B.
+///
+/// # Returns
+/// Returns the deepest active solver contact for the pair, if one exists.
+fn representative_contact_from_pair_2d(
+  contact_pair: &ContactPair,
+  should_flip_normal: bool,
+) -> Option<BodyPairContact2D> {
+  let mut representative_contact = None;
+
+  for manifold in &contact_pair.manifolds {
+    let mut normal = [manifold.data.normal.x, manifold.data.normal.y];
+
+    if should_flip_normal {
+      normal = [-normal[0], -normal[1]];
+    }
+
+    for solver_contact in &manifold.data.solver_contacts {
+      let penetration = (-solver_contact.dist).max(0.0);
+      let candidate_contact = BodyPairContact2D {
+        point: [solver_contact.point.x, solver_contact.point.y],
+        normal,
+        penetration,
+      };
+
+      if representative_contact.as_ref().is_some_and(
+        |existing: &BodyPairContact2D| {
+          candidate_contact.penetration <= existing.penetration
+        },
+      ) {
+        continue;
+      }
+
+      representative_contact = Some(candidate_contact);
+    }
+  }
+
+  return representative_contact;
+}
+
+/// Casts a ray against one live collider and normalizes the reported normal.
+///
+/// When the origin lies inside a collider, Parry may report a zero normal for
+/// the solid hit at distance `0.0`. In that case, this helper performs one
+/// non-solid cast along the same ray to recover a stable outward exit normal
+/// while preserving the `0.0` contact distance expected by the public API.
+///
+/// # Arguments
+/// - `collider`: The live Rapier collider to test.
+/// - `ray`: The normalized query ray.
+/// - `max_dist`: The maximum query distance in meters.
+///
+/// # Returns
+/// Returns normalized hit data when the collider intersects the finite ray.
+fn cast_live_collider_raycast_hit_2d(
+  collider: &Collider,
+  ray: &Ray,
+  max_dist: f32,
+) -> Option<RayIntersection> {
+  // Use a solid cast so callers starting inside geometry receive an immediate
+  // hit at distance `0.0` instead of only the exit point.
+  let mut hit = collider.shape().cast_ray_and_get_normal(
+    collider.position(),
+    ray,
+    max_dist,
+    true,
+  )?;
+
+  let normalized_normal =
+    normalize_query_vector_2d([hit.normal.x, hit.normal.y]).or_else(|| {
+      // Some inside hits report a zero normal. A follow-up non-solid cast
+      // recovers the exit-face normal without changing the public `0.0`
+      // distance contract for origin-inside queries.
+      let exit_hit = collider.shape().cast_ray_and_get_normal(
+        collider.position(),
+        ray,
+        max_dist,
+        false,
+      )?;
+
+      return normalize_query_vector_2d([exit_hit.normal.x, exit_hit.normal.y]);
+    })?;
+
+  hit.normal = Vector::new(normalized_normal[0], normalized_normal[1]);
+  return Some(hit);
 }
 
 /// Validates a 2D force vector.

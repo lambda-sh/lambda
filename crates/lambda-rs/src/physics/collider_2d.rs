@@ -13,6 +13,7 @@ use std::{
 use lambda_platform::physics::Collider2DBackendError;
 
 use super::{
+  CollisionFilter,
   PhysicsWorld2D,
   RigidBody2D,
   RigidBody2DError,
@@ -124,6 +125,7 @@ pub struct Collider2DBuilder {
   local_offset: [f32; 2],
   local_rotation: f32,
   material: ColliderMaterial2D,
+  collision_filter: CollisionFilter,
 }
 
 impl Collider2DBuilder {
@@ -234,6 +236,18 @@ impl Collider2DBuilder {
     return self;
   }
 
+  /// Sets the collision filtering configuration for the collider.
+  ///
+  /// # Arguments
+  /// - `filter`: The collision filter to assign to the collider.
+  ///
+  /// # Returns
+  /// Returns the updated builder.
+  pub fn with_collision_filter(mut self, filter: CollisionFilter) -> Self {
+    self.collision_filter = filter;
+    return self;
+  }
+
   /// Sets the collider density, in kg/m².
   ///
   /// When attaching a collider with `density > 0.0` to a dynamic body that did
@@ -331,6 +345,8 @@ impl Collider2DBuilder {
           self.material.density(),
           self.material.friction(),
           self.material.restitution(),
+          self.collision_filter.group,
+          self.collision_filter.mask,
         )
         .map_err(map_backend_error)?,
       ColliderShape2D::Rectangle {
@@ -348,6 +364,8 @@ impl Collider2DBuilder {
           self.material.density(),
           self.material.friction(),
           self.material.restitution(),
+          self.collision_filter.group,
+          self.collision_filter.mask,
         )
         .map_err(map_backend_error)?,
       ColliderShape2D::Capsule {
@@ -365,6 +383,8 @@ impl Collider2DBuilder {
           self.material.density(),
           self.material.friction(),
           self.material.restitution(),
+          self.collision_filter.group,
+          self.collision_filter.mask,
         )
         .map_err(map_backend_error)?,
       ColliderShape2D::ConvexPolygon { vertices } => world
@@ -378,6 +398,8 @@ impl Collider2DBuilder {
           self.material.density(),
           self.material.friction(),
           self.material.restitution(),
+          self.collision_filter.group,
+          self.collision_filter.mask,
         )
         .map_err(map_backend_error)?,
     };
@@ -396,6 +418,7 @@ impl Collider2DBuilder {
       local_offset: [DEFAULT_LOCAL_OFFSET_X, DEFAULT_LOCAL_OFFSET_Y],
       local_rotation: DEFAULT_LOCAL_ROTATION_RADIANS,
       material: ColliderMaterial2D::default(),
+      collision_filter: CollisionFilter::default(),
     };
   }
 }
@@ -951,6 +974,31 @@ mod tests {
       .unwrap_err();
 
     assert_eq!(error, Collider2DError::WorldMismatch);
+
+    return;
+  }
+
+  /// Uses a filter that collides with all groups unless overridden.
+  #[test]
+  fn builder_defaults_collision_filter_to_all_groups() {
+    let builder = Collider2DBuilder::circle(1.0);
+
+    assert_eq!(builder.collision_filter, CollisionFilter::default());
+
+    return;
+  }
+
+  /// Stores a caller-provided collision filter on the builder.
+  #[test]
+  fn builder_overrides_collision_filter() {
+    let filter = CollisionFilter {
+      group: 0b0001,
+      mask: 0b0110,
+    };
+
+    let builder = Collider2DBuilder::circle(1.0).with_collision_filter(filter);
+
+    assert_eq!(builder.collision_filter, filter);
 
     return;
   }
