@@ -263,6 +263,7 @@ pub struct PhysicsBackend2D {
   pipeline: PhysicsPipeline,
   rigid_body_slots_2d: Vec<RigidBodySlot2D>,
   collider_slots_2d: Vec<ColliderSlot2D>,
+  collider_parent_slots_2d: HashMap<ColliderHandle, (u32, u32)>,
   active_body_pairs_2d: HashSet<BodyPairKey2D>,
   active_body_pair_order_2d: Vec<BodyPairKey2D>,
   queued_collision_events_2d: Vec<CollisionEvent2DBackend>,
@@ -305,6 +306,7 @@ impl PhysicsBackend2D {
       pipeline: PhysicsPipeline::new(),
       rigid_body_slots_2d: Vec::new(),
       collider_slots_2d: Vec::new(),
+      collider_parent_slots_2d: HashMap::new(),
       active_body_pairs_2d: HashSet::new(),
       active_body_pair_order_2d: Vec::new(),
       queued_collision_events_2d: Vec::new(),
@@ -1466,6 +1468,9 @@ impl PhysicsBackend2D {
       parent_slot_generation,
       generation: slot_generation,
     });
+    self
+      .collider_parent_slots_2d
+      .insert(rapier_handle, (parent_slot_index, parent_slot_generation));
 
     return Ok((slot_index, slot_generation));
   }
@@ -1574,11 +1579,19 @@ impl PhysicsBackend2D {
   /// Validates that collider slots reference live Rapier colliders.
   ///
   /// This debug-only validation reads slot fields to prevent stale-handle
-  /// regressions during backend refactors.
+  /// regressions during backend refactors. The direct collider-handle lookup
+  /// map is validated alongside the slot table because queries and contact
+  /// collection rely on O(1) parent resolution in hot paths.
   ///
   /// # Returns
   /// Returns `()` after completing validation.
   fn debug_validate_collider_slots_2d(&self) {
+    debug_assert_eq!(
+      self.collider_slots_2d.len(),
+      self.collider_parent_slots_2d.len(),
+      "collider parent lookup map diverged from collider slot table"
+    );
+
     for slot in self.collider_slots_2d.iter() {
       debug_assert!(slot.generation > 0, "collider slot generation is zero");
       debug_assert!(
@@ -1593,6 +1606,14 @@ impl PhysicsBackend2D {
           )
           .is_ok(),
         "collider slot references missing parent rigid body slot"
+      );
+      debug_assert_eq!(
+        self
+          .collider_parent_slots_2d
+          .get(&slot.rapier_handle)
+          .copied(),
+        Some((slot.parent_slot_index, slot.parent_slot_generation)),
+        "collider parent lookup map references wrong parent rigid body slot"
       );
     }
 
@@ -1611,15 +1632,7 @@ impl PhysicsBackend2D {
     &self,
     collider_handle: ColliderHandle,
   ) -> Option<(u32, u32)> {
-    let collider_slot = self
-      .collider_slots_2d
-      .iter()
-      .find(|slot| slot.rapier_handle == collider_handle)?;
-
-    return Some((
-      collider_slot.parent_slot_index,
-      collider_slot.parent_slot_generation,
-    ));
+    return self.collider_parent_slots_2d.get(&collider_handle).copied();
   }
 
   /// Resolves one Rapier contact pair into a normalized body-pair contact.
