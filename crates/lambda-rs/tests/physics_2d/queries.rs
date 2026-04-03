@@ -13,6 +13,8 @@ use lambda::physics::{
   RigidBodyType,
 };
 
+const FLOAT_TOLERANCE: f32 = 1.0e-5;
+
 /// Builds a static rectangle body with one rectangle collider.
 ///
 /// # Arguments
@@ -188,8 +190,8 @@ fn physics_2d_queries_raycast_returns_nearest_hit() {
   let hit = world.raycast([0.0, 0.0], [1.0, 0.0], 10.0).unwrap();
 
   assert_eq!(hit.body, near_circle);
-  assert_eq!(hit.point, [1.5, 0.0]);
-  assert_eq!(hit.distance, 1.5);
+  assert_point_approximately_eq(hit.point, [1.5, 0.0]);
+  assert_f32_approximately_eq(hit.distance, 1.5);
 
   return;
 }
@@ -206,8 +208,8 @@ fn physics_2d_queries_raycast_distance_uses_world_units() {
   let hit = world.raycast([0.0, 0.0], [2.0, 0.0], 10.0).unwrap();
 
   assert_eq!(hit.body, circle);
-  assert_eq!(hit.point, [4.0, 0.0]);
-  assert_eq!(hit.distance, 4.0);
+  assert_point_approximately_eq(hit.point, [4.0, 0.0]);
+  assert_f32_approximately_eq(hit.distance, 4.0);
 
   return;
 }
@@ -240,9 +242,41 @@ fn physics_2d_queries_raycast_from_inside_reports_zero_distance() {
   let hit = world.raycast([0.0, 0.0], [1.0, 0.0], 10.0).unwrap();
 
   assert_eq!(hit.body, rectangle);
-  assert_eq!(hit.point, [0.0, 0.0]);
-  assert_eq!(hit.distance, 0.0);
+  assert_point_approximately_eq(hit.point, [0.0, 0.0]);
+  assert_f32_approximately_eq(hit.distance, 0.0);
   assert_unit_normal(hit);
+
+  return;
+}
+
+/// Asserts that two scalar values match within floating-point tolerance.
+///
+/// # Arguments
+/// - `actual`: The computed scalar value.
+/// - `expected`: The expected scalar value.
+///
+/// # Returns
+/// Returns `()` after validating the scalar difference.
+fn assert_f32_approximately_eq(actual: f32, expected: f32) {
+  assert!(
+    (actual - expected).abs() <= FLOAT_TOLERANCE,
+    "expected approximately {expected}, got {actual}",
+  );
+
+  return;
+}
+
+/// Asserts that two world-space points match within floating-point tolerance.
+///
+/// # Arguments
+/// - `actual`: The computed point.
+/// - `expected`: The expected point.
+///
+/// # Returns
+/// Returns `()` after validating both coordinates.
+fn assert_point_approximately_eq(actual: [f32; 2], expected: [f32; 2]) {
+  assert_f32_approximately_eq(actual[0], expected[0]);
+  assert_f32_approximately_eq(actual[1], expected[1]);
 
   return;
 }
@@ -258,7 +292,7 @@ fn assert_unit_normal(hit: RaycastHit) {
   let normal_length =
     (hit.normal[0] * hit.normal[0] + hit.normal[1] * hit.normal[1]).sqrt();
 
-  assert!((normal_length - 1.0).abs() <= 1.0e-5);
+  assert!((normal_length - 1.0).abs() <= FLOAT_TOLERANCE);
 
   return;
 }
