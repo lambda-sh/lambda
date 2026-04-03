@@ -152,6 +152,36 @@ fn step_until_collision_event_kind(
   panic!("expected {kind:?} event within {max_steps} steps");
 }
 
+/// Asserts that an event references the expected body pair regardless of order.
+///
+/// # Arguments
+/// - `event`: The collision event to validate.
+/// - `expected_body_a`: One expected body in the pair.
+/// - `expected_body_b`: The other expected body in the pair.
+///
+/// # Returns
+/// Returns `()` after verifying the unordered body pair.
+fn assert_event_body_pair_unordered(
+  event: &CollisionEvent,
+  expected_body_a: RigidBody2D,
+  expected_body_b: RigidBody2D,
+) {
+  let matches_expected_order =
+    event.body_a == expected_body_a && event.body_b == expected_body_b;
+  let matches_reverse_order =
+    event.body_a == expected_body_b && event.body_b == expected_body_a;
+
+  assert!(
+    matches_expected_order || matches_reverse_order,
+    "expected unordered body pair ({expected_body_a:?}, \
+     {expected_body_b:?}), got ({:?}, {:?})",
+    event.body_a,
+    event.body_b,
+  );
+
+  return;
+}
+
 /// Ensures first contact emits a single `Started` event.
 #[test]
 fn physics_2d_collision_events_first_contact_emits_started() {
@@ -164,8 +194,7 @@ fn physics_2d_collision_events_first_contact_emits_started() {
 
   assert_eq!(events.len(), 1);
   assert_eq!(events[0].kind, CollisionEventKind::Started);
-  assert_eq!(events[0].body_a, ground);
-  assert_eq!(events[0].body_b, ball);
+  assert_event_body_pair_unordered(&events[0], ground, ball);
 
   return;
 }
@@ -272,8 +301,7 @@ fn physics_2d_collision_events_separation_emits_ended() {
     .find(|event| event.kind == CollisionEventKind::Ended)
     .unwrap();
 
-  assert_eq!(ended_event.body_a, ground);
-  assert_eq!(ended_event.body_b, ball);
+  assert_event_body_pair_unordered(&ended_event, ground, ball);
 
   return;
 }
@@ -326,20 +354,12 @@ fn physics_2d_collision_events_compound_colliders_emit_one_body_pair_event() {
       .count(),
     1,
   );
-  assert_eq!(
+  assert_event_body_pair_unordered(
     started_events
       .iter()
       .find(|event| event.kind == CollisionEventKind::Started)
-      .unwrap()
-      .body_a,
+      .unwrap(),
     compound_body,
-  );
-  assert_eq!(
-    started_events
-      .iter()
-      .find(|event| event.kind == CollisionEventKind::Started)
-      .unwrap()
-      .body_b,
     ball,
   );
 
