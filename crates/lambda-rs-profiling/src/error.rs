@@ -13,6 +13,8 @@ use std::{
 pub enum ProfilerBuildError {
   /// Indicates that the requested frame history limit is invalid.
   InvalidFrameHistoryLimit { requested: usize },
+  /// Indicates that export was requested without an output directory.
+  MissingOutputDirectory,
   /// Indicates that the requested output directory is invalid.
   InvalidOutputDirectory { path: PathBuf },
 }
@@ -25,6 +27,10 @@ impl Display for ProfilerBuildError {
           formatter,
           "invalid profiler frame history limit: {requested}"
         );
+      }
+      Self::MissingOutputDirectory => {
+        return formatter
+          .write_str("profiler export requires an explicit output directory");
       }
       Self::InvalidOutputDirectory { path } => {
         return write!(

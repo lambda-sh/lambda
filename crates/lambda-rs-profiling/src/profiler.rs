@@ -1,4 +1,10 @@
-use std::path::PathBuf;
+use std::{
+  path::PathBuf,
+  sync::{
+    OnceLock,
+    RwLock,
+  },
+};
 
 use crate::{
   ExportError,
@@ -18,6 +24,13 @@ pub struct Profiler {
   output_directory: Option<PathBuf>,
   gpu_timestamps_enabled: bool,
   frame_history_limit: usize,
+}
+
+static GLOBAL_PROFILER: OnceLock<RwLock<Option<&'static Profiler>>> =
+  OnceLock::new();
+
+fn global_profiler_slot() -> &'static RwLock<Option<&'static Profiler>> {
+  return GLOBAL_PROFILER.get_or_init(|| RwLock::new(None));
 }
 
 impl Profiler {
@@ -41,12 +54,20 @@ impl Profiler {
   /// Returns `Ok(())` when global installation succeeds.
   ///
   /// # Errors
-  /// Returns [`ProfilerInstallError`] when global installation is not available
-  /// in the current implementation stage.
+  /// Returns [`ProfilerInstallError::AlreadyInstalled`] when another profiler
+  /// has already been installed globally.
   pub fn install_global(self) -> Result<(), ProfilerInstallError> {
-    let _ = self;
+    let mut profiler_slot = global_profiler_slot()
+      .write()
+      .unwrap_or_else(|poisoned| poisoned.into_inner());
 
-    return Err(ProfilerInstallError::Unavailable);
+    if profiler_slot.is_some() {
+      return Err(ProfilerInstallError::AlreadyInstalled);
+    }
+
+    *profiler_slot = Some(Box::leak(Box::new(self)));
+
+    return Ok(());
   }
 
   /// Returns the globally installed profiler when one is available.
@@ -58,7 +79,11 @@ impl Profiler {
   /// Returns the current global profiler, or `None` when no global profiler is
   /// installed.
   pub fn global() -> Option<&'static Profiler> {
-    return None;
+    let profiler_slot = global_profiler_slot()
+      .read()
+      .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    return *profiler_slot;
   }
 
   /// Begins a named profiling scope.
@@ -158,6 +183,14 @@ impl Profiler {
 
     return Ok(TraceReport::placeholder(&self.run_name));
   }
+
+  #[cfg(test)]
+  pub(crate) fn reset_global_for_tests() {
+    let mut profiler_slot = global_profiler_slot()
+      .write()
+      .unwrap_or_else(|poisoned| poisoned.into_inner());
+    *profiler_slot = None;
+  }
 }
 
 /// Tracks a profiling scope and closes it when dropped.
@@ -212,4 +245,78 @@ pub struct FrameArtifacts {
   pub summary_path: Option<PathBuf>,
   /// Path to the written trace artifact, when trace export ran.
   pub trace_path: Option<PathBuf>,
+}
+
+#[cfg(test)]
+mod install_tests {
+  use std::sync::{
+    Mutex,
+    MutexGuard,
+    OnceLock,
+  };
+
+  use super::Profiler;
+  use crate::{
+    ProfilerBuilder,
+    ProfilerInstallError,
+  };
+
+  static INSTALL_TEST_MUTEX: OnceLock<Mutex<()>> = OnceLock::new();
+
+  fn install_test_mutex() -> &'static Mutex<()> {
+    return INSTALL_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+  }
+
+  struct InstallTestContext {
+    _guard: MutexGuard<'static, ()>,
+  }
+
+  impl InstallTestContext {
+    fn new() -> Self {
+      let guard = install_test_mutex()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+      Profiler::reset_global_for_tests();
+
+      return Self { _guard: guard };
+    }
+  }
+
+  impl Drop for InstallTestContext {
+    fn drop(&mut self) {
+      Profiler::reset_global_for_tests();
+    }
+  }
+
+  #[test]
+  fn install_global_returns_already_installed_for_second_profiler() {
+    let _context = InstallTestContext::new();
+    let first_profiler = ProfilerBuilder::new("tests.install.first_profiler")
+      .build()
+      .unwrap();
+    let second_profiler = ProfilerBuilder::new("tests.install.second_profiler")
+      .build()
+      .unwrap();
+
+    first_profiler.install_global().unwrap();
+
+    let error = second_profiler.install_global().unwrap_err();
+
+    assert_eq!(error, ProfilerInstallError::AlreadyInstalled);
+  }
+
+  #[test]
+  fn install_global_makes_profiler_visible_via_global() {
+    let _context = InstallTestContext::new();
+    let profiler = ProfilerBuilder::new("tests.install.global_visibility")
+      .build()
+      .unwrap();
+
+    profiler.install_global().unwrap();
+
+    let global_profiler = Profiler::global().unwrap();
+    let guard = global_profiler.begin_scope("tests.install.scope");
+
+    assert_eq!(guard.name(), "tests.install.scope");
+  }
 }
