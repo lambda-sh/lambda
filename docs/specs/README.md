@@ -3,13 +3,13 @@ title: "Specifications Index"
 document_id: "specs-index-2026-02-07"
 status: "living"
 created: "2026-02-07T00:00:00Z"
-last_updated: "2026-03-25T16:39:52Z"
-version: "0.1.5"
+last_updated: "2026-04-06T00:13:19Z"
+version: "0.1.6"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "26.0.1"
 shader_backend_default: "naga"
 winit_version: "0.29.10"
-repo_commit: "f3c56aaa0985993cc7e751865913e7a2ef27040e"
+repo_commit: "4313b4be0ae9b36c16dcf5152265a087bf81e223"
 owners: ["lambda-sh"]
 reviewers: ["engine"]
 tags: ["index", "specs", "docs"]
@@ -34,6 +34,7 @@ tags: ["index", "specs", "docs"]
 ## Runtime / Events
 
 - Component Event Handling — [runtime/component-event-handling.md](runtime/component-event-handling.md)
+- Profiling and Performance Regression Checks — [runtime/profiling-and-performance-regression-checks.md](runtime/profiling-and-performance-regression-checks.md)
 
 ## Physics
 
@@ -48,5 +49,7 @@ tags: ["index", "specs", "docs"]
 
 ## Changelog
 
+- 0.1.6 (2026-04-06): Add the profiling and performance regression checks
+  specification and update metadata.
 - 0.1.5 (2026-03-25): Add the 2D collision queries and events specification
   and align metadata with the long-lived documentation requirements.
