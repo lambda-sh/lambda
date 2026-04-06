@@ -1,0 +1,17 @@
+[package]
+name = "lambda-rs-profiling"
+description = "Profiling support for lambda-rs"
+version = "2023.1.30"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/lambda-sh/lambda"
+
+[lib]
+name = "lambda_rs_profiling"
+path = "src/lib.rs"
+
+[features]
+default = []
+gpu = []
+export-summary = []
+export-trace = []

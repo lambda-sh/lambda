@@ -32,6 +32,13 @@ pub mod audio;
 #[cfg(feature = "physics-2d")]
 pub mod physics;
 
+#[cfg(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+))]
+pub use lambda_rs_profiling as profiling;
 /// The logging module provides a simple logging interface for Lambda
 /// applications.
 pub use logging;

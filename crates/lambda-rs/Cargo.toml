@@ -14,6 +14,7 @@ path = "src/lib.rs"
 [dependencies]
 lambda-rs-platform = { path = "../lambda-rs-platform", version = "2023.1.30"}
 lambda-rs-logging = { path = "../lambda-rs-logging", version = "2023.1.30" }
+lambda-rs-profiling = { path = "../lambda-rs-profiling", version = "2023.1.30", optional = true }
 
 [dev-dependencies]
 cargo-audit = "0.16.0"
@@ -94,6 +95,32 @@ render-validation-render-targets = []
 
 # Umbrella features (disabled by default)
 physics-2d = ["lambda-rs-platform/physics-2d"]
+
+# -------------------------------- PROFILING ----------------------------------
+
+# Umbrella features
+profiling = [
+  "profiling-cpu",
+  "profiling-export-summary",
+  "profiling-export-trace",
+]
+profiling-all = ["profiling", "profiling-gpu"]
+
+# Granular feature flags
+profiling-cpu = ["dep:lambda-rs-profiling"]
+profiling-gpu = [
+  "profiling-cpu",
+  "lambda-rs-profiling/gpu",
+  "lambda-rs-platform/profiling-gpu",
+]
+profiling-export-summary = [
+  "profiling-cpu",
+  "lambda-rs-profiling/export-summary",
+]
+profiling-export-trace = [
+  "profiling-cpu",
+  "lambda-rs-profiling/export-trace",
+]
 
 
 # ---------------------------- PLATFORM DEPENDENCIES ---------------------------

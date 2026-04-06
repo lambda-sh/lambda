@@ -1599,6 +1599,7 @@ dependencies = [
  "cargo-tarpaulin",
  "lambda-rs-logging",
  "lambda-rs-platform",
+ "lambda-rs-profiling",
  "mockall",
 ]
 
@@ -1627,6 +1628,10 @@ dependencies = [
  "windows",
  "winit",
 ]
+
+[[package]]
+name = "lambda-rs-profiling"
+version = "2023.1.30"
 
 [[package]]
 name = "lazy_static"

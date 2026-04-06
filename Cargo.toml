@@ -7,6 +7,7 @@ members = [
   "crates/lambda-rs-args",
   "crates/lambda-rs-logging",
   "crates/lambda-rs-platform",
+  "crates/lambda-rs-profiling",
   "tools/obj_loader",
   "tools/lambda_audio",
   # Demo crates (not built by default; see `default-members`).
@@ -21,5 +22,6 @@ default-members = [
   "crates/lambda-rs-args",
   "crates/lambda-rs-logging",
   "crates/lambda-rs-platform",
+  "crates/lambda-rs-profiling",
   "tools/obj_loader",
 ]

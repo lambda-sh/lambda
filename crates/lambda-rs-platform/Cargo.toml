@@ -71,3 +71,8 @@ audio-decode-vorbis = ["dep:symphonia"]
 
 # Umbrella features (disabled by default)
 physics-2d = ["dep:rapier2d"]
+
+# -------------------------------- PROFILING ----------------------------------
+
+# Granular feature flags (disabled by default)
+profiling-gpu = ["wgpu"]

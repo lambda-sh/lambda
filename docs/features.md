@@ -3,16 +3,16 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-03-25T16:39:52Z"
-version: "0.1.18"
+last_updated: "2026-04-06T20:18:35Z"
+version: "0.1.19"
 engine_workspace_version: "2023.1.30"
-wgpu_version: "26.0.1"
+wgpu_version: "29.0.0"
 shader_backend_default: "naga"
-winit_version: "0.29.10"
-repo_commit: "f3c56aaa0985993cc7e751865913e7a2ef27040e"
+winit_version: "0.29.15"
+repo_commit: "e5a50fd44b72c4e4a3d0f58c089547b2ddd8c893"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
-tags: ["guide", "features", "validation", "cargo", "audio", "physics"]
+tags: ["guide", "features", "validation", "cargo", "audio", "physics", "profiling"]
 ---
 
 ## Overview
@@ -102,6 +102,35 @@ Physics
   runtime cost is incurred unless a physics world is constructed, populated,
   stepped, or queried.
 
+Profiling
+- `profiling` (umbrella, disabled by default): enables the public profiling
+  surface by composing `profiling-cpu`, `profiling-export-summary`, and
+  `profiling-export-trace`. This umbrella exists for convenience and has the
+  combined runtime cost of the granular features it enables.
+- `profiling-all` (umbrella, disabled by default): enables the full v1
+  profiling feature set by composing `profiling` and `profiling-gpu`. This
+  umbrella exists for convenience and has the combined runtime cost of the
+  granular features it enables.
+- `profiling-cpu` (granular, disabled by default): enables the public
+  `lambda::profiling` module and the CPU-side profiler scaffolding through the
+  internal `lambda-rs-profiling` crate. Runtime cost is feature-dependent in
+  later implementation steps; this scaffolding step adds no profiling behavior
+  yet.
+- `profiling-gpu` (granular, disabled by default): enables GPU profiling
+  support wiring by composing `profiling-cpu`,
+  `lambda-rs-profiling/gpu`, and `lambda-rs-platform/profiling-gpu`.
+  Expected runtime cost in later steps is moderate and proportional to GPU
+  timestamp query allocation, resolve, and readback work; unsupported adapters
+  MUST fall back to CPU-only profiling.
+- `profiling-export-summary` (granular, disabled by default): enables summary
+  export support through `lambda-rs-profiling/export-summary` and composes
+  `profiling-cpu`. Expected runtime cost in later steps is low to moderate and
+  incurred when summary aggregation and serialization are requested.
+- `profiling-export-trace` (granular, disabled by default): enables trace
+  export support through `lambda-rs-profiling/export-trace` and composes
+  `profiling-cpu`. Expected runtime cost in later steps is moderate and
+  incurred when trace buffering and serialization are requested.
+
 Render validation
 
 Umbrella features (crate: `lambda-rs`)
@@ -179,7 +208,17 @@ Physics
   backend (currently backed by `rapier2d`). Applications MUST NOT depend on
   `rapier2d` directly via this crate.
 
+Profiling
+- `profiling-gpu` (granular, disabled by default): enables the internal GPU
+  profiling plumbing required for timestamp-query support on the `wgpu`
+  backend. This feature composes `wgpu` and is intended for use only through
+  the public `lambda-rs` profiling features. Applications MUST NOT depend on
+  platform profiling details directly.
+
 ## Changelog
+- 0.1.19 (2026-04-06): Document the new profiling feature flags in
+  `lambda-rs` and `lambda-rs-platform`, and update metadata to match the
+  current workspace toolchain versions.
 - 0.1.18 (2026-03-25): Expand `physics-2d` documentation to include collision
   events, collision filtering, and spatial queries.
 - 0.1.17 (2026-03-14): Update `physics-2d` coverage to include 2D colliders.
