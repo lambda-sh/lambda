@@ -1,12 +1,15 @@
 use std::{
   path::PathBuf,
   sync::{
+    Arc,
     OnceLock,
     RwLock,
   },
+  time::Instant,
 };
 
 use crate::{
+  collector::cpu::CpuCollector,
   ExportError,
   ProfilerBuilder,
   ProfilerFlushError,
@@ -24,6 +27,7 @@ pub struct Profiler {
   output_directory: Option<PathBuf>,
   gpu_timestamps_enabled: bool,
   frame_history_limit: usize,
+  cpu_collector: Arc<CpuCollector>,
 }
 
 static GLOBAL_PROFILER: OnceLock<RwLock<Option<&'static Profiler>>> =
@@ -42,6 +46,7 @@ impl Profiler {
       output_directory: builder.output_directory().map(PathBuf::from),
       gpu_timestamps_enabled: builder.gpu_timestamps_enabled(),
       frame_history_limit: builder.frame_history_limit(),
+      cpu_collector: CpuCollector::new(),
     };
   }
 
@@ -94,9 +99,15 @@ impl Profiler {
   /// # Returns
   /// Returns a guard that closes the scope when it is dropped.
   pub fn begin_scope(&self, name: &'static str) -> ScopeGuard {
-    let _ = self;
+    let started_at = Instant::now();
 
-    return ScopeGuard::disabled(name);
+    self.cpu_collector.record_span_begin(name, started_at);
+
+    return ScopeGuard::enabled(
+      name,
+      Arc::clone(&self.cpu_collector),
+      started_at,
+    );
   }
 
   /// Records a counter value for the current frame or scope.
@@ -108,7 +119,7 @@ impl Profiler {
   /// # Returns
   /// This method does not return a value.
   pub fn record_counter(&self, name: &'static str, value: u64) {
-    let _ = (self, name, value);
+    self.cpu_collector.record_counter(name, value);
   }
 
   /// Records an instantaneous profiling event.
@@ -119,7 +130,7 @@ impl Profiler {
   /// # Returns
   /// This method does not return a value.
   pub fn record_instant(&self, name: &'static str) {
-    let _ = (self, name);
+    self.cpu_collector.record_instant(name);
   }
 
   /// Flushes profiler data for the current frame.
@@ -133,6 +144,8 @@ impl Profiler {
   /// # Errors
   /// Returns [`ProfilerFlushError`] when frame flushing is not yet available.
   pub fn flush_frame(&self) -> Result<FrameArtifacts, ProfilerFlushError> {
+    self.cpu_collector.flush_thread_local_buffers();
+
     let _ = (
       &self.output_directory,
       self.gpu_timestamps_enabled,
@@ -199,6 +212,8 @@ pub struct ScopeGuard {
   #[allow(dead_code)]
   name: &'static str,
   closed: bool,
+  collector: Option<Arc<CpuCollector>>,
+  started_at: Option<Instant>,
 }
 
 impl ScopeGuard {
@@ -206,6 +221,21 @@ impl ScopeGuard {
     return Self {
       name,
       closed: false,
+      collector: None,
+      started_at: None,
+    };
+  }
+
+  pub(crate) fn enabled(
+    name: &'static str,
+    collector: Arc<CpuCollector>,
+    started_at: Instant,
+  ) -> Self {
+    return Self {
+      name,
+      closed: false,
+      collector: Some(collector),
+      started_at: Some(started_at),
     };
   }
 
@@ -222,10 +252,15 @@ impl ScopeGuard {
   }
 
   pub(crate) fn close(&mut self) {
-    let _ = self.name;
-
     if self.closed {
       return;
+    }
+
+    if let Some(collector) = self.collector.take() {
+      let ended_at = Instant::now();
+      let _ = self.started_at.take();
+
+      collector.record_span_end(self.name, ended_at);
     }
 
     self.closed = true;

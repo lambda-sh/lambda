@@ -3,10 +3,11 @@
 //!
 //! This crate is re-exported by `lambda-rs` as `lambda::profiling` when one or
 //! more profiling features are enabled. The current implementation provides the
-//! public API skeleton and user-facing macros required for later collector and
-//! export work.
+//! public API, CPU event collection, and user-facing macros required for later
+//! export and regression-comparison work.
 
 mod builder;
+mod collector;
 mod error;
 mod macros;
 mod profiler;
