@@ -577,7 +577,9 @@ mod tests {
   #[test]
   fn slice_as_bytes_empty_is_empty() {
     let values: [u32; 0] = [];
-    assert_eq!(slice_as_bytes(&values).unwrap(), &[]);
+    let expected: &[u8] = &[];
+
+    assert_eq!(slice_as_bytes(&values).unwrap(), expected);
   }
 
   /// Rejects byte length computations that would overflow `usize`.

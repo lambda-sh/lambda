@@ -102,6 +102,10 @@ impl Error for ProfilerFlushError {}
 pub enum ExportError {
   /// Indicates that the requested export path is invalid or unavailable.
   InvalidOutputDirectory { path: PathBuf },
+  /// Indicates that report serialization failed before writing.
+  Serialize { export_name: &'static str },
+  /// Indicates that writing the requested export artifact failed.
+  WriteFailed { path: PathBuf },
   /// Indicates that the requested export mode is disabled.
   Disabled { export_name: &'static str },
   /// Indicates that export is not yet implemented.
@@ -115,6 +119,16 @@ impl Display for ExportError {
         return write!(
           formatter,
           "invalid export output directory: {}",
+          path.display()
+        );
+      }
+      Self::Serialize { export_name } => {
+        return write!(formatter, "failed to serialize {export_name} export");
+      }
+      Self::WriteFailed { path } => {
+        return write!(
+          formatter,
+          "failed to write profiler export artifact: {}",
           path.display()
         );
       }

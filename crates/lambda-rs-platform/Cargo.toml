@@ -30,6 +30,9 @@ symphonia = { version = "=0.5.5", optional = true, default-features = false, fea
   "pcm",
 ] }
 rapier2d = { version = "=0.32.0", optional = true }
+serde = { version = "=1.0.228", optional = true }
+serde_json = { version = "=1.0.145", optional = true }
+time = { version = "=0.3.47", optional = true, features = ["formatting"] }
 
 # Force windows crate to 0.62 to unify wgpu-hal and gpu-allocator dependencies.
 # Both crates support this version range, but Cargo may resolve to different
@@ -76,3 +79,5 @@ physics-2d = ["dep:rapier2d"]
 
 # Granular feature flags (disabled by default)
 profiling-gpu = ["wgpu"]
+profiling-export-summary = ["dep:serde", "dep:serde_json", "dep:time"]
+profiling-export-trace = ["dep:serde", "dep:serde_json", "dep:time"]

@@ -10,6 +10,11 @@
 //! types are exposed as a convenience to the higher‑level crate and MAY change
 //! between releases to fit engine needs.
 pub mod obj;
+#[cfg(any(
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+))]
+pub mod profiling_support;
 pub mod rand;
 pub mod shader;
 #[cfg(feature = "wgpu")]

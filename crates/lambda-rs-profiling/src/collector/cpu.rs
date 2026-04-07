@@ -1,4 +1,5 @@
 use std::{
+  mem,
   sync::{
     atomic::{
       AtomicUsize,
@@ -267,6 +268,35 @@ impl CpuCollector {
 
       return true;
     });
+  }
+
+  /// Returns the current collector-relative timestamp.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the elapsed nanoseconds since the collector was created.
+  pub(crate) fn current_timestamp_ns(&self) -> u64 {
+    return self.now_ns();
+  }
+
+  /// Takes the collected CPU events for the current frame.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the drained CPU events collected so far.
+  pub(crate) fn take_events(&self) -> Vec<CpuEvent> {
+    self.flush_thread_local_buffers();
+
+    let mut state = self
+      .state
+      .lock()
+      .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    return mem::take(&mut state.events);
   }
 
   /// Converts an [`Instant`] into a collector-relative nanosecond timestamp.

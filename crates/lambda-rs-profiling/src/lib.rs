@@ -29,6 +29,7 @@ pub use profiler::{
 pub use report::{
   ComparisonReport,
   SummaryReport,
+  SummaryScope,
   TraceReport,
 };
 

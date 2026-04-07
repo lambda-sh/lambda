@@ -10,8 +10,11 @@ repository = "https://github.com/lambda-sh/lambda"
 name = "lambda_rs_profiling"
 path = "src/lib.rs"
 
+[dependencies]
+lambda-rs-platform = { path = "../lambda-rs-platform", version = "2023.1.30", default-features = false }
+
 [features]
 default = []
 gpu = []
-export-summary = []
-export-trace = []
+export-summary = ["lambda-rs-platform/profiling-export-summary"]
+export-trace = ["lambda-rs-platform/profiling-export-trace"]
