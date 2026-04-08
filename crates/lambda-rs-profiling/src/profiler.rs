@@ -153,8 +153,8 @@ impl Profiler {
   /// Returns frame artifact metadata for the completed flush.
   ///
   /// # Errors
-  /// Returns [`ProfilerFlushError`] when summary export is requested but the
-  /// artifact cannot be generated or written.
+  /// Returns [`ProfilerFlushError`] when summary or trace export is requested
+  /// but an artifact cannot be generated or written.
   pub fn flush_frame(&self) -> Result<FrameArtifacts, ProfilerFlushError> {
     let frame_end_ns = self.cpu_collector.current_timestamp_ns();
     let cpu_events = self.cpu_collector.take_events();
@@ -187,6 +187,15 @@ impl Profiler {
       frame_artifacts.summary_path = Some(summary_path);
     }
 
+    if self.trace_export_enabled {
+      let trace_report =
+        self.export_trace().map_err(ProfilerFlushError::Export)?;
+      let trace_path = self
+        .write_trace_report(&trace_report)
+        .map_err(ProfilerFlushError::Export)?;
+      frame_artifacts.trace_path = Some(trace_path);
+    }
+
     return Ok(frame_artifacts);
   }
 
@@ -207,7 +216,7 @@ impl Profiler {
       });
     }
 
-    let generated_at_utc = summary_generated_at_utc()?;
+    let generated_at_utc = export_generated_at_utc("summary")?;
     let completed_frames = self.completed_frames();
 
     return Ok(SummaryReport::from_completed_frames(
@@ -223,8 +232,7 @@ impl Profiler {
   /// This method does not take additional arguments.
   ///
   /// # Returns
-  /// Returns a placeholder trace report for the current profiler
-  /// configuration.
+  /// Returns an ordered trace report over the retained completed frames.
   ///
   /// # Errors
   /// Returns [`ExportError`] when trace export is disabled or unavailable.
@@ -235,7 +243,14 @@ impl Profiler {
       });
     }
 
-    return Ok(TraceReport::placeholder(&self.run_name));
+    let generated_at_utc = export_generated_at_utc("trace")?;
+    let completed_frames = self.completed_frames();
+
+    return Ok(TraceReport::from_completed_frames(
+      &self.run_name,
+      generated_at_utc,
+      &completed_frames,
+    ));
   }
 
   #[cfg(test)]
@@ -277,24 +292,65 @@ impl Profiler {
     &self,
     summary_report: &SummaryReport,
   ) -> Result<PathBuf, ExportError> {
+    let json_bytes = summary_report.to_json_bytes()?;
+
+    return self.write_export_artifact("summary", &json_bytes);
+  }
+
+  /// Writes a trace report into the configured output directory.
+  ///
+  /// # Arguments
+  /// - `trace_report`: Trace report to serialize and write.
+  ///
+  /// # Returns
+  /// Returns the path written for the trace artifact.
+  ///
+  /// # Errors
+  /// Returns [`ExportError`] when the output directory is unavailable or the
+  /// artifact cannot be serialized or written.
+  fn write_trace_report(
+    &self,
+    trace_report: &TraceReport,
+  ) -> Result<PathBuf, ExportError> {
+    let json_bytes = trace_report.to_json_bytes()?;
+
+    return self.write_export_artifact("trace", &json_bytes);
+  }
+
+  /// Writes one profiler export artifact into the configured output directory.
+  ///
+  /// # Arguments
+  /// - `export_name`: Stable export name used in the output file stem.
+  /// - `json_bytes`: Serialized export payload written to disk.
+  ///
+  /// # Returns
+  /// Returns the path written for the export artifact.
+  ///
+  /// # Errors
+  /// Returns [`ExportError`] when the output directory is unavailable or the
+  /// artifact cannot be written.
+  fn write_export_artifact(
+    &self,
+    export_name: &str,
+    json_bytes: &[u8],
+  ) -> Result<PathBuf, ExportError> {
     let Some(output_directory) = &self.output_directory else {
       return Err(ExportError::InvalidOutputDirectory {
         path: PathBuf::from("<missing>"),
       });
     };
-    let summary_path = output_directory.join(format!(
-      "{}-summary.json",
+    let artifact_path = output_directory.join(format!(
+      "{}-{export_name}.json",
       sanitize_run_name_for_path(&self.run_name)
     ));
-    let json_bytes = summary_report.to_json_bytes()?;
 
-    fs::write(&summary_path, json_bytes).map_err(|_| {
+    fs::write(&artifact_path, json_bytes).map_err(|_| {
       return ExportError::WriteFailed {
-        path: summary_path.clone(),
+        path: artifact_path.clone(),
       };
     })?;
 
-    return Ok(summary_path);
+    return Ok(artifact_path);
   }
 }
 
@@ -363,19 +419,21 @@ impl ProfilerState {
   }
 }
 
-/// Returns the current UTC timestamp used for summary export.
+/// Returns the current UTC timestamp used for profiler export.
 ///
 /// # Arguments
-/// This function does not take additional arguments.
+/// - `export_name`: Export mode using the generated timestamp.
 ///
 /// # Returns
-/// Returns the formatted UTC timestamp used in summary exports.
+/// Returns the formatted UTC timestamp used in profiler exports.
 ///
 /// # Errors
 /// Returns [`ExportError::Serialize`] when timestamp formatting is
 /// unavailable.
-fn summary_generated_at_utc() -> Result<String, ExportError> {
-  #[cfg(feature = "export-summary")]
+fn export_generated_at_utc(
+  export_name: &'static str,
+) -> Result<String, ExportError> {
+  #[cfg(any(feature = "export-summary", feature = "export-trace"))]
   {
     use lambda_platform::profiling_support::deps::time::{
       format_description::well_known::Rfc3339,
@@ -385,17 +443,13 @@ fn summary_generated_at_utc() -> Result<String, ExportError> {
     let now_utc = OffsetDateTime::now_utc();
 
     return now_utc.format(&Rfc3339).map_err(|_| {
-      return ExportError::Serialize {
-        export_name: "summary",
-      };
+      return ExportError::Serialize { export_name };
     });
   }
 
-  #[cfg(not(feature = "export-summary"))]
+  #[cfg(not(any(feature = "export-summary", feature = "export-trace")))]
   {
-    return Err(ExportError::Unavailable {
-      export_name: "summary",
-    });
+    return Err(ExportError::Unavailable { export_name });
   }
 }
 
@@ -580,7 +634,7 @@ mod install_tests {
 
 #[cfg(test)]
 mod flush_tests {
-  #[cfg(feature = "export-summary")]
+  #[cfg(any(feature = "export-summary", feature = "export-trace"))]
   use std::{
     env,
     fs,
@@ -597,11 +651,16 @@ mod flush_tests {
   };
 
   use crate::ProfilerBuilder;
+  #[cfg(feature = "export-trace")]
+  use crate::{
+    ExportError,
+    ProfilerFlushError,
+  };
 
-  #[cfg(feature = "export-summary")]
+  #[cfg(any(feature = "export-summary", feature = "export-trace"))]
   static NEXT_TEST_ID: AtomicU64 = AtomicU64::new(0);
 
-  #[cfg(feature = "export-summary")]
+  #[cfg(any(feature = "export-summary", feature = "export-trace"))]
   fn unique_test_path(suffix: &str) -> PathBuf {
     let test_id = NEXT_TEST_ID.fetch_add(1, Ordering::Relaxed);
 
@@ -611,7 +670,7 @@ mod flush_tests {
     ));
   }
 
-  #[cfg(feature = "export-summary")]
+  #[cfg(any(feature = "export-summary", feature = "export-trace"))]
   fn remove_path_if_present(path: &PathBuf) {
     if !path.exists() {
       return;
@@ -667,6 +726,66 @@ mod flush_tests {
     assert!(summary_contents.contains("\"schema_version\""));
     assert!(summary_contents.contains("\"frame_count\""));
     assert!(summary_contents.contains("\"scopes\""));
+
+    remove_path_if_present(&output_directory);
+  }
+
+  #[cfg(feature = "export-trace")]
+  #[test]
+  fn flush_frame_writes_trace_artifact_when_trace_export_is_enabled() {
+    let output_directory = unique_test_path("trace-export");
+    remove_path_if_present(&output_directory);
+
+    let profiler = ProfilerBuilder::new("tests.trace export")
+      .with_trace_export(true)
+      .with_output_directory(&output_directory)
+      .build()
+      .unwrap();
+
+    {
+      let _guard = profiler.begin_scope("tests.flush.scope");
+      profiler.record_counter("tests.flush.counter", 5);
+      profiler.record_instant("tests.flush.instant");
+      thread::sleep(Duration::from_millis(1));
+    }
+
+    let artifacts = profiler.flush_frame().unwrap();
+    let trace_path = artifacts.trace_path.unwrap();
+    let trace_contents = fs::read_to_string(&trace_path).unwrap();
+
+    assert!(trace_path.exists());
+    assert!(trace_contents.contains("\"schema_version\""));
+    assert!(trace_contents.contains("\"events\""));
+    assert!(trace_contents.contains("\"span_begin\""));
+    assert!(trace_contents.contains("\"counter\""));
+    assert!(trace_contents.contains("\"instant\""));
+
+    remove_path_if_present(&output_directory);
+  }
+
+  #[cfg(feature = "export-trace")]
+  #[test]
+  fn flush_frame_returns_write_failed_for_trace_artifact_path() {
+    let output_directory = unique_test_path("trace-write-failure");
+    remove_path_if_present(&output_directory);
+
+    let profiler = ProfilerBuilder::new("tests.trace write failure")
+      .with_trace_export(true)
+      .with_output_directory(&output_directory)
+      .build()
+      .unwrap();
+
+    remove_path_if_present(&output_directory);
+    fs::write(&output_directory, "not-a-directory").unwrap();
+
+    let error = profiler.flush_frame().unwrap_err();
+
+    assert_eq!(
+      error,
+      ProfilerFlushError::Export(ExportError::WriteFailed {
+        path: output_directory.join("tests-trace-write-failure-trace.json",),
+      }),
+    );
 
     remove_path_if_present(&output_directory);
   }

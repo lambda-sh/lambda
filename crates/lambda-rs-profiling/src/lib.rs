@@ -30,6 +30,7 @@ pub use report::{
   ComparisonReport,
   SummaryReport,
   SummaryScope,
+  TraceEvent,
   TraceReport,
 };
 

@@ -12,6 +12,7 @@ use crate::collector::cpu::{
 pub(crate) const CPU_CLOCK_DOMAIN: &str = "cpu";
 
 const SUMMARY_SCHEMA_VERSION: &str = "1";
+const TRACE_SCHEMA_VERSION: &str = "1";
 
 /// Stores one completed frame retained by the profiler.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -460,19 +461,260 @@ impl SummaryReport {
   }
 }
 
+/// Stores one ordered profiling event exported by a trace report.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraceEvent {
+  name: String,
+  kind: String,
+  clock_domain: String,
+  timestamp_ns: u64,
+  thread_id: Option<String>,
+  frame_index: u64,
+  value: Option<u64>,
+}
+
+impl TraceEvent {
+  /// Returns the stable event name.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the recorded event name.
+  pub fn name(&self) -> &str {
+    return &self.name;
+  }
+
+  /// Returns the stable event kind label.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns one of `span_begin`, `span_end`, `counter`, or `instant`.
+  pub fn kind(&self) -> &str {
+    return &self.kind;
+  }
+
+  /// Returns the stable clock-domain label for this event.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the event clock-domain label.
+  pub fn clock_domain(&self) -> &str {
+    return &self.clock_domain;
+  }
+
+  /// Returns the collector-relative event timestamp.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the event timestamp in nanoseconds.
+  pub fn timestamp_ns(&self) -> u64 {
+    return self.timestamp_ns;
+  }
+
+  /// Returns the CPU thread identifier string when one exists.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the thread identifier string for CPU events, or `None` for
+  /// clock domains that do not carry thread affinity.
+  pub fn thread_id(&self) -> Option<&str> {
+    return self.thread_id.as_deref();
+  }
+
+  /// Returns the zero-based frame index containing this event.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the zero-based frame index for the event.
+  pub fn frame_index(&self) -> u64 {
+    return self.frame_index;
+  }
+
+  /// Returns the counter value when this event stores one.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the retained counter value for `counter` events, or `None`
+  /// otherwise.
+  pub fn value(&self) -> Option<u64> {
+    return self.value;
+  }
+}
+
 /// Ordered profiling events for a completed run.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraceReport {
   run_name: String,
-  event_count: usize,
+  generated_at_utc: String,
+  events: Vec<TraceEvent>,
 }
 
 impl TraceReport {
-  pub(crate) fn placeholder(run_name: &str) -> Self {
+  /// Builds a trace report from retained completed frames.
+  ///
+  /// # Arguments
+  /// - `run_name`: Stable run name configured for the profiler.
+  /// - `generated_at_utc`: UTC timestamp embedded in the report.
+  /// - `frames`: Retained completed frames used for export.
+  ///
+  /// # Returns
+  /// Returns an ordered trace report over the retained frames.
+  pub(crate) fn from_completed_frames(
+    run_name: &str,
+    generated_at_utc: String,
+    frames: &[CompletedFrame],
+  ) -> Self {
     return Self {
       run_name: run_name.to_owned(),
-      event_count: 0,
+      generated_at_utc,
+      events: build_trace_events(frames),
     };
+  }
+
+  /// Returns the stable schema version for trace export.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the current trace schema version.
+  pub fn schema_version(&self) -> &'static str {
+    return TRACE_SCHEMA_VERSION;
+  }
+
+  /// Returns the profiler run name used for this report.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the stable run name stored in the report.
+  pub fn run_name(&self) -> &str {
+    return &self.run_name;
+  }
+
+  /// Returns the UTC timestamp stored in this report.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the generated-at timestamp in UTC.
+  pub fn generated_at_utc(&self) -> &str {
+    return &self.generated_at_utc;
+  }
+
+  /// Returns the ordered trace events stored in this report.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the ordered trace-event slice for this report.
+  pub fn events(&self) -> &[TraceEvent] {
+    return &self.events;
+  }
+
+  /// Serializes this trace report into stable JSON bytes.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the pretty-printed JSON bytes for the trace report.
+  ///
+  /// # Errors
+  /// Returns [`crate::ExportError::Serialize`] when trace serialization is
+  /// unavailable or fails.
+  pub(crate) fn to_json_bytes(&self) -> Result<Vec<u8>, crate::ExportError> {
+    #[cfg(feature = "export-trace")]
+    {
+      use lambda_platform::profiling_support::deps::serde_json::{
+        self,
+        Map,
+        Number,
+        Value,
+      };
+
+      let event_values = self
+        .events
+        .iter()
+        .map(|event| {
+          let mut event_object = Map::new();
+
+          event_object
+            .insert("name".to_owned(), Value::String(event.name.clone()));
+          event_object
+            .insert("kind".to_owned(), Value::String(event.kind.clone()));
+          event_object.insert(
+            "clock_domain".to_owned(),
+            Value::String(event.clock_domain.clone()),
+          );
+          event_object.insert(
+            "timestamp_ns".to_owned(),
+            Value::Number(Number::from(event.timestamp_ns)),
+          );
+          event_object.insert(
+            "frame_index".to_owned(),
+            Value::Number(Number::from(event.frame_index)),
+          );
+
+          if let Some(thread_id) = &event.thread_id {
+            event_object
+              .insert("thread_id".to_owned(), Value::String(thread_id.clone()));
+          }
+
+          if let Some(value) = event.value {
+            event_object
+              .insert("value".to_owned(), Value::Number(Number::from(value)));
+          }
+
+          return Value::Object(event_object);
+        })
+        .collect();
+
+      let mut root_object = Map::new();
+
+      root_object.insert(
+        "schema_version".to_owned(),
+        Value::String(self.schema_version().to_owned()),
+      );
+      root_object
+        .insert("run_name".to_owned(), Value::String(self.run_name.clone()));
+      root_object.insert(
+        "generated_at_utc".to_owned(),
+        Value::String(self.generated_at_utc.clone()),
+      );
+      root_object.insert("events".to_owned(), Value::Array(event_values));
+
+      return serde_json::to_vec_pretty(&Value::Object(root_object)).map_err(
+        |_| {
+          return crate::ExportError::Serialize {
+            export_name: "trace",
+          };
+        },
+      );
+    }
+
+    #[cfg(not(feature = "export-trace"))]
+    {
+      return Err(crate::ExportError::Unavailable {
+        export_name: "trace",
+      });
+    }
   }
 }
 
@@ -537,6 +779,40 @@ fn build_cpu_scope_summaries(frames: &[CompletedFrame]) -> Vec<SummaryScope> {
     .collect();
 }
 
+/// Builds ordered trace events from retained completed frames.
+///
+/// # Arguments
+/// - `frames`: Retained completed frames used for export.
+///
+/// # Returns
+/// Returns the ordered trace events derived from the retained frames.
+fn build_trace_events(frames: &[CompletedFrame]) -> Vec<TraceEvent> {
+  let mut trace_events = Vec::new();
+
+  for frame in frames {
+    for event in frame.cpu_events() {
+      let (kind, value) = match event.kind {
+        CpuEventKind::SpanBegin => ("span_begin", None),
+        CpuEventKind::SpanEnd => ("span_end", None),
+        CpuEventKind::Counter { value } => ("counter", Some(value)),
+        CpuEventKind::Instant => ("instant", None),
+      };
+
+      trace_events.push(TraceEvent {
+        name: event.name.to_owned(),
+        kind: kind.to_owned(),
+        clock_domain: CPU_CLOCK_DOMAIN.to_owned(),
+        timestamp_ns: event.timestamp_ns,
+        thread_id: Some(format!("{:?}", event.thread_id)),
+        frame_index: frame.frame_index() as u64,
+        value,
+      });
+    }
+  }
+
+  return trace_events;
+}
+
 /// Builds one stable scope summary from retained duration samples.
 ///
 /// # Arguments
@@ -599,6 +875,7 @@ mod tests {
     build_scope_summary,
     CompletedFrame,
     SummaryReport,
+    TraceReport,
     CPU_CLOCK_DOMAIN,
   };
   use crate::collector::cpu::{
@@ -709,6 +986,79 @@ mod tests {
     assert_eq!(report.scopes()[0].max_ns(), 60);
   }
 
+  #[test]
+  fn trace_report_preserves_cpu_event_order_within_frames() {
+    let thread_id = std::thread::current().id();
+    let report = TraceReport::from_completed_frames(
+      "tests.trace.order",
+      "2026-04-07T00:00:00Z".to_owned(),
+      &[CompletedFrame::cpu(
+        3,
+        100,
+        vec![
+          CpuEvent {
+            name: "tests.scope",
+            kind: CpuEventKind::SpanBegin,
+            timestamp_ns: 10,
+            thread_id,
+          },
+          CpuEvent {
+            name: "tests.scope",
+            kind: CpuEventKind::SpanEnd,
+            timestamp_ns: 30,
+            thread_id,
+          },
+        ],
+      )],
+    );
+
+    assert_eq!(report.run_name(), "tests.trace.order");
+    assert_eq!(report.generated_at_utc(), "2026-04-07T00:00:00Z");
+    assert_eq!(report.events().len(), 2);
+    assert_eq!(report.events()[0].kind(), "span_begin");
+    assert_eq!(report.events()[1].kind(), "span_end");
+    assert_eq!(report.events()[0].timestamp_ns(), 10);
+    assert_eq!(report.events()[1].timestamp_ns(), 30);
+    assert_eq!(report.events()[0].frame_index(), 3);
+    assert_eq!(report.events()[1].frame_index(), 3);
+    assert!(report.events()[0].thread_id().is_some());
+  }
+
+  #[test]
+  fn trace_report_encodes_counter_and_instant_events() {
+    let thread_id = std::thread::current().id();
+    let report = TraceReport::from_completed_frames(
+      "tests.trace.events",
+      "2026-04-07T00:00:00Z".to_owned(),
+      &[CompletedFrame::cpu(
+        0,
+        100,
+        vec![
+          CpuEvent {
+            name: "tests.counter",
+            kind: CpuEventKind::Counter { value: 9 },
+            timestamp_ns: 11,
+            thread_id,
+          },
+          CpuEvent {
+            name: "tests.instant",
+            kind: CpuEventKind::Instant,
+            timestamp_ns: 12,
+            thread_id,
+          },
+        ],
+      )],
+    );
+
+    assert_eq!(report.events().len(), 2);
+    assert_eq!(report.events()[0].name(), "tests.counter");
+    assert_eq!(report.events()[0].kind(), "counter");
+    assert_eq!(report.events()[0].value(), Some(9));
+    assert_eq!(report.events()[1].name(), "tests.instant");
+    assert_eq!(report.events()[1].kind(), "instant");
+    assert_eq!(report.events()[1].value(), None);
+  }
+
   #[cfg(feature = "export-summary")]
   #[test]
   fn summary_json_schema_fields_remain_stable() {
@@ -736,5 +1086,78 @@ mod tests {
     assert!(root.contains_key("frame_p50_ns"));
     assert!(root.contains_key("frame_p95_ns"));
     assert!(root.contains_key("frame_max_ns"));
+  }
+
+  #[cfg(feature = "export-trace")]
+  #[test]
+  fn trace_json_schema_fields_remain_stable() {
+    use lambda_platform::profiling_support::deps::serde_json::Value;
+
+    let report = TraceReport::from_completed_frames(
+      "tests.trace.schema",
+      "2026-04-07T00:00:00Z".to_owned(),
+      &[CompletedFrame::cpu(0, 100, Vec::new())],
+    );
+    let json_value: Value =
+      lambda_platform::profiling_support::deps::serde_json::from_slice(
+        &report.to_json_bytes().unwrap(),
+      )
+      .unwrap();
+    let root = json_value.as_object().unwrap();
+
+    assert!(root.contains_key("schema_version"));
+    assert!(root.contains_key("run_name"));
+    assert!(root.contains_key("generated_at_utc"));
+    assert!(root.contains_key("events"));
+  }
+
+  #[cfg(feature = "export-trace")]
+  #[test]
+  fn trace_json_encodes_counter_and_instant_events() {
+    use lambda_platform::profiling_support::deps::serde_json::Value;
+
+    let thread_id = std::thread::current().id();
+    let report = TraceReport::from_completed_frames(
+      "tests.trace.json",
+      "2026-04-07T00:00:00Z".to_owned(),
+      &[CompletedFrame::cpu(
+        4,
+        100,
+        vec![
+          CpuEvent {
+            name: "tests.counter",
+            kind: CpuEventKind::Counter { value: 11 },
+            timestamp_ns: 12,
+            thread_id,
+          },
+          CpuEvent {
+            name: "tests.instant",
+            kind: CpuEventKind::Instant,
+            timestamp_ns: 13,
+            thread_id,
+          },
+        ],
+      )],
+    );
+    let json_value: Value =
+      lambda_platform::profiling_support::deps::serde_json::from_slice(
+        &report.to_json_bytes().unwrap(),
+      )
+      .unwrap();
+    let events = json_value
+      .as_object()
+      .unwrap()
+      .get("events")
+      .unwrap()
+      .as_array()
+      .unwrap();
+
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0].get("kind").unwrap(), "counter");
+    assert_eq!(events[0].get("value").unwrap(), 11);
+    assert_eq!(events[0].get("frame_index").unwrap(), 4);
+    assert!(events[0].get("thread_id").is_some());
+    assert_eq!(events[1].get("kind").unwrap(), "instant");
+    assert!(events[1].get("value").is_none());
   }
 }
