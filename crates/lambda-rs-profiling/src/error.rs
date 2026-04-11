@@ -148,10 +148,9 @@ impl Error for ExportError {}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompareError {
   /// Indicates that the baseline report did not contain a required scope.
-  MissingBaselineScope {
-    name: String,
-    clock_domain: &'static str,
-  },
+  MissingBaselineScope { name: String, clock_domain: String },
+  /// Indicates that summary-report deserialization failed.
+  DeserializeSummaryReport,
   /// Indicates that comparison support is not yet implemented.
   Unavailable,
 }
@@ -164,6 +163,10 @@ impl Display for CompareError {
           formatter,
           "missing baseline scope `{name}` in `{clock_domain}` clock domain"
         );
+      }
+      Self::DeserializeSummaryReport => {
+        return formatter
+          .write_str("failed to deserialize summary report for comparison");
       }
       Self::Unavailable => {
         return formatter.write_str("report comparison is unavailable");

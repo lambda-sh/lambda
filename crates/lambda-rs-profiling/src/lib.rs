@@ -27,11 +27,17 @@ pub use profiler::{
   ScopeGuard,
 };
 pub use report::{
+  ComparisonMetric,
   ComparisonReport,
+  ComparisonScope,
+  ComparisonTolerances,
+  ComparisonViolation,
+  MetricTolerance,
   SummaryReport,
   SummaryScope,
   TraceEvent,
   TraceReport,
+  FRAME_SCOPE_NAME,
 };
 
 /// Internal helpers used by public macros.

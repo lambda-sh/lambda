@@ -14,6 +14,9 @@ pub(crate) const CPU_CLOCK_DOMAIN: &str = "cpu";
 const SUMMARY_SCHEMA_VERSION: &str = "1";
 const TRACE_SCHEMA_VERSION: &str = "1";
 
+/// Stable name used when reporting frame-level comparison results.
+pub const FRAME_SCOPE_NAME: &str = "frame";
+
 /// Stores one completed frame retained by the profiler.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct CompletedFrame {
@@ -335,6 +338,132 @@ impl SummaryReport {
   /// Returns the maximum retained frame duration in nanoseconds.
   pub fn frame_max_ns(&self) -> u64 {
     return self.frame_max_ns;
+  }
+
+  /// Deserializes a summary report from stable JSON bytes.
+  ///
+  /// # Arguments
+  /// - `json_bytes`: Stable summary JSON bytes produced by profiler export.
+  ///
+  /// # Returns
+  /// Returns the deserialized summary report when parsing succeeds.
+  ///
+  /// # Errors
+  /// Returns [`crate::CompareError::DeserializeSummaryReport`] when summary
+  /// deserialization is unavailable or the input does not match the stable
+  /// summary schema.
+  pub fn from_json_bytes(
+    json_bytes: &[u8],
+  ) -> Result<Self, crate::CompareError> {
+    #[cfg(feature = "export-summary")]
+    {
+      use lambda_platform::profiling_support::deps::serde_json::Value;
+
+      let root: Value =
+        lambda_platform::profiling_support::deps::serde_json::from_slice(
+          json_bytes,
+        )
+        .map_err(|_| crate::CompareError::DeserializeSummaryReport)?;
+      let root_object = root
+        .as_object()
+        .ok_or(crate::CompareError::DeserializeSummaryReport)?;
+      let scopes_value = root_object
+        .get("scopes")
+        .ok_or(crate::CompareError::DeserializeSummaryReport)?;
+      let scopes_array = scopes_value
+        .as_array()
+        .ok_or(crate::CompareError::DeserializeSummaryReport)?;
+      let mut scopes = Vec::with_capacity(scopes_array.len());
+
+      for scope_value in scopes_array {
+        let scope_object = scope_value
+          .as_object()
+          .ok_or(crate::CompareError::DeserializeSummaryReport)?;
+
+        scopes.push(SummaryScope {
+          name: required_string_field(scope_object, "name")?,
+          clock_domain: required_string_field(scope_object, "clock_domain")?,
+          count: required_u64_field(scope_object, "count")?,
+          total_ns: required_u64_field(scope_object, "total_ns")?,
+          mean_ns: required_u64_field(scope_object, "mean_ns")?,
+          p50_ns: required_u64_field(scope_object, "p50_ns")?,
+          p95_ns: required_u64_field(scope_object, "p95_ns")?,
+          max_ns: required_u64_field(scope_object, "max_ns")?,
+        });
+      }
+
+      return Ok(Self {
+        run_name: required_string_field(root_object, "run_name")?,
+        crate_version: required_string_field(root_object, "crate_version")?,
+        generated_at_utc: required_string_field(
+          root_object,
+          "generated_at_utc",
+        )?,
+        scopes,
+        frame_count: required_u64_field(root_object, "frame_count")?,
+        frame_p50_ns: required_u64_field(root_object, "frame_p50_ns")?,
+        frame_p95_ns: required_u64_field(root_object, "frame_p95_ns")?,
+        frame_max_ns: required_u64_field(root_object, "frame_max_ns")?,
+      });
+    }
+
+    #[cfg(not(feature = "export-summary"))]
+    {
+      let _ = json_bytes;
+
+      return Err(crate::CompareError::Unavailable);
+    }
+  }
+
+  /// Returns the named scope or a comparison error when it is absent.
+  ///
+  /// This helper is primarily intended for deterministic regression fixtures
+  /// that require a specific baseline scope to be present before comparison.
+  ///
+  /// # Arguments
+  /// - `name`: Stable scope name to look up.
+  /// - `clock_domain`: Stable clock-domain label to match.
+  ///
+  /// # Returns
+  /// Returns the matching retained scope summary.
+  ///
+  /// # Errors
+  /// Returns [`crate::CompareError::MissingBaselineScope`] when the requested
+  /// scope is absent from the report.
+  pub fn require_scope(
+    &self,
+    name: &str,
+    clock_domain: &str,
+  ) -> Result<&SummaryScope, crate::CompareError> {
+    let scope = self
+      .scopes()
+      .iter()
+      .find(|scope| {
+        return scope.name() == name && scope.clock_domain() == clock_domain;
+      })
+      .ok_or_else(|| crate::CompareError::MissingBaselineScope {
+        name: name.to_owned(),
+        clock_domain: clock_domain.to_owned(),
+      })?;
+
+    return Ok(scope);
+  }
+
+  /// Compares this report against a baseline using explicit tolerances.
+  ///
+  /// # Arguments
+  /// - `baseline`: Summary report treated as the regression baseline.
+  /// - `tolerances`: Metric tolerances applied during comparison.
+  ///
+  /// # Returns
+  /// Returns a comparison report describing matched scopes, violations, and
+  /// informational extra current scopes.
+  pub fn compare_against(
+    &self,
+    baseline: &Self,
+    tolerances: &ComparisonTolerances,
+  ) -> ComparisonReport {
+    return ComparisonReport::compare(self, baseline, tolerances);
   }
 
   /// Serializes this summary report into stable JSON bytes.
@@ -719,10 +848,589 @@ impl TraceReport {
 }
 
 /// Outcome of comparing a current profiling run against a baseline.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ComparisonMetric {
+  /// Compares the arithmetic mean duration in nanoseconds.
+  MeanNs,
+  /// Compares the p95 duration in nanoseconds.
+  P95Ns,
+  /// Compares the maximum duration in nanoseconds.
+  MaxNs,
+}
+
+impl ComparisonMetric {
+  /// Returns the stable metric label used in comparison reporting.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the stable metric label.
+  pub fn as_str(&self) -> &'static str {
+    match self {
+      Self::MeanNs => {
+        return "mean_ns";
+      }
+      Self::P95Ns => {
+        return "p95_ns";
+      }
+      Self::MaxNs => {
+        return "max_ns";
+      }
+    }
+  }
+}
+
+/// Stores one tolerance rule applied during summary comparison.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MetricTolerance {
+  metric: ComparisonMetric,
+  relative_threshold: f64,
+  absolute_threshold_ns: u64,
+}
+
+impl MetricTolerance {
+  /// Creates a tolerance rule for one comparison metric.
+  ///
+  /// # Arguments
+  /// - `metric`: Summary metric evaluated against the baseline.
+  /// - `relative_threshold`: Fractional slowdown threshold, such as `0.10`
+  ///   for ten percent.
+  /// - `absolute_threshold_ns`: Absolute slowdown threshold in nanoseconds.
+  ///
+  /// # Returns
+  /// Returns the configured metric tolerance.
+  pub fn new(
+    metric: ComparisonMetric,
+    relative_threshold: f64,
+    absolute_threshold_ns: u64,
+  ) -> Self {
+    return Self {
+      metric,
+      relative_threshold,
+      absolute_threshold_ns,
+    };
+  }
+
+  /// Returns the metric evaluated by this tolerance rule.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the configured comparison metric.
+  pub fn metric(&self) -> ComparisonMetric {
+    return self.metric;
+  }
+
+  /// Returns the fractional slowdown threshold for this rule.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the configured relative slowdown threshold.
+  pub fn relative_threshold(&self) -> f64 {
+    return self.relative_threshold;
+  }
+
+  /// Returns the absolute slowdown threshold for this rule.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the configured absolute slowdown threshold in nanoseconds.
+  pub fn absolute_threshold_ns(&self) -> u64 {
+    return self.absolute_threshold_ns;
+  }
+}
+
+/// Groups frame-level and named-scope tolerances for summary comparison.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ComparisonTolerances {
+  frame_metrics: Vec<MetricTolerance>,
+  scope_metrics: Vec<MetricTolerance>,
+}
+
+impl ComparisonTolerances {
+  /// Creates an empty comparison-tolerance set.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns an empty comparison-tolerance set.
+  pub fn new() -> Self {
+    return Self::default();
+  }
+
+  /// Creates the built-in CPU regression tolerances.
+  ///
+  /// The returned rules implement the specification defaults for CPU summary
+  /// comparison: frame-level `p95_ns` and `max_ns`, plus inner-scope
+  /// `mean_ns` and `p95_ns`, all using a `10%` relative slowdown threshold and
+  /// a `250_000 ns` absolute slowdown threshold.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the built-in CPU tolerance set.
+  pub fn cpu_defaults() -> Self {
+    return Self::new()
+      .with_frame_metric(MetricTolerance::new(
+        ComparisonMetric::P95Ns,
+        0.10,
+        250_000,
+      ))
+      .with_frame_metric(MetricTolerance::new(
+        ComparisonMetric::MaxNs,
+        0.10,
+        250_000,
+      ))
+      .with_scope_metric(MetricTolerance::new(
+        ComparisonMetric::MeanNs,
+        0.10,
+        250_000,
+      ))
+      .with_scope_metric(MetricTolerance::new(
+        ComparisonMetric::P95Ns,
+        0.10,
+        250_000,
+      ));
+  }
+
+  /// Appends one frame-level tolerance rule.
+  ///
+  /// # Arguments
+  /// - `tolerance`: Tolerance rule applied to synthesized frame metrics.
+  ///
+  /// # Returns
+  /// Returns the updated tolerance set.
+  pub fn with_frame_metric(mut self, tolerance: MetricTolerance) -> Self {
+    self.frame_metrics.push(tolerance);
+
+    return self;
+  }
+
+  /// Appends one named-scope tolerance rule.
+  ///
+  /// # Arguments
+  /// - `tolerance`: Tolerance rule applied to named scope summaries.
+  ///
+  /// # Returns
+  /// Returns the updated tolerance set.
+  pub fn with_scope_metric(mut self, tolerance: MetricTolerance) -> Self {
+    self.scope_metrics.push(tolerance);
+
+    return self;
+  }
+
+  /// Returns the configured frame-level tolerance rules.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the frame-level tolerance slice.
+  pub fn frame_metrics(&self) -> &[MetricTolerance] {
+    return &self.frame_metrics;
+  }
+
+  /// Returns the configured named-scope tolerance rules.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the named-scope tolerance slice.
+  pub fn scope_metrics(&self) -> &[MetricTolerance] {
+    return &self.scope_metrics;
+  }
+}
+
+/// Identifies one scope encountered during summary comparison.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ComparisonScope {
+  name: String,
+  clock_domain: String,
+}
+
+impl ComparisonScope {
+  /// Returns the stable scope name.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the retained comparison scope name.
+  pub fn name(&self) -> &str {
+    return &self.name;
+  }
+
+  /// Returns the stable clock-domain label.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the retained comparison scope clock domain.
+  pub fn clock_domain(&self) -> &str {
+    return &self.clock_domain;
+  }
+}
+
+/// Records one metric regression found during summary comparison.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ComparisonViolation {
+  scope: ComparisonScope,
+  metric: ComparisonMetric,
+  baseline_ns: u64,
+  current_ns: u64,
+  absolute_regression_ns: u64,
+}
+
+impl ComparisonViolation {
+  /// Returns the scope associated with this violation.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the violating comparison scope.
+  pub fn scope(&self) -> &ComparisonScope {
+    return &self.scope;
+  }
+
+  /// Returns the metric that violated the configured tolerance.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the violating comparison metric.
+  pub fn metric(&self) -> ComparisonMetric {
+    return self.metric;
+  }
+
+  /// Returns the baseline metric value in nanoseconds.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the baseline metric value in nanoseconds.
+  pub fn baseline_ns(&self) -> u64 {
+    return self.baseline_ns;
+  }
+
+  /// Returns the current metric value in nanoseconds.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the current metric value in nanoseconds.
+  pub fn current_ns(&self) -> u64 {
+    return self.current_ns;
+  }
+
+  /// Returns the absolute regression size in nanoseconds.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the current-minus-baseline regression size in nanoseconds.
+  pub fn absolute_regression_ns(&self) -> u64 {
+    return self.absolute_regression_ns;
+  }
+}
+
+/// Outcome of comparing a current profiling run against a baseline.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ComparisonReport {
   matched_scope_count: usize,
-  violation_count: usize,
+  violations: Vec<ComparisonViolation>,
+  missing_current_scopes: Vec<ComparisonScope>,
+  extra_current_scopes: Vec<ComparisonScope>,
+}
+
+impl ComparisonReport {
+  /// Compares a current summary report against a baseline.
+  ///
+  /// # Arguments
+  /// - `current`: Summary report produced by the current run.
+  /// - `baseline`: Summary report used as the baseline.
+  /// - `tolerances`: Metric tolerances applied during comparison.
+  ///
+  /// # Returns
+  /// Returns the comparison outcome, including violations and informational
+  /// extra current scopes.
+  pub fn compare(
+    current: &SummaryReport,
+    baseline: &SummaryReport,
+    tolerances: &ComparisonTolerances,
+  ) -> Self {
+    let mut matched_scope_count = 0;
+    let mut violations = Vec::new();
+    let mut missing_current_scopes = Vec::new();
+    let mut extra_current_scopes = Vec::new();
+    let baseline_scopes = compareable_scopes(baseline);
+    let current_scopes = compareable_scopes(current);
+
+    for (scope_key, baseline_values) in &baseline_scopes {
+      let Some(current_values) = current_scopes.get(scope_key) else {
+        missing_current_scopes.push(ComparisonScope {
+          name: scope_key.0.clone(),
+          clock_domain: scope_key.1.clone(),
+        });
+        continue;
+      };
+
+      matched_scope_count += 1;
+      let applicable_tolerances = if scope_key.0 == FRAME_SCOPE_NAME {
+        tolerances.frame_metrics()
+      } else {
+        tolerances.scope_metrics()
+      };
+
+      for tolerance in applicable_tolerances {
+        let baseline_metric =
+          metric_value_for_scope(baseline_values, tolerance.metric());
+        let current_metric =
+          metric_value_for_scope(current_values, tolerance.metric());
+
+        if let Some(violation) = comparison_violation(
+          scope_key,
+          tolerance,
+          baseline_metric,
+          current_metric,
+        ) {
+          violations.push(violation);
+        }
+      }
+    }
+
+    for scope_key in current_scopes.keys() {
+      if baseline_scopes.contains_key(scope_key) {
+        continue;
+      }
+
+      extra_current_scopes.push(ComparisonScope {
+        name: scope_key.0.clone(),
+        clock_domain: scope_key.1.clone(),
+      });
+    }
+
+    extra_current_scopes.sort_by(|left, right| {
+      return left
+        .clock_domain()
+        .cmp(right.clock_domain())
+        .then_with(|| left.name().cmp(right.name()));
+    });
+
+    return Self {
+      matched_scope_count,
+      violations,
+      missing_current_scopes,
+      extra_current_scopes,
+    };
+  }
+
+  /// Returns whether the comparison passed.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns `true` when no metric violations or missing current scopes were
+  /// recorded.
+  pub fn passed(&self) -> bool {
+    return self.violations.is_empty()
+      && self.missing_current_scopes.is_empty();
+  }
+
+  /// Returns the number of scopes matched against the baseline.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the number of scopes present in both reports.
+  pub fn matched_scope_count(&self) -> usize {
+    return self.matched_scope_count;
+  }
+
+  /// Returns the recorded metric violations.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the ordered violation slice.
+  pub fn violations(&self) -> &[ComparisonViolation] {
+    return &self.violations;
+  }
+
+  /// Returns the baseline scopes absent from the current run.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the ordered missing-current scope slice.
+  pub fn missing_current_scopes(&self) -> &[ComparisonScope] {
+    return &self.missing_current_scopes;
+  }
+
+  /// Returns the current scopes absent from the baseline.
+  ///
+  /// These entries are informational and do not fail the comparison by
+  /// themselves.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the ordered extra-current scope slice.
+  pub fn extra_current_scopes(&self) -> &[ComparisonScope] {
+    return &self.extra_current_scopes;
+  }
+
+  /// Returns the number of recorded metric violations.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the number of recorded metric violations.
+  pub fn violation_count(&self) -> usize {
+    return self.violations.len();
+  }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct ScopeMetricValues {
+  mean_ns: u64,
+  p95_ns: u64,
+  max_ns: u64,
+}
+
+/// Returns one required string field from a summary JSON object.
+#[cfg(feature = "export-summary")]
+fn required_string_field(
+  object: &lambda_platform::profiling_support::deps::serde_json::Map<
+    String,
+    lambda_platform::profiling_support::deps::serde_json::Value,
+  >,
+  field_name: &str,
+) -> Result<String, crate::CompareError> {
+  let value = object
+    .get(field_name)
+    .and_then(|value| value.as_str())
+    .ok_or(crate::CompareError::DeserializeSummaryReport)?;
+
+  return Ok(value.to_owned());
+}
+
+/// Returns one required unsigned integer field from a summary JSON object.
+#[cfg(feature = "export-summary")]
+fn required_u64_field(
+  object: &lambda_platform::profiling_support::deps::serde_json::Map<
+    String,
+    lambda_platform::profiling_support::deps::serde_json::Value,
+  >,
+  field_name: &str,
+) -> Result<u64, crate::CompareError> {
+  return object
+    .get(field_name)
+    .and_then(|value| value.as_u64())
+    .ok_or(crate::CompareError::DeserializeSummaryReport);
+}
+
+/// Builds the stable comparison map for one summary report.
+fn compareable_scopes(
+  report: &SummaryReport,
+) -> BTreeMap<(String, String), ScopeMetricValues> {
+  let mut scopes = BTreeMap::new();
+
+  scopes.insert(
+    (FRAME_SCOPE_NAME.to_owned(), CPU_CLOCK_DOMAIN.to_owned()),
+    ScopeMetricValues {
+      mean_ns: 0,
+      p95_ns: report.frame_p95_ns(),
+      max_ns: report.frame_max_ns(),
+    },
+  );
+
+  for scope in report.scopes() {
+    scopes.insert(
+      (scope.name().to_owned(), scope.clock_domain().to_owned()),
+      ScopeMetricValues {
+        mean_ns: scope.mean_ns(),
+        p95_ns: scope.p95_ns(),
+        max_ns: scope.max_ns(),
+      },
+    );
+  }
+
+  return scopes;
+}
+
+/// Returns the requested metric value from one comparison scope record.
+fn metric_value_for_scope(
+  metric_values: &ScopeMetricValues,
+  metric: ComparisonMetric,
+) -> u64 {
+  match metric {
+    ComparisonMetric::MeanNs => {
+      return metric_values.mean_ns;
+    }
+    ComparisonMetric::P95Ns => {
+      return metric_values.p95_ns;
+    }
+    ComparisonMetric::MaxNs => {
+      return metric_values.max_ns;
+    }
+  }
+}
+
+/// Evaluates one tolerance rule for one matched comparison scope.
+fn comparison_violation(
+  scope_key: &(String, String),
+  tolerance: &MetricTolerance,
+  baseline_ns: u64,
+  current_ns: u64,
+) -> Option<ComparisonViolation> {
+  if current_ns <= baseline_ns {
+    return None;
+  }
+
+  let absolute_regression_ns = current_ns.saturating_sub(baseline_ns);
+  let relative_regression = if baseline_ns == 0 {
+    f64::INFINITY
+  } else {
+    absolute_regression_ns as f64 / baseline_ns as f64
+  };
+
+  if absolute_regression_ns < tolerance.absolute_threshold_ns()
+    || relative_regression <= tolerance.relative_threshold()
+  {
+    return None;
+  }
+
+  return Some(ComparisonViolation {
+    scope: ComparisonScope {
+      name: scope_key.0.clone(),
+      clock_domain: scope_key.1.clone(),
+    },
+    metric: tolerance.metric(),
+    baseline_ns,
+    current_ns,
+    absolute_regression_ns,
+  });
 }
 
 /// Builds stable CPU scope summaries from retained completed frames.
@@ -873,15 +1581,49 @@ fn percentile_ns(samples: &[u64], percentile: usize) -> u64 {
 mod tests {
   use super::{
     build_scope_summary,
+    ComparisonMetric,
+    ComparisonTolerances,
     CompletedFrame,
+    MetricTolerance,
     SummaryReport,
     TraceReport,
     CPU_CLOCK_DOMAIN,
+    FRAME_SCOPE_NAME,
   };
   use crate::collector::cpu::{
     CpuEvent,
     CpuEventKind,
   };
+
+  fn summary_report_with_scope(
+    run_name: &str,
+    scope_name: &str,
+    frame_p95_ns: u64,
+    frame_max_ns: u64,
+    scope_mean_ns: u64,
+    scope_p95_ns: u64,
+    scope_max_ns: u64,
+  ) -> SummaryReport {
+    return SummaryReport {
+      run_name: run_name.to_owned(),
+      crate_version: env!("CARGO_PKG_VERSION").to_owned(),
+      generated_at_utc: "2026-04-08T00:00:00Z".to_owned(),
+      scopes: vec![super::SummaryScope {
+        name: scope_name.to_owned(),
+        clock_domain: CPU_CLOCK_DOMAIN.to_owned(),
+        count: 4,
+        total_ns: scope_mean_ns.saturating_mul(4),
+        mean_ns: scope_mean_ns,
+        p50_ns: scope_mean_ns,
+        p95_ns: scope_p95_ns,
+        max_ns: scope_max_ns,
+      }],
+      frame_count: 4,
+      frame_p50_ns: frame_p95_ns,
+      frame_p95_ns,
+      frame_max_ns,
+    };
+  }
 
   #[test]
   fn empty_scope_summary_uses_zeroed_aggregates() {
@@ -1159,5 +1901,183 @@ mod tests {
     assert!(events[0].get("thread_id").is_some());
     assert_eq!(events[1].get("kind").unwrap(), "instant");
     assert!(events[1].get("value").is_none());
+  }
+
+  #[test]
+  fn compare_uses_relative_threshold_only_when_absolute_threshold_is_zero() {
+    let baseline = summary_report_with_scope(
+      "tests.compare.relative.baseline",
+      "tests.scope",
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+    );
+    let current = summary_report_with_scope(
+      "tests.compare.relative.current",
+      "tests.scope",
+      1_050,
+      1_050,
+      1_200,
+      1_200,
+      1_200,
+    );
+    let tolerances = ComparisonTolerances::new().with_scope_metric(
+      MetricTolerance::new(ComparisonMetric::MeanNs, 0.10, 0),
+    );
+    let comparison = current.compare_against(&baseline, &tolerances);
+
+    assert!(!comparison.passed());
+    assert_eq!(comparison.violation_count(), 1);
+    assert_eq!(comparison.violations()[0].scope().name(), "tests.scope");
+    assert_eq!(
+      comparison.violations()[0].scope().clock_domain(),
+      CPU_CLOCK_DOMAIN
+    );
+    assert_eq!(
+      comparison.violations()[0].metric(),
+      ComparisonMetric::MeanNs
+    );
+  }
+
+  #[test]
+  fn compare_uses_absolute_threshold_only_when_relative_threshold_is_zero() {
+    let baseline = summary_report_with_scope(
+      "tests.compare.absolute.baseline",
+      "tests.scope",
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+    );
+    let current = summary_report_with_scope(
+      "tests.compare.absolute.current",
+      "tests.scope",
+      1_001,
+      1_001,
+      1_050,
+      1_050,
+      1_050,
+    );
+    let tolerances = ComparisonTolerances::new().with_scope_metric(
+      MetricTolerance::new(ComparisonMetric::MeanNs, 0.0, 40),
+    );
+    let comparison = current.compare_against(&baseline, &tolerances);
+
+    assert!(!comparison.passed());
+    assert_eq!(comparison.violation_count(), 1);
+    assert_eq!(comparison.violations()[0].absolute_regression_ns(), 50);
+  }
+
+  #[test]
+  fn compare_requires_both_relative_and_absolute_thresholds_to_fail() {
+    let baseline = summary_report_with_scope(
+      "tests.compare.combined.baseline",
+      "tests.scope",
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+    );
+    let current = summary_report_with_scope(
+      "tests.compare.combined.current",
+      "tests.scope",
+      1_001,
+      1_001,
+      1_050,
+      1_050,
+      1_050,
+    );
+    let tolerances = ComparisonTolerances::new().with_scope_metric(
+      MetricTolerance::new(ComparisonMetric::MeanNs, 0.10, 100),
+    );
+    let comparison = current.compare_against(&baseline, &tolerances);
+
+    assert!(comparison.passed());
+    assert_eq!(comparison.violation_count(), 0);
+  }
+
+  #[test]
+  fn require_scope_reports_missing_baseline_scope() {
+    let baseline = summary_report_with_scope(
+      "tests.compare.missing.baseline",
+      "tests.scope",
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+    );
+    let error = baseline
+      .require_scope("tests.missing", CPU_CLOCK_DOMAIN)
+      .unwrap_err();
+
+    assert_eq!(
+      error,
+      crate::CompareError::MissingBaselineScope {
+        name: "tests.missing".to_owned(),
+        clock_domain: CPU_CLOCK_DOMAIN.to_owned(),
+      }
+    );
+  }
+
+  #[test]
+  fn compare_reports_extra_current_scope_as_informational() {
+    let baseline = summary_report_with_scope(
+      "tests.compare.extra.baseline",
+      "tests.baseline",
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+    );
+    let current = SummaryReport {
+      run_name: "tests.compare.extra.current".to_owned(),
+      crate_version: env!("CARGO_PKG_VERSION").to_owned(),
+      generated_at_utc: "2026-04-08T00:00:00Z".to_owned(),
+      scopes: vec![
+        super::SummaryScope {
+          name: "tests.baseline".to_owned(),
+          clock_domain: CPU_CLOCK_DOMAIN.to_owned(),
+          count: 4,
+          total_ns: 4_000,
+          mean_ns: 1_000,
+          p50_ns: 1_000,
+          p95_ns: 1_000,
+          max_ns: 1_000,
+        },
+        super::SummaryScope {
+          name: "tests.extra".to_owned(),
+          clock_domain: CPU_CLOCK_DOMAIN.to_owned(),
+          count: 4,
+          total_ns: 4_000,
+          mean_ns: 1_000,
+          p50_ns: 1_000,
+          p95_ns: 1_000,
+          max_ns: 1_000,
+        },
+      ],
+      frame_count: 4,
+      frame_p50_ns: 1_000,
+      frame_p95_ns: 1_000,
+      frame_max_ns: 1_000,
+    };
+    let comparison =
+      current.compare_against(&baseline, &ComparisonTolerances::cpu_defaults());
+
+    assert!(comparison.passed());
+    assert_eq!(comparison.matched_scope_count(), 2);
+    assert_eq!(comparison.extra_current_scopes().len(), 1);
+    assert_eq!(comparison.extra_current_scopes()[0].name(), "tests.extra");
+    assert_eq!(
+      comparison.extra_current_scopes()[0].clock_domain(),
+      CPU_CLOCK_DOMAIN
+    );
+    assert_eq!(comparison.missing_current_scopes().len(), 0);
+    assert_eq!(FRAME_SCOPE_NAME, "frame");
   }
 }
