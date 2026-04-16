@@ -7,6 +7,11 @@ use crate::collector::cpu::{
   CpuEvent,
   CpuEventKind,
 };
+#[cfg(feature = "gpu")]
+use crate::collector::gpu::{
+  GpuSpan,
+  GPU_CLOCK_DOMAIN,
+};
 
 /// Stable clock-domain label used for CPU summary scopes.
 pub(crate) const CPU_CLOCK_DOMAIN: &str = "cpu";
@@ -23,6 +28,8 @@ pub(crate) struct CompletedFrame {
   frame_index: usize,
   frame_duration_ns: u64,
   cpu_events: Vec<CpuEvent>,
+  #[cfg(feature = "gpu")]
+  gpu_spans: Vec<GpuSpan>,
 }
 
 impl CompletedFrame {
@@ -44,6 +51,8 @@ impl CompletedFrame {
       frame_index,
       frame_duration_ns,
       cpu_events,
+      #[cfg(feature = "gpu")]
+      gpu_spans: Vec::new(),
     };
   }
 
@@ -78,6 +87,44 @@ impl CompletedFrame {
   /// Returns the ordered CPU event slice for this frame.
   pub(crate) fn cpu_events(&self) -> &[CpuEvent] {
     return &self.cpu_events;
+  }
+
+  /// Returns the retained GPU spans for this completed frame.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the ordered GPU span slice for this frame.
+  #[cfg(feature = "gpu")]
+  pub(crate) fn gpu_spans(&self) -> &[GpuSpan] {
+    return &self.gpu_spans;
+  }
+
+  /// Replaces the retained GPU spans for this completed frame.
+  ///
+  /// # Arguments
+  /// - `gpu_spans`: Resolved GPU spans to retain for the frame.
+  ///
+  /// # Returns
+  /// This method does not return a value.
+  #[cfg(feature = "gpu")]
+  pub(crate) fn replace_gpu_spans(&mut self, gpu_spans: Vec<GpuSpan>) {
+    self.gpu_spans = gpu_spans;
+  }
+
+  /// Returns a copy of this frame with explicit GPU spans attached.
+  ///
+  /// # Arguments
+  /// - `gpu_spans`: Resolved GPU spans for the frame.
+  ///
+  /// # Returns
+  /// Returns the updated completed frame.
+  #[cfg(all(test, feature = "gpu"))]
+  pub(crate) fn with_gpu_spans(mut self, gpu_spans: Vec<GpuSpan>) -> Self {
+    self.replace_gpu_spans(gpu_spans);
+
+    return self;
   }
 }
 
@@ -190,6 +237,7 @@ pub struct SummaryReport {
   run_name: String,
   crate_version: String,
   generated_at_utc: String,
+  clock_domains: Vec<String>,
   scopes: Vec<SummaryScope>,
   frame_count: u64,
   frame_p50_ns: u64,
@@ -216,12 +264,13 @@ impl SummaryReport {
       .iter()
       .map(CompletedFrame::frame_duration_ns)
       .collect();
-    let scopes = build_cpu_scope_summaries(frames);
+    let scopes = build_scope_summaries(frames);
 
     return Self {
       run_name: run_name.to_owned(),
       crate_version: env!("CARGO_PKG_VERSION").to_owned(),
       generated_at_utc,
+      clock_domains: collect_clock_domains(&scopes),
       scopes,
       frame_count: frame_durations.len() as u64,
       frame_p50_ns: percentile_ns(&frame_durations, 50),
@@ -281,8 +330,8 @@ impl SummaryReport {
   ///
   /// # Returns
   /// Returns the ordered clock-domain list for this report.
-  pub fn clock_domains(&self) -> [&str; 1] {
-    return [CPU_CLOCK_DOMAIN];
+  pub fn clock_domains(&self) -> &[String] {
+    return &self.clock_domains;
   }
 
   /// Returns the retained scope summaries.
@@ -398,6 +447,10 @@ impl SummaryReport {
         generated_at_utc: required_string_field(
           root_object,
           "generated_at_utc",
+        )?,
+        clock_domains: required_string_array_field(
+          root_object,
+          "clock_domains",
         )?,
         scopes,
         frame_count: required_u64_field(root_object, "frame_count")?,
@@ -546,7 +599,7 @@ impl SummaryReport {
           self
             .clock_domains()
             .iter()
-            .map(|clock_domain| Value::String((*clock_domain).to_owned()))
+            .map(|clock_domain| Value::String(clock_domain.clone()))
             .collect(),
         ),
       );
@@ -1350,6 +1403,31 @@ fn required_u64_field(
     .ok_or(crate::CompareError::DeserializeSummaryReport);
 }
 
+/// Returns one required string-array field from a summary JSON object.
+#[cfg(feature = "export-summary")]
+fn required_string_array_field(
+  object: &lambda_platform::profiling_support::deps::serde_json::Map<
+    String,
+    lambda_platform::profiling_support::deps::serde_json::Value,
+  >,
+  field_name: &str,
+) -> Result<Vec<String>, crate::CompareError> {
+  let values = object
+    .get(field_name)
+    .and_then(|value| value.as_array())
+    .ok_or(crate::CompareError::DeserializeSummaryReport)?;
+
+  return values
+    .iter()
+    .map(|value| {
+      return value
+        .as_str()
+        .map(str::to_owned)
+        .ok_or(crate::CompareError::DeserializeSummaryReport);
+    })
+    .collect();
+}
+
 /// Builds the stable comparison map for one summary report.
 fn compareable_scopes(
   report: &SummaryReport,
@@ -1433,14 +1511,14 @@ fn comparison_violation(
   });
 }
 
-/// Builds stable CPU scope summaries from retained completed frames.
+/// Builds stable scope summaries from retained completed frames.
 ///
 /// # Arguments
 /// - `frames`: Retained completed frames used for aggregation.
 ///
 /// # Returns
-/// Returns the ordered CPU scope summaries computed from the retained frames.
-fn build_cpu_scope_summaries(frames: &[CompletedFrame]) -> Vec<SummaryScope> {
+/// Returns the ordered scope summaries computed from the retained frames.
+fn build_scope_summaries(frames: &[CompletedFrame]) -> Vec<SummaryScope> {
   let mut samples_by_scope: BTreeMap<(&'static str, &'static str), Vec<u64>> =
     BTreeMap::new();
 
@@ -1476,6 +1554,14 @@ fn build_cpu_scope_summaries(frames: &[CompletedFrame]) -> Vec<SummaryScope> {
         }
         CpuEventKind::Counter { .. } | CpuEventKind::Instant => {}
       }
+    }
+
+    #[cfg(feature = "gpu")]
+    for span in frame.gpu_spans() {
+      samples_by_scope
+        .entry((span.name, GPU_CLOCK_DOMAIN))
+        .or_default()
+        .push(span.duration_ns());
     }
   }
 
@@ -1516,9 +1602,54 @@ fn build_trace_events(frames: &[CompletedFrame]) -> Vec<TraceEvent> {
         value,
       });
     }
+
+    #[cfg(feature = "gpu")]
+    for span in frame.gpu_spans() {
+      trace_events.push(TraceEvent {
+        name: span.name.to_owned(),
+        kind: "span_begin".to_owned(),
+        clock_domain: GPU_CLOCK_DOMAIN.to_owned(),
+        timestamp_ns: span.started_at_ns,
+        thread_id: None,
+        frame_index: frame.frame_index() as u64,
+        value: None,
+      });
+      trace_events.push(TraceEvent {
+        name: span.name.to_owned(),
+        kind: "span_end".to_owned(),
+        clock_domain: GPU_CLOCK_DOMAIN.to_owned(),
+        timestamp_ns: span.ended_at_ns,
+        thread_id: None,
+        frame_index: frame.frame_index() as u64,
+        value: None,
+      });
+    }
   }
 
   return trace_events;
+}
+
+/// Collects the ordered set of clock domains present in one scope list.
+///
+/// # Arguments
+/// - `scopes`: Scope summaries included in one report.
+///
+/// # Returns
+/// Returns the stable ordered set of clock-domain labels.
+fn collect_clock_domains(scopes: &[SummaryScope]) -> Vec<String> {
+  let mut clock_domains = vec![CPU_CLOCK_DOMAIN.to_owned()];
+
+  for scope in scopes {
+    if clock_domains.iter().any(|clock_domain| {
+      return clock_domain == scope.clock_domain();
+    }) {
+      continue;
+    }
+
+    clock_domains.push(scope.clock_domain().to_owned());
+  }
+
+  return clock_domains;
 }
 
 /// Builds one stable scope summary from retained duration samples.
@@ -1594,6 +1725,11 @@ mod tests {
     CpuEvent,
     CpuEventKind,
   };
+  #[cfg(feature = "gpu")]
+  use crate::collector::gpu::{
+    GpuSpan,
+    GPU_CLOCK_DOMAIN,
+  };
 
   fn summary_report_with_scope(
     run_name: &str,
@@ -1608,6 +1744,7 @@ mod tests {
       run_name: run_name.to_owned(),
       crate_version: env!("CARGO_PKG_VERSION").to_owned(),
       generated_at_utc: "2026-04-08T00:00:00Z".to_owned(),
+      clock_domains: vec![CPU_CLOCK_DOMAIN.to_owned()],
       scopes: vec![super::SummaryScope {
         name: scope_name.to_owned(),
         clock_domain: CPU_CLOCK_DOMAIN.to_owned(),
@@ -1712,7 +1849,7 @@ mod tests {
     );
 
     assert_eq!(report.run_name(), "tests.report");
-    assert_eq!(report.clock_domains(), ["cpu"]);
+    assert_eq!(report.clock_domains(), &[CPU_CLOCK_DOMAIN.to_owned()]);
     assert_eq!(report.frame_count(), 2);
     assert_eq!(report.frame_p50_ns(), 100);
     assert_eq!(report.frame_p95_ns(), 200);
@@ -1799,6 +1936,56 @@ mod tests {
     assert_eq!(report.events()[1].name(), "tests.instant");
     assert_eq!(report.events()[1].kind(), "instant");
     assert_eq!(report.events()[1].value(), None);
+  }
+
+  #[cfg(feature = "gpu")]
+  #[test]
+  fn gpu_scope_summaries_and_trace_events_use_the_gpu_clock_domain() {
+    let thread_id = std::thread::current().id();
+    let report = SummaryReport::from_completed_frames(
+      "tests.gpu.summary",
+      "2026-04-07T00:00:00Z".to_owned(),
+      &[CompletedFrame::cpu(
+        0,
+        100,
+        vec![
+          CpuEvent {
+            name: "tests.cpu.scope",
+            kind: CpuEventKind::SpanBegin,
+            timestamp_ns: 10,
+            thread_id,
+          },
+          CpuEvent {
+            name: "tests.cpu.scope",
+            kind: CpuEventKind::SpanEnd,
+            timestamp_ns: 20,
+            thread_id,
+          },
+        ],
+      )
+      .with_gpu_spans(vec![GpuSpan::new("tests.gpu.scope", 100, 160)])],
+    );
+    let trace = TraceReport::from_completed_frames(
+      "tests.gpu.trace",
+      "2026-04-07T00:00:00Z".to_owned(),
+      &[CompletedFrame::cpu(0, 100, Vec::new())
+        .with_gpu_spans(vec![GpuSpan::new("tests.gpu.scope", 100, 160)])],
+    );
+
+    assert_eq!(
+      report.clock_domains(),
+      &[CPU_CLOCK_DOMAIN.to_owned(), GPU_CLOCK_DOMAIN.to_owned()]
+    );
+    assert_eq!(report.scopes().len(), 2);
+    assert_eq!(report.scopes()[1].name(), "tests.gpu.scope");
+    assert_eq!(report.scopes()[1].clock_domain(), GPU_CLOCK_DOMAIN);
+    assert_eq!(report.scopes()[1].mean_ns(), 60);
+    assert_eq!(trace.events().len(), 2);
+    assert_eq!(trace.events()[0].clock_domain(), GPU_CLOCK_DOMAIN);
+    assert_eq!(trace.events()[0].kind(), "span_begin");
+    assert_eq!(trace.events()[1].clock_domain(), GPU_CLOCK_DOMAIN);
+    assert_eq!(trace.events()[1].kind(), "span_end");
+    assert!(trace.events()[0].thread_id().is_none());
   }
 
   #[cfg(feature = "export-summary")]
@@ -2039,6 +2226,7 @@ mod tests {
       run_name: "tests.compare.extra.current".to_owned(),
       crate_version: env!("CARGO_PKG_VERSION").to_owned(),
       generated_at_utc: "2026-04-08T00:00:00Z".to_owned(),
+      clock_domains: vec![CPU_CLOCK_DOMAIN.to_owned()],
       scopes: vec![
         super::SummaryScope {
           name: "tests.baseline".to_owned(),

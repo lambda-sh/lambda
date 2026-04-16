@@ -11,6 +11,11 @@ use std::{
   time::Instant,
 };
 
+#[cfg(feature = "gpu")]
+use crate::collector::gpu::{
+  GpuCollector,
+  ResolvedGpuFrame,
+};
 use crate::{
   collector::cpu::CpuCollector,
   report::CompletedFrame,
@@ -32,6 +37,8 @@ pub struct Profiler {
   gpu_timestamps_enabled: bool,
   frame_history_limit: usize,
   cpu_collector: Arc<CpuCollector>,
+  #[cfg(feature = "gpu")]
+  gpu_collector: Arc<GpuCollector>,
   state: Arc<Mutex<ProfilerState>>,
 }
 
@@ -45,6 +52,8 @@ fn global_profiler_slot() -> &'static RwLock<Option<&'static Profiler>> {
 impl Profiler {
   pub(crate) fn from_builder(builder: ProfilerBuilder) -> Self {
     let cpu_collector = CpuCollector::new();
+    #[cfg(feature = "gpu")]
+    let gpu_collector = GpuCollector::new(builder.gpu_timestamps_enabled());
 
     return Self {
       run_name: builder.run_name().to_owned(),
@@ -58,6 +67,8 @@ impl Profiler {
         cpu_collector.current_timestamp_ns(),
       ))),
       cpu_collector,
+      #[cfg(feature = "gpu")]
+      gpu_collector,
     };
   }
 
@@ -170,6 +181,9 @@ impl Profiler {
       completed_frame
     };
 
+    #[cfg(feature = "gpu")]
+    self.apply_resolved_gpu_frames(self.gpu_collector.advance_frame());
+
     let _ = (
       self.gpu_timestamps_enabled,
       self.frame_history_limit,
@@ -275,6 +289,34 @@ impl Profiler {
       .unwrap_or_else(|poisoned| poisoned.into_inner());
 
     return state.completed_frames.iter().cloned().collect();
+  }
+
+  /// Applies resolved GPU frames into retained completed-frame history.
+  ///
+  /// # Arguments
+  /// - `resolved_frames`: GPU frames whose readback finished asynchronously.
+  ///
+  /// # Returns
+  /// This method does not return a value.
+  #[cfg(feature = "gpu")]
+  fn apply_resolved_gpu_frames(&self, resolved_frames: Vec<ResolvedGpuFrame>) {
+    if resolved_frames.is_empty() {
+      return;
+    }
+
+    let mut state = self
+      .state
+      .lock()
+      .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    for resolved_frame in resolved_frames {
+      state.apply_resolved_gpu_frame(resolved_frame);
+    }
+  }
+
+  #[cfg(all(test, feature = "gpu"))]
+  pub(crate) fn gpu_collector_for_tests(&self) -> Arc<GpuCollector> {
+    return Arc::clone(&self.gpu_collector);
   }
 
   /// Writes a summary report into the configured output directory.
@@ -415,6 +457,26 @@ impl ProfilerState {
 
     while self.completed_frames.len() > self.frame_history_limit {
       self.completed_frames.pop_front();
+    }
+  }
+
+  /// Applies one resolved GPU frame to retained history when present.
+  ///
+  /// # Arguments
+  /// - `resolved_frame`: Resolved GPU spans for a previously completed frame.
+  ///
+  /// # Returns
+  /// This method does not return a value.
+  #[cfg(feature = "gpu")]
+  fn apply_resolved_gpu_frame(&mut self, resolved_frame: ResolvedGpuFrame) {
+    for completed_frame in &mut self.completed_frames {
+      if completed_frame.frame_index() != resolved_frame.frame_index() {
+        continue;
+      }
+
+      completed_frame.replace_gpu_spans(resolved_frame.spans().to_vec());
+
+      return;
     }
   }
 }
@@ -650,6 +712,9 @@ mod flush_tests {
     time::Duration,
   };
 
+  #[cfg(feature = "gpu")]
+  use lambda_platform::wgpu::profiling::GpuTimestampSupport;
+
   use crate::ProfilerBuilder;
   #[cfg(feature = "export-trace")]
   use crate::{
@@ -788,5 +853,45 @@ mod flush_tests {
     );
 
     remove_path_if_present(&output_directory);
+  }
+
+  #[cfg(feature = "gpu")]
+  #[test]
+  fn flush_frame_applies_resolved_gpu_spans_without_blocking_the_active_frame()
+  {
+    let profiler = ProfilerBuilder::new("tests.gpu.flush")
+      .with_gpu_timestamps(true)
+      .build()
+      .unwrap();
+    let gpu_collector = profiler.gpu_collector_for_tests();
+
+    gpu_collector.configure_support(GpuTimestampSupport {
+      adapter_supports_timestamp_queries: true,
+      adapter_supports_pass_timestamp_writes: true,
+      device_supports_timestamp_queries: true,
+      device_supports_pass_timestamp_writes: true,
+      timestamp_period_ns: 1.0,
+    });
+
+    let reservation = gpu_collector.reserve_scope("tests.gpu.render").unwrap();
+    assert_eq!(reservation.frame_index(), 0);
+
+    profiler.flush_frame().unwrap();
+
+    assert!(gpu_collector.store_resolved_ticks(0, &[(25, 80)]));
+
+    profiler.flush_frame().unwrap();
+
+    let completed_frames = profiler.completed_frames();
+
+    assert_eq!(completed_frames.len(), 2);
+    #[cfg(feature = "gpu")]
+    {
+      assert_eq!(completed_frames[0].gpu_spans().len(), 1);
+      assert_eq!(completed_frames[0].gpu_spans()[0].name, "tests.gpu.render");
+      assert_eq!(completed_frames[0].gpu_spans()[0].started_at_ns, 25);
+      assert_eq!(completed_frames[0].gpu_spans()[0].ended_at_ns, 80);
+      assert!(completed_frames[1].gpu_spans().is_empty());
+    }
   }
 }

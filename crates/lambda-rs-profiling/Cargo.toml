@@ -15,6 +15,6 @@ lambda-rs-platform = { path = "../lambda-rs-platform", version = "2023.1.30", de
 
 [features]
 default = []
-gpu = []
+gpu = ["lambda-rs-platform/profiling-gpu"]
 export-summary = ["lambda-rs-platform/profiling-export-summary"]
 export-trace = ["lambda-rs-platform/profiling-export-trace"]
