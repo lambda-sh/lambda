@@ -46,8 +46,33 @@ impl MemoryHints {
 pub struct Features(wgpu::Features);
 
 impl Features {
+  /// Required for Lambda's immediate-data render path.
+  pub const IMMEDIATES: Features = Features(wgpu::Features::IMMEDIATES);
+
+  #[cfg(feature = "profiling-gpu")]
+  /// Enables GPU timestamp query creation and resolution.
+  pub const TIMESTAMP_QUERY: Features =
+    Features(wgpu::Features::TIMESTAMP_QUERY);
+
+  #[cfg(feature = "profiling-gpu")]
+  /// Enables timestamp writes at render- and compute-pass boundaries.
+  pub const TIMESTAMP_QUERY_INSIDE_PASSES: Features =
+    Features(wgpu::Features::TIMESTAMP_QUERY_INSIDE_PASSES);
+
+  /// Return the wrapped `wgpu` feature bitset for crate-internal use.
   pub(crate) fn to_wgpu(self) -> wgpu::Features {
-    self.0
+    return self.0;
+  }
+
+  /// Return whether this feature set contains every bit in `other`.
+  ///
+  /// # Arguments
+  /// * `other` - The feature bits to test.
+  ///
+  /// # Returns
+  /// `true` when all bits in `other` are present in `self`.
+  pub fn contains(self, other: Features) -> bool {
+    return self.0.contains(other.0);
   }
 }
 
@@ -85,7 +110,7 @@ impl GpuBuilder {
       label: Some("Lambda GPU".to_string()),
       power_preference: PowerPreference::HighPerformance,
       force_fallback_adapter: false,
-      required_features: Features(wgpu::Features::IMMEDIATES),
+      required_features: Features::IMMEDIATES,
       memory_hints: MemoryHints::Performance,
     }
   }

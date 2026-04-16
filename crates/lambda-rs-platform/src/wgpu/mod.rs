@@ -12,6 +12,8 @@ pub mod command;
 pub mod gpu;
 pub mod instance;
 pub mod pipeline;
+#[cfg(feature = "profiling-gpu")]
+pub mod profiling;
 pub mod render_pass;
 pub mod surface;
 pub mod texture;

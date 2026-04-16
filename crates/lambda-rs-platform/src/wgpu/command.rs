@@ -40,6 +40,42 @@ impl CommandEncoder {
     return self.raw.begin_render_pass(desc);
   }
 
+  #[cfg(feature = "profiling-gpu")]
+  /// Resolve a range of query results into a destination buffer.
+  pub(crate) fn resolve_query_set_raw(
+    &mut self,
+    query_set: &wgpu::QuerySet,
+    query_range: std::ops::Range<u32>,
+    destination: &wgpu::Buffer,
+    destination_offset: wgpu::BufferAddress,
+  ) {
+    self.raw.resolve_query_set(
+      query_set,
+      query_range,
+      destination,
+      destination_offset,
+    );
+  }
+
+  #[cfg(feature = "profiling-gpu")]
+  /// Encode a buffer-to-buffer copy operation.
+  pub(crate) fn copy_buffer_to_buffer_raw(
+    &mut self,
+    source: &wgpu::Buffer,
+    source_offset: wgpu::BufferAddress,
+    destination: &wgpu::Buffer,
+    destination_offset: wgpu::BufferAddress,
+    size: wgpu::BufferAddress,
+  ) {
+    self.raw.copy_buffer_to_buffer(
+      source,
+      source_offset,
+      destination,
+      destination_offset,
+      size,
+    );
+  }
+
   /// Finish recording and return the command buffer.
   pub fn finish(self) -> CommandBuffer {
     return CommandBuffer {

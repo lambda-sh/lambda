@@ -9,6 +9,8 @@
 
 use wgpu;
 
+#[cfg(feature = "profiling-gpu")]
+use super::profiling;
 use super::{
   bind,
   buffer,
@@ -337,6 +339,126 @@ impl RenderPassBuilder {
     stencil_ops: Option<StencilOperations>,
     label: Option<&'view str>,
   ) -> RenderPass<'view> {
+    #[cfg(feature = "profiling-gpu")]
+    {
+      return self.build_with_timestamp_writes(
+        encoder,
+        attachments,
+        depth_view,
+        depth_ops,
+        stencil_ops,
+        label,
+        None,
+      );
+    }
+
+    #[cfg(not(feature = "profiling-gpu"))]
+    {
+      let operations = match self.config.color_operations.load {
+        ColorLoadOp::Load => wgpu::Operations {
+          load: wgpu::LoadOp::Load,
+          store: match self.config.color_operations.store {
+            StoreOp::Store => wgpu::StoreOp::Store,
+            StoreOp::Discard => wgpu::StoreOp::Discard,
+          },
+        },
+        ColorLoadOp::Clear(color) => wgpu::Operations {
+          load: wgpu::LoadOp::Clear(wgpu::Color {
+            r: color[0],
+            g: color[1],
+            b: color[2],
+            a: color[3],
+          }),
+          store: match self.config.color_operations.store {
+            StoreOp::Store => wgpu::StoreOp::Store,
+            StoreOp::Discard => wgpu::StoreOp::Discard,
+          },
+        },
+      };
+
+      attachments.set_operations_for_all(operations);
+
+      let depth_stencil_attachment = depth_view.map(|v| {
+        let mapped_depth_ops = depth_ops.map(|dop| match dop.load {
+          DepthLoadOp::Load => wgpu::Operations {
+            load: wgpu::LoadOp::Load,
+            store: match dop.store {
+              StoreOp::Store => wgpu::StoreOp::Store,
+              StoreOp::Discard => wgpu::StoreOp::Discard,
+            },
+          },
+          DepthLoadOp::Clear(value) => wgpu::Operations {
+            load: wgpu::LoadOp::Clear(value),
+            store: match dop.store {
+              StoreOp::Store => wgpu::StoreOp::Store,
+              StoreOp::Discard => wgpu::StoreOp::Discard,
+            },
+          },
+        });
+        let mapped_stencil_ops = stencil_ops.map(|sop| match sop.load {
+          StencilLoadOp::Load => wgpu::Operations {
+            load: wgpu::LoadOp::Load,
+            store: match sop.store {
+              StoreOp::Store => wgpu::StoreOp::Store,
+              StoreOp::Discard => wgpu::StoreOp::Discard,
+            },
+          },
+          StencilLoadOp::Clear(value) => wgpu::Operations {
+            load: wgpu::LoadOp::Clear(value),
+            store: match sop.store {
+              StoreOp::Store => wgpu::StoreOp::Store,
+              StoreOp::Discard => wgpu::StoreOp::Discard,
+            },
+          },
+        });
+
+        wgpu::RenderPassDepthStencilAttachment {
+          view: v.raw,
+          depth_ops: mapped_depth_ops,
+          stencil_ops: mapped_stencil_ops,
+        }
+      });
+
+      let desc = wgpu::RenderPassDescriptor {
+        label,
+        color_attachments: attachments.as_slice(),
+        depth_stencil_attachment,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+      };
+
+      let pass = encoder.begin_render_pass_raw(&desc);
+      return RenderPass { raw: pass };
+    }
+  }
+
+  /// Build (begin) the render pass with optional timestamp writes.
+  ///
+  /// # Arguments
+  /// * `encoder` - The command encoder to begin the pass on.
+  /// * `attachments` - Color attachments for the pass.
+  /// * `depth_view` - Optional depth view.
+  /// * `depth_ops` - Optional depth operations.
+  /// * `stencil_ops` - Optional stencil operations.
+  /// * `label` - Optional debug label (must outlive the pass).
+  /// * `timestamp_writes` - Optional GPU timestamp writes configuration.
+  ///
+  /// # Returns
+  /// A started render pass wrapper borrowing the encoder.
+  #[cfg(feature = "profiling-gpu")]
+  pub fn build_with_timestamp_writes<'view>(
+    self,
+    encoder: &'view mut command::CommandEncoder,
+    attachments: &'view mut RenderColorAttachments<'view>,
+    depth_view: Option<crate::wgpu::surface::TextureViewRef<'view>>,
+    depth_ops: Option<DepthOperations>,
+    stencil_ops: Option<StencilOperations>,
+    label: Option<&'view str>,
+    timestamp_writes: Option<
+      &'view profiling::GpuRenderPassTimestampWrites<'view>,
+    >,
+  ) -> RenderPass<'view> {
     let operations = match self.config.color_operations.load {
       ColorLoadOp::Load => wgpu::Operations {
         load: wgpu::LoadOp::Load,
@@ -409,11 +531,18 @@ impl RenderPassBuilder {
       }
     });
 
+    let raw_timestamp_writes =
+      timestamp_writes.map(|writes| wgpu::RenderPassTimestampWrites {
+        query_set: writes.query_set,
+        beginning_of_pass_write_index: writes.beginning_of_pass_write_index,
+        end_of_pass_write_index: writes.end_of_pass_write_index,
+      });
+
     let desc = wgpu::RenderPassDescriptor {
       label,
       color_attachments: attachments.as_slice(),
       depth_stencil_attachment,
-      timestamp_writes: None,
+      timestamp_writes: raw_timestamp_writes,
       occlusion_query_set: None,
       multiview_mask: None,
     };
