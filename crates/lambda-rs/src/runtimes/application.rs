@@ -38,6 +38,16 @@ use crate::{
   runtime::Runtime,
 };
 
+const RUNTIME_INITIALIZATION_SCOPE_NAME: &str = "lambda.runtime.initialize";
+const COMPONENT_ATTACH_SCOPE_NAME: &str = "lambda.runtime.component.attach";
+const COMPONENT_DETACH_SCOPE_NAME: &str = "lambda.runtime.component.detach";
+const EVENT_MAPPING_SCOPE_NAME: &str = "lambda.runtime.event.map";
+const EVENT_DISPATCH_SCOPE_NAME: &str = "lambda.runtime.event.dispatch";
+const FRAME_UPDATE_SCOPE_NAME: &str = "lambda.runtime.frame.update";
+const COMPONENT_UPDATE_SCOPE_NAME: &str = "lambda.runtime.component.update";
+const FRAME_RENDER_SCOPE_NAME: &str = "lambda.runtime.frame.render";
+const COMPONENT_RENDER_SCOPE_NAME: &str = "lambda.runtime.component.render";
+
 /// Result value used by component callbacks executed under
 /// `ApplicationRuntime`.
 #[derive(Clone, Debug)]
@@ -150,6 +160,102 @@ pub struct ApplicationRuntime {
 
 impl ApplicationRuntime {}
 
+/// Returns the active global profiler when runtime profiling is enabled.
+///
+/// # Arguments
+/// This function does not take additional arguments.
+///
+/// # Returns
+/// Returns the installed global profiler or `None` when profiling is disabled
+/// or no profiler is installed.
+#[cfg(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+))]
+fn active_runtime_profiler() -> Option<&'static crate::profiling::Profiler> {
+  return crate::profiling::Profiler::global();
+}
+
+/// Executes one runtime operation inside an optional profiling scope.
+///
+/// # Arguments
+/// - `name`: Stable runtime span name.
+/// - `operation`: Closure executing the runtime work to measure.
+///
+/// # Returns
+/// Returns the closure result unchanged.
+#[cfg(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+))]
+fn with_runtime_scope<T>(
+  name: &'static str,
+  operation: impl FnOnce() -> T,
+) -> T {
+  return with_runtime_scope_for_profiler(
+    active_runtime_profiler(),
+    name,
+    operation,
+  );
+}
+
+/// Executes one runtime operation inside an explicit profiling scope.
+///
+/// This helper exists so runtime instrumentation can be unit-tested with a
+/// locally constructed profiler instead of requiring the process-global
+/// installation path.
+///
+/// # Arguments
+/// - `profiler`: Explicit profiler used for scope creation.
+/// - `name`: Stable runtime span name.
+/// - `operation`: Closure executing the runtime work to measure.
+///
+/// # Returns
+/// Returns the closure result unchanged.
+#[cfg(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+))]
+fn with_runtime_scope_for_profiler<T>(
+  profiler: Option<&crate::profiling::Profiler>,
+  name: &'static str,
+  operation: impl FnOnce() -> T,
+) -> T {
+  let _scope =
+    profiler.map(|active_profiler| active_profiler.begin_scope(name));
+
+  return operation();
+}
+
+/// Executes one runtime operation without profiling when runtime profiling is disabled.
+///
+/// # Arguments
+/// - `name`: Stable runtime span name.
+/// - `operation`: Closure executing the runtime work to measure.
+///
+/// # Returns
+/// Returns the closure result unchanged.
+#[cfg(not(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+)))]
+fn with_runtime_scope<T>(
+  name: &'static str,
+  operation: impl FnOnce() -> T,
+) -> T {
+  let _ = name;
+
+  return operation();
+}
+
 fn format_component_handler_failure(error: &String) -> String {
   return format!(
     "A component has panicked while handling an event. {:?}",
@@ -158,6 +264,26 @@ fn format_component_handler_failure(error: &String) -> String {
 }
 
 fn dispatch_event_to_component(
+  event: &Events,
+  event_mask: EventMask,
+  component: &mut dyn Component<ComponentResult, String>,
+) -> Result<(), String> {
+  return dispatch_event_to_component_inner(event, event_mask, component);
+}
+
+/// Dispatches one mapped event to one component.
+///
+/// # Arguments
+/// - `event`: Mapped Lambda event being dispatched.
+/// - `event_mask`: Single-category mask corresponding to `event`.
+/// - `component`: Component receiving the event.
+///
+/// # Returns
+/// Returns `Ok(())` when the matching handler completed successfully.
+///
+/// # Errors
+/// Returns a formatted error when the component handler fails.
+fn dispatch_event_to_component_inner(
   event: &Events,
   event_mask: EventMask,
   component: &mut dyn Component<ComponentResult, String>,
@@ -268,8 +394,13 @@ impl Runtime<(), String> for ApplicationRuntime {
   /// of all components, the windowing the render context, and anything
   /// else relevant to the runtime.
   fn run(self) -> Result<(), String> {
-    let name = self.name;
-    let event_loop_policy = self.event_loop_policy;
+    let ApplicationRuntime {
+      name,
+      render_context_builder,
+      window_builder,
+      event_loop_policy,
+      component_stack,
+    } = self;
     let frame_warn_threshold: Option<Duration> = match event_loop_policy {
       EventLoopPolicy::Poll => Some(Duration::from_millis(32)),
       EventLoopPolicy::Wait => None,
@@ -284,25 +415,38 @@ impl Runtime<(), String> for ApplicationRuntime {
       }
       EventLoopPolicy::WaitUntil { .. } => None,
     };
-    let mut event_loop = LoopBuilder::new().build();
-    let window = self.window_builder.build(&mut event_loop);
-    let mut component_stack = self.component_stack;
-    let listener_index = build_event_listener_index(&component_stack);
-    let render_context = match self.render_context_builder.build(&window) {
-      Ok(ctx) => ctx,
-      Err(err) => {
-        let msg = format!("Failed to initialize render context: {}", err);
-        logging::error!("{}", msg);
-        return Err(msg);
-      }
-    };
-    let mut active_render_context = Some(render_context);
+    let mut component_stack = component_stack;
+    let (event_loop, listener_index, mut active_render_context, publisher) =
+      with_runtime_scope(
+        RUNTIME_INITIALIZATION_SCOPE_NAME,
+        || -> Result<_, String> {
+          let mut event_loop = LoopBuilder::new().build();
+          let window = window_builder.build(&mut event_loop);
+          let listener_index = build_event_listener_index(&component_stack);
+          let render_context = match render_context_builder.build(&window) {
+            Ok(ctx) => ctx,
+            Err(err) => {
+              let msg = format!("Failed to initialize render context: {}", err);
+              logging::error!("{}", msg);
+              return Err(msg);
+            }
+          };
+          let active_render_context = Some(render_context);
 
-    let publisher = event_loop.create_event_publisher();
-    publisher.publish_event(Events::Runtime {
-      event: RuntimeEvent::Initialized,
-      issued_at: Instant::now(),
-    });
+          let publisher = event_loop.create_event_publisher();
+          publisher.publish_event(Events::Runtime {
+            event: RuntimeEvent::Initialized,
+            issued_at: Instant::now(),
+          });
+
+          return Ok((
+            event_loop,
+            listener_index,
+            active_render_context,
+            publisher,
+          ));
+        },
+      )?;
 
     let mut current_frame = Instant::now();
     let mut runtime_result: Box<Result<(), String>> = Box::new(Ok(()));
@@ -310,275 +454,286 @@ impl Runtime<(), String> for ApplicationRuntime {
     event_loop.run_forever_with_policy(
       event_loop_policy,
       move |event, target| {
-        let mapped_event: Option<Events> = match event {
-          WinitEvent::WindowEvent { event, .. } => match event {
-            WinitWindowEvent::CloseRequested => {
-              // Issue a Shutdown event to deallocate resources and clean up.
-              target.exit();
-              Some(Events::Runtime {
-                event: RuntimeEvent::Shutdown,
-                issued_at: Instant::now(),
-              })
-            }
-            WinitWindowEvent::Resized(dims) => {
-              active_render_context
-                .as_mut()
-                .unwrap()
-                .resize(dims.width, dims.height);
+        let mapped_event: Option<Events> =
+          with_runtime_scope(EVENT_MAPPING_SCOPE_NAME, || match event {
+            WinitEvent::WindowEvent { event, .. } => match event {
+              WinitWindowEvent::CloseRequested => {
+                // Issue a Shutdown event to deallocate resources and clean up.
+                target.exit();
+                Some(Events::Runtime {
+                  event: RuntimeEvent::Shutdown,
+                  issued_at: Instant::now(),
+                })
+              }
+              WinitWindowEvent::Resized(dims) => {
+                active_render_context
+                  .as_mut()
+                  .unwrap()
+                  .resize(dims.width, dims.height);
 
-              Some(Events::Window {
-                event: WindowEvent::Resize {
-                  width: dims.width,
-                  height: dims.height,
+                Some(Events::Window {
+                  event: WindowEvent::Resize {
+                    width: dims.width,
+                    height: dims.height,
+                  },
+                  issued_at: Instant::now(),
+                })
+              }
+              WinitWindowEvent::ScaleFactorChanged { .. } => None,
+              WinitWindowEvent::Moved(_) => None,
+              WinitWindowEvent::Destroyed => None,
+              WinitWindowEvent::DroppedFile(_) => None,
+              WinitWindowEvent::HoveredFile(_) => None,
+              WinitWindowEvent::HoveredFileCancelled => None,
+              // Character input is delivered via IME; ignore here for now
+              WinitWindowEvent::Focused(_) => None,
+              WinitWindowEvent::KeyboardInput {
+                event: key_event,
+                is_synthetic,
+                ..
+              } => match (key_event.state, is_synthetic) {
+                (ElementState::Pressed, false) => {
+                  let (scan_code, virtual_key) = match key_event.physical_key {
+                    WinitPhysicalKey::Code(code) => (0, Some(code)),
+                    _ => (0, None),
+                  };
+                  Some(Events::Keyboard {
+                    event: Key::Pressed {
+                      scan_code,
+                      virtual_key,
+                    },
+                    issued_at: Instant::now(),
+                  })
+                }
+                (ElementState::Released, false) => {
+                  let (scan_code, virtual_key) = match key_event.physical_key {
+                    WinitPhysicalKey::Code(code) => (0, Some(code)),
+                    _ => (0, None),
+                  };
+                  Some(Events::Keyboard {
+                    event: Key::Released {
+                      scan_code,
+                      virtual_key,
+                    },
+                    issued_at: Instant::now(),
+                  })
+                }
+                _ => None,
+              },
+              WinitWindowEvent::ModifiersChanged(_) => None,
+              WinitWindowEvent::CursorMoved {
+                device_id: _,
+                position,
+              } => Some(Events::Mouse {
+                event: Mouse::Moved {
+                  x: position.x,
+                  y: position.y,
+                  dx: 0.0,
+                  dy: 0.0,
+                  device_id: 0,
                 },
                 issued_at: Instant::now(),
-              })
-            }
-            WinitWindowEvent::ScaleFactorChanged { .. } => None,
-            WinitWindowEvent::Moved(_) => None,
-            WinitWindowEvent::Destroyed => None,
-            WinitWindowEvent::DroppedFile(_) => None,
-            WinitWindowEvent::HoveredFile(_) => None,
-            WinitWindowEvent::HoveredFileCancelled => None,
-            // Character input is delivered via IME; ignore here for now
-            WinitWindowEvent::Focused(_) => None,
-            WinitWindowEvent::KeyboardInput {
-              event: key_event,
-              is_synthetic,
-              ..
-            } => match (key_event.state, is_synthetic) {
-              (ElementState::Pressed, false) => {
-                let (scan_code, virtual_key) = match key_event.physical_key {
-                  WinitPhysicalKey::Code(code) => (0, Some(code)),
-                  _ => (0, None),
-                };
-                Some(Events::Keyboard {
-                  event: Key::Pressed {
-                    scan_code,
-                    virtual_key,
-                  },
+              }),
+              WinitWindowEvent::CursorEntered { device_id: _ } => {
+                Some(Events::Mouse {
+                  event: Mouse::EnteredWindow { device_id: 0 },
                   issued_at: Instant::now(),
                 })
               }
-              (ElementState::Released, false) => {
-                let (scan_code, virtual_key) = match key_event.physical_key {
-                  WinitPhysicalKey::Code(code) => (0, Some(code)),
-                  _ => (0, None),
-                };
-                Some(Events::Keyboard {
-                  event: Key::Released {
-                    scan_code,
-                    virtual_key,
-                  },
+              WinitWindowEvent::CursorLeft { device_id: _ } => {
+                Some(Events::Mouse {
+                  event: Mouse::LeftWindow { device_id: 0 },
                   issued_at: Instant::now(),
                 })
               }
+              WinitWindowEvent::MouseWheel {
+                device_id: _,
+                delta: _,
+                phase: _,
+              } => Some(Events::Mouse {
+                event: Mouse::Scrolled { device_id: 0 },
+                issued_at: Instant::now(),
+              }),
+              WinitWindowEvent::MouseInput {
+                device_id: _,
+                state,
+                button,
+              } => {
+                // Map winit button to our button type
+                let button = match button {
+                  MouseButton::Left => Button::Left,
+                  MouseButton::Right => Button::Right,
+                  MouseButton::Middle => Button::Middle,
+                  MouseButton::Other(other) => Button::Other(other),
+                  MouseButton::Back => Button::Other(8),
+                  MouseButton::Forward => Button::Other(9),
+                };
+
+                let event = match state {
+                  ElementState::Pressed => Mouse::Pressed {
+                    button,
+                    x: 0.0,
+                    y: 0.0,
+                    device_id: 0,
+                  },
+                  ElementState::Released => Mouse::Released {
+                    button,
+                    x: 0.0,
+                    y: 0.0,
+                    device_id: 0,
+                  },
+                };
+
+                Some(Events::Mouse {
+                  event,
+                  issued_at: Instant::now(),
+                })
+              }
+              WinitWindowEvent::TouchpadPressure { .. } => None,
+              WinitWindowEvent::AxisMotion { .. } => None,
+              WinitWindowEvent::Touch(_) => None,
+              WinitWindowEvent::ThemeChanged(_) => None,
               _ => None,
             },
-            WinitWindowEvent::ModifiersChanged(_) => None,
-            WinitWindowEvent::CursorMoved {
-              device_id: _,
-              position,
-            } => Some(Events::Mouse {
-              event: Mouse::Moved {
-                x: position.x,
-                y: position.y,
-                dx: 0.0,
-                dy: 0.0,
-                device_id: 0,
-              },
-              issued_at: Instant::now(),
-            }),
-            WinitWindowEvent::CursorEntered { device_id: _ } => {
-              Some(Events::Mouse {
-                event: Mouse::EnteredWindow { device_id: 0 },
-                issued_at: Instant::now(),
-              })
-            }
-            WinitWindowEvent::CursorLeft { device_id: _ } => {
-              Some(Events::Mouse {
-                event: Mouse::LeftWindow { device_id: 0 },
-                issued_at: Instant::now(),
-              })
-            }
-            WinitWindowEvent::MouseWheel {
-              device_id: _,
-              delta: _,
-              phase: _,
-            } => Some(Events::Mouse {
-              event: Mouse::Scrolled { device_id: 0 },
-              issued_at: Instant::now(),
-            }),
-            WinitWindowEvent::MouseInput {
-              device_id: _,
-              state,
-              button,
-            } => {
-              // Map winit button to our button type
-              let button = match button {
-                MouseButton::Left => Button::Left,
-                MouseButton::Right => Button::Right,
-                MouseButton::Middle => Button::Middle,
-                MouseButton::Other(other) => Button::Other(other),
-                MouseButton::Back => Button::Other(8),
-                MouseButton::Forward => Button::Other(9),
-              };
+            WinitEvent::AboutToWait => {
+              let last_frame = current_frame;
+              current_frame = Instant::now();
+              let duration = &current_frame.duration_since(last_frame);
 
-              let event = match state {
-                ElementState::Pressed => Mouse::Pressed {
-                  button,
-                  x: 0.0,
-                  y: 0.0,
-                  device_id: 0,
-                },
-                ElementState::Released => Mouse::Released {
-                  button,
-                  x: 0.0,
-                  y: 0.0,
-                  device_id: 0,
-                },
-              };
+              let active_render_context = active_render_context
+                .as_mut()
+                .expect("Couldn't get the active render context. ");
+              let mut renderable_component_indices = Vec::new();
 
-              Some(Events::Mouse {
+              with_runtime_scope(FRAME_UPDATE_SCOPE_NAME, || {
+                for (component_index, component) in
+                  component_stack.iter_mut().enumerate()
+                {
+                  let update_result =
+                    with_runtime_scope(COMPONENT_UPDATE_SCOPE_NAME, || {
+                      component.on_update(duration)
+                    });
+                  if let Err(error) = update_result {
+                    logging::error!("{}", error);
+                    publisher.publish_event(Events::Runtime {
+                      event: RuntimeEvent::ComponentPanic { message: error },
+                      issued_at: Instant::now(),
+                    });
+                    continue;
+                  }
+
+                  renderable_component_indices.push(component_index);
+                }
+              });
+
+              with_runtime_scope(FRAME_RENDER_SCOPE_NAME, || {
+                for component_index in &renderable_component_indices {
+                  let component = &mut component_stack[*component_index];
+                  let commands =
+                    with_runtime_scope(COMPONENT_RENDER_SCOPE_NAME, || {
+                      component.on_render(active_render_context)
+                    });
+                  active_render_context.render(commands);
+                }
+              });
+
+              // Warn if the time between frames significantly exceeds the expected
+              // interval for the selected event loop policy.
+              //
+              // - Poll: uses a fixed 32 ms threshold (~30 fps).
+              // - WaitUntil: uses a threshold derived from the target FPS.
+              // - Wait: disabled (duration includes idle sleep time).
+              if let Some(threshold) = frame_warn_threshold {
+                if *duration > threshold {
+                  logging::warn!(
+                    "Frame took too long to render: {:?} ms",
+                    duration.as_millis()
+                  );
+                }
+              }
+
+              None
+            }
+            // Redraw requests are handled implicitly when AboutToWait fires; ignore explicit requests
+            WinitEvent::NewEvents(_) => None,
+            WinitEvent::DeviceEvent {
+              device_id: _,
+              event: _,
+            } => None,
+            WinitEvent::UserEvent(lambda_event) => match lambda_event {
+              Events::Runtime {
                 event,
-                issued_at: Instant::now(),
-              })
-            }
-            WinitWindowEvent::TouchpadPressure { .. } => None,
-            WinitWindowEvent::AxisMotion { .. } => None,
-            WinitWindowEvent::Touch(_) => None,
-            WinitWindowEvent::ThemeChanged(_) => None,
-            _ => None,
-          },
-          WinitEvent::AboutToWait => {
-            let last_frame = current_frame;
-            current_frame = Instant::now();
-            let duration = &current_frame.duration_since(last_frame);
-
-            let active_render_context = active_render_context
-              .as_mut()
-              .expect("Couldn't get the active render context. ");
-            for component in &mut component_stack {
-              let update_result = component.on_update(duration);
-              if let Err(error) = update_result {
-                logging::error!("{}", error);
-                publisher.publish_event(Events::Runtime {
-                  event: RuntimeEvent::ComponentPanic { message: error },
-                  issued_at: Instant::now(),
-                });
-                continue;
-              }
-              let commands = component.on_render(active_render_context);
-              active_render_context.render(commands);
-            }
-
-            // Warn if the time between frames significantly exceeds the expected
-            // interval for the selected event loop policy.
-            //
-            // - Poll: uses a fixed 32 ms threshold (~30 fps).
-            // - WaitUntil: uses a threshold derived from the target FPS.
-            // - Wait: disabled (duration includes idle sleep time).
-            if let Some(threshold) = frame_warn_threshold {
-              if *duration > threshold {
-                logging::warn!(
-                  "Frame took too long to render: {:?} ms",
-                  duration.as_millis()
-                );
-              }
-            }
-
-            None
-          }
-          // Redraw requests are handled implicitly when AboutToWait fires; ignore explicit requests
-          WinitEvent::NewEvents(_) => None,
-          WinitEvent::DeviceEvent {
-            device_id: _,
-            event: _,
-          } => None,
-          WinitEvent::UserEvent(lambda_event) => match lambda_event {
-            Events::Runtime {
-              event,
-              issued_at: _,
-            } => match event {
-              RuntimeEvent::Initialized => {
-                logging::debug!(
-                  "Initializing all of the components for the runtime: {}",
-                  name
-                );
-                for component in &mut component_stack {
-                  let attach_result = component
-                    .on_attach(active_render_context.as_mut().unwrap());
-                  if let Err(error) = attach_result {
-                    logging::error!("{}", error);
-                    publisher.publish_event(Events::Runtime {
-                      event: RuntimeEvent::ComponentPanic { message: error },
-                      issued_at: Instant::now(),
-                    });
+                issued_at: _,
+              } => match event {
+                RuntimeEvent::Initialized => {
+                  logging::debug!(
+                    "Initializing all of the components for the runtime: {}",
+                    name
+                  );
+                  for component in &mut component_stack {
+                    let attach_result =
+                      with_runtime_scope(COMPONENT_ATTACH_SCOPE_NAME, || {
+                        component
+                          .on_attach(active_render_context.as_mut().unwrap())
+                      });
+                    if let Err(error) = attach_result {
+                      logging::error!("{}", error);
+                      publisher.publish_event(Events::Runtime {
+                        event: RuntimeEvent::ComponentPanic { message: error },
+                        issued_at: Instant::now(),
+                      });
+                    }
                   }
+                  None
                 }
-                None
-              }
-              RuntimeEvent::Shutdown => {
-                for component in &mut component_stack {
-                  let detach_result = component
-                    .on_detach(active_render_context.as_mut().unwrap());
-                  if let Err(error) = detach_result {
-                    logging::error!("{}", error);
-                    publisher.publish_event(Events::Runtime {
-                      event: RuntimeEvent::ComponentPanic { message: error },
-                      issued_at: Instant::now(),
-                    });
+                RuntimeEvent::Shutdown => {
+                  for component in &mut component_stack {
+                    let detach_result =
+                      with_runtime_scope(COMPONENT_DETACH_SCOPE_NAME, || {
+                        component
+                          .on_detach(active_render_context.as_mut().unwrap())
+                      });
+                    if let Err(error) = detach_result {
+                      logging::error!("{}", error);
+                      publisher.publish_event(Events::Runtime {
+                        event: RuntimeEvent::ComponentPanic { message: error },
+                        issued_at: Instant::now(),
+                      });
+                    }
                   }
+                  *runtime_result = Ok(());
+                  None
                 }
-                *runtime_result = Ok(());
-                None
-              }
-              RuntimeEvent::ComponentPanic { message } => {
-                *runtime_result = Err(message);
-                None
-              }
+                RuntimeEvent::ComponentPanic { message } => {
+                  *runtime_result = Err(message);
+                  None
+                }
+              },
+              _ => None,
             },
-            _ => None,
-          },
-          WinitEvent::Suspended => None,
-          WinitEvent::Resumed => None,
-          WinitEvent::MemoryWarning => None,
-          // No RedrawEventsCleared in winit 0.29
-          WinitEvent::LoopExiting => {
-            active_render_context
-              .take()
-              .expect("[ERROR] The render API has been already taken.")
-              .destroy();
+            WinitEvent::Suspended => None,
+            WinitEvent::Resumed => None,
+            WinitEvent::MemoryWarning => None,
+            // No RedrawEventsCleared in winit 0.29
+            WinitEvent::LoopExiting => {
+              active_render_context
+                .take()
+                .expect("[ERROR] The render API has been already taken.")
+                .destroy();
 
-            logging::info!("All resources were successfully deleted.");
-            None
-          }
-        };
+              logging::info!("All resources were successfully deleted.");
+              None
+            }
+          });
 
         if let Some(event) = mapped_event {
-          logging::trace!("Sending event: {:?} to all components", event);
+          with_runtime_scope(EVENT_DISPATCH_SCOPE_NAME, || {
+            logging::trace!("Sending event: {:?} to all components", event);
 
-          let event_mask = event.mask();
-          let bucket = match event_listener_bucket(event_mask) {
-            Ok(bucket) => bucket,
-            Err(error) => {
-              logging::error!("{}", error);
-              publisher.publish_event(Events::Runtime {
-                event: RuntimeEvent::ComponentPanic { message: error },
-                issued_at: Instant::now(),
-              });
-              return;
-            }
-          };
-          let listeners = &listener_index[bucket];
-          for component_index in listeners {
-            let component = match component_stack.get_mut(*component_index) {
-              Some(component) => component,
-              None => {
-                let error = format!(
-                  "Listener index {} is out of bounds for component stack.",
-                  component_index
-                );
+            let event_mask = event.mask();
+            let bucket = match event_listener_bucket(event_mask) {
+              Ok(bucket) => bucket,
+              Err(error) => {
                 logging::error!("{}", error);
                 publisher.publish_event(Events::Runtime {
                   event: RuntimeEvent::ComponentPanic { message: error },
@@ -587,20 +742,38 @@ impl Runtime<(), String> for ApplicationRuntime {
                 return;
               }
             };
-            let event_result = dispatch_event_to_component(
-              &event,
-              event_mask,
-              component.as_mut(),
-            );
+            let listeners = &listener_index[bucket];
+            for component_index in listeners {
+              let component = match component_stack.get_mut(*component_index) {
+                Some(component) => component,
+                None => {
+                  let error = format!(
+                    "Listener index {} is out of bounds for component stack.",
+                    component_index
+                  );
+                  logging::error!("{}", error);
+                  publisher.publish_event(Events::Runtime {
+                    event: RuntimeEvent::ComponentPanic { message: error },
+                    issued_at: Instant::now(),
+                  });
+                  return;
+                }
+              };
+              let event_result = dispatch_event_to_component(
+                &event,
+                event_mask,
+                component.as_mut(),
+              );
 
-            if let Err(error) = event_result {
-              logging::error!("{}", error);
-              publisher.publish_event(Events::Runtime {
-                event: RuntimeEvent::ComponentPanic { message: error },
-                issued_at: Instant::now(),
-              });
+              if let Err(error) = event_result {
+                logging::error!("{}", error);
+                publisher.publish_event(Events::Runtime {
+                  event: RuntimeEvent::ComponentPanic { message: error },
+                  issued_at: Instant::now(),
+                });
+              }
             }
-          }
+          });
         }
       },
     );
@@ -620,7 +793,24 @@ impl Runtime<(), String> for ApplicationRuntime {
 
 #[cfg(test)]
 mod tests {
+  #[cfg(feature = "profiling-export-summary")]
+  use std::{
+    env,
+    fs,
+    path::{
+      Path,
+      PathBuf,
+    },
+    process,
+    sync::atomic::{
+      AtomicU64,
+      Ordering,
+    },
+  };
+
   use super::*;
+  #[cfg(feature = "profiling-cpu")]
+  use crate::profiling::ProfilerBuilder;
   use crate::{
     events::{
       ComponentEvent,
@@ -640,6 +830,8 @@ mod tests {
     runtime_event_count: u32,
     component_event_count: u32,
     fail_window: bool,
+    #[cfg(feature = "profiling-cpu")]
+    user_profiler: Option<crate::profiling::Profiler>,
   }
 
   impl Component<ComponentResult, String> for RecordingComponent {
@@ -662,6 +854,12 @@ mod tests {
     }
 
     fn on_window_event(&mut self, _event: &WindowEvent) -> Result<(), String> {
+      #[cfg(feature = "profiling-cpu")]
+      let _user_scope = self
+        .user_profiler
+        .as_ref()
+        .map(|profiler| profiler.begin_scope("tests.runtime.user.window"));
+
       self.window_event_count += 1;
       if self.fail_window {
         return Err("window failure".to_string());
@@ -711,6 +909,34 @@ mod tests {
     ) -> Vec<crate::render::command::RenderCommand> {
       return Vec::new();
     }
+  }
+
+  #[cfg(feature = "profiling-export-summary")]
+  static NEXT_TEST_ID: AtomicU64 = AtomicU64::new(0);
+
+  #[cfg(feature = "profiling-export-summary")]
+  fn unique_test_path(suffix: &str) -> PathBuf {
+    let test_id = NEXT_TEST_ID.fetch_add(1, Ordering::Relaxed);
+
+    return env::temp_dir().join(format!(
+      "lambda-rs-runtime-profiling-{suffix}-{}-{test_id}",
+      process::id()
+    ));
+  }
+
+  #[cfg(feature = "profiling-export-summary")]
+  fn remove_path_if_present(path: &Path) {
+    if !path.exists() {
+      return;
+    }
+
+    if path.is_dir() {
+      fs::remove_dir_all(path).unwrap();
+
+      return;
+    }
+
+    fs::remove_file(path).unwrap();
   }
 
   #[test]
@@ -866,5 +1092,239 @@ mod tests {
     assert_eq!(listeners[2], vec![3]);
     assert_eq!(listeners[3], vec![1]);
     assert_eq!(listeners[4], vec![3]);
+  }
+
+  #[cfg(feature = "profiling-cpu")]
+  #[test]
+  fn runtime_profiling_helpers_accept_local_profilers_without_global_install() {
+    let profiler = ProfilerBuilder::new("tests-runtime-profiling-local")
+      .with_frame_history_limit(8)
+      .build()
+      .unwrap();
+    let mut component = RecordingComponent {
+      mask: EventMask::WINDOW,
+      user_profiler: Some(profiler.clone()),
+      ..Default::default()
+    };
+    let event = Events::Window {
+      event: WindowEvent::Close,
+      issued_at: Instant::now(),
+    };
+    let event_mask = event.mask();
+
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      RUNTIME_INITIALIZATION_SCOPE_NAME,
+      || {
+        let _user_scope =
+          profiler.begin_scope("tests.runtime.user.initialization");
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      EVENT_MAPPING_SCOPE_NAME,
+      || {
+        let _user_scope = profiler.begin_scope("tests.runtime.user.mapping");
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      COMPONENT_ATTACH_SCOPE_NAME,
+      || {
+        let _user_scope = profiler.begin_scope("tests.runtime.user.attach");
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      COMPONENT_DETACH_SCOPE_NAME,
+      || {
+        let _user_scope = profiler.begin_scope("tests.runtime.user.detach");
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      FRAME_UPDATE_SCOPE_NAME,
+      || {
+        with_runtime_scope_for_profiler(
+          Some(&profiler),
+          COMPONENT_UPDATE_SCOPE_NAME,
+          || {
+            let _user_scope = profiler.begin_scope("tests.runtime.user.update");
+          },
+        );
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      FRAME_RENDER_SCOPE_NAME,
+      || {
+        with_runtime_scope_for_profiler(
+          Some(&profiler),
+          COMPONENT_RENDER_SCOPE_NAME,
+          || {
+            let _user_scope = profiler.begin_scope("tests.runtime.user.render");
+          },
+        );
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      EVENT_DISPATCH_SCOPE_NAME,
+      || {
+        dispatch_event_to_component_inner(&event, event_mask, &mut component)
+          .unwrap();
+      },
+    );
+
+    let artifacts = profiler.flush_frame().unwrap();
+
+    assert_eq!(artifacts.summary_path, None);
+    assert_eq!(artifacts.trace_path, None);
+    assert_eq!(component.window_event_count, 1);
+  }
+
+  #[cfg(feature = "profiling-export-summary")]
+  #[test]
+  fn runtime_profiling_spans_share_the_same_profiler_as_user_spans() {
+    let output_directory = unique_test_path("summary");
+    remove_path_if_present(&output_directory);
+
+    let profiler = ProfilerBuilder::new("tests-runtime-profiling")
+      .with_summary_export(true)
+      .with_output_directory(&output_directory)
+      .with_frame_history_limit(8)
+      .build()
+      .unwrap();
+    let mut component = RecordingComponent {
+      mask: EventMask::WINDOW,
+      user_profiler: Some(profiler.clone()),
+      ..Default::default()
+    };
+    let event = Events::Window {
+      event: WindowEvent::Close,
+      issued_at: Instant::now(),
+    };
+    let event_mask = event.mask();
+
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      RUNTIME_INITIALIZATION_SCOPE_NAME,
+      || {
+        let _user_scope =
+          profiler.begin_scope("tests.runtime.user.initialization");
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      EVENT_MAPPING_SCOPE_NAME,
+      || {
+        let _user_scope = profiler.begin_scope("tests.runtime.user.mapping");
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      COMPONENT_ATTACH_SCOPE_NAME,
+      || {
+        let _user_scope = profiler.begin_scope("tests.runtime.user.attach");
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      COMPONENT_DETACH_SCOPE_NAME,
+      || {
+        let _user_scope = profiler.begin_scope("tests.runtime.user.detach");
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      FRAME_UPDATE_SCOPE_NAME,
+      || {
+        with_runtime_scope_for_profiler(
+          Some(&profiler),
+          COMPONENT_UPDATE_SCOPE_NAME,
+          || {
+            let _user_scope = profiler.begin_scope("tests.runtime.user.update");
+          },
+        );
+      },
+    );
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      FRAME_RENDER_SCOPE_NAME,
+      || {
+        with_runtime_scope_for_profiler(
+          Some(&profiler),
+          COMPONENT_RENDER_SCOPE_NAME,
+          || {
+            let _user_scope = profiler.begin_scope("tests.runtime.user.render");
+          },
+        );
+      },
+    );
+
+    with_runtime_scope_for_profiler(
+      Some(&profiler),
+      EVENT_DISPATCH_SCOPE_NAME,
+      || {
+        dispatch_event_to_component_inner(&event, event_mask, &mut component)
+          .unwrap();
+      },
+    );
+
+    profiler.flush_frame().unwrap();
+
+    let summary = profiler.export_summary().unwrap();
+
+    assert_eq!(summary.clock_domains(), &["cpu".to_string()]);
+    assert!(summary
+      .require_scope(RUNTIME_INITIALIZATION_SCOPE_NAME, "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope(EVENT_MAPPING_SCOPE_NAME, "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope(COMPONENT_ATTACH_SCOPE_NAME, "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope(COMPONENT_DETACH_SCOPE_NAME, "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope(EVENT_DISPATCH_SCOPE_NAME, "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope(FRAME_UPDATE_SCOPE_NAME, "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope(COMPONENT_UPDATE_SCOPE_NAME, "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope(FRAME_RENDER_SCOPE_NAME, "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope(COMPONENT_RENDER_SCOPE_NAME, "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope("tests.runtime.user.window", "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope("tests.runtime.user.initialization", "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope("tests.runtime.user.mapping", "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope("tests.runtime.user.attach", "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope("tests.runtime.user.detach", "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope("tests.runtime.user.update", "cpu")
+      .is_ok());
+    assert!(summary
+      .require_scope("tests.runtime.user.render", "cpu")
+      .is_ok());
+
+    remove_path_if_present(&output_directory);
   }
 }
