@@ -57,6 +57,9 @@ use super::{
   validation,
   viewport::Viewport,
   RenderContext,
+  COMMAND_ENCODER_CREATE_SCOPE_NAME,
+  QUEUE_SUBMIT_SCOPE_NAME,
+  RENDER_PASS_SCOPE_NAME,
 };
 use crate::util;
 
@@ -80,6 +83,13 @@ pub(crate) struct RenderPassDestinationInfo {
 /// The encoder owns the underlying platform encoder and manages its lifetime.
 pub struct CommandEncoder {
   inner: platform::command::CommandEncoder,
+  #[cfg(any(
+    feature = "profiling-cpu",
+    feature = "profiling-gpu",
+    feature = "profiling-export-summary",
+    feature = "profiling-export-trace"
+  ))]
+  profiler: Option<crate::profiling::Profiler>,
 }
 
 impl CommandEncoder {
@@ -88,11 +98,26 @@ impl CommandEncoder {
   /// The encoder is tied to the current frame and should not be reused across
   /// frames.
   pub fn new(render_context: &RenderContext, label: &str) -> Self {
-    let inner = platform::command::CommandEncoder::new(
-      render_context.gpu().platform(),
-      Some(label),
+    let inner = render_context.with_render_scope(
+      COMMAND_ENCODER_CREATE_SCOPE_NAME,
+      || {
+        return platform::command::CommandEncoder::new(
+          render_context.gpu().platform(),
+          Some(label),
+        );
+      },
     );
-    return CommandEncoder { inner };
+
+    return CommandEncoder {
+      inner,
+      #[cfg(any(
+        feature = "profiling-cpu",
+        feature = "profiling-gpu",
+        feature = "profiling-export-summary",
+        feature = "profiling-export-trace"
+      ))]
+      profiler: render_context.active_render_profiler().cloned(),
+    };
   }
 
   /// Execute a render pass with the provided configuration.
@@ -126,15 +151,36 @@ impl CommandEncoder {
     PassFn:
       FnOnce(&mut RenderPassEncoder<'_>) -> Result<Output, RenderPassError>,
   {
-    let pass_encoder = RenderPassEncoder::new(
-      &mut self.inner,
-      pass,
-      destination_info,
-      color_attachments,
-      depth_texture,
-    );
+    #[cfg(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    ))]
+    let active_profiler = self.profiler.as_ref();
+    #[cfg(not(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    )))]
+    let active_profiler = None;
 
-    return func(&mut { pass_encoder });
+    return super::with_render_scope_for_profiler(
+      active_profiler,
+      RENDER_PASS_SCOPE_NAME,
+      || {
+        let pass_encoder = RenderPassEncoder::new(
+          &mut self.inner,
+          pass,
+          destination_info,
+          color_attachments,
+          depth_texture,
+        );
+
+        return func(&mut { pass_encoder });
+      },
+    );
   }
 
   /// Finish recording and submit the command buffer to the GPU.
@@ -142,11 +188,32 @@ impl CommandEncoder {
   /// This consumes the encoder and submits the recorded commands for
   /// execution.
   pub fn finish(self, render_context: &RenderContext) {
-    let buffer = self.inner.finish();
-    render_context
-      .gpu()
-      .platform()
-      .submit(std::iter::once(buffer));
+    #[cfg(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    ))]
+    let active_profiler = self.profiler.as_ref();
+    #[cfg(not(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    )))]
+    let active_profiler = None;
+
+    super::with_render_scope_for_profiler(
+      active_profiler,
+      QUEUE_SUBMIT_SCOPE_NAME,
+      || {
+        let buffer = self.inner.finish();
+        render_context
+          .gpu()
+          .platform()
+          .submit(std::iter::once(buffer));
+      },
+    );
   }
 }
 

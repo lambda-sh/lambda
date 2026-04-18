@@ -68,6 +68,91 @@ use self::{
   targets::surface::RenderTarget,
 };
 
+/// Stable scope name recorded for surface frame acquisition.
+const SURFACE_FRAME_ACQUIRE_SCOPE_NAME: &str = "lambda.render.surface.acquire";
+/// Stable scope name recorded for command encoder creation.
+const COMMAND_ENCODER_CREATE_SCOPE_NAME: &str = "lambda.render.encoder.create";
+/// Stable scope name recorded for command-list encoding.
+const COMMAND_ENCODING_SCOPE_NAME: &str = "lambda.render.commands.encode";
+/// Stable scope name recorded for each render pass encoded through Lambda.
+const RENDER_PASS_SCOPE_NAME: &str = "lambda.render.pass";
+/// Stable scope name recorded for command buffer submission.
+const QUEUE_SUBMIT_SCOPE_NAME: &str = "lambda.render.queue.submit";
+/// Stable scope name recorded for frame presentation.
+const FRAME_PRESENT_SCOPE_NAME: &str = "lambda.render.frame.present";
+
+/// Returns the active global profiler when render profiling is enabled.
+///
+/// # Arguments
+/// This helper does not take additional arguments.
+///
+/// # Returns
+/// Returns the installed global profiler, or `None` when profiling is disabled
+/// or no profiler is installed.
+#[cfg(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+))]
+fn active_render_profiler() -> Option<&'static crate::profiling::Profiler> {
+  return crate::profiling::Profiler::global();
+}
+
+/// Executes one render operation inside an explicit profiling scope.
+///
+/// This helper keeps render instrumentation centralized while allowing tests
+/// to inject a local profiler without mutating the process-global profiler.
+///
+/// # Arguments
+/// - `profiler`: Explicit profiler used for scope creation.
+/// - `name`: Stable scope name recorded for the operation.
+/// - `operation`: Closure that performs the instrumented render work.
+///
+/// # Returns
+/// Returns the closure result after the optional profiling scope is closed.
+#[cfg(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+))]
+pub(crate) fn with_render_scope_for_profiler<T>(
+  profiler: Option<&crate::profiling::Profiler>,
+  name: &'static str,
+  operation: impl FnOnce() -> T,
+) -> T {
+  let _scope =
+    profiler.map(|active_profiler| active_profiler.begin_scope(name));
+
+  return operation();
+}
+
+/// Executes one render operation without profiling when render profiling is disabled.
+///
+/// # Arguments
+/// - `profiler`: Ignored when render profiling is disabled.
+/// - `name`: Ignored when render profiling is disabled.
+/// - `operation`: Closure that performs the render work.
+///
+/// # Returns
+/// Returns the closure result unchanged.
+#[cfg(not(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+)))]
+pub(crate) fn with_render_scope_for_profiler<T>(
+  profiler: Option<&()>,
+  name: &'static str,
+  operation: impl FnOnce() -> T,
+) -> T {
+  let _ = (profiler, name);
+
+  return operation();
+}
+
 /// High-level presentation mode selection for window surfaces.
 ///
 /// The selected mode is validated against the adapter's surface capabilities
@@ -237,6 +322,16 @@ impl RenderContextBuilder {
       bind_groups: vec![],
       buffers: vec![],
       seen_error_messages: HashSet::new(),
+      #[cfg(all(
+        test,
+        any(
+          feature = "profiling-cpu",
+          feature = "profiling-gpu",
+          feature = "profiling-export-summary",
+          feature = "profiling-export-trace"
+        )
+      ))]
+      render_profiler_override: None,
     };
 
     // Initialize a depth texture matching the surface size using the
@@ -306,6 +401,16 @@ pub struct RenderContext {
   bind_groups: Vec<bind::BindGroup>,
   buffers: Vec<Rc<buffer::Buffer>>,
   seen_error_messages: HashSet<String>,
+  #[cfg(all(
+    test,
+    any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    )
+  ))]
+  render_profiler_override: Option<crate::profiling::Profiler>,
 }
 
 /// Opaque handle used to refer to resources attached to a `RenderContext`.
@@ -315,6 +420,91 @@ impl RenderContext {
   /// Optional label assigned when constructing the context.
   pub fn label(&self) -> &str {
     return self.label.as_str();
+  }
+
+  /// Executes one render operation inside an optional profiling scope.
+  ///
+  /// # Arguments
+  /// - `name`: Stable scope name recorded for the operation.
+  /// - `operation`: Closure that performs the instrumented work.
+  ///
+  /// # Returns
+  /// Returns the closure result after the optional profiling scope is closed.
+  fn with_render_scope<T>(
+    &self,
+    name: &'static str,
+    operation: impl FnOnce() -> T,
+  ) -> T {
+    #[cfg(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    ))]
+    {
+      #[cfg(test)]
+      if let Some(profiler) = self.render_profiler_override.as_ref() {
+        return with_render_scope_for_profiler(Some(profiler), name, operation);
+      }
+
+      return with_render_scope_for_profiler(
+        active_render_profiler(),
+        name,
+        operation,
+      );
+    }
+
+    #[cfg(not(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    )))]
+    {
+      let _ = name;
+
+      return operation();
+    }
+  }
+
+  /// Returns the profiler used for automatic render instrumentation.
+  ///
+  /// # Arguments
+  /// This helper does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns the profiler used for render spans, preferring the test override
+  /// when one is configured.
+  #[cfg(any(
+    feature = "profiling-cpu",
+    feature = "profiling-gpu",
+    feature = "profiling-export-summary",
+    feature = "profiling-export-trace"
+  ))]
+  pub(crate) fn active_render_profiler(
+    &self,
+  ) -> Option<&crate::profiling::Profiler> {
+    #[cfg(test)]
+    if let Some(profiler) = self.render_profiler_override.as_ref() {
+      return Some(profiler);
+    }
+
+    return active_render_profiler();
+  }
+
+  /// Overrides the automatic render profiler for unit tests.
+  ///
+  /// # Arguments
+  /// - `profiler`: Local profiler used for automatic render spans.
+  ///
+  /// # Returns
+  /// This method does not return a value.
+  #[cfg(all(test, feature = "profiling-export-summary"))]
+  fn set_render_profiler_override(
+    &mut self,
+    profiler: crate::profiling::Profiler,
+  ) {
+    self.render_profiler_override = Some(profiler);
   }
 
   /// Current surface size in pixels.
@@ -566,6 +756,21 @@ impl RenderContext {
     &mut self,
     commands: Vec<RenderCommand>,
   ) -> Result<(), RenderError> {
+    #[cfg(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    ))]
+    let active_profiler = self.active_render_profiler().cloned();
+    #[cfg(not(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    )))]
+    let active_profiler: Option<()> = None;
+
     if self.size.0 == 0 || self.size.1 == 0 {
       return Ok(());
     }
@@ -591,29 +796,45 @@ impl RenderContext {
       //
       // If acquisition fails due to surface loss/outdated config, attempt to
       // reconfigure the surface to the current context size and retry once.
-      let acquired = {
+      let acquired: Result<targets::surface::Frame, RenderError> = {
         let surface = self.surface.as_mut().ok_or_else(|| {
           RenderError::Configuration(
             "No surface attached to RenderContext".to_string(),
           )
         })?;
-        surface.acquire_frame()
+        Ok(
+          with_render_scope_for_profiler(
+            active_profiler.as_ref(),
+            SURFACE_FRAME_ACQUIRE_SCOPE_NAME,
+            || surface.acquire_frame(),
+          )
+          .map_err(RenderError::Surface)?,
+        )
       };
 
       Some(match acquired {
         Ok(frame) => frame,
         Err(err) => match err {
-          targets::surface::SurfaceError::Lost
-          | targets::surface::SurfaceError::Outdated => {
+          RenderError::Surface(targets::surface::SurfaceError::Lost)
+          | RenderError::Surface(targets::surface::SurfaceError::Outdated) => {
             self.reconfigure_surface(self.size)?;
-            let surface = self.surface.as_mut().ok_or_else(|| {
-              RenderError::Configuration(
-                "No surface attached to RenderContext".to_string(),
+            {
+              let surface = self.surface.as_mut().ok_or_else(|| {
+                RenderError::Configuration(
+                  "No surface attached to RenderContext".to_string(),
+                )
+              })?;
+              with_render_scope_for_profiler(
+                active_profiler.as_ref(),
+                SURFACE_FRAME_ACQUIRE_SCOPE_NAME,
+                || surface.acquire_frame().map_err(RenderError::Surface),
               )
-            })?;
-            surface.acquire_frame().map_err(RenderError::Surface)?
+            }?
           }
-          _ => return Err(RenderError::Surface(err)),
+          RenderError::Surface(surface_error) => {
+            return Err(RenderError::Surface(surface_error));
+          }
+          other => return Err(other),
         },
       })
     } else {
@@ -623,75 +844,87 @@ impl RenderContext {
     let mut encoder =
       CommandEncoder::new(self, "lambda-render-command-encoder");
 
-    let mut command_iter = commands.into_iter();
-    while let Some(command) = command_iter.next() {
-      match command {
-        RenderCommand::BeginRenderPass {
-          render_pass,
-          viewport,
-        } => {
-          let view = frame
-            .as_ref()
-            .ok_or_else(|| {
-              RenderError::Configuration(
-                "Surface render pass requested but no surface is attached"
-                  .to_string(),
-              )
-            })?
-            .texture_view();
-          self.encode_surface_render_pass(
-            &mut encoder,
-            &mut command_iter,
-            render_pass,
-            viewport,
-            view,
-          )?;
-        }
-        RenderCommand::BeginRenderPassTo {
-          render_pass,
-          viewport,
-          destination,
-        } => match destination {
-          RenderDestination::Surface => {
-            let view = frame
-              .as_ref()
-              .ok_or_else(|| {
-                RenderError::Configuration(
-                  "Surface render pass requested but no surface is attached"
-                    .to_string(),
-                )
-              })?
-              .texture_view();
-            self.encode_surface_render_pass(
-              &mut encoder,
-              &mut command_iter,
+    with_render_scope_for_profiler(
+      active_profiler.as_ref(),
+      COMMAND_ENCODING_SCOPE_NAME,
+      || -> Result<(), RenderError> {
+        let mut command_iter = commands.into_iter();
+        while let Some(command) = command_iter.next() {
+          match command {
+            RenderCommand::BeginRenderPass {
               render_pass,
               viewport,
-              view,
-            )?;
-          }
-          RenderDestination::Offscreen(target_id) => {
-            self.encode_offscreen_render_pass(
-              &mut encoder,
-              &mut command_iter,
+            } => {
+              let view = frame
+                .as_ref()
+                .ok_or_else(|| {
+                  RenderError::Configuration(
+                    "Surface render pass requested but no surface is attached"
+                      .to_string(),
+                  )
+                })?
+                .texture_view();
+              self.encode_surface_render_pass(
+                &mut encoder,
+                &mut command_iter,
+                render_pass,
+                viewport,
+                view,
+              )?;
+            }
+            RenderCommand::BeginRenderPassTo {
               render_pass,
               viewport,
-              target_id,
-            )?;
+              destination,
+            } => match destination {
+              RenderDestination::Surface => {
+                let view = frame
+                  .as_ref()
+                  .ok_or_else(|| {
+                    RenderError::Configuration(
+                    "Surface render pass requested but no surface is attached"
+                      .to_string(),
+                  )
+                  })?
+                  .texture_view();
+                self.encode_surface_render_pass(
+                  &mut encoder,
+                  &mut command_iter,
+                  render_pass,
+                  viewport,
+                  view,
+                )?;
+              }
+              RenderDestination::Offscreen(target_id) => {
+                self.encode_offscreen_render_pass(
+                  &mut encoder,
+                  &mut command_iter,
+                  render_pass,
+                  viewport,
+                  target_id,
+                )?;
+              }
+            },
+            other => {
+              logging::warn!(
+                "Ignoring render command outside of a render pass: {:?}",
+                other
+              );
+            }
           }
-        },
-        other => {
-          logging::warn!(
-            "Ignoring render command outside of a render pass: {:?}",
-            other
-          );
         }
-      }
-    }
+
+        return Ok(());
+      },
+    )?;
 
     encoder.finish(self);
     if let Some(frame) = frame.take() {
-      frame.present();
+      with_render_scope_for_profiler(
+        active_profiler.as_ref(),
+        FRAME_PRESENT_SCOPE_NAME,
+        || frame.present(),
+      );
     }
     return Ok(());
   }
@@ -1146,8 +1379,49 @@ impl std::error::Error for RenderContextError {}
 
 #[cfg(test)]
 mod tests {
+  #[cfg(feature = "profiling-export-summary")]
+  use std::{
+    env,
+    fs,
+    path::{
+      Path,
+      PathBuf,
+    },
+    process,
+    sync::atomic::{
+      AtomicU64,
+      Ordering,
+    },
+  };
+
   use super::*;
+  #[cfg(feature = "profiling-export-summary")]
+  use crate::profiling::ProfilerBuilder;
   use crate::render::render_pass;
+
+  #[cfg(feature = "profiling-export-summary")]
+  static RENDER_TEST_DIRECTORY_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+  /// Returns a unique filesystem path for a render profiling test artifact
+  /// directory.
+  #[cfg(feature = "profiling-export-summary")]
+  fn render_test_output_directory(suffix: &str) -> PathBuf {
+    let test_id = RENDER_TEST_DIRECTORY_COUNTER.fetch_add(1, Ordering::Relaxed);
+    return env::temp_dir().join(format!(
+      "lambda-rs-render-profiling-{suffix}-{}-{test_id}",
+      process::id()
+    ));
+  }
+
+  /// Removes a temporary render profiling output directory when it still
+  /// exists.
+  #[cfg(feature = "profiling-export-summary")]
+  fn remove_render_test_output_directory(path: &Path) {
+    if path.exists() {
+      fs::remove_dir_all(path)
+        .expect("remove render profiling output directory");
+    }
+  }
 
   /// Ensures the internal attachment predicate returns false when neither depth
   /// nor stencil operations are configured.
@@ -1441,6 +1715,238 @@ mod tests {
     assert!(err.to_string().contains("EndRenderPass"));
   }
 
+  /// Verifies automatic render spans are recorded into the same profiler as
+  /// user-authored spans during a headless offscreen render.
+  #[cfg(feature = "profiling-export-summary")]
+  #[test]
+  fn render_profiling_spans_share_the_same_profiler_as_user_spans() {
+    use crate::render::{
+      buffer::{
+        BufferBuilder,
+        BufferType,
+        Properties,
+        Usage,
+      },
+      command::RenderDestination,
+      pipeline::RenderPipelineBuilder,
+      shader::{
+        ShaderBuilder,
+        ShaderKind,
+        VirtualShader,
+      },
+      targets::offscreen::OffscreenTargetBuilder,
+      texture::{
+        DepthFormat,
+        DepthTextureBuilder,
+        TextureFormat,
+        TextureUsages,
+      },
+      vertex::{
+        ColorFormat,
+        VertexAttribute,
+        VertexElement,
+      },
+      viewport::ViewportBuilder,
+    };
+
+    let output_directory =
+      render_test_output_directory("render-summary-export");
+    remove_render_test_output_directory(&output_directory);
+
+    let profiler = ProfilerBuilder::new("tests-render-profiling")
+      .with_summary_export(true)
+      .with_output_directory(&output_directory)
+      .with_frame_history_limit(8)
+      .build()
+      .expect("build render profiler");
+
+    let instance = instance::InstanceBuilder::new()
+      .with_label("lambda-render-profiling-test-instance")
+      .build();
+    let Some(gpu) = gpu::create_test_gpu_with_instance(
+      &instance,
+      "lambda-render-profiling-test",
+    ) else {
+      remove_render_test_output_directory(&output_directory);
+      return;
+    };
+
+    let config = targets::surface::SurfaceConfig {
+      width: 32,
+      height: 32,
+      format: TextureFormat::Rgba8Unorm,
+      present_mode: targets::surface::PresentMode::Fifo,
+      usage: TextureUsages::RENDER_ATTACHMENT,
+    };
+
+    let depth_texture = DepthTextureBuilder::new()
+      .with_size(32, 32)
+      .with_format(DepthFormat::Depth32Float)
+      .with_label("lambda-render-profiling-depth")
+      .build(&gpu);
+
+    let mut render_context = RenderContext {
+      label: "lambda-render-profiling-context".to_string(),
+      instance,
+      surface: None,
+      gpu,
+      config: config.clone(),
+      texture_usage: config.usage,
+      size: (32, 32),
+      depth_texture: Some(depth_texture),
+      depth_format: DepthFormat::Depth32Float,
+      depth_sample_count: 1,
+      msaa_color: None,
+      msaa_sample_count: 1,
+      offscreen_targets: vec![],
+      render_passes: vec![],
+      render_pipelines: vec![],
+      bind_group_layouts: vec![],
+      bind_groups: vec![],
+      buffers: vec![],
+      seen_error_messages: Default::default(),
+      render_profiler_override: None,
+    };
+    render_context.set_render_profiler_override(profiler.clone());
+
+    let offscreen = OffscreenTargetBuilder::new()
+      .with_label("lambda-render-profiling-offscreen")
+      .with_color(TextureFormat::Rgba8Unorm, 32, 32)
+      .build(render_context.gpu())
+      .expect("build render profiling offscreen target");
+    let offscreen_id = render_context.attach_offscreen_target(offscreen);
+
+    let pass = render_pass::RenderPassBuilder::new()
+      .with_label("lambda-render-profiling-pass")
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        DepthFormat::Depth24Plus,
+      );
+    let pass_id = render_context.attach_render_pass(pass);
+
+    let vertex_shader_source = r#"
+      #version 450
+      #extension GL_ARB_separate_shader_objects : enable
+
+      layout(location = 0) in vec3 a_pos;
+
+      void main() {
+        gl_Position = vec4(a_pos, 1.0);
+      }
+    "#;
+    let fragment_shader_source = r#"
+      #version 450
+      #extension GL_ARB_separate_shader_objects : enable
+
+      layout(location = 0) out vec4 fragment_color;
+
+      void main() {
+        fragment_color = vec4(1.0, 0.25, 0.0, 1.0);
+      }
+    "#;
+    let mut shader_builder = ShaderBuilder::new();
+    let vertex_shader = shader_builder.build(VirtualShader::Source {
+      source: vertex_shader_source.to_string(),
+      kind: ShaderKind::Vertex,
+      name: "lambda-render-profiling-vert".to_string(),
+      entry_point: "main".to_string(),
+    });
+    let fragment_shader = shader_builder.build(VirtualShader::Source {
+      source: fragment_shader_source.to_string(),
+      kind: ShaderKind::Fragment,
+      name: "lambda-render-profiling-frag".to_string(),
+      entry_point: "main".to_string(),
+    });
+
+    let vertices: Vec<[f32; 3]> =
+      vec![[0.0, -0.5, 0.0], [-0.5, 0.5, 0.0], [0.5, 0.5, 0.0]];
+    let vertex_buffer = BufferBuilder::new()
+      .with_label("lambda-render-profiling-vertex")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(render_context.gpu(), vertices)
+      .expect("build render profiling vertex buffer");
+
+    let vertex_attributes = vec![VertexAttribute {
+      location: 0,
+      offset: 0,
+      element: VertexElement {
+        format: ColorFormat::Rgb32Sfloat,
+        offset: 0,
+      },
+    }];
+
+    let pipeline = RenderPipelineBuilder::new()
+      .with_label("lambda-render-profiling-pipeline")
+      .with_buffer(vertex_buffer, vertex_attributes)
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        DepthFormat::Depth24Plus,
+        render_context.get_render_pass(pass_id),
+        &vertex_shader,
+        Some(&fragment_shader),
+      );
+    let pipeline_id = render_context.attach_pipeline(pipeline);
+
+    let viewport = ViewportBuilder::new().build(32, 32);
+    let commands = vec![
+      RenderCommand::BeginRenderPassTo {
+        render_pass: pass_id,
+        viewport,
+        destination: RenderDestination::Offscreen(offscreen_id),
+      },
+      RenderCommand::SetPipeline {
+        pipeline: pipeline_id,
+      },
+      RenderCommand::BindVertexBuffer {
+        pipeline: pipeline_id,
+        buffer: 0,
+      },
+      RenderCommand::Draw {
+        vertices: 0..3,
+        instances: 0..1,
+      },
+      RenderCommand::EndRenderPass,
+    ];
+
+    let user_scope = profiler.begin_scope("tests.render.user.frame");
+    render_context
+      .render_internal(commands)
+      .expect("render offscreen frame with profiling");
+    drop(user_scope);
+
+    profiler.flush_frame().expect("flush render profiler frame");
+    let summary = profiler.export_summary().expect("export render summary");
+
+    assert_eq!(summary.clock_domains(), &["cpu".to_string()]);
+    summary
+      .require_scope(COMMAND_ENCODER_CREATE_SCOPE_NAME, "cpu")
+      .expect("render summary must include encoder creation");
+    summary
+      .require_scope(COMMAND_ENCODING_SCOPE_NAME, "cpu")
+      .expect("render summary must include command encoding");
+    summary
+      .require_scope(RENDER_PASS_SCOPE_NAME, "cpu")
+      .expect("render summary must include render pass spans");
+    summary
+      .require_scope(QUEUE_SUBMIT_SCOPE_NAME, "cpu")
+      .expect("render summary must include queue submission");
+    summary
+      .require_scope("tests.render.user.frame", "cpu")
+      .expect("render summary must include user-authored render spans");
+    assert!(summary
+      .require_scope(SURFACE_FRAME_ACQUIRE_SCOPE_NAME, "cpu")
+      .is_err());
+    assert!(summary
+      .require_scope(FRAME_PRESENT_SCOPE_NAME, "cpu")
+      .is_err());
+
+    remove_render_test_output_directory(&output_directory);
+  }
+
   /// End-to-end GPU test that renders into both "surface-style" and offscreen
   /// passes without requiring an actual window/surface.
   #[test]
@@ -1580,6 +2086,16 @@ mod tests {
       bind_groups: vec![],
       buffers: vec![],
       seen_error_messages: Default::default(),
+      #[cfg(all(
+        test,
+        any(
+          feature = "profiling-cpu",
+          feature = "profiling-gpu",
+          feature = "profiling-export-summary",
+          feature = "profiling-export-trace"
+        )
+      ))]
+      render_profiler_override: None,
     };
 
     assert_eq!(render_context.label(), "lambda-render-context-e2e");
