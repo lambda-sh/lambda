@@ -209,9 +209,20 @@ impl GpuBuilder {
   /// - Immediates enabled
   /// - Performance-oriented memory hints
   pub fn new() -> Self {
-    return GpuBuilder {
-      inner: platform::gpu::GpuBuilder::new(),
-    };
+    #[cfg(feature = "profiling-gpu")]
+    let mut inner = platform::gpu::GpuBuilder::new();
+
+    #[cfg(feature = "profiling-gpu")]
+    {
+      inner = inner.with_optional_features(
+        platform::gpu::Features::TIMESTAMP_QUERY
+          | platform::gpu::Features::TIMESTAMP_QUERY_INSIDE_PASSES,
+      );
+    }
+    #[cfg(not(feature = "profiling-gpu"))]
+    let inner = platform::gpu::GpuBuilder::new();
+
+    return GpuBuilder { inner };
   }
 
   /// Attach a label for debugging and profiling.

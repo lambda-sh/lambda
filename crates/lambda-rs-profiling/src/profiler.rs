@@ -12,8 +12,15 @@ use std::{
 };
 
 #[cfg(feature = "gpu")]
+use lambda_platform::wgpu::{
+  command::CommandEncoder as PlatformCommandEncoder,
+  gpu::Gpu as PlatformGpu,
+};
+
+#[cfg(feature = "gpu")]
 use crate::collector::gpu::{
   GpuCollector,
+  ReservedGpuRenderPassTimestamps,
   ResolvedGpuFrame,
 };
 use crate::{
@@ -317,6 +324,79 @@ impl Profiler {
   #[cfg(all(test, feature = "gpu"))]
   pub(crate) fn gpu_collector_for_tests(&self) -> Arc<GpuCollector> {
     return Arc::clone(&self.gpu_collector);
+  }
+
+  /// Configures GPU timestamp collection for a platform GPU.
+  ///
+  /// This is a hidden integration hook for `lambda-rs` render internals. It is
+  /// not part of the stable public profiling API.
+  ///
+  /// # Arguments
+  /// - `gpu`: Platform GPU used for timestamp query allocation.
+  ///
+  /// # Returns
+  /// This method does not return a value.
+  #[doc(hidden)]
+  #[cfg(feature = "gpu")]
+  pub fn configure_gpu_for_platform(&self, gpu: &PlatformGpu) {
+    self.gpu_collector.configure_for_gpu(gpu);
+  }
+
+  /// Reserves GPU timestamp writes for one render pass.
+  ///
+  /// This is a hidden integration hook for `lambda-rs` render internals. It is
+  /// not part of the stable public profiling API.
+  ///
+  /// # Arguments
+  /// - `name`: Stable GPU scope name recorded for the render pass.
+  ///
+  /// # Returns
+  /// Returns a timestamp reservation when GPU profiling is active and the
+  /// current frame still has query capacity.
+  #[doc(hidden)]
+  #[cfg(feature = "gpu")]
+  pub fn reserve_gpu_render_pass_timestamps(
+    &self,
+    name: &'static str,
+  ) -> Option<ReservedGpuRenderPassTimestamps> {
+    return self.gpu_collector.reserve_render_pass_timestamps(name);
+  }
+
+  /// Encodes GPU timestamp query resolution into the active command encoder.
+  ///
+  /// This is a hidden integration hook for `lambda-rs` render internals. It is
+  /// not part of the stable public profiling API.
+  ///
+  /// # Arguments
+  /// - `encoder`: Platform command encoder receiving resolve/copy commands.
+  ///
+  /// # Returns
+  /// This method does not return a value.
+  #[doc(hidden)]
+  #[cfg(feature = "gpu")]
+  pub fn prepare_gpu_frame_submission(
+    &self,
+    encoder: &mut PlatformCommandEncoder,
+  ) {
+    self.gpu_collector.prepare_frame_submission(encoder);
+  }
+
+  /// Starts GPU timestamp readback and applies any completed GPU frames.
+  ///
+  /// This is a hidden integration hook for `lambda-rs` render internals. It is
+  /// not part of the stable public profiling API.
+  ///
+  /// # Arguments
+  /// - `gpu`: Platform GPU used for non-blocking readback polling.
+  ///
+  /// # Returns
+  /// This method does not return a value.
+  #[doc(hidden)]
+  #[cfg(feature = "gpu")]
+  pub fn complete_gpu_frame_submission(&self, gpu: &PlatformGpu) {
+    self.apply_resolved_gpu_frames(
+      self.gpu_collector.complete_frame_submission(gpu),
+    );
   }
 
   /// Writes a summary report into the configured output directory.

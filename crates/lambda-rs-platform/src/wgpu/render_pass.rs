@@ -455,9 +455,7 @@ impl RenderPassBuilder {
     depth_ops: Option<DepthOperations>,
     stencil_ops: Option<StencilOperations>,
     label: Option<&'view str>,
-    timestamp_writes: Option<
-      &'view profiling::GpuRenderPassTimestampWrites<'view>,
-    >,
+    timestamp_writes: Option<profiling::GpuRenderPassTimestampWrites<'view>>,
   ) -> RenderPass<'view> {
     let operations = match self.config.color_operations.load {
       ColorLoadOp::Load => wgpu::Operations {

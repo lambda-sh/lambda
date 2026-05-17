@@ -14,6 +14,9 @@ mod profiler;
 mod report;
 
 pub use builder::ProfilerBuilder;
+#[cfg(feature = "gpu")]
+#[doc(hidden)]
+pub use collector::gpu::ReservedGpuRenderPassTimestamps;
 pub use error::{
   CompareError,
   ExportError,

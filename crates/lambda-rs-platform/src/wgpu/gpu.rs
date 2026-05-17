@@ -100,6 +100,7 @@ pub struct GpuBuilder {
   power_preference: PowerPreference,
   force_fallback_adapter: bool,
   required_features: Features,
+  optional_features: Features,
   memory_hints: MemoryHints,
 }
 
@@ -111,6 +112,7 @@ impl GpuBuilder {
       power_preference: PowerPreference::HighPerformance,
       force_fallback_adapter: false,
       required_features: Features::IMMEDIATES,
+      optional_features: Features(wgpu::Features::empty()),
       memory_hints: MemoryHints::Performance,
     }
   }
@@ -136,6 +138,18 @@ impl GpuBuilder {
   /// Require `wgpu::Features` to be present on the adapter.
   pub fn with_required_features(mut self, features: Features) -> Self {
     self.required_features = features;
+    self
+  }
+
+  /// Enable feature bits when the selected adapter supports them.
+  ///
+  /// # Arguments
+  /// * `features` - Optional feature bits to request opportunistically.
+  ///
+  /// # Returns
+  /// Returns the updated builder.
+  pub fn with_optional_features(mut self, features: Features) -> Self {
+    self.optional_features = features;
     self
   }
 
@@ -170,9 +184,13 @@ impl GpuBuilder {
       });
     }
 
+    let enabled_optional_features =
+      Features(adapter_features & self.optional_features.to_wgpu());
+    let enabled_features = self.required_features | enabled_optional_features;
+
     let descriptor = wgpu::DeviceDescriptor {
       label: self.label.as_deref(),
-      required_features: self.required_features.to_wgpu(),
+      required_features: enabled_features.to_wgpu(),
       required_limits: adapter.limits(),
       experimental_features: wgpu::ExperimentalFeatures::default(),
       memory_hints: self.memory_hints.to_wgpu(),

@@ -75,6 +75,12 @@ const COMMAND_ENCODER_CREATE_SCOPE_NAME: &str = "lambda.render.encoder.create";
 /// Stable scope name recorded for command-list encoding.
 const COMMAND_ENCODING_SCOPE_NAME: &str = "lambda.render.commands.encode";
 /// Stable scope name recorded for each render pass encoded through Lambda.
+#[cfg(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+))]
 const RENDER_PASS_SCOPE_NAME: &str = "lambda.render.pass";
 /// Stable scope name recorded for command buffer submission.
 const QUEUE_SUBMIT_SCOPE_NAME: &str = "lambda.render.queue.submit";
@@ -1949,6 +1955,235 @@ mod tests {
 
   /// End-to-end GPU test that renders into both "surface-style" and offscreen
   /// passes without requiring an actual window/surface.
+  #[cfg(all(feature = "profiling-gpu", feature = "profiling-export-summary"))]
+  #[test]
+  fn render_gpu_profiling_collects_pass_spans_when_supported() {
+    use lambda_platform::wgpu::profiling::GpuTimestampSupport;
+
+    use crate::render::{
+      buffer::{
+        BufferBuilder,
+        BufferType,
+        Properties,
+        Usage,
+      },
+      command::RenderDestination,
+      pipeline::RenderPipelineBuilder,
+      shader::{
+        ShaderBuilder,
+        ShaderKind,
+        VirtualShader,
+      },
+      targets::offscreen::OffscreenTargetBuilder,
+      texture::{
+        DepthFormat,
+        DepthTextureBuilder,
+        TextureFormat,
+        TextureUsages,
+      },
+      vertex::{
+        ColorFormat,
+        VertexAttribute,
+        VertexElement,
+      },
+      viewport::ViewportBuilder,
+    };
+
+    let output_directory = render_test_output_directory("render-gpu-summary");
+    remove_render_test_output_directory(&output_directory);
+
+    let profiler = ProfilerBuilder::new("tests-render-gpu-profiling")
+      .with_summary_export(true)
+      .with_output_directory(&output_directory)
+      .with_gpu_timestamps(true)
+      .with_frame_history_limit(8)
+      .build()
+      .expect("build render gpu profiler");
+
+    let instance = instance::InstanceBuilder::new()
+      .with_label("lambda-render-gpu-profiling-instance")
+      .build();
+    let Some(gpu) = gpu::create_test_gpu_with_instance(
+      &instance,
+      "lambda-render-gpu-profiling",
+    ) else {
+      remove_render_test_output_directory(&output_directory);
+      return;
+    };
+
+    let config = targets::surface::SurfaceConfig {
+      width: 32,
+      height: 32,
+      format: TextureFormat::Rgba8Unorm,
+      present_mode: targets::surface::PresentMode::Fifo,
+      usage: TextureUsages::RENDER_ATTACHMENT,
+    };
+
+    let gpu_support = GpuTimestampSupport::for_gpu(gpu.platform());
+
+    let depth_texture = DepthTextureBuilder::new()
+      .with_size(32, 32)
+      .with_format(DepthFormat::Depth32Float)
+      .with_label("lambda-render-gpu-profiling-depth")
+      .build(&gpu);
+
+    let mut render_context = RenderContext {
+      label: "lambda-render-gpu-profiling-context".to_string(),
+      instance,
+      surface: None,
+      gpu,
+      config: config.clone(),
+      texture_usage: config.usage,
+      size: (32, 32),
+      depth_texture: Some(depth_texture),
+      depth_format: DepthFormat::Depth32Float,
+      depth_sample_count: 1,
+      msaa_color: None,
+      msaa_sample_count: 1,
+      offscreen_targets: vec![],
+      render_passes: vec![],
+      render_pipelines: vec![],
+      bind_group_layouts: vec![],
+      bind_groups: vec![],
+      buffers: vec![],
+      seen_error_messages: Default::default(),
+      render_profiler_override: None,
+    };
+    render_context.set_render_profiler_override(profiler.clone());
+
+    let offscreen = OffscreenTargetBuilder::new()
+      .with_label("lambda-render-gpu-profiling-offscreen")
+      .with_color(TextureFormat::Rgba8Unorm, 32, 32)
+      .build(render_context.gpu())
+      .expect("build render gpu profiling offscreen target");
+    let offscreen_id = render_context.attach_offscreen_target(offscreen);
+
+    let pass = render_pass::RenderPassBuilder::new()
+      .with_label("lambda-render-gpu-profiling-pass")
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        DepthFormat::Depth24Plus,
+      );
+    let pass_id = render_context.attach_render_pass(pass);
+
+    let vertex_shader_source = r#"
+      #version 450
+      #extension GL_ARB_separate_shader_objects : enable
+
+      layout(location = 0) in vec3 a_pos;
+
+      void main() {
+        gl_Position = vec4(a_pos, 1.0);
+      }
+    "#;
+    let fragment_shader_source = r#"
+      #version 450
+      #extension GL_ARB_separate_shader_objects : enable
+
+      layout(location = 0) out vec4 fragment_color;
+
+      void main() {
+        fragment_color = vec4(0.25, 0.8, 1.0, 1.0);
+      }
+    "#;
+    let mut shader_builder = ShaderBuilder::new();
+    let vertex_shader = shader_builder.build(VirtualShader::Source {
+      source: vertex_shader_source.to_string(),
+      kind: ShaderKind::Vertex,
+      name: "lambda-render-gpu-profiling-vert".to_string(),
+      entry_point: "main".to_string(),
+    });
+    let fragment_shader = shader_builder.build(VirtualShader::Source {
+      source: fragment_shader_source.to_string(),
+      kind: ShaderKind::Fragment,
+      name: "lambda-render-gpu-profiling-frag".to_string(),
+      entry_point: "main".to_string(),
+    });
+
+    let vertices: Vec<[f32; 3]> =
+      vec![[0.0, -0.5, 0.0], [-0.5, 0.5, 0.0], [0.5, 0.5, 0.0]];
+    let vertex_buffer = BufferBuilder::new()
+      .with_label("lambda-render-gpu-profiling-vertex")
+      .with_usage(Usage::VERTEX)
+      .with_properties(Properties::CPU_VISIBLE)
+      .with_buffer_type(BufferType::Vertex)
+      .build(render_context.gpu(), vertices)
+      .expect("build render gpu profiling vertex buffer");
+
+    let vertex_attributes = vec![VertexAttribute {
+      location: 0,
+      offset: 0,
+      element: VertexElement {
+        format: ColorFormat::Rgb32Sfloat,
+        offset: 0,
+      },
+    }];
+
+    let pipeline = RenderPipelineBuilder::new()
+      .with_label("lambda-render-gpu-profiling-pipeline")
+      .with_buffer(vertex_buffer, vertex_attributes)
+      .build(
+        render_context.gpu(),
+        render_context.surface_format(),
+        DepthFormat::Depth24Plus,
+        render_context.get_render_pass(pass_id),
+        &vertex_shader,
+        Some(&fragment_shader),
+      );
+    let pipeline_id = render_context.attach_pipeline(pipeline);
+
+    let viewport = ViewportBuilder::new().build(32, 32);
+    let commands = vec![
+      RenderCommand::BeginRenderPassTo {
+        render_pass: pass_id,
+        viewport,
+        destination: RenderDestination::Offscreen(offscreen_id),
+      },
+      RenderCommand::SetPipeline {
+        pipeline: pipeline_id,
+      },
+      RenderCommand::BindVertexBuffer {
+        pipeline: pipeline_id,
+        buffer: 0,
+      },
+      RenderCommand::Draw {
+        vertices: 0..3,
+        instances: 0..1,
+      },
+      RenderCommand::EndRenderPass,
+    ];
+
+    for _frame_index in 0..5 {
+      render_context
+        .render_internal(commands.clone())
+        .expect("render gpu profiling frame");
+      profiler.flush_frame().expect("flush gpu profiling frame");
+    }
+
+    let summary = profiler
+      .export_summary()
+      .expect("export gpu render summary");
+    summary
+      .require_scope(RENDER_PASS_SCOPE_NAME, "cpu")
+      .expect("render summary must include cpu render-pass spans");
+
+    if gpu_support.is_available() {
+      assert!(summary.clock_domains().iter().any(|clock_domain| {
+        return clock_domain == "gpu";
+      }));
+      summary
+        .require_scope(RENDER_PASS_SCOPE_NAME, "gpu")
+        .expect("supported devices must export gpu render-pass spans");
+    } else {
+      assert!(summary
+        .require_scope(RENDER_PASS_SCOPE_NAME, "gpu")
+        .is_err());
+    }
+
+    remove_render_test_output_directory(&output_directory);
+  }
+
   #[test]
   fn render_context_builder_renders_surface_and_offscreen_passes() {
     use std::num::NonZeroU64;

@@ -5,7 +5,15 @@ use std::sync::{
   Mutex,
 };
 
-use lambda_platform::wgpu::profiling::GpuTimestampSupport;
+use lambda_platform::wgpu::{
+  command::CommandEncoder as PlatformCommandEncoder,
+  gpu::Gpu as PlatformGpu,
+  profiling::{
+    GpuRenderPassTimestampWrites,
+    GpuTimestampQueryBatch,
+    GpuTimestampSupport,
+  },
+};
 
 /// Stable clock-domain label used for GPU summary scopes.
 pub(crate) const GPU_CLOCK_DOMAIN: &str = "gpu";
@@ -64,6 +72,7 @@ pub(crate) enum GpuCollectorDisabledReason {
   FeatureDisabled,
   UnsupportedAdapter,
   DeviceFeatureDisabled,
+  QueryAllocationFailed,
 }
 
 /// Describes the current GPU collector mode.
@@ -161,11 +170,70 @@ impl ResolvedGpuFrame {
   }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+/// Owns the platform query batch needed by one reserved render-pass span.
+#[derive(Clone, Debug)]
+pub struct ReservedGpuRenderPassTimestamps {
+  batch: Arc<GpuTimestampQueryBatch>,
+  begin_query_index: u32,
+  end_query_index: u32,
+}
+
+impl ReservedGpuRenderPassTimestamps {
+  /// Creates one owned render-pass timestamp reservation.
+  ///
+  /// # Arguments
+  /// - `batch`: Platform timestamp batch that owns the query set.
+  /// - `begin_query_index`: Query index used for pass begin.
+  /// - `end_query_index`: Query index used for pass end.
+  ///
+  /// # Returns
+  /// Returns the owned timestamp reservation.
+  pub(crate) fn new(
+    batch: Arc<GpuTimestampQueryBatch>,
+    begin_query_index: u32,
+    end_query_index: u32,
+  ) -> Self {
+    return Self {
+      batch,
+      begin_query_index,
+      end_query_index,
+    };
+  }
+
+  /// Builds platform render-pass timestamp writes for a render pass lifetime.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// Returns timestamp writes when the reserved indices fit the owning query
+  /// batch, or `None` when the reservation is no longer valid.
+  ///
+  /// # Safety
+  /// The caller MUST keep this reservation alive until the render pass that
+  /// consumes the returned timestamp writes has ended. The returned descriptor
+  /// borrows a query set owned by this reservation's query batch.
+  pub unsafe fn timestamp_writes_for_pass_unchecked<'pass>(
+    &self,
+  ) -> Option<GpuRenderPassTimestampWrites<'pass>> {
+    let timestamp_writes = self
+      .batch
+      .render_pass_writes(self.begin_query_index, self.end_query_index)
+      .ok()?;
+
+    return Some(std::mem::transmute::<
+      GpuRenderPassTimestampWrites<'_>,
+      GpuRenderPassTimestampWrites<'pass>,
+    >(timestamp_writes));
+  }
+}
+
+#[derive(Clone, Debug)]
 struct RingSlot {
   assigned_frame_index: Option<usize>,
   reservations: Vec<GpuScopeReservation>,
   ready_spans: Option<Vec<GpuSpan>>,
+  query_batch: Option<Arc<GpuTimestampQueryBatch>>,
 }
 
 impl RingSlot {
@@ -174,10 +242,11 @@ impl RingSlot {
       assigned_frame_index: None,
       reservations: Vec::new(),
       ready_spans: None,
+      query_batch: None,
     };
   }
 
-  fn clear(&mut self) {
+  fn clear_frame_data(&mut self) {
     self.assigned_frame_index = None;
     self.reservations.clear();
     self.ready_spans = None;
@@ -296,11 +365,83 @@ impl GpuCollector {
       .lock()
       .unwrap_or_else(|poisoned| poisoned.into_inner());
 
+    if !Self::apply_support_snapshot(&mut state, support) {
+      return;
+    }
+
+    state.status = GpuCollectorStatus::Ready;
+    state.timestamp_period_ns = support.timestamp_period_ns;
+  }
+
+  /// Configures the collector from a real platform GPU and allocates query
+  /// batches when timestamps are available.
+  ///
+  /// # Arguments
+  /// - `gpu`: Platform GPU whose timestamp support and query resources should
+  ///   be used for render-pass instrumentation.
+  ///
+  /// # Returns
+  /// This method does not return a value. Unsupported devices leave the
+  /// collector in CPU-only fallback mode.
+  pub(crate) fn configure_for_gpu(&self, gpu: &PlatformGpu) {
+    let support = GpuTimestampSupport::for_gpu(gpu);
+    let mut state = self
+      .state
+      .lock()
+      .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    if state.status == GpuCollectorStatus::Ready
+      && state.ring_slots.iter().all(|slot| {
+        return slot.query_batch.is_some();
+      })
+    {
+      return;
+    }
+
+    if !Self::apply_support_snapshot(&mut state, support) {
+      return;
+    }
+
+    let query_capacity = (state.max_scopes_per_frame.saturating_mul(2)) as u32;
+    for slot_index in 0..state.ring_slots.len() {
+      if state.ring_slots[slot_index].query_batch.is_some() {
+        continue;
+      }
+
+      let label = format!("lambda-profiler-gpu-timestamps-{slot_index}");
+      let Ok(batch) = GpuTimestampQueryBatch::new(gpu, &label, query_capacity)
+      else {
+        state.status = GpuCollectorStatus::Disabled(
+          GpuCollectorDisabledReason::QueryAllocationFailed,
+        );
+        state.timestamp_period_ns = 0.0;
+        return;
+      };
+      state.ring_slots[slot_index].query_batch = Some(Arc::new(batch));
+    }
+
+    state.status = GpuCollectorStatus::Ready;
+    state.timestamp_period_ns = support.timestamp_period_ns;
+  }
+
+  /// Applies a timestamp support snapshot to collector state.
+  ///
+  /// # Arguments
+  /// - `state`: Collector state to update.
+  /// - `support`: Timestamp support snapshot from the platform layer.
+  ///
+  /// # Returns
+  /// Returns `true` when GPU collection may continue and `false` when the
+  /// collector should remain disabled or has fallen back to CPU-only mode.
+  fn apply_support_snapshot(
+    state: &mut GpuCollectorState,
+    support: GpuTimestampSupport,
+  ) -> bool {
     if matches!(
       state.status,
       GpuCollectorStatus::Disabled(GpuCollectorDisabledReason::FeatureDisabled)
     ) {
-      return;
+      return false;
     }
 
     if !support.adapter_supports_pass_timestamp_writes {
@@ -308,7 +449,7 @@ impl GpuCollector {
         GpuCollectorDisabledReason::UnsupportedAdapter,
       );
       state.timestamp_period_ns = 0.0;
-      return;
+      return false;
     }
 
     if !support.is_available() {
@@ -316,11 +457,10 @@ impl GpuCollector {
         GpuCollectorDisabledReason::DeviceFeatureDisabled,
       );
       state.timestamp_period_ns = 0.0;
-      return;
+      return false;
     }
 
-    state.status = GpuCollectorStatus::Ready;
-    state.timestamp_period_ns = support.timestamp_period_ns;
+    return true;
   }
 
   /// Reserves one GPU scope in the active frame.
@@ -367,6 +507,99 @@ impl GpuCollector {
     return Some(reservation);
   }
 
+  /// Reserves timestamp writes for one render pass in the active frame.
+  ///
+  /// # Arguments
+  /// - `name`: Stable GPU scope name for the render pass.
+  ///
+  /// # Returns
+  /// Returns an owned timestamp reservation when the collector is ready and
+  /// the active frame has a platform query batch.
+  pub(crate) fn reserve_render_pass_timestamps(
+    &self,
+    name: &'static str,
+  ) -> Option<ReservedGpuRenderPassTimestamps> {
+    let reservation = self.reserve_scope(name)?;
+    let state = self
+      .state
+      .lock()
+      .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    let slot = state.ring_slots.iter().find(|slot| {
+      return slot.assigned_frame_index == Some(reservation.frame_index);
+    })?;
+    let batch = slot.query_batch.as_ref()?.clone();
+
+    return Some(ReservedGpuRenderPassTimestamps::new(
+      batch,
+      reservation.query_start_index,
+      reservation.query_end_index,
+    ));
+  }
+
+  /// Encodes query resolution for the active GPU profiling frame.
+  ///
+  /// # Arguments
+  /// - `encoder`: Platform command encoder receiving query resolve commands.
+  ///
+  /// # Returns
+  /// This method does not return a value. Resolve failures disable the active
+  /// frame's GPU data without affecting command submission.
+  pub(crate) fn prepare_frame_submission(
+    &self,
+    encoder: &mut PlatformCommandEncoder,
+  ) {
+    let (batch, query_count) = {
+      let mut state = self
+        .state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+      if state.status != GpuCollectorStatus::Ready {
+        return;
+      }
+
+      let active_ring_index = state.active_ring_index;
+      let slot = &mut state.ring_slots[active_ring_index];
+      if slot.reservations.is_empty() {
+        return;
+      }
+
+      let Some(batch) = slot.query_batch.as_ref().cloned() else {
+        slot.clear_frame_data();
+        return;
+      };
+
+      (batch, (slot.reservations.len() * 2) as u32)
+    };
+
+    if batch.encode_resolve(encoder, 0..query_count).is_err() {
+      let mut state = self
+        .state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+      let active_ring_index = state.active_ring_index;
+      state.ring_slots[active_ring_index].clear_frame_data();
+    }
+  }
+
+  /// Marks the active GPU profiling frame submitted and polls readbacks.
+  ///
+  /// # Arguments
+  /// - `gpu`: Platform GPU used to poll asynchronous readback completion.
+  ///
+  /// # Returns
+  /// Returns any frames whose GPU timestamp readback completed without
+  /// blocking the active render thread. The active ring slot advances on the
+  /// next profiler frame flush so CPU and GPU frame boundaries stay aligned.
+  pub(crate) fn complete_frame_submission(
+    &self,
+    gpu: &PlatformGpu,
+  ) -> Vec<ResolvedGpuFrame> {
+    self.begin_active_readback();
+    return self.poll_readbacks(gpu);
+  }
+
   /// Advances the active frame without blocking for pending readback.
   ///
   /// # Arguments
@@ -387,7 +620,7 @@ impl GpuCollector {
         (slot.assigned_frame_index, slot.ready_spans.take())
       {
         resolved_frames.push(ResolvedGpuFrame::new(frame_index, spans));
-        slot.clear();
+        slot.clear_frame_data();
       }
     }
 
@@ -406,7 +639,115 @@ impl GpuCollector {
     };
     if !next_slot_is_idle {
       state.dropped_pending_frames += 1;
-      state.ring_slots[active_ring_index].clear();
+      state.ring_slots[active_ring_index].clear_frame_data();
+    }
+
+    return resolved_frames;
+  }
+
+  /// Starts readback for the active frame after its command buffer submits.
+  ///
+  /// # Arguments
+  /// This method does not take additional arguments.
+  ///
+  /// # Returns
+  /// This method does not return a value. If no resolve was encoded, the
+  /// active frame is left in place for normal ring advancement.
+  fn begin_active_readback(&self) {
+    let batch = {
+      let state = self
+        .state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+      if state.status != GpuCollectorStatus::Ready {
+        return;
+      }
+
+      state.ring_slots[state.active_ring_index]
+        .query_batch
+        .as_ref()
+        .cloned()
+    };
+
+    let Some(batch) = batch else {
+      return;
+    };
+    let _ = batch.begin_readback();
+  }
+
+  /// Polls all pending readbacks once without blocking.
+  ///
+  /// # Arguments
+  /// - `gpu`: Platform GPU used for device polling.
+  ///
+  /// # Returns
+  /// Returns frames whose timestamp readback completed during this poll.
+  fn poll_readbacks(&self, gpu: &PlatformGpu) -> Vec<ResolvedGpuFrame> {
+    let pending_slots = {
+      let state = self
+        .state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+      if state.status != GpuCollectorStatus::Ready {
+        return Vec::new();
+      }
+
+      state
+        .ring_slots
+        .iter()
+        .enumerate()
+        .filter_map(|(slot_index, slot)| {
+          let frame_index = slot.assigned_frame_index?;
+          let batch = slot.query_batch.as_ref()?.clone();
+
+          return Some((
+            slot_index,
+            frame_index,
+            slot.reservations.clone(),
+            batch,
+          ));
+        })
+        .collect::<Vec<_>>()
+    };
+
+    let mut resolved_frames = Vec::new();
+    let mut slots_to_clear = Vec::new();
+
+    for (slot_index, frame_index, reservations, batch) in pending_slots {
+      let readback = batch.try_readback(gpu);
+      let Ok(Some(timestamp_values)) = readback else {
+        if readback.is_err() {
+          slots_to_clear.push(slot_index);
+        }
+        continue;
+      };
+
+      let Some(spans) = build_spans_from_timestamp_values(
+        &reservations,
+        &timestamp_values,
+        batch.timestamp_period_ns(),
+      ) else {
+        slots_to_clear.push(slot_index);
+        continue;
+      };
+
+      slots_to_clear.push(slot_index);
+      resolved_frames.push(ResolvedGpuFrame::new(frame_index, spans));
+    }
+
+    if !slots_to_clear.is_empty() {
+      let mut state = self
+        .state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+      for slot_index in slots_to_clear {
+        if let Some(slot) = state.ring_slots.get_mut(slot_index) {
+          slot.clear_frame_data();
+        }
+      }
     }
 
     return resolved_frames;
@@ -444,23 +785,13 @@ impl GpuCollector {
         continue;
       }
 
-      if slot.reservations.len() != timestamp_ticks.len() {
+      let Some(spans) = build_spans_from_timestamp_tick_pairs(
+        &slot.reservations,
+        timestamp_ticks,
+        timestamp_period_ns,
+      ) else {
         return false;
-      }
-
-      let spans = slot
-        .reservations
-        .iter()
-        .zip(timestamp_ticks.iter())
-        .map(|(reservation, (begin_ticks, end_ticks))| {
-          let started_at_ns =
-            ((*begin_ticks as f64) * timestamp_period_ns as f64) as u64;
-          let ended_at_ns =
-            ((*end_ticks as f64) * timestamp_period_ns as f64) as u64;
-
-          return GpuSpan::new(reservation.name, started_at_ns, ended_at_ns);
-        })
-        .collect();
+      };
 
       slot.ready_spans = Some(spans);
 
@@ -489,6 +820,73 @@ impl GpuCollector {
 
     return state.dropped_pending_frames;
   }
+}
+
+/// Converts raw timestamp values into resolved GPU spans.
+///
+/// # Arguments
+/// - `reservations`: Scope reservations associated with the timestamp values.
+/// - `timestamp_values`: Flat begin/end timestamp values read from a query
+///   batch.
+/// - `timestamp_period_ns`: Multiplier that converts ticks into nanoseconds.
+///
+/// # Returns
+/// Returns resolved spans when the value count matches the reservations.
+fn build_spans_from_timestamp_values(
+  reservations: &[GpuScopeReservation],
+  timestamp_values: &[u64],
+  timestamp_period_ns: f32,
+) -> Option<Vec<GpuSpan>> {
+  if timestamp_values.len() != reservations.len().saturating_mul(2) {
+    return None;
+  }
+
+  let timestamp_pairs = timestamp_values
+    .chunks_exact(2)
+    .map(|chunk| {
+      return (chunk[0], chunk[1]);
+    })
+    .collect::<Vec<_>>();
+
+  return build_spans_from_timestamp_tick_pairs(
+    reservations,
+    &timestamp_pairs,
+    timestamp_period_ns,
+  );
+}
+
+/// Converts raw begin/end timestamp pairs into resolved GPU spans.
+///
+/// # Arguments
+/// - `reservations`: Scope reservations associated with the timestamp pairs.
+/// - `timestamp_ticks`: Raw begin/end timestamp pairs in GPU ticks.
+/// - `timestamp_period_ns`: Multiplier that converts ticks into nanoseconds.
+///
+/// # Returns
+/// Returns resolved spans when the pair count matches the reservations.
+fn build_spans_from_timestamp_tick_pairs(
+  reservations: &[GpuScopeReservation],
+  timestamp_ticks: &[(u64, u64)],
+  timestamp_period_ns: f32,
+) -> Option<Vec<GpuSpan>> {
+  if reservations.len() != timestamp_ticks.len() {
+    return None;
+  }
+
+  return Some(
+    reservations
+      .iter()
+      .zip(timestamp_ticks.iter())
+      .map(|(reservation, (begin_ticks, end_ticks))| {
+        let started_at_ns =
+          ((*begin_ticks as f64) * timestamp_period_ns as f64) as u64;
+        let ended_at_ns =
+          ((*end_ticks as f64) * timestamp_period_ns as f64) as u64;
+
+        return GpuSpan::new(reservation.name, started_at_ns, ended_at_ns);
+      })
+      .collect(),
+  );
 }
 
 #[cfg(test)]

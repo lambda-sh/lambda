@@ -39,6 +39,13 @@ use std::{
 use lambda_platform::wgpu as platform;
 use logging;
 
+#[cfg(any(
+  feature = "profiling-cpu",
+  feature = "profiling-gpu",
+  feature = "profiling-export-summary",
+  feature = "profiling-export-trace"
+))]
+use super::RENDER_PASS_SCOPE_NAME;
 use super::{
   bind::BindGroup,
   buffer::{
@@ -59,7 +66,6 @@ use super::{
   RenderContext,
   COMMAND_ENCODER_CREATE_SCOPE_NAME,
   QUEUE_SUBMIT_SCOPE_NAME,
-  RENDER_PASS_SCOPE_NAME,
 };
 use crate::util;
 
@@ -107,6 +113,19 @@ impl CommandEncoder {
         );
       },
     );
+    #[cfg(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    ))]
+    let profiler = render_context.active_render_profiler().cloned();
+
+    #[cfg(feature = "profiling-gpu")]
+    if let Some(active_profiler) = profiler.as_ref() {
+      active_profiler
+        .configure_gpu_for_platform(render_context.gpu().platform());
+    }
 
     return CommandEncoder {
       inner,
@@ -116,7 +135,7 @@ impl CommandEncoder {
         feature = "profiling-export-summary",
         feature = "profiling-export-trace"
       ))]
-      profiler: render_context.active_render_profiler().cloned(),
+      profiler,
     };
   }
 
@@ -164,30 +183,61 @@ impl CommandEncoder {
       feature = "profiling-export-summary",
       feature = "profiling-export-trace"
     )))]
-    let active_profiler = None;
+    let active_profiler: Option<()> = None;
+    #[cfg(feature = "profiling-gpu")]
+    let gpu_timestamps = active_profiler.and_then(|profiler| {
+      return profiler
+        .reserve_gpu_render_pass_timestamps(RENDER_PASS_SCOPE_NAME);
+    });
+    #[cfg(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    ))]
+    let _scope = active_profiler
+      .map(|profiler| profiler.begin_scope(RENDER_PASS_SCOPE_NAME));
+    #[cfg(not(any(
+      feature = "profiling-cpu",
+      feature = "profiling-gpu",
+      feature = "profiling-export-summary",
+      feature = "profiling-export-trace"
+    )))]
+    let _ = active_profiler;
 
-    return super::with_render_scope_for_profiler(
-      active_profiler,
-      RENDER_PASS_SCOPE_NAME,
-      || {
-        let pass_encoder = RenderPassEncoder::new(
-          &mut self.inner,
-          pass,
-          destination_info,
-          color_attachments,
-          depth_texture,
-        );
+    #[cfg(feature = "profiling-gpu")]
+    if let Some(gpu_timestamps) = gpu_timestamps {
+      let timestamp_writes =
+        unsafe { gpu_timestamps.timestamp_writes_for_pass_unchecked() };
+      let pass_encoder = RenderPassEncoder::new_with_timestamp_writes(
+        &mut self.inner,
+        pass,
+        destination_info,
+        color_attachments,
+        depth_texture,
+        timestamp_writes,
+      );
 
-        return func(&mut { pass_encoder });
-      },
+      return func(&mut { pass_encoder });
+    }
+
+    let pass_encoder = RenderPassEncoder::new(
+      &mut self.inner,
+      pass,
+      destination_info,
+      color_attachments,
+      depth_texture,
     );
+
+    return func(&mut { pass_encoder });
   }
 
   /// Finish recording and submit the command buffer to the GPU.
   ///
   /// This consumes the encoder and submits the recorded commands for
   /// execution.
-  pub fn finish(self, render_context: &RenderContext) {
+  #[cfg_attr(not(feature = "profiling-gpu"), allow(unused_mut))]
+  pub fn finish(mut self, render_context: &RenderContext) {
     #[cfg(any(
       feature = "profiling-cpu",
       feature = "profiling-gpu",
@@ -207,11 +257,22 @@ impl CommandEncoder {
       active_profiler,
       QUEUE_SUBMIT_SCOPE_NAME,
       || {
+        #[cfg(feature = "profiling-gpu")]
+        if let Some(profiler) = active_profiler {
+          profiler.prepare_gpu_frame_submission(&mut self.inner);
+        }
+
         let buffer = self.inner.finish();
         render_context
           .gpu()
           .platform()
           .submit(std::iter::once(buffer));
+
+        #[cfg(feature = "profiling-gpu")]
+        if let Some(profiler) = active_profiler {
+          profiler
+            .complete_gpu_frame_submission(render_context.gpu().platform());
+        }
       },
     );
   }
@@ -304,39 +365,146 @@ struct BoundIndexBuffer {
 
 impl<'pass> RenderPassEncoder<'pass> {
   /// Create a new render pass encoder (internal).
-  fn new(
-    encoder: &'pass mut platform::command::CommandEncoder,
-    pass: &'pass RenderPass,
+  fn new<'encoder>(
+    encoder: &'encoder mut platform::command::CommandEncoder,
+    pass: &'encoder RenderPass,
     destination_info: RenderPassDestinationInfo,
-    color_attachments: &'pass mut RenderColorAttachments<'pass>,
-    depth_texture: Option<&'pass DepthTexture>,
-  ) -> Self {
-    // Build the platform render pass
-    let mut rp_builder = platform::render_pass::RenderPassBuilder::new();
+    color_attachments: &'encoder mut RenderColorAttachments<'encoder>,
+    depth_texture: Option<&'encoder DepthTexture>,
+  ) -> RenderPassEncoder<'encoder> {
+    #[cfg(feature = "profiling-gpu")]
+    {
+      return Self::new_with_timestamp_writes(
+        encoder,
+        pass,
+        destination_info,
+        color_attachments,
+        depth_texture,
+        None,
+      );
+    }
 
-    // Map color operations from the high-level RenderPass
-    let (color_load_op, color_store_op) = pass.color_operations().to_platform();
-    rp_builder = rp_builder
-      .with_color_load_op(color_load_op)
-      .with_store_op(color_store_op);
+    #[cfg(not(feature = "profiling-gpu"))]
+    {
+      // Build the platform render pass
+      let mut rp_builder = platform::render_pass::RenderPassBuilder::new();
 
-    // Map depth and stencil operations from the high-level RenderPass
-    let platform_depth_ops =
-      pass.depth_operations().map(|dop| dop.to_platform());
-    let platform_stencil_ops =
-      pass.stencil_operations().map(|sop| sop.to_platform());
+      // Map color operations from the high-level RenderPass
+      let (color_load_op, color_store_op) =
+        pass.color_operations().to_platform();
+      rp_builder = rp_builder
+        .with_color_load_op(color_load_op)
+        .with_store_op(color_store_op);
 
-    let depth_view = depth_texture.map(|dt| dt.platform_view_ref());
+      // Map depth and stencil operations from the high-level RenderPass
+      let platform_depth_ops =
+        pass.depth_operations().map(|dop| dop.to_platform());
+      let platform_stencil_ops =
+        pass.stencil_operations().map(|sop| sop.to_platform());
+
+      let depth_view = depth_texture.map(|dt| dt.platform_view_ref());
+      let has_depth_attachment = depth_texture.is_some();
+      let has_stencil = pass.stencil_operations().is_some();
+
+      let platform_pass = rp_builder.build(
+        encoder,
+        color_attachments.as_platform_attachments_mut(),
+        depth_view,
+        platform_depth_ops,
+        platform_stencil_ops,
+        pass.label(),
+      );
+
+      return RenderPassEncoder {
+        pass: platform_pass,
+        uses_color: pass.uses_color(),
+        has_depth_attachment,
+        has_stencil,
+        sample_count: pass.sample_count(),
+        destination_color_format: destination_info.color_format,
+        destination_depth_format: destination_info.depth_format,
+        #[cfg(any(
+          debug_assertions,
+          feature = "render-validation-encoder",
+          feature = "render-validation-instancing"
+        ))]
+        current_pipeline: None,
+        #[cfg(any(debug_assertions, feature = "render-validation-encoder"))]
+        bound_index_buffer: None,
+        #[cfg(any(
+          debug_assertions,
+          feature = "render-validation-instancing"
+        ))]
+        bound_vertex_slots: HashSet::new(),
+        #[cfg(any(
+          debug_assertions,
+          feature = "render-validation-depth",
+          feature = "render-validation-stencil"
+        ))]
+        warned_no_stencil_for_pipeline: HashSet::new(),
+        #[cfg(any(
+          debug_assertions,
+          feature = "render-validation-depth",
+          feature = "render-validation-stencil"
+        ))]
+        warned_no_depth_for_pipeline: HashSet::new(),
+      };
+    }
+  }
+
+  /// Create a render pass encoder with optional GPU timestamp writes.
+  ///
+  /// # Arguments
+  /// - `encoder`: Command encoder that begins the render pass.
+  /// - `pass`: High-level render pass description.
+  /// - `destination_info`: Destination formats used for validation.
+  /// - `color_attachments`: Color attachments for the pass.
+  /// - `depth_texture`: Optional depth attachment.
+  /// - `timestamp_writes`: Optional platform timestamp writes for the pass
+  ///   boundaries.
+  ///
+  /// # Returns
+  /// Returns a render pass encoder that borrows the command encoder until the
+  /// pass ends.
+  #[cfg(feature = "profiling-gpu")]
+  fn new_with_timestamp_writes<'encoder>(
+    encoder: &'encoder mut platform::command::CommandEncoder,
+    pass: &'encoder RenderPass,
+    destination_info: RenderPassDestinationInfo,
+    color_attachments: &'encoder mut RenderColorAttachments<'encoder>,
+    depth_texture: Option<&'encoder DepthTexture>,
+    timestamp_writes: Option<
+      platform::profiling::GpuRenderPassTimestampWrites<'encoder>,
+    >,
+  ) -> RenderPassEncoder<'encoder> {
+    let mut render_pass_builder =
+      platform::render_pass::RenderPassBuilder::new();
+
+    let (color_load_operation, color_store_operation) =
+      pass.color_operations().to_platform();
+    render_pass_builder = render_pass_builder
+      .with_color_load_op(color_load_operation)
+      .with_store_op(color_store_operation);
+
+    let platform_depth_operations = pass
+      .depth_operations()
+      .map(|operations| operations.to_platform());
+    let platform_stencil_operations = pass
+      .stencil_operations()
+      .map(|operations| operations.to_platform());
+
+    let depth_view = depth_texture.map(|texture| texture.platform_view_ref());
     let has_depth_attachment = depth_texture.is_some();
     let has_stencil = pass.stencil_operations().is_some();
 
-    let platform_pass = rp_builder.build(
+    let platform_pass = render_pass_builder.build_with_timestamp_writes(
       encoder,
       color_attachments.as_platform_attachments_mut(),
       depth_view,
-      platform_depth_ops,
-      platform_stencil_ops,
+      platform_depth_operations,
+      platform_stencil_operations,
       pass.label(),
+      timestamp_writes,
     );
 
     return RenderPassEncoder {
