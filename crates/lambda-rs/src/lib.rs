@@ -38,6 +38,40 @@ pub mod physics;
   feature = "profiling-export-summary",
   feature = "profiling-export-trace"
 ))]
+/// Profiling APIs and user-authored instrumentation macros.
+///
+/// ```no_run
+/// use std::error::Error;
+///
+/// use lambda::profiling::{
+///   profile_counter,
+///   profile_scope,
+///   Profiler,
+///   ProfilerBuilder,
+/// };
+///
+/// fn main() -> Result<(), Box<dyn Error>> {
+///   let output_directory = std::env::temp_dir().join("lambda-profile-docs");
+///   let profiler = ProfilerBuilder::new("docs-example")
+///     .with_output_directory(&output_directory)
+///     .with_summary_export(true)
+///     .with_trace_export(true)
+///     .build()?;
+///
+///   profiler.install_global()?;
+///
+///   {
+///     let _scope = profile_scope!("docs.example_work");
+///     profile_counter!("docs.items_processed", 4);
+///   }
+///
+///   if let Some(profiler) = Profiler::global() {
+///     let _artifacts = profiler.flush_frame()?;
+///   }
+///
+///   return Ok(());
+/// }
+/// ```
 pub use lambda_rs_profiling as profiling;
 /// The logging module provides a simple logging interface for Lambda
 /// applications.

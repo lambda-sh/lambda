@@ -3,13 +3,13 @@ title: "Cargo Features Overview"
 document_id: "features-2025-11-17"
 status: "living"
 created: "2025-11-17T23:59:00Z"
-last_updated: "2026-04-06T20:18:35Z"
-version: "0.1.19"
+last_updated: "2026-06-03T00:00:00Z"
+version: "0.1.20"
 engine_workspace_version: "2023.1.30"
 wgpu_version: "29.0.0"
 shader_backend_default: "naga"
 winit_version: "0.29.15"
-repo_commit: "e5a50fd44b72c4e4a3d0f58c089547b2ddd8c893"
+repo_commit: "929fba66d6a717a4de3f0a63407c3d9446ea1e27"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["guide", "features", "validation", "cargo", "audio", "physics", "profiling"]
@@ -105,31 +105,34 @@ Physics
 Profiling
 - `profiling` (umbrella, disabled by default): enables the public profiling
   surface by composing `profiling-cpu`, `profiling-export-summary`, and
-  `profiling-export-trace`. This umbrella exists for convenience and has the
-  combined runtime cost of the granular features it enables.
+  `profiling-export-trace`. This umbrella records CPU spans, counters, and
+  instants and can write summary and trace artifacts when a profiler is
+  configured with an output directory. Expected runtime cost is low to
+  moderate and proportional to recorded event volume plus export work at frame
+  flush boundaries.
 - `profiling-all` (umbrella, disabled by default): enables the full v1
   profiling feature set by composing `profiling` and `profiling-gpu`. This
-  umbrella exists for convenience and has the combined runtime cost of the
-  granular features it enables.
+  umbrella includes CPU collection, summary export, trace export, and GPU
+  render-pass timestamp collection when the selected adapter supports it.
 - `profiling-cpu` (granular, disabled by default): enables the public
-  `lambda::profiling` module and the CPU-side profiler scaffolding through the
-  internal `lambda-rs-profiling` crate. Runtime cost is feature-dependent in
-  later implementation steps; this scaffolding step adds no profiling behavior
-  yet.
+  `lambda::profiling` module, CPU event collection, user-authored profiling
+  macros, and automatic CPU spans in runtime and render paths. Expected
+  runtime cost is low when event volume is small and increases with the number
+  of spans, counters, and instants recorded per frame.
 - `profiling-gpu` (granular, disabled by default): enables GPU profiling
   support wiring by composing `profiling-cpu`,
   `lambda-rs-profiling/gpu`, and `lambda-rs-platform/profiling-gpu`.
-  Expected runtime cost in later steps is moderate and proportional to GPU
-  timestamp query allocation, resolve, and readback work; unsupported adapters
-  MUST fall back to CPU-only profiling.
+  Expected runtime cost is moderate and proportional to GPU timestamp query
+  allocation, resolve, and non-blocking readback work. Unsupported adapters
+  fall back to CPU-only profiling without failing device creation.
 - `profiling-export-summary` (granular, disabled by default): enables summary
   export support through `lambda-rs-profiling/export-summary` and composes
-  `profiling-cpu`. Expected runtime cost in later steps is low to moderate and
-  incurred when summary aggregation and serialization are requested.
+  `profiling-cpu`. Expected runtime cost is low to moderate and incurred when
+  retained frames are aggregated and serialized during `Profiler::flush_frame`.
 - `profiling-export-trace` (granular, disabled by default): enables trace
   export support through `lambda-rs-profiling/export-trace` and composes
-  `profiling-cpu`. Expected runtime cost in later steps is moderate and
-  incurred when trace buffering and serialization are requested.
+  `profiling-cpu`. Expected runtime cost is moderate and incurred when retained
+  frame events are ordered and serialized during `Profiler::flush_frame`.
 
 Render validation
 
@@ -216,6 +219,8 @@ Profiling
   platform profiling details directly.
 
 ## Changelog
+- 0.1.20 (2026-06-03): Update profiling feature documentation to describe the
+  implemented CPU, GPU, summary export, and trace export behavior.
 - 0.1.19 (2026-04-06): Document the new profiling feature flags in
   `lambda-rs` and `lambda-rs-platform`, and update metadata to match the
   current workspace toolchain versions.

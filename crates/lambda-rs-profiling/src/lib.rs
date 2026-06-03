@@ -2,9 +2,42 @@
 //! Profiling support types and macros for Lambda.
 //!
 //! This crate is re-exported by `lambda-rs` as `lambda::profiling` when one or
-//! more profiling features are enabled. The current implementation provides the
-//! public API, CPU event collection, and user-facing macros required for later
-//! export and regression-comparison work.
+//! more profiling features are enabled. It provides CPU event collection,
+//! optional GPU render-pass timestamp collection, summary and trace export,
+//! comparison helpers, and user-facing instrumentation macros.
+//!
+//! ```no_run
+//! use std::error::Error;
+//!
+//! use lambda_rs_profiling::{
+//!   profile_counter,
+//!   profile_scope,
+//!   Profiler,
+//!   ProfilerBuilder,
+//! };
+//!
+//! fn main() -> Result<(), Box<dyn Error>> {
+//!   let output_directory = std::env::temp_dir().join("lambda-profile-docs");
+//!   let profiler = ProfilerBuilder::new("docs-example")
+//!     .with_output_directory(&output_directory)
+//!     .with_summary_export(true)
+//!     .with_trace_export(true)
+//!     .build()?;
+//!
+//!   profiler.install_global()?;
+//!
+//!   {
+//!     let _scope = profile_scope!("docs.example_work");
+//!     profile_counter!("docs.items_processed", 4);
+//!   }
+//!
+//!   if let Some(profiler) = Profiler::global() {
+//!     let _artifacts = profiler.flush_frame()?;
+//!   }
+//!
+//!   return Ok(());
+//! }
+//! ```
 
 mod builder;
 mod collector;
