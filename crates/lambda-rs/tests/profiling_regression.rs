@@ -61,6 +61,7 @@ fn profiling_regression_cpu_fixture_matches_checked_in_baseline() {
   remove_path_if_present(&output_directory);
   let profiler = ProfilerBuilder::new("tests-profiling-regression-cpu")
     .with_summary_export(true)
+    .with_trace_export(true)
     .with_output_directory(&output_directory)
     .with_frame_history_limit(8)
     .build()
@@ -84,11 +85,15 @@ fn profiling_regression_cpu_fixture_matches_checked_in_baseline() {
     let artifacts = profiler.flush_frame().unwrap();
 
     assert!(artifacts.summary_path.is_some());
-    assert_eq!(artifacts.trace_path, None);
+    assert!(artifacts.trace_path.is_some());
   }
 
   let current_summary_bytes = fs::read(
     output_directory.join("tests-profiling-regression-cpu-summary.json"),
+  )
+  .unwrap();
+  let current_trace = fs::read_to_string(
+    output_directory.join("tests-profiling-regression-cpu-trace.json"),
   )
   .unwrap();
   let baseline_summary_bytes = fs::read(cpu_baseline_path()).unwrap();
@@ -97,9 +102,12 @@ fn profiling_regression_cpu_fixture_matches_checked_in_baseline() {
   let baseline_summary =
     SummaryReport::from_json_bytes(&baseline_summary_bytes).unwrap();
   let comparison = current_summary
-    .compare_against(&baseline_summary, &ComparisonTolerances::cpu_defaults());
+    .compare_against(&baseline_summary, &ComparisonTolerances::new());
 
-  assert!(comparison.passed());
+  assert!(
+    comparison.passed(),
+    "deterministic profiling fixture comparison failed: {comparison}"
+  );
   assert_eq!(comparison.matched_scope_count(), 2);
   assert_eq!(comparison.violation_count(), 0);
   assert_eq!(comparison.missing_current_scopes().len(), 0);
@@ -111,6 +119,11 @@ fn profiling_regression_cpu_fixture_matches_checked_in_baseline() {
       .clock_domain(),
     "cpu"
   );
+  assert_eq!(current_summary.frame_count(), 4);
+  assert!(current_trace.contains("\"kind\": \"span_begin\""));
+  assert!(current_trace.contains("\"kind\": \"span_end\""));
+  assert!(current_trace.contains("\"kind\": \"counter\""));
+  assert!(current_trace.contains("\"frame_index\": 3"));
 
   remove_path_if_present(&output_directory);
 }

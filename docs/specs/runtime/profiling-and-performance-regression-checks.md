@@ -1,15 +1,15 @@
 ---
 title: "Profiling and Performance Regression Checks"
 document_id: "profiling-performance-regression-2026-04-06"
-status: "draft"
+status: "living"
 created: "2026-04-06T00:13:19Z"
-last_updated: "2026-04-06T00:13:19Z"
-version: "0.1.0"
+last_updated: "2026-06-03T00:00:00Z"
+version: "0.2.0"
 engine_workspace_version: "2023.1.30"
-wgpu_version: "26.0.1"
+wgpu_version: "29.0.0"
 shader_backend_default: "naga"
-winit_version: "0.29.10"
-repo_commit: "4313b4be0ae9b36c16dcf5152265a087bf81e223"
+winit_version: "0.29.15"
+repo_commit: "929fba66d6a717a4de3f0a63407c3d9446ea1e27"
 owners: ["lambda-sh"]
 reviewers: ["engine", "rendering"]
 tags: ["spec", "runtime", "profiling", "performance"]
@@ -347,6 +347,8 @@ CI fixture
   - `export-trace`
 - New `lambda-rs-platform` granular feature:
   - `profiling-gpu`
+  - `profiling-export-summary`
+  - `profiling-export-trace`
 - Feature rules:
   - All behavior in code MUST be gated by granular feature names together with
     `debug_assertions`, never umbrella names.
@@ -393,29 +395,51 @@ CI fixture
 ## Requirements Checklist
 
 - Functionality
-  - [ ] `lambda-rs-profiling` crate added to the workspace.
-  - [ ] `lambda::profiling` re-export added to `lambda-rs`.
-  - [ ] CPU collector implemented.
-  - [ ] GPU timestamp collector implemented with CPU-only fallback.
-  - [ ] Automatic runtime and render instrumentation added.
-  - [ ] User-facing macros implemented as no-ops when disabled.
+  - [x] `lambda-rs-profiling` crate added to the workspace
+        (`Cargo.toml`, `crates/lambda-rs-profiling/Cargo.toml`).
+  - [x] `lambda::profiling` re-export added to `lambda-rs`
+        (`crates/lambda-rs/src/lib.rs`).
+  - [x] CPU collector implemented
+        (`crates/lambda-rs-profiling/src/collector/cpu.rs`).
+  - [x] GPU timestamp collector implemented with CPU-only fallback
+        (`crates/lambda-rs-profiling/src/collector/gpu.rs`).
+  - [x] Automatic runtime and render instrumentation added
+        (`crates/lambda-rs/src/runtimes/application.rs`,
+        `crates/lambda-rs/src/render/mod.rs`,
+        `crates/lambda-rs/src/render/encoder.rs`).
+  - [x] User-facing macros implemented as no-ops when disabled
+        (`crates/lambda-rs-profiling/src/macros.rs`).
 - API Surface
-  - [ ] Public builder, profiler, guards, export types, and comparison helpers
-        implemented.
-  - [ ] Public APIs documented with Rustdoc.
-  - [ ] Feature names added to `lambda-rs` and documented in `docs/features.md`.
+  - [x] Public builder, profiler, guards, export types, and comparison helpers
+        implemented (`crates/lambda-rs-profiling/src/`).
+  - [x] Public APIs documented with Rustdoc
+        (`crates/lambda-rs-profiling/src/lib.rs`,
+        `crates/lambda-rs/src/lib.rs`).
+  - [x] Feature names added to `lambda-rs` and documented in
+        `docs/features.md` (`crates/lambda-rs/Cargo.toml`,
+        `docs/features.md`).
 - Validation and Errors
-  - [ ] Filesystem, install, export, and comparison errors are actionable.
-  - [ ] GPU capability detection degrades cleanly without panicking.
-  - [ ] Comparison failures identify the violating scope and metric.
+  - [x] Filesystem, install, export, and comparison errors are actionable
+        (`crates/lambda-rs-profiling/src/error.rs`).
+  - [x] GPU capability detection degrades cleanly without panicking
+        (`crates/lambda-rs-platform/src/wgpu/profiling.rs`,
+        `crates/lambda-rs-profiling/src/collector/gpu.rs`).
+  - [x] Comparison failures identify the violating scope and metric
+        (`crates/lambda-rs-profiling/src/report.rs`).
 - Performance
-  - [ ] Collector hot paths avoid per-event heap allocation in steady state.
-  - [ ] GPU query readback does not block the active frame.
-  - [ ] Regression thresholds documented and implemented.
+  - [x] Collector hot paths avoid per-event heap allocation in steady state
+        (`crates/lambda-rs-profiling/src/collector/thread_local.rs`).
+  - [x] GPU query readback does not block the active frame
+        (`crates/lambda-rs-profiling/src/collector/gpu.rs`).
+  - [x] Regression thresholds documented and implemented
+        (`crates/lambda-rs-profiling/src/report.rs`).
 - Documentation and Examples
-  - [ ] Profiling guide or example added for library users.
-  - [ ] Regression fixture workflow documented.
-  - [ ] `docs/specs/README.md` updated for this specification.
+  - [x] Profiling guide or example added for library users
+        (`docs/profiling.md`).
+  - [x] Regression fixture workflow documented
+        (`docs/profiling.md`, `docs/features.md`).
+  - [x] `docs/specs/README.md` updated for this specification
+        (`docs/specs/README.md`).
 
 For each checked item, include a reference to a commit, pull request, or file
 path that demonstrates the implementation.
@@ -475,6 +499,9 @@ path that demonstrates the implementation.
 
 ## Changelog
 
+- 2026-06-03 (v0.2.0) — Mark the specification as implemented, align
+  metadata with current dependency versions, add platform export feature
+  names, and record implementation file references in the checklist.
 - 2026-04-06 (v0.1.0) — Initial draft defining a feature-gated profiling
   subsystem, CPU and GPU timing behavior, export artifacts, and CI regression
   comparison rules.

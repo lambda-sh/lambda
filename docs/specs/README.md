@@ -3,13 +3,13 @@ title: "Specifications Index"
 document_id: "specs-index-2026-02-07"
 status: "living"
 created: "2026-02-07T00:00:00Z"
-last_updated: "2026-04-06T00:13:19Z"
-version: "0.1.6"
+last_updated: "2026-06-03T00:00:00Z"
+version: "0.1.7"
 engine_workspace_version: "2023.1.30"
-wgpu_version: "26.0.1"
+wgpu_version: "29.0.0"
 shader_backend_default: "naga"
-winit_version: "0.29.10"
-repo_commit: "4313b4be0ae9b36c16dcf5152265a087bf81e223"
+winit_version: "0.29.15"
+repo_commit: "929fba66d6a717a4de3f0a63407c3d9446ea1e27"
 owners: ["lambda-sh"]
 reviewers: ["engine"]
 tags: ["index", "specs", "docs"]
@@ -49,6 +49,8 @@ tags: ["index", "specs", "docs"]
 
 ## Changelog
 
+- 0.1.7 (2026-06-03): Refresh metadata after finalizing the profiling and
+  performance regression checks implementation.
 - 0.1.6 (2026-04-06): Add the profiling and performance regression checks
   specification and update metadata.
 - 0.1.5 (2026-03-25): Add the 2D collision queries and events specification

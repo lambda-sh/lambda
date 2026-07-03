@@ -1,6 +1,13 @@
-use std::collections::{
-  BTreeMap,
-  HashMap,
+use std::{
+  collections::{
+    BTreeMap,
+    HashMap,
+  },
+  fmt::{
+    Display,
+    Formatter,
+    Result as FormatResult,
+  },
 };
 
 use crate::collector::cpu::{
@@ -1364,6 +1371,59 @@ impl ComparisonReport {
   }
 }
 
+impl Display for ComparisonReport {
+  fn fmt(&self, formatter: &mut Formatter<'_>) -> FormatResult {
+    if self.passed() {
+      return write!(
+        formatter,
+        "profiling comparison passed: {} matched scopes, {} informational \
+         extra scopes",
+        self.matched_scope_count,
+        self.extra_current_scopes.len()
+      );
+    }
+
+    write!(
+      formatter,
+      "profiling comparison failed: {} matched scopes",
+      self.matched_scope_count
+    )?;
+
+    for violation in &self.violations {
+      write!(
+        formatter,
+        "; scope `{}` in `{}` clock domain regressed on `{}` from {} ns to \
+         {} ns (+{} ns)",
+        violation.scope().name(),
+        violation.scope().clock_domain(),
+        violation.metric().as_str(),
+        violation.baseline_ns(),
+        violation.current_ns(),
+        violation.absolute_regression_ns()
+      )?;
+    }
+
+    for scope in &self.missing_current_scopes {
+      write!(
+        formatter,
+        "; missing current scope `{}` in `{}` clock domain",
+        scope.name(),
+        scope.clock_domain()
+      )?;
+    }
+
+    if !self.extra_current_scopes.is_empty() {
+      write!(
+        formatter,
+        "; {} informational extra scopes",
+        self.extra_current_scopes.len()
+      )?;
+    }
+
+    return Ok(());
+  }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct ScopeMetricValues {
   mean_ns: u64,
@@ -2267,5 +2327,39 @@ mod tests {
     );
     assert_eq!(comparison.missing_current_scopes().len(), 0);
     assert_eq!(FRAME_SCOPE_NAME, "frame");
+  }
+
+  #[test]
+  fn comparison_report_display_identifies_violating_scope_and_metric() {
+    let baseline = summary_report_with_scope(
+      "tests.compare.display.baseline",
+      "tests.scope",
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+      1_000,
+    );
+    let current = summary_report_with_scope(
+      "tests.compare.display.current",
+      "tests.scope",
+      2_000,
+      2_000,
+      2_000,
+      2_000,
+      2_000,
+    );
+    let tolerances = ComparisonTolerances::new().with_scope_metric(
+      MetricTolerance::new(ComparisonMetric::P95Ns, 0.10, 250),
+    );
+    let comparison = current.compare_against(&baseline, &tolerances);
+    let message = comparison.to_string();
+
+    assert!(!comparison.passed());
+    assert!(message.contains("profiling comparison failed"));
+    assert!(message.contains("tests.scope"));
+    assert!(message.contains("cpu"));
+    assert!(message.contains("p95_ns"));
+    assert!(message.contains("from 1000 ns to 2000 ns"));
   }
 }
